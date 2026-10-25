@@ -27,6 +27,10 @@ Whering only stores each item's *last* wear date, so an item gets that one dated
 
 Neither file is committed (see `.gitignore`); they contain your personal data.
 
+### App shell
+- Bottom tab bar (Closet · Outfits · ＋ · Calendar · Stats); ＋ opens quick actions: log today, add an item, new outfit
+- Installable: add it to your home screen for a full-screen app with its own icon
+
 ## Data and privacy
 
 - The app reads and writes to your browser first (IndexedDB), so it's fast and works offline.

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { money, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { ClothesTabs } from './ClothesTabs';
 import { computeStats, wearCount } from './stats';
 import { label, type ClothingItem } from './types';
 
@@ -11,10 +10,7 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Clothes</h1>
-      </div>
-      <ClothesTabs active="stats" />
+      <h1 className="page-title">Stats</h1>
 
       <div className="tiles">
         <Tile value={String(s.activeCount)} label="items in closet" />
