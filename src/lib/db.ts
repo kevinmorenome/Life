@@ -7,11 +7,11 @@
 
 import type { Change } from '../../worker/protocol';
 
-export const STORES = ['clothes', 'outfits', 'trips', 'settings'] as const;
+export const STORES = ['clothes', 'outfits', 'trips', 'settings', 'inbox'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const OUTBOX = 'outbox';
 const META = 'meta';
 
@@ -36,7 +36,8 @@ export function onExternalChange(store: StoreName, fn: Listener): () => void {
   return () => listeners.get(store)!.delete(fn);
 }
 
-function notify(store: StoreName): void {
+/** Tells mounted collections to reload after records were written outside useCollection. */
+export function notify(store: StoreName): void {
   listeners.get(store)?.forEach((fn) => fn());
 }
 

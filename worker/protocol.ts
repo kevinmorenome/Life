@@ -19,6 +19,27 @@ export interface PullResponse {
   more: boolean;
 }
 
+/**
+ * A request to log a wear, queued in the `inbox` store by something other than
+ * the app (the MCP endpoint). The app applies it with its normal wear logic
+ * after each pull, then marks it applied. Applying is idempotent.
+ */
+export interface WearRequest {
+  id: string;
+  type: 'wear';
+  /** YYYY-MM-DD */
+  date: string;
+  itemIds: string[];
+  outfitIds: string[];
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Set by the app once the wears are logged. */
+  appliedAt?: string;
+  /** Set by the app when some ids no longer exist. */
+  error?: string;
+}
+
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;
 /** D1 caps a row at 2 MB; leave headroom for the other columns. */

@@ -71,6 +71,15 @@ async function api(path: string, init?: RequestInit): Promise<Response> {
   return res;
 }
 
+let afterPull: (() => Promise<void>) | null = null;
+/**
+ * Registers work to run after each pull, e.g. applying requests other clients
+ * queued. Its writes are pushed by the next sync, which they schedule.
+ */
+export function setAfterPull(fn: (() => Promise<void>) | null): void {
+  afterPull = fn;
+}
+
 async function runOnce(): Promise<void> {
   if (!PREVIEW_LABEL && !(await getMeta<boolean>(SEEDED))) {
     // First connection from this browser: upload what's already stored locally.
@@ -102,6 +111,12 @@ async function runOnce(): Promise<void> {
     cursor = page.cursor;
     await setMeta(CURSOR, cursor);
     if (!page.more) break;
+  }
+
+  try {
+    await afterPull?.();
+  } catch (e) {
+    console.error('Post-sync step failed', e);
   }
 
   const now = Date.now();
