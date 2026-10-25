@@ -53,7 +53,7 @@ function openDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
+      req.onupgradeneeded = (event) => {
         const db = req.result;
         for (const name of STORES) {
           if (!db.objectStoreNames.contains(name)) {
@@ -62,8 +62,19 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(OUTBOX)) db.createObjectStore(OUTBOX, { keyPath: 'key' });
         if (!db.objectStoreNames.contains(META)) db.createObjectStore(META, { keyPath: 'key' });
+        // An older build skips pulled records for stores it doesn't know, yet still advances
+        // its cursor past them. After an upgrade, pull everything again so they arrive.
+        // (Pulled records never overwrite local edits that haven't been pushed yet.)
+        if (event.oldVersion > 0) req.transaction!.objectStore(META).delete('syncCursor');
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        // Let a newer build in another tab upgrade the database instead of being blocked by this one.
+        req.result.onversionchange = () => {
+          req.result.close();
+          dbPromise = null;
+        };
+        resolve(req.result);
+      };
       req.onerror = () => reject(req.error);
     });
   }

@@ -123,6 +123,46 @@ describe('sync', () => {
   });
 });
 
+describe('schema upgrade', () => {
+  /** A device last opened by an older build: DB v5 (no `inbox` store), already synced up to seq 7. */
+  async function oldDevice() {
+    globalThis.indexedDB = new IDBFactory();
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('life', 5);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        for (const name of ['clothes', 'outfits', 'trips', 'settings']) db.createObjectStore(name, { keyPath: 'id' });
+        db.createObjectStore('outbox', { keyPath: 'key' });
+        db.createObjectStore('meta', { keyPath: 'key' }).put({ key: 'syncCursor', value: 7 });
+      };
+      req.onsuccess = () => {
+        req.result.close();
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    vi.resetModules();
+    return import('./db');
+  }
+
+  it('pulls from the start again, so records in stores the old build skipped are delivered', async () => {
+    const db = await oldDevice();
+    expect(await db.getAll('inbox')).toEqual([]); // opening runs the upgrade
+    expect(await db.getMeta('syncCursor')).toBeUndefined();
+  });
+
+  it('keeps the cursor when the database is already current', async () => {
+    const db = await oldDevice();
+    await db.getAll('inbox');
+    await db.setMeta('syncCursor', 9);
+    await db.closeDb();
+    vi.resetModules();
+    const again = await import('./db');
+    await again.getAll('inbox');
+    expect(await again.getMeta('syncCursor')).toBe(9);
+  });
+});
+
 describe('upsertNewer', () => {
   it('adds new records and replaces only older ones', async () => {
     const { db } = await device();
