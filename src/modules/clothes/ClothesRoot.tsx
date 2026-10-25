@@ -1,8 +1,11 @@
 import { useCollection } from '../../lib/useCollection';
+import { CalendarView } from './CalendarView';
 import { ClothesList } from './ClothesList';
 import { ClothesStatsView } from './ClothesStats';
+import { DayView } from './DayView';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
+import { LogItemsPicker, LogOutfitPicker } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
@@ -24,6 +27,17 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;
     if (third === 'edit') return <OutfitForm existing={outfit} items={items} onSave={outfits.save} />;
     return <OutfitDetail outfit={outfit} onDelete={outfits.remove} {...outfitProps} />;
+  }
+
+  if (first === 'calendar') {
+    const props = { items, outfits: outfits.items, onSaveItem: save, onSaveOutfit: outfits.save };
+    if (second && /^\d{4}-\d{2}-\d{2}$/.test(second)) {
+      if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
+      if (third === 'items') return <LogItemsPicker date={second} {...props} />;
+      return <DayView date={second} {...props} />;
+    }
+    const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
+    return <CalendarView month={month} items={items} outfits={outfits.items} />;
   }
 
   if (first === 'new') return <ItemForm onSave={save} />;

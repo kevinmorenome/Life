@@ -697,10 +697,9 @@ a:focus-visible {
 .closet-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
   margin: 0 -16px;
-  background: var(--border);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
 @media (min-width: 640px) {
   .closet-grid {
@@ -713,7 +712,8 @@ a:focus-visible {
 }
 .closet-grid li {
   min-width: 0;
-  background: var(--surface);
+  /* Right and bottom dividers; trailing empty cells stay blank. */
+  box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border);
 }
 .closet-tile {
   display: flex;
@@ -749,4 +749,141 @@ a:focus-visible {
 .tile-meta {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* Calendar */
+.center {
+  text-align: center;
+}
+.month-nav,
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.month-nav .btn,
+.day-head .btn {
+  font-size: 1.5rem;
+  min-width: 44px;
+  padding: 0;
+}
+.month-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.month-title strong {
+  text-transform: capitalize;
+}
+.day-head h1 {
+  font-size: 1.15rem;
+  text-align: center;
+  text-transform: capitalize;
+  margin: 0;
+}
+.calendar {
+  display: grid;
+  gap: 0.25rem;
+}
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+.calendar-head span {
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  text-transform: capitalize;
+}
+.calendar-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-height: 44px;
+  border-radius: 50%;
+  color: var(--text);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-day.out {
+  opacity: 0.35;
+}
+.calendar-day.today .day-num {
+  color: var(--accent);
+  font-weight: 700;
+}
+.calendar-day:active {
+  background: var(--accent-soft);
+}
+.day-bubble {
+  position: absolute;
+  inset: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--photo-bg);
+}
+.day-bubble .thumb {
+  width: 70%;
+  height: 50%;
+  border-radius: 0;
+  background: none;
+  font-size: 0.9rem;
+}
+.day-bubble.pieces-1 .thumb {
+  height: 80%;
+}
+.calendar-day .day-num {
+  position: relative;
+  font-size: 0.9rem;
+}
+.day-bubble ~ .day-num {
+  align-self: end;
+  margin-bottom: -2px;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+.detail section + section {
+  margin-top: 1.25rem;
+}
+.day-items {
+  margin-bottom: 1rem;
+}
+.day-items li {
+  position: relative;
+}
+.tile-remove {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.day-actions {
+  margin-top: 1rem;
+}
+.picker-row {
+  width: 100%;
+  border: 1px solid var(--border);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }

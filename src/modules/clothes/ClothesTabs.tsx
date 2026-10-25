@@ -3,6 +3,7 @@ import { href } from '../../lib/router';
 const TABS = [
   { id: 'closet', label: 'Closet', path: '/clothes' },
   { id: 'outfits', label: 'Outfits', path: '/clothes/outfits' },
+  { id: 'calendar', label: 'Calendar', path: '/clothes/calendar' },
   { id: 'stats', label: 'Stats', path: '/clothes/stats' },
 ] as const;
 

@@ -9,6 +9,7 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Status tracking (active, storage, donated, sold, discarded), so past items still count toward spending history
 - Wear log: one tap for "Wore today", or log any past date
 - Outfits: combine pieces, log an outfit wear (also logs each piece), see which outfits an item is in
+- Calendar: month view with a photo of what you wore each day; tap a day to log an outfit or items, or remove entries
 - Search, filter by category or status, and sort by newest, name, most worn or longest unworn
 - Stats: closet value, total spent, wears in the last 30 days, items per category, most worn, best cost per wear, never worn
 - Import from Whering (see below)
