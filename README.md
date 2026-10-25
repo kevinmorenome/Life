@@ -60,6 +60,18 @@ GitHub Actions (`.github/workflows/ci.yml`) tests every push and deploys pushes 
 
 Until step 6 is done, the site loads but refuses to sync (the status dot shows "Sync not set up"), and nothing leaves your browser.
 
+## How changes ship
+
+`main` is the live site: every merge into `main` is tested and deployed automatically.
+
+1. **Branch:** each feature or fix starts on its own branch from `main` (e.g. `feature/outfit-stats`, `fix/photo-rotation`).
+2. **Pull request:** open a PR into `main`. CI runs the tests and the build on it; nothing is deployed yet.
+3. **Review:** read the PR description and diff. Ask for changes on the PR if needed.
+4. **Merge:** merging into `main` deploys to https://life.kevinmorenom.workers.dev within about a minute.
+5. **Undo:** if something breaks, revert the PR's merge commit on GitHub; that redeploys the previous version.
+
+Database schema changes (`migrations/`) apply on deploy, so a revert doesn't undo them; PRs that add a migration say so.
+
 ## Adding a feature module
 
 See [CLAUDE.md](CLAUDE.md#adding-a-module).
