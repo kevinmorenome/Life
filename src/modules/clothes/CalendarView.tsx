@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { addMonths, monthGrid, wearsByDay, type DayWear } from './calendar';
-import { ClothesTabs } from './ClothesTabs';
 import { ItemThumb } from './ItemThumb';
 import { outfitPieces } from './outfits';
 import type { ClothingItem, Outfit } from './types';
@@ -33,13 +32,7 @@ export function CalendarView({ month, items, outfits }: Props) {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Clothes</h1>
-        <a className="btn btn-primary" href={href(`/clothes/calendar/${now}`)}>
-          + Today
-        </a>
-      </div>
-      <ClothesTabs active="calendar" />
+      <h1 className="page-title">Calendar</h1>
 
       <div className="month-nav">
         <a className="btn btn-ghost" href={href(`/clothes/calendar/${addMonths(ym, -1)}`)} aria-label="Previous month">

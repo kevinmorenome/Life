@@ -1,6 +1,8 @@
+import { BottomNav } from './BottomNav';
 import { Home } from './Home';
 import { Settings } from './Settings';
 import { SyncBadge } from './SyncBadge';
+import { GearIcon } from './icons';
 import { PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
 import { SettingsProvider } from './lib/settings';
@@ -8,13 +10,20 @@ import { MODULES } from './modules';
 
 export function App() {
   const [section, ...rest] = useRoute();
-  const mod = MODULES.find((m) => m.id === section);
+  // With a single module the app opens straight into it; Home returns once there are more.
+  const singleModule = MODULES.length === 1;
+  const mod = MODULES.find((m) => m.id === section) ?? (!section && singleModule ? MODULES[0] : undefined);
+  const subroute = mod && section === mod.id ? rest : mod ? [] : null;
 
   let page;
-  if (!section) page = <Home />;
+  if (!section && !singleModule) page = <Home />;
   else if (section === 'settings') page = <Settings />;
-  else if (mod) page = mod.render(rest);
+  else if (mod && subroute) page = mod.render(subroute);
   else page = <p className="muted">Page not found.</p>;
+
+  // Settings and Home keep the bar of the default module so you can always get back.
+  const navModule = mod ?? MODULES[0];
+  const showNav = !(mod && subroute && mod.hideNav?.(subroute));
 
   return (
     <SettingsProvider>
@@ -30,19 +39,17 @@ export function App() {
           </a>
           <SyncBadge />
         </div>
-        <nav>
-          {MODULES.map((m) => (
-            <a key={m.id} href={href(`/${m.id}`)} aria-current={m.id === section ? 'page' : undefined}>
-              <span aria-hidden>{m.icon}</span> {m.title}
-            </a>
-          ))}
-          <a href={href('/settings')} aria-current={section === 'settings' ? 'page' : undefined}>
-            <span aria-hidden>⚙️</span>
-            <span className="sr-only">Settings</span>
-          </a>
-        </nav>
+        <a
+          className="icon-btn"
+          href={href('/settings')}
+          aria-label="Settings"
+          aria-current={section === 'settings' ? 'page' : undefined}
+        >
+          <GearIcon />
+        </a>
       </header>
-      <main className="container">{page}</main>
+      <main className={`container${showNav ? ' with-nav' : ''}`}>{page}</main>
+      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} />}
     </SettingsProvider>
   );
 }
