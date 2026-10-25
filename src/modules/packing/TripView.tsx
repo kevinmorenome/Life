@@ -3,10 +3,10 @@ import { newId } from '../../lib/db';
 import { shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
-import { OutfitCollage } from '../clothes/OutfitCollage';
-import { outfitName, outfitPieces } from '../clothes/outfits';
+import { outfitName } from '../clothes/outfits';
 import { label, type ClothingItem, type Outfit } from '../clothes/types';
-import { packingList, togglePacked, tripDays, unpackAll, withDayOutfits, withExtra, withoutExtra, withoutManualItem } from './packing';
+import { TripCalendar } from './TripCalendar';
+import { packingList, togglePacked, unpackAll, withExtra, withoutExtra, withoutManualItem } from './packing';
 import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
 export type TripTab = 'outfits' | 'clothes' | 'other';
@@ -27,8 +27,6 @@ interface Props {
 
 export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props) {
   const list = useMemo(() => packingList(trip, items, outfits, outfitName), [trip, items, outfits]);
-  const days = tripDays(trip);
-  const outfitById = new Map(outfits.map((o) => [o.id, o]));
   const [text, setText] = useState('');
   const [group, setGroup] = useState<string>(EXTRA_GROUPS[0]);
   const [showPacked, setShowPacked] = useState(true);
@@ -97,49 +95,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
         })}
       </nav>
 
-      {tab === 'outfits' && (
-      <section>
-        <ul className="plan-list">
-          {days.map((date) => {
-            const planned = (trip.outfitPlan[date] ?? []).map((id) => outfitById.get(id)).filter((o): o is Outfit => !!o);
-            const dayLabel = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            });
-            return (
-              <li key={date} className="plan-day">
-                <a className="plan-date" href={href(`/clothes/calendar/${date}`)} title="Open in calendar">
-                  {dayLabel}
-                </a>
-                <div className="plan-outfits">
-                  {planned.map((o) => (
-                    <span key={o.id} className="plan-outfit">
-                      <a href={href(`/clothes/outfits/${o.id}`)} className="plan-outfit-link">
-                        <OutfitCollage pieces={outfitPieces(o, items)} />
-                        <span className="small">{outfitName(o)}</span>
-                      </a>
-                      <button
-                        className="tile-remove"
-                        aria-label={`Remove ${outfitName(o)} from ${dayLabel}`}
-                        onClick={() =>
-                          onSave(withDayOutfits(trip, date, trip.outfitPlan[date].filter((id) => id !== o.id)))
-                        }
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
-                  <a className="btn btn-small" href={href(`/packing/${trip.id}/day/${date}`)}>
-                    {planned.length ? '+ Add' : '+ Add outfit'}
-                  </a>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-      )}
+      {tab === 'outfits' && <TripCalendar trip={trip} items={items} outfits={outfits} />}
       {tab === 'clothes' && (
       <section>
         {list.clothes.length === 0 && (

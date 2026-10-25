@@ -1131,48 +1131,9 @@ progress {
   top: 0;
   z-index: 1;
 }
-.plan-list,
 .pack-list {
   display: grid;
   gap: 0.25rem;
-}
-.plan-day {
-  display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  align-items: start;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.plan-date {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 500;
-  color: var(--text);
-  text-decoration: none;
-}
-.plan-outfits {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-.plan-outfit {
-  position: relative;
-  width: 72px;
-}
-.plan-outfit-link {
-  display: grid;
-  gap: 0.15rem;
-  color: var(--text);
-  text-decoration: none;
-  text-align: center;
-}
-.plan-outfit-link .small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .pack-group h3 {
   margin: 0.75rem 0 0.25rem;
@@ -1321,4 +1282,26 @@ progress {
 }
 .pack-tile {
   position: relative;
+}
+.trip-calendar + .trip-calendar {
+  margin-top: 1.25rem;
+}
+.trip-month {
+  text-transform: capitalize;
+}
+.calendar-day.in-trip {
+  background: var(--accent-soft);
+}
+.day-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 16px;
+  text-align: center;
 }
