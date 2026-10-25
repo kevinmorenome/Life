@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
+import { colorSwatches } from './colors';
+import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { OutfitCollage } from './OutfitCollage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
@@ -114,14 +116,27 @@ function About({ item, onDelete }: { item: ClothingItem; onDelete: () => void })
     ['Category', label(item.category)],
     ['Status', label(item.status)],
     ['Brand', item.brand],
-    ['Color', item.color],
     ['Size', item.size],
     ['Material', item.material],
     ['Price', item.price != null ? money(item.price) : undefined],
     ['Purchased', item.purchaseDate && shortDate(item.purchaseDate)],
   ];
+  const swatches = colorSwatches(item.color);
   return (
     <>
+      {swatches.length > 0 && (
+        <section className="tag-section">
+          <h2>Colors</h2>
+          <ul className="chips tag-list">
+            {swatches.map((c) => (
+              <li key={c.name} className="chip chip-static chip-color">
+                <span className="dot" style={c.css ? { background: c.css } : undefined} aria-hidden />
+                {c.name}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <dl className="rows">
         {facts
           .filter(([, v]) => v)
@@ -193,11 +208,11 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
   const cpw = costPerWear(item);
   const undated = item.priorWears ?? 0;
 
-  const insights: [string, string][] = [
-    [last ? shortDate(last) : 'Never', 'Last worn'],
-    [`${daysInCloset(item, today())} days`, 'In the closet'],
-    [String(outfitCount), outfitCount === 1 ? 'Outfit made' : 'Outfits made'],
-    [cpw != null ? money(cpw) : '—', 'Cost per wear'],
+  const insights: [string, string, string, ReactNode][] = [
+    [last ? shortDate(last) : 'Never', 'Last worn', 'lime', <CalendarCheckIcon />],
+    [`${daysInCloset(item, today())} days`, 'In the closet', 'blue', <WardrobeIcon />],
+    [String(outfitCount), outfitCount === 1 ? 'Outfit made' : 'Outfits made', 'purple', <SparkleIcon />],
+    [cpw != null ? money(cpw) : '—', 'Cost per wear', 'orange', <PriceTagIcon />],
   ];
 
   return (
@@ -236,10 +251,13 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
       <section>
         <h2>Insights</h2>
         <ul className="insights">
-          {insights.map(([value, name]) => (
+          {insights.map(([value, name, tone, icon]) => (
             <li key={name} className="card">
               <span className="insight-value">{value}</span>
-              <span className="stat-label">{name}</span>
+              <span className="insight-foot">
+                <span className="stat-label">{name}</span>
+                <span className={`insight-icon tone-${tone}`}>{icon}</span>
+              </span>
             </li>
           ))}
         </ul>
