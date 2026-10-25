@@ -52,3 +52,67 @@ jobs:
         run: npm ci
       - if: steps.secrets.outputs.ready == 'true'
         run: npm run deploy
+
+  # Uploads each same-repo pull request as a read-only preview version at
+  # https://pr-<number>-life.<subdomain>.workers.dev and comments the link.
+  # Previews don't change production traffic and don't run D1 migrations.
+  preview:
+    needs: check
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFARE_ACCOUNT_ID }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build preview
+        env:
+          VITE_PREVIEW_LABEL: 'PR #${{ github.event.pull_request.number }}'
+        run: npm run build
+      - name: Upload preview version
+        id: upload
+        run: |
+          set -o pipefail
+          npx wrangler versions upload \
+            --preview-alias "pr-$PR_NUMBER" \
+            --message "Preview of PR #$PR_NUMBER (${GITHUB_SHA::7})" \
+            --var READ_ONLY:true | tee upload.log
+          url=$(grep -oE 'https://pr-[0-9]+-[a-z0-9.-]+\.workers\.dev' upload.log | head -1)
+          if [ -z "$url" ]; then
+            # Wrangler only prints preview URLs when they're enabled on the Worker,
+            # which happens when main deploys with "preview_urls": true (or via the
+            # dashboard: Worker → Settings → Domains & Routes → Preview URLs).
+            echo "::error::Uploaded, but Cloudflare returned no preview URL: preview URLs are disabled on the Worker. Enable them (see comment above) and re-run this job."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Comment preview link
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.upload.outputs.url }}
+        with:
+          script: |
+            const marker = '<!-- life-preview -->';
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = [
+              marker,
+              `**Preview:** ${process.env.PREVIEW_URL}`,
+              '',
+              `Built from \`${sha}\`. It shows your real closet behind the same login, but nothing you change there is saved.`,
+              'Database migrations in this PR are not applied to previews.',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });

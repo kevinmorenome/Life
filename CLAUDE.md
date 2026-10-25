@@ -5,6 +5,8 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 ## Workflow
 - `main` is production: CI deploys the repo's default branch (`main`) on every push. Never push to `main` directly.
 - Work on a feature branch from `main` and open a PR into `main`; the PR description says what changed, how it was tested, and whether it adds a D1 migration.
+- Each same-repo PR gets a preview version (`preview` job in `ci.yml`): built with `VITE_PREVIEW_LABEL` (banner, client never pushes) and uploaded with `READ_ONLY=true` (the Worker rejects pushes). Previews read production D1 and never run migrations.
+- Don't reintroduce `keep_vars` in `wrangler.jsonc`: preview versions carry `READ_ONLY=true`, and keeping vars could copy it into a production deploy.
 - Before pushing: `npm test` and `npm run build` must pass.
 
 ## Commands

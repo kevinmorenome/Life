@@ -4,6 +4,7 @@
 
 import { MAX_PUSH, type PullResponse } from '../../worker/protocol';
 import { applyRemote, clearOutbox, getMeta, getOutbox, onLocalWrite, queueAll, setMeta } from './db';
+import { PREVIEW_LABEL } from './preview';
 
 export type SyncState =
   | 'idle' // not started yet
@@ -71,14 +72,14 @@ async function api(path: string, init?: RequestInit): Promise<Response> {
 }
 
 async function runOnce(): Promise<void> {
-  if (!(await getMeta<boolean>(SEEDED))) {
+  if (!PREVIEW_LABEL && !(await getMeta<boolean>(SEEDED))) {
     // First connection from this browser: upload what's already stored locally.
     await queueAll();
     await setMeta(SEEDED, true);
   }
 
-  // Push
-  let outbox = await getOutbox();
+  // Push (never from a PR preview: changes there stay on this device)
+  let outbox = PREVIEW_LABEL ? [] : await getOutbox();
   setStatus({ pending: outbox.length });
   while (outbox.length) {
     const batch = outbox.slice(0, MAX_PUSH);

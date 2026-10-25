@@ -22,8 +22,10 @@
     "ACCESS_TEAM_DOMAIN": "shy-boat-8478.cloudflareaccess.com",
     "ACCESS_AUD": "159caac15eb480c0f098c6777f42e9287fc8976655564490ec13840e8ea91589"
   },
-  "keep_vars": true,
-  // Preview URLs would be extra hostnames outside Cloudflare Access.
-  "preview_urls": false,
+  // Each PR is uploaded as a preview version (see ci.yml) with READ_ONLY=true.
+  // Preview hostnames (*-life.<subdomain>.workers.dev) are covered by the
+  // same Cloudflare Access application ("All traffic"), and the API still
+  // verifies the Access JWT on every request.
+  "preview_urls": true,
   "observability": { "enabled": true }
 }
