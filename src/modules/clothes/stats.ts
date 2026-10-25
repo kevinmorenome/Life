@@ -1,0 +1,64 @@
+import type { Category, ClothingItem } from './types';
+
+export interface ClothesStats {
+  activeCount: number;
+  totalCount: number;
+  totalSpent: number;
+  activeValue: number;
+  totalWears: number;
+  wearsLast30: number;
+  byCategory: { category: Category; count: number }[];
+  mostWorn: ClothingItem[];
+  neverWorn: ClothingItem[];
+  bestCostPerWear: { item: ClothingItem; cpw: number }[];
+}
+
+export function costPerWear(item: ClothingItem): number | null {
+  if (item.price == null || item.wears.length === 0) return null;
+  return item.price / item.wears.length;
+}
+
+export function lastWorn(item: ClothingItem): string | null {
+  return item.wears.length ? item.wears.reduce((a, b) => (a > b ? a : b)) : null;
+}
+
+/** `today` is YYYY-MM-DD; passed in so the function stays pure for tests. */
+export function computeStats(items: ClothingItem[], today: string): ClothesStats {
+  const active = items.filter((i) => i.status === 'active');
+  const cutoff = shiftDate(today, -30);
+
+  const counts = new Map<Category, number>();
+  for (const i of active) counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
+
+  return {
+    activeCount: active.length,
+    totalCount: items.length,
+    totalSpent: sum(items.map((i) => i.price ?? 0)),
+    activeValue: sum(active.map((i) => i.price ?? 0)),
+    totalWears: sum(items.map((i) => i.wears.length)),
+    wearsLast30: sum(items.map((i) => i.wears.filter((d) => d > cutoff && d <= today).length)),
+    byCategory: [...counts]
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count),
+    mostWorn: active
+      .filter((i) => i.wears.length > 0)
+      .sort((a, b) => b.wears.length - a.wears.length)
+      .slice(0, 5),
+    neverWorn: active.filter((i) => i.wears.length === 0),
+    bestCostPerWear: active
+      .map((item) => ({ item, cpw: costPerWear(item) }))
+      .filter((x): x is { item: ClothingItem; cpw: number } => x.cpw != null)
+      .sort((a, b) => a.cpw - b.cpw)
+      .slice(0, 5),
+  };
+}
+
+function sum(ns: number[]): number {
+  return ns.reduce((a, b) => a + b, 0);
+}
+
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
