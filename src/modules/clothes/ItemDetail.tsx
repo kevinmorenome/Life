@@ -38,15 +38,16 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   }
 
   return (
-    <article className="detail">
-      <a className="back" href={href('/clothes')}>
-        ← Closet
-      </a>
-
+    <article className="detail item-detail">
       <header className="hero">
-        <p className="hero-pill">
-          {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
-        </p>
+        <div className="hero-top">
+          <a className="back" href={href('/clothes')} aria-label="Back to closet">
+            ←
+          </a>
+          <p className="hero-pill">
+            {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
+          </p>
+        </div>
         <ItemThumb item={item} large />
         <h1>{item.name}</h1>
         <p className="muted small">{[item.brand, label(item.category)].filter(Boolean).join(' · ')}</p>
@@ -147,7 +148,7 @@ function About({ item, onDelete }: { item: ClothingItem; onDelete: () => void })
             </div>
           ))}
       </dl>
-      {item.notes && <p className="card notes">{item.notes}</p>}
+      {item.notes && <p className="notes">{item.notes}</p>}
       <div className="form-actions">
         <button className="btn btn-danger" onClick={onDelete}>
           Delete item
@@ -263,7 +264,7 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
         </ul>
       </section>
 
-      <section className="card">
+      <section className="plain">
         <h2>Wear log</h2>
         <div className="wear-add">
           <input type="date" value={wearDate} max={today()} onChange={(e) => setWearDate(e.target.value)} />

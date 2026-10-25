@@ -1018,36 +1018,52 @@ a:focus-visible {
   text-align: center;
 }
 
-/* Item detail */
+/* Item detail: flat sections, no boxes inside boxes */
 .hero {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  padding: 1rem 1rem 1.25rem;
-  margin-bottom: 1.25rem;
-  border-radius: 0 0 28px 28px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  margin: -1.25rem -16px 1.5rem;
+  padding: 0.75rem 16px 1.25rem;
+  border-radius: 0 0 32px 32px;
+  background: var(--photo-bg);
   text-align: center;
 }
-.hero h1 {
-  margin-top: 0.5rem;
+.hero-top {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  width: 100%;
 }
-.hero .thumb-large {
-  width: min(70vw, 280px);
-  height: min(70vw, 280px);
-  border-radius: 20px;
+.hero-top .back {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font-size: 1.5rem;
+  color: var(--text);
 }
 .hero-pill {
-  align-self: flex-start;
+  grid-column: 2;
   margin: 0;
-  padding: 0.2rem 0.8rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.hero .thumb-large {
+  width: min(78vw, 320px);
+  height: min(78vw, 320px);
+  margin: 0.5rem 0;
+  background: none;
+  border-radius: 0;
+  object-fit: contain;
+}
+.hero .thumb-empty {
+  font-size: 6rem;
+}
+.hero h1 {
+  margin-top: 0.25rem;
 }
 .hero p {
   margin: 0;
@@ -1058,6 +1074,16 @@ a:focus-visible {
   justify-content: center;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+.item-detail .card,
+.item-detail .plain {
+  background: var(--surface);
+  border: 0;
+  box-shadow: none;
+}
+.item-detail .plain {
+  padding: 0;
+  background: none;
 }
 .use-with h2 {
   font-weight: 500;
@@ -1200,7 +1226,7 @@ a:focus-visible {
     --tone-orange: #ff9a3d;
   }
 }
-.detail .chip-static {
+.item-detail .chip-static {
   background: var(--tag-bg);
   border-color: transparent;
 }
