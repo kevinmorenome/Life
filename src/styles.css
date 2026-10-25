@@ -1305,3 +1305,49 @@ progress {
   line-height: 16px;
   text-align: center;
 }
+.title-row,
+.progress-head,
+.clothes-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.title-row h1 {
+  flex: 1;
+  margin: 0;
+}
+.progress-head strong,
+.clothes-head p {
+  flex: 1;
+  margin: 0;
+}
+.icon-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.icon-action {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.icon-action svg {
+  width: 22px;
+  height: 22px;
+}
+.icon-action.filled {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.icon-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

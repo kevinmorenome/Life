@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { EditIcon, EyeIcon, EyeOffIcon, PlusIcon, TrashIcon, UndoIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
@@ -59,24 +60,45 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
       <a className="back" href={href('/packing')}>
         ← Trips
       </a>
-      <h1>{trip.name}</h1>
+      <div className="title-row">
+        <h1>{trip.name}</h1>
+        <a className="icon-action" href={href(`/packing/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
+          <EditIcon />
+        </a>
+        <button className="icon-action" onClick={remove} aria-label="Delete trip" title="Delete trip">
+          <TrashIcon />
+        </button>
+      </div>
       <p className="muted">
         {[trip.destination, `${shortDate(trip.startDate)} – ${shortDate(trip.endDate)}`].filter(Boolean).join(' · ')}
       </p>
 
       <div className="card pack-progress" aria-live="polite">
-        <strong>{done ? 'All packed 🎉' : `${list.packedCount} of ${list.total} packed`}</strong>
-        <progress max={Math.max(list.total, 1)} value={list.packedCount} />
-        <div className="form-actions start">
-          <button className="btn btn-small" onClick={() => setShowPacked((s) => !s)}>
-            {showPacked ? 'Hide packed' : 'Show packed'}
-          </button>
-          {list.packedCount > 0 && (
-            <button className="btn btn-small btn-ghost" onClick={() => onSave(unpackAll(trip))}>
-              Unpack all
+        <div className="progress-head">
+          <strong>{done ? 'All packed 🎉' : `${list.packedCount} of ${list.total} packed`}</strong>
+          <span className="icon-actions">
+            <button
+              className="icon-action"
+              onClick={() => setShowPacked((x) => !x)}
+              aria-label={showPacked ? 'Hide packed' : 'Show packed'}
+              aria-pressed={!showPacked}
+              title={showPacked ? 'Hide packed' : 'Show packed'}
+            >
+              {showPacked ? <EyeIcon /> : <EyeOffIcon />}
             </button>
-          )}
+            {list.packedCount > 0 && (
+              <button
+                className="icon-action"
+                onClick={() => onSave(unpackAll(trip))}
+                aria-label="Unpack all"
+                title="Unpack all"
+              >
+                <UndoIcon />
+              </button>
+            )}
+          </span>
         </div>
+        <progress max={Math.max(list.total, 1)} value={list.packedCount} />
       </div>
 
       <nav className="seg" role="tablist" aria-label="Trip sections">
@@ -101,9 +123,14 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
         {list.clothes.length === 0 && (
           <p className="muted">Plan outfits, or pick pieces directly. They’ll show up here to check off.</p>
         )}
-        {list.clothes.length > 0 && (
-          <p className="muted small">Double-tap a piece (or tap its ✓) to mark it packed.</p>
-        )}
+        <div className="clothes-head">
+          <p className="muted small">
+            {list.clothes.length > 0 ? 'Double-tap a piece (or tap its ✓) to mark it packed.' : ''}
+          </p>
+          <a className="icon-action" href={href(`/packing/${trip.id}/items`)} aria-label="Pick pieces" title="Pick pieces">
+            <PlusIcon />
+          </a>
+        </div>
         <ul className="closet-grid pack-grid">
           {visible(list.clothes).map((c) => (
             <li key={c.item.id} className={`pack-tile${c.packed ? ' packed' : ''}`}>
@@ -139,11 +166,6 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
             </li>
           ))}
         </ul>
-        <p>
-          <a className="btn" href={href(`/packing/${trip.id}/items`)}>
-            + Pick pieces
-          </a>
-        </p>
       </section>
       )}
       {tab === 'other' && (
@@ -183,8 +205,8 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
             ))}
           </select>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add something…" aria-label="Item to pack" />
-          <button className="btn btn-primary" disabled={!text.trim()}>
-            Add
+          <button className="icon-action filled" disabled={!text.trim()} aria-label="Add" title="Add">
+            <PlusIcon />
           </button>
         </form>
         {suggestions.length > 0 && (
@@ -199,15 +221,6 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
       </section>
 
       )}
-
-      <div className="form-actions start day-actions">
-        <a className="btn" href={href(`/packing/${trip.id}/edit`)}>
-          Edit trip
-        </a>
-        <button className="btn btn-ghost" onClick={remove}>
-          Delete trip
-        </button>
-      </div>
     </article>
   );
 }
