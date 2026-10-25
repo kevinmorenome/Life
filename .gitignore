@@ -4,3 +4,6 @@ dist
 .DS_Store
 .wrangler
 .dev.vars
+whering-export*.json
+life-import*.json
+life-backup*.json

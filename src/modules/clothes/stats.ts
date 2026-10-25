@@ -13,9 +13,15 @@ export interface ClothesStats {
   bestCostPerWear: { item: ClothingItem; cpw: number }[];
 }
 
+/** Total times worn, including undated wears from before tracking. */
+export function wearCount(item: ClothingItem): number {
+  return item.wears.length + (item.priorWears ?? 0);
+}
+
 export function costPerWear(item: ClothingItem): number | null {
-  if (item.price == null || item.wears.length === 0) return null;
-  return item.price / item.wears.length;
+  const n = wearCount(item);
+  if (item.price == null || n === 0) return null;
+  return item.price / n;
 }
 
 export function lastWorn(item: ClothingItem): string | null {
@@ -35,16 +41,16 @@ export function computeStats(items: ClothingItem[], today: string): ClothesStats
     totalCount: items.length,
     totalSpent: sum(items.map((i) => i.price ?? 0)),
     activeValue: sum(active.map((i) => i.price ?? 0)),
-    totalWears: sum(items.map((i) => i.wears.length)),
+    totalWears: sum(items.map(wearCount)),
     wearsLast30: sum(items.map((i) => i.wears.filter((d) => d > cutoff && d <= today).length)),
     byCategory: [...counts]
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count),
     mostWorn: active
-      .filter((i) => i.wears.length > 0)
-      .sort((a, b) => b.wears.length - a.wears.length)
+      .filter((i) => wearCount(i) > 0)
+      .sort((a, b) => wearCount(b) - wearCount(a))
       .slice(0, 5),
-    neverWorn: active.filter((i) => i.wears.length === 0),
+    neverWorn: active.filter((i) => wearCount(i) === 0),
     bestCostPerWear: active
       .map((item) => ({ item, cpw: costPerWear(item) }))
       .filter((x): x is { item: ClothingItem; cpw: number } => x.cpw != null)

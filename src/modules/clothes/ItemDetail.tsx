@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
-import { costPerWear, lastWorn } from './stats';
+import { costPerWear, lastWorn, wearCount } from './stats';
 import { label, type ClothingItem } from './types';
 import { withWear, withoutWear } from './wear';
 
@@ -47,7 +47,7 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
           <h1>{item.name}</h1>
           <div className="stat-row">
             <div className="stat">
-              <span className="stat-value">{item.wears.length}</span>
+              <span className="stat-value">{wearCount(item)}</span>
               <span className="stat-label">wears</span>
             </div>
             <div className="stat">
@@ -73,6 +73,16 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
           ))}
       </dl>
 
+      {item.tags && item.tags.length > 0 && (
+        <ul className="chips tag-list" aria-label="Tags">
+          {item.tags.map((t) => (
+            <li key={t} className="chip chip-static">
+              {t}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {item.notes && <p className="card notes">{item.notes}</p>}
 
       <section className="card">
@@ -83,8 +93,13 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
             Log wear
           </button>
         </div>
+        {item.priorWears ? (
+          <p className="muted small">
+            Plus {item.priorWears} earlier {item.priorWears === 1 ? 'wear' : 'wears'} without dates (imported).
+          </p>
+        ) : null}
         {item.wears.length === 0 ? (
-          <p className="muted small">Not worn yet.</p>
+          !item.priorWears && <p className="muted small">Not worn yet.</p>
         ) : (
           <ul className="wear-list">
             {item.wears

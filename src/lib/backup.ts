@@ -1,4 +1,4 @@
-import { STORES, getAll, replaceAll, type StoreName } from './db';
+import { STORES, addMissing, getAll, replaceAll, type StoreName } from './db';
 
 interface Backup {
   app: 'life';
@@ -14,10 +14,15 @@ export async function exportBackup(): Promise<Blob> {
   return new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
 }
 
-/** Restores every store present in the file; stores missing from it are left alone. */
-export async function importBackup(file: File): Promise<number> {
+async function readBackup(file: File): Promise<Backup> {
   const data = JSON.parse(await file.text()) as Backup;
   if (data.app !== 'life' || !data.stores) throw new Error('Not a Life backup file');
+  return data;
+}
+
+/** Restores every store present in the file; stores missing from it are left alone. */
+export async function importBackup(file: File): Promise<number> {
+  const data = await readBackup(file);
   let count = 0;
   for (const name of STORES) {
     const rows = data.stores[name];
@@ -25,6 +30,20 @@ export async function importBackup(file: File): Promise<number> {
       await replaceAll(name, rows as { id: string }[]);
       count += rows.length;
     }
+  }
+  return count;
+}
+
+/**
+ * Adds records from the file that aren't stored yet, keeping everything
+ * already here (including edits to previously imported records).
+ */
+export async function mergeBackup(file: File): Promise<number> {
+  const data = await readBackup(file);
+  let count = 0;
+  for (const name of STORES) {
+    const rows = data.stores[name];
+    if (Array.isArray(rows)) count += await addMissing(name, rows as { id: string }[]);
   }
   return count;
 }

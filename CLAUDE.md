@@ -17,11 +17,13 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - `useCollection.ts` — React hook that loads a store and exposes `save`/`remove`
   - `router.ts` — `useRoute`, `navigate`, `href`
   - `backup.ts` — JSON export/import covering every store
-  - `image.ts`, `format.ts` — photo downscaling, money/date helpers
+  - `image.ts`, `format.ts` — photo downscaling, money/date helpers (`money()` uses the display currency)
+  - `settings.tsx` — synced app settings (single record in the `settings` store), e.g. display currency
 - `worker/` — Cloudflare Worker: serves `dist/`, exposes `/api/sync/pull` and `/api/sync/push`, and verifies the Cloudflare Access JWT (`auth.ts`, fails closed). `protocol.ts` is shared with the client
 - `migrations/` — D1 schema. The server stores records as opaque JSON strings keyed by (store, id), so new modules need no server changes
 - `src/modules/` — feature modules, registered in `src/modules/index.ts`
 - `src/modules/clothes/` — first module; use it as the reference implementation
+  - `importers/whering.ts` — pure Whering → ClothingItem mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
 
 ## Adding a module
 1. Create `src/modules/<id>/` with `types.ts`, an `index.tsx` exporting a `LifeModule`, and its screens.
@@ -33,4 +35,6 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 ## Conventions
 - Dates are stored as local `YYYY-MM-DD` strings (`today()` in `lib/format.ts`); timestamps as ISO strings.
 - Never hard-delete history that stats depend on; prefer a status field (see clothes `status`).
+- Use `wearCount(item)` for wear totals, never `item.wears.length`: imported items carry undated `priorWears`.
+- Never commit personal data exports (Whering exports, import files, backups).
 - Styling lives in `src/styles.css` with CSS variables on `:root` and a dark-mode override. Keep touch targets ≥ 44px and check layouts at 390px width.

@@ -38,8 +38,11 @@ export interface ClothingItem {
   /** JPEG data URL */
   photo?: string;
   notes?: string;
+  tags?: string[];
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];
+  /** Wears counted before tracking started (e.g. imported), without dates. */
+  priorWears?: number;
   createdAt: string;
   updatedAt: string;
 }

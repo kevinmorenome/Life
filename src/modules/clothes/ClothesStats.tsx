@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { money, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { ClothesTabs } from './ClothesTabs';
-import { computeStats } from './stats';
+import { computeStats, wearCount } from './stats';
 import { label, type ClothingItem } from './types';
 
 export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
@@ -42,7 +43,7 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
       <ItemListCard
         title="Most worn"
         empty="Log some wears to see favorites."
-        rows={s.mostWorn.map((i) => ({ item: i, value: `${i.wears.length}×` }))}
+        rows={s.mostWorn.map((i) => ({ item: i, value: `${wearCount(i)}×` }))}
       />
       <ItemListCard
         title="Best cost per wear"
@@ -52,7 +53,11 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
       <ItemListCard
         title={`Never worn (${s.neverWorn.length})`}
         empty="Everything in your closet has been worn. Nice."
-        rows={s.neverWorn.map((i) => ({ item: i, value: i.price != null ? money(i.price) : '' }))}
+        rows={s.neverWorn
+          .slice()
+          .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+          .map((i) => ({ item: i, value: i.price != null ? money(i.price) : '' }))}
+        limit={10}
       />
     </>
   );
@@ -71,11 +76,15 @@ function ItemListCard({
   title,
   empty,
   rows,
+  limit,
 }: {
   title: string;
   empty: string;
   rows: { item: ClothingItem; value: string }[];
+  limit?: number;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = limit && !expanded ? rows.slice(0, limit) : rows;
   return (
     <section className="card">
       <h2>{title}</h2>
@@ -83,13 +92,18 @@ function ItemListCard({
         <p className="muted small">{empty}</p>
       ) : (
         <ul className="rank-list">
-          {rows.map(({ item, value }) => (
+          {shown.map(({ item, value }) => (
             <li key={item.id}>
               <a href={href(`/clothes/${item.id}`)}>{item.name}</a>
               <span className="muted">{value}</span>
             </li>
           ))}
         </ul>
+      )}
+      {shown.length < rows.length && (
+        <button className="btn btn-ghost btn-small" onClick={() => setExpanded(true)}>
+          Show all {rows.length}
+        </button>
       )}
     </section>
   );

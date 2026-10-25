@@ -10,6 +10,17 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Wear log: one tap for "Wore today", or log any past date
 - Search, filter by category or status, and sort by newest, name, most worn or longest unworn
 - Stats: closet value, total spent, wears in the last 30 days, items per category, most worn, best cost per wear, never worn
+- Import from Whering (see below)
+
+### Importing from Whering
+
+1. Export your wardrobe from Whering's website to a JSON file shaped like `{ "items": [...] }` (category, brand, colors, size, price, currency, tags, timesWorn, imageUrls).
+2. Convert it, which downloads and shrinks every photo:
+   `node --experimental-strip-types scripts/import-whering.ts whering-export.json life-import-whering.json`
+   (behind an HTTP proxy, prefix with `NODE_USE_ENV_PROXY=1`)
+3. In the app: **Settings → Import items** → pick `life-import-whering.json`. It only adds items that aren't there yet, so running it twice is safe. It also sets the display currency to the export's currency.
+
+Neither file is committed (see `.gitignore`); they contain your personal data.
 
 ## Data and privacy
 

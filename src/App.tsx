@@ -2,6 +2,7 @@ import { Home } from './Home';
 import { Settings } from './Settings';
 import { SyncBadge } from './SyncBadge';
 import { href, useRoute } from './lib/router';
+import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
 export function App() {
@@ -15,7 +16,7 @@ export function App() {
   else page = <p className="muted">Page not found.</p>;
 
   return (
-    <>
+    <SettingsProvider>
       <header className="topbar">
         <div className="brand-row">
           <a className="brand" href={href('/')}>
@@ -36,6 +37,6 @@ export function App() {
         </nav>
       </header>
       <main className="container">{page}</main>
-    </>
+    </SettingsProvider>
   );
 }

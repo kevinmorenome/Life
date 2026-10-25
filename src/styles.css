@@ -517,3 +517,18 @@ a:focus-visible {
     animation: none;
   }
 }
+
+.thumb {
+  /* Cut-out product photos (e.g. imported) shouldn't be cropped. */
+  object-fit: contain;
+}
+.tag-list {
+  margin-bottom: 1rem;
+}
+.chip-static {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  font-size: 0.85rem;
+  cursor: default;
+}

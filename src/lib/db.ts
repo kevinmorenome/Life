@@ -7,11 +7,11 @@
 
 import type { Change } from '../../worker/protocol';
 
-export const STORES = ['clothes'] as const;
+export const STORES = ['clothes', 'settings'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const OUTBOX = 'outbox';
 const META = 'meta';
 
@@ -26,11 +26,18 @@ export interface OutboxEntry extends Change {
 type Listener = () => void;
 const listeners = new Map<StoreName, Set<Listener>>();
 
-/** Subscribes to changes applied from the server. Returns an unsubscribe function. */
-export function onRemoteChange(store: StoreName, fn: Listener): () => void {
+/**
+ * Subscribes to changes made outside a single put/remove: records pulled from
+ * the server, imports and restores. Returns an unsubscribe function.
+ */
+export function onExternalChange(store: StoreName, fn: Listener): () => void {
   if (!listeners.has(store)) listeners.set(store, new Set());
   listeners.get(store)!.add(fn);
   return () => listeners.get(store)!.delete(fn);
+}
+
+function notify(store: StoreName): void {
+  listeners.get(store)?.forEach((fn) => fn());
 }
 
 let outboxListener: Listener | null = null;
@@ -136,6 +143,24 @@ export async function replaceAll<T extends Entity>(store: StoreName, values: T[]
   }
   await done(t);
   outboxListener?.();
+  notify(store);
+}
+
+/** Adds records whose ids aren't stored yet, in one transaction. Returns how many were added. */
+export async function addMissing<T extends Entity>(store: StoreName, values: T[]): Promise<number> {
+  const db = await openDb();
+  const existing = new Set((await getAll<T>(store)).map((v) => v.id));
+  const fresh = values.filter((v) => !existing.has(v.id));
+  if (fresh.length === 0) return 0;
+  const t = db.transaction([store, OUTBOX], 'readwrite');
+  for (const v of fresh) {
+    t.objectStore(store).put(v);
+    t.objectStore(OUTBOX).put(outboxEntry(store, v.id, v));
+  }
+  await done(t);
+  outboxListener?.();
+  notify(store);
+  return fresh.length;
 }
 
 // ---- Sync support ----
@@ -182,7 +207,7 @@ export async function applyRemote(changes: Change[]): Promise<void> {
     };
   }
   await done(t);
-  for (const s of stores) listeners.get(s)?.forEach((fn) => fn());
+  for (const s of stores) notify(s);
 }
 
 export async function getMeta<T>(key: string): Promise<T | undefined> {

@@ -1,5 +1,12 @@
+let displayCurrency = 'USD';
+
+/** Set from the synced app settings (see lib/settings.tsx). */
+export function setDisplayCurrency(code: string): void {
+  displayCurrency = code;
+}
+
 export function money(n: number): string {
-  return n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  return n.toLocaleString(undefined, { style: 'currency', currency: displayCurrency });
 }
 
 export function shortDate(iso: string): string {

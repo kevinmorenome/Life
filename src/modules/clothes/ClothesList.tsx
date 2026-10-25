@@ -3,7 +3,7 @@ import { href } from '../../lib/router';
 import { today } from '../../lib/format';
 import { ClothesTabs } from './ClothesTabs';
 import { ItemThumb } from './ItemThumb';
-import { lastWorn } from './stats';
+import { lastWorn, wearCount } from './stats';
 import { CATEGORIES, STATUSES, label, type Category, type ClothingItem, type Status } from './types';
 import { withWear } from './wear';
 
@@ -26,14 +26,14 @@ export function ClothesList({ items, onSave }: Props) {
       (i) =>
         (category === 'all' || i.category === category) &&
         (status === 'all' || i.status === status) &&
-        (!q || [i.name, i.brand, i.color, i.notes].some((f) => f?.toLowerCase().includes(q))),
+        (!q || [i.name, i.brand, i.color, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
     );
     return filtered.sort((a, b) => {
       switch (sort) {
         case 'name':
           return a.name.localeCompare(b.name);
         case 'most-worn':
-          return b.wears.length - a.wears.length;
+          return wearCount(b) - wearCount(a);
         case 'least-recent':
           return (lastWorn(a) ?? '').localeCompare(lastWorn(b) ?? '');
         default:
@@ -113,7 +113,7 @@ export function ClothesList({ items, onSave }: Props) {
                         {[item.brand, item.color].filter(Boolean).join(' · ') || label(item.category)}
                       </span>
                       <span className="muted small">
-                        Worn {item.wears.length}×{item.status !== 'active' && ` · ${label(item.status)}`}
+                        Worn {wearCount(item)}×{item.status !== 'active' && ` · ${label(item.status)}`}
                       </span>
                     </div>
                   </a>

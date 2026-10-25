@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStats, costPerWear, lastWorn } from './stats';
+import { computeStats, costPerWear, lastWorn, wearCount } from './stats';
 import type { ClothingItem } from './types';
 
 function item(over: Partial<ClothingItem>): ClothingItem {
@@ -64,5 +64,16 @@ describe('clothes stats', () => {
     const s = computeStats([pricey, cheap], '2026-10-25');
     expect(s.bestCostPerWear.map((x) => x.item.name)).toEqual(['cheap', 'pricey']);
     expect(s.mostWorn[0].name).toBe('cheap');
+  });
+
+  it('counts undated imported wears in totals, cost per wear and rankings', () => {
+    const imported = item({ name: 'imported', price: 30, priorWears: 3, wears: ['2026-10-20'] });
+    expect(wearCount(imported)).toBe(4);
+    expect(costPerWear(imported)).toBe(7.5);
+    const s = computeStats([imported, item({ name: 'new' })], '2026-10-25');
+    expect(s.totalWears).toBe(4);
+    expect(s.wearsLast30).toBe(1);
+    expect(s.mostWorn[0].name).toBe('imported');
+    expect(s.neverWorn.map((i) => i.name)).toEqual(['new']);
   });
 });
