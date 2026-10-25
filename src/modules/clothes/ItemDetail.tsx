@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { colorSwatches } from './colors';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
+import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitCollage } from './OutfitCollage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
@@ -209,11 +210,11 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
   const cpw = costPerWear(item);
   const undated = item.priorWears ?? 0;
 
-  const insights: [string, string, string, ReactNode][] = [
-    [last ? shortDate(last) : 'Never', 'Last worn', 'lime', <CalendarCheckIcon />],
-    [`${daysInCloset(item, today())} days`, 'In the closet', 'blue', <WardrobeIcon />],
-    [String(outfitCount), outfitCount === 1 ? 'Outfit made' : 'Outfits made', 'purple', <SparkleIcon />],
-    [cpw != null ? money(cpw) : '—', 'Cost per wear', 'orange', <PriceTagIcon />],
+  const insights: Insight[] = [
+    { value: last ? shortDate(last) : 'Never', label: 'Last worn', tone: 'lime', icon: <CalendarCheckIcon /> },
+    { value: `${daysInCloset(item, today())} days`, label: 'In the closet', tone: 'blue', icon: <WardrobeIcon /> },
+    { value: String(outfitCount), label: outfitCount === 1 ? 'Outfit made' : 'Outfits made', tone: 'purple', icon: <SparkleIcon /> },
+    { value: cpw != null ? money(cpw) : '—', label: 'Cost per wear', tone: 'orange', icon: <PriceTagIcon /> },
   ];
 
   return (
@@ -249,20 +250,7 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
         </div>
       </section>
 
-      <section>
-        <h2>Insights</h2>
-        <ul className="insights">
-          {insights.map(([value, name, tone, icon]) => (
-            <li key={name} className="card">
-              <span className="insight-value">{value}</span>
-              <span className="insight-foot">
-                <span className="stat-label">{name}</span>
-                <span className={`insight-icon tone-${tone}`}>{icon}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Insights insights={insights} />
 
       <section className="plain">
         <h2>Wear log</h2>
