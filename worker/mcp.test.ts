@@ -11,6 +11,8 @@ function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
     put: async (s, id, record) => void data[s].set(id, { id, ...record }),
+    photos: async (ids) =>
+      new Map(ids.flatMap((id) => (typeof data.clothes.get(id)?.photo === 'string' ? [[id, data.clothes.get(id)!.photo as string] as const] : []))),
   };
   return { data, store };
 }
@@ -40,7 +42,8 @@ async function rpc(ctx: ToolContext, method: string, params?: object, notificati
 async function call(ctx: ToolContext, name: string, args: object) {
   const r = await rpc(ctx, 'tools/call', { name, arguments: args });
   const text: string = r.result.content[0].text;
-  return { isError: r.result.isError as boolean, text, json: () => JSON.parse(text) };
+  const content: { type: string; text?: string; data?: string; mimeType?: string }[] = r.result.content;
+  return { isError: r.result.isError as boolean, text, content, json: () => JSON.parse(text) };
 }
 
 describe('mcpAuthorized', () => {
@@ -80,6 +83,7 @@ describe('protocol', () => {
     expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'find_items',
       'list_outfits',
+      'show_photos',
       'get_wear_log',
       'log_wear',
       'add_item',
@@ -117,6 +121,61 @@ describe('reads', () => {
     const log = (await call(ctx, 'get_wear_log', {})).json();
     expect(log.days).toEqual([{ date: '2026-10-20', outfits: ['Work look'], items: [] }]);
     expect(log.queued_not_yet_in_app).toEqual([{ date: '2026-10-24', names: ['White tee'] }]);
+  });
+});
+
+describe('show_photos', () => {
+  const JPEG = 'data:image/jpeg;base64,/9j/AAAA';
+  const photoSeed = {
+    clothes: [{ ...ITEMS[0], photo: JPEG }, ITEMS[1], { ...ITEMS[2], photo: 'data:text/html;base64,PHNjcmlwdD4=' }],
+    outfits: OUTFITS,
+  };
+
+  it('returns each photo as an image block after a caption naming the item', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
+    expect(r.isError).toBe(false);
+    expect(r.text).toBe('Showing 1 photo. No photo for: White tee.');
+    expect(r.content.slice(1)).toEqual([
+      { type: 'text', text: 'Navy blazer' },
+      { type: 'image', data: '/9j/AAAA', mimeType: 'image/jpeg' },
+    ]);
+  });
+
+  it('expands an outfit into its pieces, labelled with the outfit, without repeating an item', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { outfitIds: ['work'], itemIds: ['blazer'] });
+    expect(r.content.filter((c) => c.type === 'image')).toHaveLength(1);
+    expect(r.content[1]).toEqual({ type: 'text', text: 'Navy blazer' }); // the explicit item label wins over the outfit's
+    const viaOutfit = await call(ctx, 'show_photos', { outfitIds: ['work'] });
+    expect(viaOutfit.content.some((c) => c.text === 'Navy blazer · from “Work look”')).toBe(true);
+  });
+
+  it('never forwards non-image data URLs', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { itemIds: ['old'] });
+    expect(r.content.filter((c) => c.type === 'image')).toEqual([]);
+    expect(r.text).toContain('No photo for: Old navy cardigan');
+  });
+
+  it('caps the number of photos and reports the rest', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: `i${i}`, name: `Item ${i}`, category: 'tops', status: 'active', wears: [], photo: JPEG }));
+    const { ctx } = setup({}, { clothes: many, outfits: [] });
+    const r = await call(ctx, 'show_photos', { itemIds: many.map((m) => m.id) });
+    expect(r.content.filter((c) => c.type === 'image')).toHaveLength(8);
+    expect(r.text).toContain('4 more not shown');
+  });
+
+  it('rejects unknown ids and empty requests', async () => {
+    const { ctx } = setup({}, photoSeed);
+    expect((await call(ctx, 'show_photos', { itemIds: ['ghost'] })).isError).toBe(true);
+    expect((await call(ctx, 'show_photos', { outfitIds: ['ghost'] })).isError).toBe(true);
+    expect((await call(ctx, 'show_photos', {})).isError).toBe(true);
+  });
+
+  it('works on read-only deployments', async () => {
+    const { ctx } = setup({ readOnly: true }, photoSeed);
+    expect((await call(ctx, 'show_photos', { itemIds: ['blazer'] })).isError).toBe(false);
   });
 });
 

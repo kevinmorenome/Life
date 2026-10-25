@@ -14,13 +14,24 @@ export interface ToolContext {
   newId: () => string;
 }
 
+export interface ToolImage {
+  caption: string;
+  mimeType: string;
+  /** Base64, without the data: prefix. */
+  data: string;
+}
+
 export interface ToolResult {
   text: string;
   isError?: boolean;
+  images?: ToolImage[];
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_IDS = 30;
+/** Photos shown per call, and the largest one sent (base64 characters), to keep chat replies light. */
+const MAX_PHOTOS = 8;
+const MAX_PHOTO_LENGTH = 600_000;
 
 const fail = (text: string): ToolResult => ({ text, isError: true });
 const ok = (value: unknown): ToolResult => ({ text: typeof value === 'string' ? value : JSON.stringify(value, null, 1) });
@@ -29,7 +40,7 @@ export const TOOLS = [
   {
     name: 'find_items',
     description:
-      'Search the wardrobe (active items) by words in name, brand, colour, category or tags. Use it to resolve what the user says they wore into item ids. Returns id, name, category, brand, color, times worn and last worn date.',
+      'Search the wardrobe (active items) by words in name, brand, colour, category or tags. Use it to resolve what the user says they wore into item ids. Returns id, name, category, brand, color, times worn and last worn date. When several items could match, or the user asks to see something, follow up with show_photos so they can pick by sight.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -43,6 +54,18 @@ export const TOOLS = [
     name: 'list_outfits',
     description: 'List saved outfits with their pieces and when they were last worn. Optionally filter by words in the name or tags.',
     inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
+  },
+  {
+    name: 'show_photos',
+    description:
+      'Show the photos of items (and of the pieces of outfits) in the chat. Use it whenever there is any doubt about which item the user means, before logging if a match is ambiguous, and whenever the user asks to see an item, an outfit or what they wore. Up to 8 photos per call; items without a photo are listed by name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemIds: { type: 'array', items: { type: 'string' } },
+        outfitIds: { type: 'array', items: { type: 'string' } },
+      },
+    },
   },
   {
     name: 'get_wear_log',
@@ -108,6 +131,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return findItems(args, ctx);
     case 'list_outfits':
       return listOutfits(args, ctx);
+    case 'show_photos':
+      return showPhotos(args, ctx);
     case 'get_wear_log':
       return getWearLog(args, ctx);
     case 'log_wear':
@@ -225,6 +250,40 @@ async function getWearLog(args: Args, { store, now }: ToolContext): Promise<Tool
     days: [...log.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, v]) => ({ date, ...v })),
     queued_not_yet_in_app: pending,
   });
+}
+
+async function showPhotos(args: Args, { store }: ToolContext): Promise<ToolResult> {
+  const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
+  const itemName = new Map(items.map((r) => [r.id, String(r.name)]));
+  const outfitById = new Map(outfits.map((r) => [r.id, r]));
+
+  // Each wanted piece, labelled by the outfit it came from when it did.
+  const wanted = new Map<string, string>();
+  for (const id of [...new Set(strings(args.outfitIds))]) {
+    const outfit = outfitById.get(id);
+    if (!outfit) return fail(`Unknown outfit id: ${id}.`);
+    for (const pid of strings(outfit.itemIds)) {
+      if (!wanted.has(pid)) wanted.set(pid, `${itemName.get(pid) ?? '(deleted item)'} · from “${outfit.name ?? 'unnamed outfit'}”`);
+    }
+  }
+  for (const id of [...new Set(strings(args.itemIds))]) {
+    if (!itemName.has(id)) return fail(`Unknown item id: ${id}.`);
+    wanted.set(id, itemName.get(id)!);
+  }
+  if (wanted.size === 0) return fail('Give at least one item id or outfit id.');
+
+  const ids = [...wanted.keys()].filter((id) => itemName.has(id)).slice(0, MAX_PHOTOS);
+  const photos = await store.photos(ids);
+  const images: ToolImage[] = [];
+  const without: string[] = [];
+  for (const id of ids) {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(photos.get(id) ?? '');
+    if (match && match[2].length <= MAX_PHOTO_LENGTH) images.push({ caption: wanted.get(id)!, mimeType: match[1], data: match[2] });
+    else without.push(wanted.get(id)!);
+  }
+  const more = wanted.size > ids.length ? ` ${wanted.size - ids.length} more not shown (limit ${MAX_PHOTOS}).` : '';
+  const missing = without.length ? ` No photo for: ${without.join(', ')}.` : '';
+  return { text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}`, images };
 }
 
 // ---- writes ----

@@ -22,6 +22,8 @@ export type Row = { id: string } & Record<string, unknown>;
 export interface RecordStore {
   list(store: 'clothes' | 'outfits' | 'inbox'): Promise<Row[]>;
   put(store: 'clothes' | 'outfits' | 'inbox', id: string, record: object): Promise<void>;
+  /** Photo data URLs of the given items (only those that have one). */
+  photos(ids: string[]): Promise<Map<string, string>>;
 }
 
 // Records can carry large photo data URLs, so only the fields the tools need
@@ -47,6 +49,15 @@ export function d1Store(db: D1Database): RecordStore {
         for (const f of FIELDS[store]) if (row[f] === null) delete row[f];
         return row;
       });
+    },
+    async photos(ids) {
+      if (ids.length === 0) return new Map();
+      const marks = ids.map((_, i) => `?${i + 2}`).join(', ');
+      const { results } = await db
+        .prepare(`SELECT id, json_extract(data, '$.photo') AS photo FROM records WHERE store = ?1 AND id IN (${marks})`)
+        .bind('clothes', ...ids)
+        .all<{ id: string; photo: string | null }>();
+      return new Map(results.filter((r) => r.photo).map((r) => [r.id, r.photo!]));
     },
     async put(store, id, record) {
       await upsertStatement(db).bind(store, id, JSON.stringify(record), Date.now()).run();
