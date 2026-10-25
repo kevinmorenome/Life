@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "life",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "life-db",
+      "database_id": "2efae6c2-9661-4bde-9ab8-7cf98cec9a42",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // ACCESS_TEAM_DOMAIN and ACCESS_AUD are set in the Cloudflare dashboard
+  // (Worker → Settings → Variables); keep them across deploys.
+  "keep_vars": true,
+  // Preview URLs would be extra hostnames outside Cloudflare Access.
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

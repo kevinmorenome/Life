@@ -482,3 +482,38 @@ a:focus-visible {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Sync indicator */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sync-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  /* Larger hit area than the visible dot. */
+  outline: 10px solid transparent;
+}
+.sync-ok {
+  background: var(--accent);
+}
+.sync-busy {
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+.sync-warn {
+  background: #d08a1e;
+}
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-busy {
+    animation: none;
+  }
+}

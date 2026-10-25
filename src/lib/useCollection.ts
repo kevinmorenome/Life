@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getAll, put, remove, type Entity, type StoreName } from './db';
+import { getAll, onRemoteChange, put, remove, type Entity, type StoreName } from './db';
 
 /** Loads a whole store into React state and keeps it in sync on writes. */
 export function useCollection<T extends Entity>(store: StoreName) {
@@ -8,14 +8,18 @@ export function useCollection<T extends Entity>(store: StoreName) {
 
   useEffect(() => {
     let cancelled = false;
-    getAll<T>(store).then((all) => {
-      if (!cancelled) {
-        setItems(all);
-        setLoading(false);
-      }
-    });
+    const load = () =>
+      getAll<T>(store).then((all) => {
+        if (!cancelled) {
+          setItems(all);
+          setLoading(false);
+        }
+      });
+    load();
+    const unsubscribe = onRemoteChange(store, load);
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [store]);
 

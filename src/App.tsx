@@ -1,5 +1,6 @@
 import { Home } from './Home';
 import { Settings } from './Settings';
+import { SyncBadge } from './SyncBadge';
 import { href, useRoute } from './lib/router';
 import { MODULES } from './modules';
 
@@ -16,9 +17,12 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="brand" href={href('/')}>
-          Life
-        </a>
+        <div className="brand-row">
+          <a className="brand" href={href('/')}>
+            Life
+          </a>
+          <SyncBadge />
+        </div>
         <nav>
           {MODULES.map((m) => (
             <a key={m.id} href={href(`/${m.id}`)} aria-current={m.id === section ? 'page' : undefined}>
