@@ -86,6 +86,7 @@ describe('protocol', () => {
       'show_photos',
       'get_wear_log',
       'log_wear',
+      'add_tags',
       'add_item',
       'create_outfit',
     ]);
@@ -323,6 +324,56 @@ describe('log_wear saves outfits', () => {
     const ro = setup({ readOnly: true }, { clothes: closet, outfits: [] });
     await log(ro.ctx, { itemIds: ['sweats', 'tee'] });
     expect(data.outfits.size + data.inbox.size + ro.data.outfits.size + ro.data.inbox.size).toBe(0);
+  });
+});
+
+describe('add_tags', () => {
+  const tagged: Row[] = [
+    { id: 'pj', name: 'Pajama set', category: 'sleepwear', status: 'active', wears: [], tags: ['cozy'] },
+    { id: 'tee', name: 'White tee', category: 'tops', status: 'active', wears: [] },
+  ];
+  const lounge: Row = { id: 'lounge', name: 'Lounge', itemIds: ['pj'], wears: [] };
+
+  it('queues a tag request instead of editing the records', async () => {
+    const { ctx, data } = setup({}, { clothes: tagged, outfits: [lounge] });
+    const r = await call(ctx, 'add_tags', { tags: ['  #Pajamas ', 'Cozy Day', 'pajamas'], itemIds: ['pj'], outfitIds: ['lounge'] });
+    expect(r.isError).toBe(false);
+    expect(data.inbox.get('id-1')).toMatchObject({
+      type: 'tags',
+      tags: ['pajamas', 'cozy day'],
+      itemIds: ['pj'],
+      outfitIds: ['lounge'],
+      source: 'claude',
+    });
+    expect(data.clothes.get('pj')!.tags).toEqual(['cozy']);
+    expect(data.outfits.get('lounge')).not.toHaveProperty('tags');
+  });
+
+  it('shows existing tags so Claude can reuse them', async () => {
+    const { ctx } = setup({}, { clothes: tagged, outfits: [{ ...lounge, tags: ['home'] }] });
+    expect((await call(ctx, 'find_items', { query: 'pajama' })).json().items[0].tags).toEqual(['cozy']);
+    expect((await call(ctx, 'list_outfits', {})).json().outfits[0].tags).toEqual(['home']);
+    expect((await call(ctx, 'find_items', { query: 'tee' })).json().items[0]).not.toHaveProperty('tags');
+  });
+
+  it.each([
+    [{ tags: [], itemIds: ['tee'] }, 'at least one tag'],
+    [{ tags: ['a', 'b', 'c', 'd', 'e', 'f'], itemIds: ['tee'] }, 'At most 5'],
+    [{ tags: ['cozy'] }, 'at least one item id'],
+    [{ tags: ['cozy'], itemIds: ['ghost'] }, 'Unknown ids: ghost'],
+    [{ tags: ['cozy'], outfitIds: ['ghost'] }, 'Unknown ids: ghost'],
+  ])('rejects %j', async (args, message) => {
+    const { ctx, data } = setup({}, { clothes: tagged, outfits: [lounge] });
+    const r = await call(ctx, 'add_tags', args);
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain(message);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('refuses on read-only deployments', async () => {
+    const { ctx, data } = setup({ readOnly: true }, { clothes: tagged, outfits: [lounge] });
+    expect((await call(ctx, 'add_tags', { tags: ['cozy'], itemIds: ['tee'] })).isError).toBe(true);
+    expect(data.inbox.size).toBe(0);
   });
 });
 

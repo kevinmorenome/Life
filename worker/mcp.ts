@@ -79,7 +79,7 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
         capabilities: { tools: {} },
         serverInfo: { name: 'life', version: '0.1.0' },
         instructions:
-          'Life tracks a personal wardrobe. To log what the user wore: find_items / list_outfits to get ids, confirm any ambiguous match, then log_wear with a YYYY-MM-DD date. Whenever it is unclear which item the user means, or they ask to see something, call show_photos so they can see the items in the chat.',
+          'Life tracks a personal wardrobe. To log what the user wore: find_items / list_outfits to get ids, confirm any ambiguous match, then log_wear with a YYYY-MM-DD date. Whenever it is unclear which item the user means, or they ask to see something, call show_photos so they can see the items in the chat. Only add tags (add_tags) when the user themselves describes the style, mood or occasion of what they wore.',
       });
     }
     case 'ping':

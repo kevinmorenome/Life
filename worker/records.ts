@@ -31,7 +31,7 @@ export interface RecordStore {
 const FIELDS = {
   clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears'],
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
-  inbox: ['type', 'date', 'itemIds', 'outfitIds', 'appliedAt', 'error'],
+  inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
 } as const;
 
 const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds']);

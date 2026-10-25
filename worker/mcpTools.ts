@@ -4,7 +4,7 @@
 // directly without risking a clobbered edit.
 
 import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
-import type { WearRequest } from './protocol';
+import type { TagRequest, WearRequest } from './protocol';
 import type { RecordStore, Row } from './records';
 
 export interface ToolContext {
@@ -90,6 +90,20 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_tags',
+    description:
+      'Add style/mood/occasion tags (for example "cozy", "pajamas", "work", "date night") to items and/or outfits. Only call this when the user themselves says something that describes the style, mood or occasion of what they wore ("I stayed in pajamas all day", "that was my gym fit"). Never infer tags, never tag on your own initiative, and never remove tags. Reuse tags already shown in find_items / list_outfits when one fits. The tags show up in the app the next time it syncs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 5, description: 'Short lowercase words, at most 5.' },
+        itemIds: { type: 'array', items: { type: 'string' } },
+        outfitIds: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['tags'],
+    },
+  },
+  {
     name: 'add_item',
     description: 'Add a new item to the wardrobe. Check find_items first to avoid duplicates.',
     inputSchema: {
@@ -139,6 +153,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return getWearLog(args, ctx);
     case 'log_wear':
       return ctx.readOnly ? fail(READ_ONLY) : logWear(args, ctx);
+    case 'add_tags':
+      return ctx.readOnly ? fail(READ_ONLY) : addTags(args, ctx);
     case 'add_item':
       return ctx.readOnly ? fail(READ_ONLY) : addItem(args, ctx);
     case 'create_outfit':
@@ -192,6 +208,7 @@ function itemSummary(r: Row) {
     category: r.category,
     ...(r.brand ? { brand: r.brand } : {}),
     ...(r.color ? { color: r.color } : {}),
+    ...(strings(r.tags).length ? { tags: strings(r.tags) } : {}),
     timesWorn: timesWorn(r),
     lastWorn: lastWorn(r),
   };
@@ -220,6 +237,7 @@ async function listOutfits(args: Args, { store }: ToolContext): Promise<ToolResu
       id: o.id,
       name: o.name ?? '(unnamed)',
       pieces: strings(o.itemIds).map((id) => ({ id, name: names.get(id) ?? '(deleted item)' })),
+      ...(strings(o.tags).length ? { tags: strings(o.tags) } : {}),
       timesWorn: timesWorn(o),
       lastWorn: lastWorn(o),
     }));
@@ -370,6 +388,34 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
   await store.put('inbox', request.id, request);
   const outfitNote = createdOutfit ? ` Saved these pieces as a new outfit (${createdOutfit.name}, id ${createdOutfit.id}).` : '';
   return ok(`Queued a wear for ${args.date}: ${names.join(', ')}.${outfitNote} It appears in the app the next time it syncs (about a minute if the app is open).`);
+}
+
+async function addTags(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const tags = [
+    ...new Set(
+      strings(args.tags)
+        .map((t) => t.trim().replace(/^#/, '').replace(/\s+/g, ' ').toLowerCase().slice(0, 30))
+        .filter(Boolean),
+    ),
+  ];
+  if (tags.length === 0) return fail('Give at least one tag.');
+  if (tags.length > 5) return fail('At most 5 tags per call.');
+  const itemIds = [...new Set(strings(args.itemIds))];
+  const outfitIds = [...new Set(strings(args.outfitIds))];
+  if (itemIds.length + outfitIds.length === 0) return fail('Give at least one item id or outfit id.');
+  if (itemIds.length + outfitIds.length > MAX_IDS) return fail(`At most ${MAX_IDS} ids per call.`);
+
+  const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
+  const itemById = new Map(items.map((r) => [r.id, r]));
+  const outfitById = new Map(outfits.map((r) => [r.id, r]));
+  const unknown = [...itemIds.filter((id) => !itemById.has(id)), ...outfitIds.filter((id) => !outfitById.has(id))];
+  if (unknown.length) return fail(`Unknown ids: ${unknown.join(', ')}.`);
+
+  const stamp = now.toISOString();
+  const request: TagRequest = { id: newId(), type: 'tags', tags, itemIds, outfitIds, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  await store.put('inbox', request.id, request);
+  const names = [...outfitIds.map((id) => outfitById.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
+  return ok(`Queued tags [${tags.join(', ')}] for: ${names.join(', ')}. They appear in the app the next time it syncs.`);
 }
 
 async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { WearRequest } from '../../../worker/protocol';
-import { applyInbox } from './inbox';
+import type { TagRequest, WearRequest } from '../../../worker/protocol';
+import { applyInbox, withTags } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
 const NOW = new Date('2026-10-25T20:00:00Z');
@@ -74,5 +74,56 @@ describe('applyInbox', () => {
     const old = request({ id: 'old', appliedAt: '2026-10-01T00:00:00Z' });
     const recent = request({ id: 'recent', appliedAt: '2026-10-20T00:00:00Z' });
     expect(applyInbox([old, recent], [], [], NOW).expired).toEqual(['old']);
+  });
+});
+
+describe('tag requests', () => {
+  const tagReq = (patch: Partial<TagRequest> = {}): TagRequest => ({
+    id: 't1',
+    type: 'tags',
+    tags: ['cozy'],
+    itemIds: [],
+    outfitIds: [],
+    source: 'claude',
+    createdAt: '2026-10-25T10:00:00Z',
+    updatedAt: '2026-10-25T10:00:00Z',
+    ...patch,
+  });
+
+  it('adds tags to items and outfits, keeping the ones already there', () => {
+    const a = { ...item('a'), tags: ['work'] };
+    const r = applyInbox([tagReq({ itemIds: ['a'], outfitIds: ['o'], tags: ['cozy', 'pajamas'] })], [a], [outfit('o', ['a'])], NOW);
+    expect(r.items[0].tags).toEqual(['work', 'cozy', 'pajamas']);
+    expect(r.outfits[0].tags).toEqual(['cozy', 'pajamas']);
+    expect(r.requests[0].appliedAt).toBe(NOW.toISOString());
+  });
+
+  it('is idempotent and ignores case when comparing tags', () => {
+    const a = { ...item('a'), tags: ['Cozy'] };
+    const r = applyInbox([tagReq({ itemIds: ['a'], tags: ['cozy'] })], [a], [], NOW);
+    expect(r.items).toEqual([]);
+    expect(r.requests).toHaveLength(1);
+  });
+
+  it('reports ids that no longer exist', () => {
+    const r = applyInbox([tagReq({ itemIds: ['gone'] })], [], [], NOW);
+    expect(r.requests[0].error).toBe('No longer exist: gone');
+  });
+
+  it('applies wears and tags requests together', () => {
+    const r = applyInbox([request({ itemIds: ['a'] }), tagReq({ itemIds: ['a'], createdAt: '2026-10-25T11:00:00Z' })], [item('a')], [], NOW);
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].wears).toEqual(['2026-10-25']);
+    expect(r.items[0].tags).toEqual(['cozy']);
+  });
+});
+
+describe('withTags', () => {
+  it('returns the same record when nothing is new, and refreshes updatedAt when something is', () => {
+    const rec = { tags: ['a'], updatedAt: 'x' };
+    expect(withTags(rec, ['A'])).toBe(rec);
+    const next = withTags(rec, ['b', 'B']);
+    expect(next.tags).toEqual(['a', 'b']);
+    expect(next.updatedAt).not.toBe('x');
   });
 });
