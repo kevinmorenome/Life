@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { href } from '../../lib/router';
-import { ClothesTabs } from './ClothesTabs';
 import { ItemThumb } from './ItemThumb';
 import { lastWorn, wearCount } from './stats';
 import { CATEGORIES, STATUSES, label, type Category, type ClothingItem, type Status } from './types';
@@ -49,13 +48,7 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Clothes</h1>
-        <a className="btn btn-primary" href={href('/clothes/new')}>
-          + Add
-        </a>
-      </div>
-      <ClothesTabs active="closet" />
+      <h1 className="page-title">Closet</h1>
 
       {items.length === 0 ? (
         <div className="empty">

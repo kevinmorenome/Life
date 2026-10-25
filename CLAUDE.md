@@ -17,7 +17,9 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - `npm run deploy` — what CI runs: build, apply D1 migrations remotely, `wrangler deploy`
 
 ## Layout
-- `src/App.tsx` — shell: top nav, routes `#/` (Home), `#/settings`, `#/<module>/...`
+- `src/App.tsx` — shell: top bar (name, sync dot, settings), routes `#/settings` and `#/<module>/...`; with a single module, `#/` opens it (Home lists modules once there are more)
+- `src/BottomNav.tsx` — Instagram-style bottom tab bar from the module's `tabs`, with a centre ＋ menu from its `actions`; hidden where `hideNav` says (forms with their own bottom Save)
+- `src/icons.tsx` — inline line icons; `public/` holds the PWA manifest and icons (`node scripts/make-icons.mjs` regenerates them)
 - `src/lib/` — shared infrastructure
   - `db.ts` — IndexedDB wrapper; one object store per module (`STORES` + `DB_VERSION`). Every local write also queues an `outbox` entry
   - `sync.ts` — background sync: push outbox, then pull changes since a cursor. Last write wins per record
@@ -35,7 +37,7 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
 
 ## Adding a module
-1. Create `src/modules/<id>/` with `types.ts`, an `index.tsx` exporting a `LifeModule`, and its screens.
+1. Create `src/modules/<id>/` with `types.ts`, an `index.tsx` exporting a `LifeModule` (including bottom-bar `tabs`, ＋ menu `actions`, and `hideNav` for form routes), and its screens.
 2. Add `'<id>'` to `STORES` in `src/lib/db.ts` **and bump `DB_VERSION`**, so existing users get the new store.
    Sync and backups pick the new store up automatically; the server needs no changes.
 3. Register the module in `src/modules/index.ts`. Home, the nav and backups pick it up automatically.
