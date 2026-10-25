@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
+import { OutfitBoard } from './OutfitBoard';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
 import { lastWorn, wearCount } from './stats';
 import type { ClothingItem, Outfit } from './types';
@@ -38,6 +39,9 @@ export function OutfitDetail({ outfit, items, onSaveOutfit, onSaveItem, onDelete
       <a className="back" href={href('/clothes/outfits')}>
         ← Outfits
       </a>
+      <div className="outfit-card outfit-hero">
+        <OutfitBoard pieces={pieces} large />
+      </div>
       <h1>{outfitName(outfit)}</h1>
       <div className="stat-row">
         <div className="stat">

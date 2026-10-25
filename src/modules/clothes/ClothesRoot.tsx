@@ -21,7 +21,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
 
   if (first === 'outfits') {
     const outfitProps = { items, onSaveOutfit: outfits.save, onSaveItem: save };
-    if (!second) return <OutfitList outfits={outfits.items} {...outfitProps} />;
+    if (!second) return <OutfitList outfits={outfits.items} items={items} />;
     if (second === 'new') return <OutfitForm items={items} onSave={outfits.save} />;
     const outfit = outfits.items.find((o) => o.id === second);
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;

@@ -887,3 +887,133 @@ a:focus-visible {
   text-align: left;
   cursor: pointer;
 }
+
+/* Outfit flat-lay cards */
+.outfit-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .outfit-cards {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+.outfit-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  padding: 0.75rem;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  color: var(--text);
+  text-decoration: none;
+}
+.outfit-card:active {
+  opacity: 0.85;
+}
+.outfit-hero {
+  width: min(100%, 360px);
+  margin: 0 auto 1rem;
+  padding: 1rem;
+}
+.worn-badge,
+.outfit-card-name {
+  position: absolute;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.worn-badge {
+  top: 0.6rem;
+  left: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.outfit-card-name {
+  right: 0.75rem;
+  bottom: 0.5rem;
+  left: 0.75rem;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.board-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+}
+.board-upper,
+.board-lower {
+  flex: 5 1 0;
+}
+.board-feet {
+  flex: 2 1 0;
+}
+/* With no shoes, give tops and bottoms the room. */
+.rows-upper .board-upper,
+.rows-lower .board-lower,
+.rows-feet .board-feet {
+  flex: 1 1 0;
+}
+.board-row img {
+  min-width: 0;
+  height: 100%;
+  max-width: 70%;
+  object-fit: contain;
+}
+.board-row.n-2 img {
+  max-width: 52%;
+}
+.board-row.n-3 img {
+  max-width: 38%;
+}
+/* Pieces in a row overlap slightly, like clothes laid out together. */
+.board-row img + img {
+  margin-left: -6%;
+}
+.board-feet img {
+  max-width: 34%;
+}
+.board-extra {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 24%;
+}
+.board-extra img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.board-more {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--photo-bg);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.board-placeholder {
+  max-width: 45%;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--photo-bg);
+  font-size: 0.7rem;
+  text-align: center;
+}
