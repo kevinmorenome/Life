@@ -75,10 +75,13 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build preview
-        run: VITE_PREVIEW_LABEL="PR #$PR_NUMBER" npm run build
+        env:
+          VITE_PREVIEW_LABEL: 'PR #${{ github.event.pull_request.number }}'
+        run: npm run build
       - name: Upload preview version
         id: upload
         run: |
+          set -o pipefail
           npx wrangler versions upload \
             --preview-alias "pr-$PR_NUMBER" \
             --message "Preview of PR #$PR_NUMBER (${GITHUB_SHA::7})" \
