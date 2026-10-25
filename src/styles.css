@@ -1740,3 +1740,22 @@ progress {
   opacity: 0.45;
   cursor: default;
 }
+
+/* Closet: nudge to log today's outfit */
+.today-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.today-repeat {
+  margin: 0.5rem 0 1rem;
+}
+.day-actions + section {
+  margin-top: 1.5rem;
+}

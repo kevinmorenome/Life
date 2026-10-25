@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
 import { lastWorn, wearCount } from './stats';
@@ -49,6 +50,13 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
   return (
     <>
       <h1 className="page-title">Closet</h1>
+
+      {items.length > 0 && !items.some((i) => i.wears.includes(today())) && (
+        <a className="card today-prompt" href={href('/clothes/today')}>
+          <span>Nothing logged today</span>
+          <strong>Log it →</strong>
+        </a>
+      )}
 
       {items.length === 0 ? (
         <div className="empty">

@@ -9,6 +9,7 @@ import { LogItemsPicker, LogOutfitPicker } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
+import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit } from './types';
 
@@ -40,6 +41,10 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     }
     const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
     return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} />;
+  }
+
+  if (first === 'today') {
+    return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
   if (first === 'new') return <ItemForm onSave={save} />;
