@@ -636,3 +636,16 @@ a:focus-visible {
   background: var(--bg);
   border-top: 1px solid var(--border);
 }
+
+/* PR preview builds */
+.preview-banner {
+  padding: 0.5rem 16px;
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+  background: #d08a1e;
+  color: #1c1d20;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.preview-banner + .topbar {
+  padding-top: 0.6rem;
+}

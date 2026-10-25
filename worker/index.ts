@@ -4,6 +4,8 @@ import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './p
 interface Env extends AuthEnv {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** Set on PR preview versions: they read real data but never write it. */
+  READ_ONLY?: string;
 }
 
 interface Row {
@@ -26,6 +28,7 @@ export default {
       return pull(env.DB, Number(url.searchParams.get('since') ?? 0) || 0);
     }
     if (url.pathname === '/api/sync/push' && request.method === 'POST') {
+      if (env.READ_ONLY === 'true') return json({ error: 'This preview is read-only' }, 409);
       return push(env.DB, request);
     }
     return json({ error: 'Not found' }, 404);

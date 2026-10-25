@@ -65,12 +65,12 @@ Until step 6 is done, the site loads but refuses to sync (the status dot shows "
 `main` is the live site: every merge into `main` is tested and deployed automatically.
 
 1. **Branch:** each feature or fix starts on its own branch from `main` (e.g. `feature/outfit-stats`, `fix/photo-rotation`).
-2. **Pull request:** open a PR into `main`. CI runs the tests and the build on it; nothing is deployed yet.
-3. **Review:** read the PR description and diff. Ask for changes on the PR if needed.
+2. **Pull request:** open a PR into `main`. CI runs the tests and the build on it, then publishes a **preview** at `https://pr-<number>-life.kevinmorenom.workers.dev` and comments the link on the PR. The live site is untouched.
+3. **Review:** read the PR description and diff, and try the preview. It shows your real closet behind the same login, but it's read-only: nothing you change there is saved (a banner says so). Ask for changes on the PR if needed.
 4. **Merge:** merging into `main` deploys to https://life.kevinmorenom.workers.dev within about a minute.
 5. **Undo:** if something breaks, revert the PR's merge commit on GitHub; that redeploys the previous version.
 
-Database schema changes (`migrations/`) apply on deploy, so a revert doesn't undo them; PRs that add a migration say so.
+Database schema changes (`migrations/`) apply on deploy, so a revert doesn't undo them, and previews don't apply them; PRs that add a migration say so.
 
 ## Adding a feature module
 

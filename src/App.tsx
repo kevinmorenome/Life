@@ -1,6 +1,7 @@
 import { Home } from './Home';
 import { Settings } from './Settings';
 import { SyncBadge } from './SyncBadge';
+import { PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
@@ -17,6 +18,11 @@ export function App() {
 
   return (
     <SettingsProvider>
+      {PREVIEW_LABEL && (
+        <div className="preview-banner" role="status">
+          <strong>Preview of {PREVIEW_LABEL}</strong> · shows your real data, but changes here aren’t saved
+        </div>
+      )}
       <header className="topbar">
         <div className="brand-row">
           <a className="brand" href={href('/')}>
