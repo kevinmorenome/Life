@@ -7,6 +7,8 @@
   --accent: #2f6f5e;
   --accent-text: #ffffff;
   --accent-soft: #e2efeb;
+  /* Neutral tile behind photos, so cut-out clothes aren't tinted. */
+  --photo-bg: #efefed;
   --danger: #b4382f;
   --radius: 12px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
@@ -23,6 +25,7 @@
     --accent: #5fb39b;
     --accent-text: #0e1513;
     --accent-soft: #23332e;
+    --photo-bg: #2a2b30;
     --danger: #e0685f;
     --shadow: none;
     color-scheme: dark;
@@ -315,7 +318,7 @@ a:focus-visible {
   height: 56px;
   border-radius: 10px;
   object-fit: cover;
-  background: var(--accent-soft);
+  background: var(--photo-bg);
 }
 .thumb-empty {
   display: grid;
@@ -543,7 +546,7 @@ a:focus-visible {
   height: 56px;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--accent-soft);
+  background: var(--photo-bg);
 }
 .collage-cell {
   position: relative;
