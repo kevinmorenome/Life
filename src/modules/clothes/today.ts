@@ -67,3 +67,13 @@ export function repeatDay(from: string, to: string, items: ClothingItem[], outfi
   }
   return { outfits: outfitRecords, items: [...itemRecords.values()] };
 }
+
+/** Everything worn on `date` as one list of pieces (outfit pieces and loose items, no duplicates). */
+export function dayPieces(date: string, items: ClothingItem[], outfits: Outfit[]): ClothingItem[] {
+  const wore = wearsByDay(items, outfits).get(date);
+  if (!wore) return [];
+  const pieces = new Map<string, ClothingItem>();
+  for (const o of wore.outfits) for (const p of outfitPieces(o, items)) pieces.set(p.id, p);
+  for (const i of wore.items) pieces.set(i.id, i);
+  return [...pieces.values()];
+}

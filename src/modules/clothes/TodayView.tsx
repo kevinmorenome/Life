@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { CheckIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { wearsByDay } from './calendar';
-import { ItemThumb } from './ItemThumb';
-import { OutfitCollage } from './OutfitCollage';
+import { IconMenu } from './IconMenu';
+import { PencilIcon, RepeatIcon } from './icons';
+import { OutfitBoard } from './OutfitBoard';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
-import { missedDays, previousLoggedDay, repeatDay, suggestedOutfits } from './today';
+import { dayPieces, missedDays, previousLoggedDay, repeatDay, suggestedOutfits } from './today';
 import type { ClothingItem, Outfit } from './types';
 
 interface Props {
@@ -63,98 +65,101 @@ export function TodayView({ items, outfits, onSaveItem, onSaveOutfit }: Props) {
   }
 
   return (
-    <article className="detail">
-      <h1 className="page-title">Today</h1>
-      <p className="muted">{dayLabel(date, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <article className="today">
+      <header className="today-head">
+        <div>
+          <h1 className="page-title">Today</h1>
+          <p className="muted">{dayLabel(date, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        </div>
+        <IconMenu
+          entries={[
+            { label: 'Log items', icon: <PlusIcon />, path: `/clothes/calendar/${date}/items` },
+            { label: 'New outfit', icon: <ShirtIcon />, path: '/clothes/outfits/new' },
+            { label: 'Edit this day', icon: <PencilIcon />, path: `/clothes/calendar/${date}` },
+          ]}
+        />
+      </header>
 
       {logged && (
-        <section>
-          <h2>Logged</h2>
-          <ul className="item-grid">
-            {wore.outfits.map((o) => (
-              <li key={o.id} className="card item-card">
-                <a href={href(`/clothes/outfits/${o.id}`)} className="item-link">
-                  <OutfitCollage pieces={outfitPieces(o, items)} />
-                  <div className="item-text">
-                    <strong>{outfitName(o)}</strong>
-                    <span className="muted small">{o.itemIds.length} pieces</span>
-                  </div>
-                </a>
+        <ul className="outfit-cards">
+          {wore.outfits.map((o) => (
+            <li key={o.id}>
+              <a href={href(`/clothes/outfits/${o.id}`)} className="outfit-card" aria-label={`${outfitName(o)}, logged today`}>
+                <OutfitBoard pieces={outfitPieces(o, items)} />
+                <span className="card-fab card-fab-done" aria-hidden>
+                  <CheckIcon />
+                </span>
+                {o.name && <span className="outfit-card-name">{o.name}</span>}
+              </a>
+            </li>
+          ))}
+          {wore.items.map((i) => (
+            <li key={i.id}>
+              <a href={href(`/clothes/${i.id}`)} className="outfit-card" aria-label={`${i.name}, logged today`}>
+                <OutfitBoard pieces={[i]} />
+                <span className="card-fab card-fab-done" aria-hidden>
+                  <CheckIcon />
+                </span>
+                <span className="outfit-card-name">{i.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {(previous || suggestions.length > 0) && (
+        <>
+          <h2 className="today-title">{logged ? 'Add another look' : 'Wore one of these?'}</h2>
+          <ul className="outfit-cards">
+            {previous && (
+              <li>
+                <div className="outfit-card">
+                  <OutfitBoard pieces={dayPieces(previous, items, outfits)} />
+                  <button
+                    className="card-fab"
+                    aria-label={`Wear ${dayLabel(previous, { weekday: 'long' })}’s look again`}
+                    onClick={() => repeat(previous)}
+                  >
+                    <RepeatIcon />
+                  </button>
+                  <span className="outfit-card-name">{dayLabel(previous, { weekday: 'long' })}</span>
+                </div>
               </li>
-            ))}
-          </ul>
-          {wore.items.length > 0 && (
-            <ul className="closet-grid day-items">
-              {wore.items.map((i) => (
-                <li key={i.id}>
-                  <a href={href(`/clothes/${i.id}`)} className="closet-tile">
-                    <ItemThumb item={i} />
-                    <span className="tile-name">{i.name}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="small">
-            <a href={href(`/clothes/calendar/${date}`)}>Edit this day</a>
-          </p>
-        </section>
-      )}
-
-      {!logged && previous && (
-        <button className="btn btn-primary today-repeat" onClick={() => repeat(previous)}>
-          Same as {dayLabel(previous, { weekday: 'long' })}
-        </button>
-      )}
-
-      {suggestions.length > 0 && (
-        <section>
-          <h2>{logged ? 'Add another outfit' : 'Wore one of these?'}</h2>
-          <ul className="item-grid">
+            )}
             {suggestions.map((o) => (
               <li key={o.id}>
-                <button className="card item-card picker-row" onClick={() => wearToday(o)}>
-                  <OutfitCollage pieces={outfitPieces(o, items)} />
-                  <span className="item-text">
-                    <strong>{outfitName(o)}</strong>
-                    <span className="muted small">{o.itemIds.length} pieces</span>
-                  </span>
-                </button>
+                <div className="outfit-card">
+                  <a href={href(`/clothes/outfits/${o.id}`)} className="card-cover" aria-label={outfitName(o)}>
+                    <OutfitBoard pieces={outfitPieces(o, items)} />
+                  </a>
+                  <button className="card-fab" aria-label={`Log ${outfitName(o)} today`} onClick={() => wearToday(o)}>
+                    <CheckIcon />
+                  </button>
+                  {o.name && <span className="outfit-card-name">{o.name}</span>}
+                </div>
               </li>
             ))}
           </ul>
-        </section>
+        </>
       )}
 
-      <div className="form-actions start day-actions">
-        <a className="btn" href={href(`/clothes/calendar/${date}/items`)}>
-          + Log items
-        </a>
-        <a className="btn" href={href('/clothes/outfits/new')}>
-          + New outfit
-        </a>
-      </div>
-
       {missed.length > 0 && (
-        <section>
-          <h2>Catch up</h2>
-          <p className="muted small">Nothing logged on these days.</p>
-          <ul className="item-grid">
+        <>
+          <h2 className="today-title">Catch up</h2>
+          <ul className="flat-list">
             {missed.map((day) => (
-              <li key={day} className="card item-card">
-                <a href={href(`/clothes/calendar/${day}`)} className="item-link">
-                  <div className="item-text">
-                    <strong>{dayLabel(day, { weekday: 'long', day: 'numeric', month: 'short' })}</strong>
-                    <span className="muted small">Tap to log</span>
-                  </div>
+              <li key={day}>
+                <span>{dayLabel(day, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+                <a className="icon-action" href={href(`/clothes/calendar/${day}`)} aria-label={`Log ${day}`}>
+                  <PencilIcon />
                 </a>
-                <button className="btn btn-ghost btn-small" aria-label={`Skip ${day}`} onClick={() => skip(day)}>
+                <button className="icon-action" aria-label={`Skip ${day}`} onClick={() => skip(day)}>
                   ✕
                 </button>
               </li>
             ))}
           </ul>
-        </section>
+        </>
       )}
     </article>
   );

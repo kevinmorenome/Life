@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { missedDays, previousLoggedDay, repeatDay, suggestedOutfits } from './today';
+import { dayPieces, missedDays, previousLoggedDay, repeatDay, suggestedOutfits } from './today';
 import type { ClothingItem, Outfit } from './types';
 
 function item(id: string, wears: string[] = []): ClothingItem {
@@ -65,5 +65,14 @@ describe('previousLoggedDay', () => {
     const items = [item('a', ['2026-10-21', '2026-10-23'])];
     expect(previousLoggedDay(items, [], '2026-10-25')).toBe('2026-10-23');
     expect(previousLoggedDay(items, [], '2026-11-30')).toBeNull();
+  });
+});
+
+describe('dayPieces', () => {
+  it('merges outfit pieces and loose items without duplicates', () => {
+    const items = [item('a', ['2026-10-24']), item('b', ['2026-10-24']), item('c', ['2026-10-24'])];
+    const outfits = [outfit('o', ['a', 'b'], ['2026-10-24'])];
+    expect(dayPieces('2026-10-24', items, outfits).map((i) => i.id).sort()).toEqual(['a', 'b', 'c']);
+    expect(dayPieces('2026-10-01', items, outfits)).toEqual([]);
   });
 });
