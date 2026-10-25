@@ -1,11 +1,11 @@
-import type { WearRequest } from '../../../worker/protocol';
+import type { InboxRequest } from '../../../worker/protocol';
 import { getAll, notify, put, remove } from '../../lib/db';
 import { applyInbox } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
 /** Applies wear requests queued by other clients (e.g. Claude over MCP). Run after each sync pull. */
 export async function processInbox(): Promise<void> {
-  const requests = await getAll<WearRequest>('inbox');
+  const requests = await getAll<InboxRequest>('inbox');
   if (requests.length === 0) return;
   const [items, outfits] = await Promise.all([getAll<ClothingItem>('clothes'), getAll<Outfit>('outfits')]);
 

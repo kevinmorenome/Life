@@ -11,6 +11,8 @@ function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
     put: async (s, id, record) => void data[s].set(id, { id, ...record }),
+    photos: async (ids) =>
+      new Map(ids.flatMap((id) => (typeof data.clothes.get(id)?.photo === 'string' ? [[id, data.clothes.get(id)!.photo as string] as const] : []))),
   };
   return { data, store };
 }
@@ -40,7 +42,8 @@ async function rpc(ctx: ToolContext, method: string, params?: object, notificati
 async function call(ctx: ToolContext, name: string, args: object) {
   const r = await rpc(ctx, 'tools/call', { name, arguments: args });
   const text: string = r.result.content[0].text;
-  return { isError: r.result.isError as boolean, text, json: () => JSON.parse(text) };
+  const content: { type: string; text?: string; data?: string; mimeType?: string }[] = r.result.content;
+  return { isError: r.result.isError as boolean, text, content, json: () => JSON.parse(text) };
 }
 
 describe('mcpAuthorized', () => {
@@ -80,8 +83,10 @@ describe('protocol', () => {
     expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'find_items',
       'list_outfits',
+      'show_photos',
       'get_wear_log',
       'log_wear',
+      'add_tags',
       'add_item',
       'create_outfit',
     ]);
@@ -117,6 +122,61 @@ describe('reads', () => {
     const log = (await call(ctx, 'get_wear_log', {})).json();
     expect(log.days).toEqual([{ date: '2026-10-20', outfits: ['Work look'], items: [] }]);
     expect(log.queued_not_yet_in_app).toEqual([{ date: '2026-10-24', names: ['White tee'] }]);
+  });
+});
+
+describe('show_photos', () => {
+  const JPEG = 'data:image/jpeg;base64,/9j/AAAA';
+  const photoSeed = {
+    clothes: [{ ...ITEMS[0], photo: JPEG }, ITEMS[1], { ...ITEMS[2], photo: 'data:text/html;base64,PHNjcmlwdD4=' }],
+    outfits: OUTFITS,
+  };
+
+  it('returns each photo as an image block after a caption naming the item', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
+    expect(r.isError).toBe(false);
+    expect(r.text).toBe('Showing 1 photo. No photo for: White tee.');
+    expect(r.content.slice(1)).toEqual([
+      { type: 'text', text: 'Navy blazer' },
+      { type: 'image', data: '/9j/AAAA', mimeType: 'image/jpeg' },
+    ]);
+  });
+
+  it('expands an outfit into its pieces, labelled with the outfit, without repeating an item', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { outfitIds: ['work'], itemIds: ['blazer'] });
+    expect(r.content.filter((c) => c.type === 'image')).toHaveLength(1);
+    expect(r.content[1]).toEqual({ type: 'text', text: 'Navy blazer' }); // the explicit item label wins over the outfit's
+    const viaOutfit = await call(ctx, 'show_photos', { outfitIds: ['work'] });
+    expect(viaOutfit.content.some((c) => c.text === 'Navy blazer · from “Work look”')).toBe(true);
+  });
+
+  it('never forwards non-image data URLs', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { itemIds: ['old'] });
+    expect(r.content.filter((c) => c.type === 'image')).toEqual([]);
+    expect(r.text).toContain('No photo for: Old navy cardigan');
+  });
+
+  it('caps the number of photos and reports the rest', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: `i${i}`, name: `Item ${i}`, category: 'tops', status: 'active', wears: [], photo: JPEG }));
+    const { ctx } = setup({}, { clothes: many, outfits: [] });
+    const r = await call(ctx, 'show_photos', { itemIds: many.map((m) => m.id) });
+    expect(r.content.filter((c) => c.type === 'image')).toHaveLength(8);
+    expect(r.text).toContain('4 more not shown');
+  });
+
+  it('rejects unknown ids and empty requests', async () => {
+    const { ctx } = setup({}, photoSeed);
+    expect((await call(ctx, 'show_photos', { itemIds: ['ghost'] })).isError).toBe(true);
+    expect((await call(ctx, 'show_photos', { outfitIds: ['ghost'] })).isError).toBe(true);
+    expect((await call(ctx, 'show_photos', {})).isError).toBe(true);
+  });
+
+  it('works on read-only deployments', async () => {
+    const { ctx } = setup({ readOnly: true }, photoSeed);
+    expect((await call(ctx, 'show_photos', { itemIds: ['blazer'] })).isError).toBe(false);
   });
 });
 
@@ -171,6 +231,149 @@ describe('log_wear', () => {
   it('allows tomorrow for users ahead of UTC', async () => {
     const { ctx } = setup();
     expect((await call(ctx, 'log_wear', { date: '2026-10-26', itemIds: ['tee'] })).isError).toBe(false);
+  });
+});
+
+describe('log_wear saves outfits', () => {
+  const closet: Row[] = [
+    { id: 'blazer', name: 'Navy blazer', category: 'outerwear', status: 'active', wears: [] },
+    { id: 'tee', name: 'White tee', category: 'tops', status: 'active', wears: [] },
+    { id: 'shoes', name: 'White sneakers', category: 'shoes', status: 'active', wears: [] },
+    { id: 'sweats', name: 'Sweatpants', category: 'bottoms', status: 'active', wears: [] },
+  ];
+  const work: Row = { id: 'work', name: 'Work look', itemIds: ['blazer', 'tee'], wears: [] };
+  const log = (ctx: ToolContext, args: object) => call(ctx, 'log_wear', { date: '2026-10-25', ...args });
+
+  it('saves two or more loose pieces as a new outfit and logs that outfit', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    const r = await log(ctx, { itemIds: ['sweats', 'tee'], outfitName: 'Lazy Sunday' });
+    expect(r.text).toContain('new outfit (Lazy Sunday');
+    expect(data.outfits.get('id-1')).toMatchObject({ name: 'Lazy Sunday', itemIds: ['sweats', 'tee'], wears: [] });
+    expect(data.inbox.get('id-2')).toMatchObject({ outfitIds: ['id-1'], itemIds: [] });
+  });
+
+  it('reuses an outfit with exactly the same pieces, in any order', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { itemIds: ['tee', 'blazer'] });
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.get('id-1')).toMatchObject({ outfitIds: ['work'], itemIds: [] });
+  });
+
+  it('does not create a second outfit when the same request is repeated', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { itemIds: ['sweats', 'tee'] });
+    const again = await log(ctx, { itemIds: ['sweats', 'tee'] });
+    expect(again.text).toContain('Already queued');
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.size).toBe(1);
+  });
+
+  it('does not create an outfit for a single piece', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { itemIds: ['sweats'] });
+    expect(data.outfits.size).toBe(0);
+    expect(data.inbox.get('id-1')).toMatchObject({ itemIds: ['sweats'], outfitIds: [] });
+  });
+
+  it('asks before guessing when an existing outfit has more pieces than were mentioned', async () => {
+    const withShoes: Row = { id: 'full', name: 'Smart with sneakers', itemIds: ['blazer', 'tee', 'shoes'], wears: [] };
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [withShoes] });
+    const r = await log(ctx, { itemIds: ['blazer', 'tee'] });
+    expect(r.isError).toBe(false);
+    expect(r.text).toContain('NOT LOGGED YET');
+    const candidates = JSON.parse(r.text.slice(r.text.indexOf('\n[') + 1, r.text.indexOf('\nAsk the user')));
+    expect(candidates).toEqual([
+      {
+        outfitId: 'full',
+        name: 'Smart with sneakers',
+        pieces: ['Navy blazer', 'White tee', 'White sneakers'],
+        alsoInThisOutfit: ['White sneakers'],
+        notInThisOutfit: [],
+      },
+    ]);
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('also asks when the user mentioned more than an existing outfit contains', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    const r = await log(ctx, { itemIds: ['blazer', 'tee', 'shoes'] });
+    expect(r.text).toContain('NOT LOGGED YET');
+    expect(r.text).toContain('"notInThisOutfit": [\n   "White sneakers"');
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('logs the confirmed existing outfit', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { outfitIds: ['work'], itemIds: ['shoes'] });
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.get('id-1')).toMatchObject({ outfitIds: ['work'], itemIds: ['shoes'] });
+  });
+
+  it('creates a new outfit once the user says the similar one is not it', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { itemIds: ['blazer', 'tee', 'shoes'], createNewOutfit: true });
+    expect(data.outfits.size).toBe(2);
+    expect(data.outfits.get('id-1')!.itemIds).toEqual(['blazer', 'tee', 'shoes']);
+  });
+
+  it('creates nothing when the request is invalid or the deployment is read-only', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { date: 'nope', itemIds: ['sweats', 'tee'] });
+    await log(ctx, { itemIds: ['sweats', 'ghost'] });
+    const ro = setup({ readOnly: true }, { clothes: closet, outfits: [] });
+    await log(ro.ctx, { itemIds: ['sweats', 'tee'] });
+    expect(data.outfits.size + data.inbox.size + ro.data.outfits.size + ro.data.inbox.size).toBe(0);
+  });
+});
+
+describe('add_tags', () => {
+  const tagged: Row[] = [
+    { id: 'pj', name: 'Pajama set', category: 'sleepwear', status: 'active', wears: [], tags: ['cozy'] },
+    { id: 'tee', name: 'White tee', category: 'tops', status: 'active', wears: [] },
+  ];
+  const lounge: Row = { id: 'lounge', name: 'Lounge', itemIds: ['pj'], wears: [] };
+
+  it('queues a tag request instead of editing the records', async () => {
+    const { ctx, data } = setup({}, { clothes: tagged, outfits: [lounge] });
+    const r = await call(ctx, 'add_tags', { tags: ['  #Pajamas ', 'Cozy Day', 'pajamas'], itemIds: ['pj'], outfitIds: ['lounge'] });
+    expect(r.isError).toBe(false);
+    expect(data.inbox.get('id-1')).toMatchObject({
+      type: 'tags',
+      tags: ['pajamas', 'cozy day'],
+      itemIds: ['pj'],
+      outfitIds: ['lounge'],
+      source: 'claude',
+    });
+    expect(data.clothes.get('pj')!.tags).toEqual(['cozy']);
+    expect(data.outfits.get('lounge')).not.toHaveProperty('tags');
+  });
+
+  it('shows existing tags so Claude can reuse them', async () => {
+    const { ctx } = setup({}, { clothes: tagged, outfits: [{ ...lounge, tags: ['home'] }] });
+    expect((await call(ctx, 'find_items', { query: 'pajama' })).json().items[0].tags).toEqual(['cozy']);
+    expect((await call(ctx, 'list_outfits', {})).json().outfits[0].tags).toEqual(['home']);
+    expect((await call(ctx, 'find_items', { query: 'tee' })).json().items[0]).not.toHaveProperty('tags');
+  });
+
+  it.each([
+    [{ tags: [], itemIds: ['tee'] }, 'at least one tag'],
+    [{ tags: ['a', 'b', 'c', 'd', 'e', 'f'], itemIds: ['tee'] }, 'At most 5'],
+    [{ tags: ['cozy'] }, 'at least one item id'],
+    [{ tags: ['cozy'], itemIds: ['ghost'] }, 'Unknown ids: ghost'],
+    [{ tags: ['cozy'], outfitIds: ['ghost'] }, 'Unknown ids: ghost'],
+  ])('rejects %j', async (args, message) => {
+    const { ctx, data } = setup({}, { clothes: tagged, outfits: [lounge] });
+    const r = await call(ctx, 'add_tags', args);
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain(message);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('refuses on read-only deployments', async () => {
+    const { ctx, data } = setup({ readOnly: true }, { clothes: tagged, outfits: [lounge] });
+    expect((await call(ctx, 'add_tags', { tags: ['cozy'], itemIds: ['tee'] })).isError).toBe(true);
+    expect(data.inbox.size).toBe(0);
   });
 });
 

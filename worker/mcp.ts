@@ -79,7 +79,7 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
         capabilities: { tools: {} },
         serverInfo: { name: 'life', version: '0.1.0' },
         instructions:
-          'Life tracks a personal wardrobe. To log what the user wore: find_items / list_outfits to get ids, confirm any ambiguous match, then log_wear with a YYYY-MM-DD date.',
+          'Life tracks a personal wardrobe. To log what the user wore: find_items / list_outfits to get ids, confirm any ambiguous match, then log_wear with a YYYY-MM-DD date. Whenever it is unclear which item the user means, or they ask to see something, call show_photos so they can see the items in the chat. Only add tags (add_tags) when the user themselves describes the style, mood or occasion of what they wore.',
       });
     }
     case 'ping':
@@ -92,7 +92,15 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
         const result = await callTool(name, args, ctx);
-        return rpc(id, { content: [{ type: 'text', text: result.text }], isError: result.isError ?? false });
+        const content = [
+          { type: 'text', text: result.text },
+          // A caption before each photo tells Claude (and the user) which item it is.
+          ...(result.images ?? []).flatMap((img) => [
+            { type: 'text', text: img.caption },
+            { type: 'image', data: img.data, mimeType: img.mimeType },
+          ]),
+        ];
+        return rpc(id, { content, isError: result.isError ?? false });
       } catch (e) {
         console.error('mcp tool failed', name, e);
         return rpc(id, { content: [{ type: 'text', text: 'Something went wrong on the server.' }], isError: true });

@@ -40,9 +40,9 @@ Neither file is committed (see `.gitignore`); they contain your personal data.
 
 ## Talk to Claude (log outfits by chatting)
 
-The Worker exposes an [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`, so Claude can look up your closet and log what you wore: *"I wore the navy blazer and the white tee today."* Tools: `find_items`, `list_outfits`, `get_wear_log`, `log_wear`, `add_item`, `create_outfit`.
+The Worker exposes an [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`, so Claude can look up your closet and log what you wore: *"I wore the navy blazer and the white tee today."* Tools: `find_items`, `list_outfits`, `show_photos` (shows item and outfit photos in the chat when Claude is unsure which item you mean, or you ask to see something), `get_wear_log`, `log_wear`, `add_tags` (adds style/mood/occasion tags like "cozy" or "pajamas" to items and outfits, only when you describe them yourself, and never removes any), `add_item`, `create_outfit`.
 
-`log_wear` doesn't edit your records on the server. It queues a request in the synced `inbox` store, and the app applies it with its normal wear logic the next time it syncs (open app: about a minute). Applying is idempotent, so two devices can't double-log.
+Logging two or more loose pieces saves them as an outfit (an identical outfit is reused, and a similar one makes Claude ask you first, so outfits never get duplicated). `log_wear` doesn't edit your records on the server. It queues a request in the synced `inbox` store, and the app applies it with its normal wear logic the next time it syncs (open app: about a minute). Applying is idempotent, so two devices can't double-log.
 
 One-time setup:
 

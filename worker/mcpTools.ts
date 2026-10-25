@@ -4,7 +4,7 @@
 // directly without risking a clobbered edit.
 
 import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
-import type { WearRequest } from './protocol';
+import type { TagRequest, WearRequest } from './protocol';
 import type { RecordStore, Row } from './records';
 
 export interface ToolContext {
@@ -14,13 +14,24 @@ export interface ToolContext {
   newId: () => string;
 }
 
+export interface ToolImage {
+  caption: string;
+  mimeType: string;
+  /** Base64, without the data: prefix. */
+  data: string;
+}
+
 export interface ToolResult {
   text: string;
   isError?: boolean;
+  images?: ToolImage[];
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_IDS = 30;
+/** Photos shown per call, and the largest one sent (base64 characters), to keep chat replies light. */
+const MAX_PHOTOS = 8;
+const MAX_PHOTO_LENGTH = 600_000;
 
 const fail = (text: string): ToolResult => ({ text, isError: true });
 const ok = (value: unknown): ToolResult => ({ text: typeof value === 'string' ? value : JSON.stringify(value, null, 1) });
@@ -29,7 +40,7 @@ export const TOOLS = [
   {
     name: 'find_items',
     description:
-      'Search the wardrobe (active items) by words in name, brand, colour, category or tags. Use it to resolve what the user says they wore into item ids. Returns id, name, category, brand, color, times worn and last worn date.',
+      'Search the wardrobe (active items) by words in name, brand, colour, category or tags. Use it to resolve what the user says they wore into item ids. Returns id, name, category, brand, color, times worn and last worn date. When several items could match, or the user asks to see something, follow up with show_photos so they can pick by sight.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -45,6 +56,18 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
   },
   {
+    name: 'show_photos',
+    description:
+      'Show the photos of items (and of the pieces of outfits) in the chat. Use it whenever there is any doubt about which item the user means, before logging if a match is ambiguous, and whenever the user asks to see an item, an outfit or what they wore. Up to 8 photos per call; items without a photo are listed by name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemIds: { type: 'array', items: { type: 'string' } },
+        outfitIds: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+  {
     name: 'get_wear_log',
     description:
       'What was logged as worn on each of the last N days (newest first), plus wear requests that are queued but not yet applied by the app. Use it to check whether a day is already logged.',
@@ -53,15 +76,31 @@ export const TOOLS = [
   {
     name: 'log_wear',
     description:
-      'Log that the user wore items and/or whole outfits on a date. Wearing an outfit also logs each of its pieces, so do not list those pieces again. Resolve ids with find_items / list_outfits first and confirm ambiguous matches with the user. The wear shows up in the app the next time it syncs.',
+      'Log that the user wore items and/or whole outfits on a date. Wearing an outfit also logs each of its pieces, so do not list those pieces again. Resolve ids with find_items / list_outfits first and confirm ambiguous matches with the user. When two or more items are logged together without an outfit, an outfit is saved for them automatically, or an existing outfit with exactly those pieces is reused. If an existing outfit overlaps but differs (it has extra pieces the user may not have mentioned, or lacks some), nothing is logged and the candidates are returned: ask the user (show_photos helps), then call again with that outfit in outfitIds, or with createNewOutfit=true. The wear shows up in the app the next time it syncs.',
     inputSchema: {
       type: 'object',
       properties: {
         date: { type: 'string', description: 'YYYY-MM-DD, in the user’s local calendar. "Today" and "yesterday" must be turned into a date.' },
         itemIds: { type: 'array', items: { type: 'string' } },
         outfitIds: { type: 'array', items: { type: 'string' } },
+        outfitName: { type: 'string', description: 'Optional name for the outfit created from itemIds, e.g. "Grey sweats + white tee".' },
+        createNewOutfit: { type: 'boolean', description: 'Only after the user confirmed that similar existing outfits are not what they wore.' },
       },
       required: ['date'],
+    },
+  },
+  {
+    name: 'add_tags',
+    description:
+      'Add style/mood/occasion tags (for example "cozy", "pajamas", "work", "date night") to items and/or outfits. Only call this when the user themselves says something that describes the style, mood or occasion of what they wore ("I stayed in pajamas all day", "that was my gym fit"). Never infer tags, never tag on your own initiative, and never remove tags. Reuse tags already shown in find_items / list_outfits when one fits. The tags show up in the app the next time it syncs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 5, description: 'Short lowercase words, at most 5.' },
+        itemIds: { type: 'array', items: { type: 'string' } },
+        outfitIds: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['tags'],
     },
   },
   {
@@ -108,10 +147,14 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return findItems(args, ctx);
     case 'list_outfits':
       return listOutfits(args, ctx);
+    case 'show_photos':
+      return showPhotos(args, ctx);
     case 'get_wear_log':
       return getWearLog(args, ctx);
     case 'log_wear':
       return ctx.readOnly ? fail(READ_ONLY) : logWear(args, ctx);
+    case 'add_tags':
+      return ctx.readOnly ? fail(READ_ONLY) : addTags(args, ctx);
     case 'add_item':
       return ctx.readOnly ? fail(READ_ONLY) : addItem(args, ctx);
     case 'create_outfit':
@@ -165,6 +208,7 @@ function itemSummary(r: Row) {
     category: r.category,
     ...(r.brand ? { brand: r.brand } : {}),
     ...(r.color ? { color: r.color } : {}),
+    ...(strings(r.tags).length ? { tags: strings(r.tags) } : {}),
     timesWorn: timesWorn(r),
     lastWorn: lastWorn(r),
   };
@@ -193,6 +237,7 @@ async function listOutfits(args: Args, { store }: ToolContext): Promise<ToolResu
       id: o.id,
       name: o.name ?? '(unnamed)',
       pieces: strings(o.itemIds).map((id) => ({ id, name: names.get(id) ?? '(deleted item)' })),
+      ...(strings(o.tags).length ? { tags: strings(o.tags) } : {}),
       timesWorn: timesWorn(o),
       lastWorn: lastWorn(o),
     }));
@@ -227,14 +272,48 @@ async function getWearLog(args: Args, { store, now }: ToolContext): Promise<Tool
   });
 }
 
+async function showPhotos(args: Args, { store }: ToolContext): Promise<ToolResult> {
+  const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
+  const itemName = new Map(items.map((r) => [r.id, String(r.name)]));
+  const outfitById = new Map(outfits.map((r) => [r.id, r]));
+
+  // Each wanted piece, labelled by the outfit it came from when it did.
+  const wanted = new Map<string, string>();
+  for (const id of [...new Set(strings(args.outfitIds))]) {
+    const outfit = outfitById.get(id);
+    if (!outfit) return fail(`Unknown outfit id: ${id}.`);
+    for (const pid of strings(outfit.itemIds)) {
+      if (!wanted.has(pid)) wanted.set(pid, `${itemName.get(pid) ?? '(deleted item)'} · from “${outfit.name ?? 'unnamed outfit'}”`);
+    }
+  }
+  for (const id of [...new Set(strings(args.itemIds))]) {
+    if (!itemName.has(id)) return fail(`Unknown item id: ${id}.`);
+    wanted.set(id, itemName.get(id)!);
+  }
+  if (wanted.size === 0) return fail('Give at least one item id or outfit id.');
+
+  const ids = [...wanted.keys()].filter((id) => itemName.has(id)).slice(0, MAX_PHOTOS);
+  const photos = await store.photos(ids);
+  const images: ToolImage[] = [];
+  const without: string[] = [];
+  for (const id of ids) {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(photos.get(id) ?? '');
+    if (match && match[2].length <= MAX_PHOTO_LENGTH) images.push({ caption: wanted.get(id)!, mimeType: match[1], data: match[2] });
+    else without.push(wanted.get(id)!);
+  }
+  const more = wanted.size > ids.length ? ` ${wanted.size - ids.length} more not shown (limit ${MAX_PHOTOS}).` : '';
+  const missing = without.length ? ` No photo for: ${without.join(', ')}.` : '';
+  return { text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}`, images };
+}
+
 // ---- writes ----
 
 async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
   if (!isRealDate(args.date)) return fail('date must be a real calendar date in YYYY-MM-DD form.');
   // One day of slack for users whose local date is ahead of UTC.
   if (args.date > addDays(utcToday(now), 1)) return fail('Can’t log a wear in the future.');
-  const itemIds = [...new Set(strings(args.itemIds))];
-  const outfitIds = [...new Set(strings(args.outfitIds))];
+  let itemIds = [...new Set(strings(args.itemIds))];
+  let outfitIds = [...new Set(strings(args.outfitIds))];
   if (itemIds.length + outfitIds.length === 0) return fail('Give at least one item id or outfit id.');
   if (itemIds.length + outfitIds.length > MAX_IDS) return fail(`At most ${MAX_IDS} ids per call.`);
 
@@ -244,12 +323,55 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
   const unknown = [...itemIds.filter((id) => !itemById.has(id)), ...outfitIds.filter((id) => !outfitById.has(id))];
   if (unknown.length) return fail(`Unknown ids: ${unknown.join(', ')}. Look them up with find_items / list_outfits.`);
 
+  // Pieces worn together become an outfit, without ever duplicating one.
+  let createdOutfit: { id: string; name: string } | undefined;
+  if (outfitIds.length === 0 && itemIds.length >= 2) {
+    const mine = new Set(itemIds);
+    const pieces = (o: Row) => new Set(strings(o.itemIds));
+    const exact = outfits.find((o) => pieces(o).size === mine.size && [...mine].every((id) => pieces(o).has(id)));
+    if (exact) {
+      outfitIds = [exact.id];
+      itemIds = [];
+    } else {
+      // Overlapping outfits might be the same look with a piece left out (or added), so don't guess.
+      const similar = outfits.filter((o) => {
+        const p = pieces(o);
+        const superset = [...mine].every((id) => p.has(id));
+        const subset = p.size >= 2 && [...p].every((id) => mine.has(id));
+        return superset || subset;
+      });
+      if (similar.length > 0 && args.createNewOutfit !== true) {
+        const name = (id: string) => String(itemById.get(id)?.name ?? '(deleted item)');
+        const candidates = similar.map((o) => ({
+          outfitId: o.id,
+          name: o.name ?? '(unnamed outfit)',
+          pieces: [...pieces(o)].map(name),
+          alsoInThisOutfit: [...pieces(o)].filter((id) => !mine.has(id)).map(name),
+          notInThisOutfit: [...mine].filter((id) => !pieces(o).has(id)).map(name),
+        }));
+        return ok(
+          'NOT LOGGED YET. These saved outfits overlap with what the user listed, and one may be the same look with a piece left out or added:\n' +
+            JSON.stringify(candidates, null, 1) +
+            '\nAsk the user which it was (show_photos helps). If it is one of these, call log_wear again with outfitIds=[its id] (plus itemIds for anything extra they wore). If it is a new combination, call again with the same itemIds and createNewOutfit=true.',
+        );
+      }
+      const stamp = now.toISOString();
+      const outfit = { id: newId(), name: text(args.outfitName), itemIds, wears: [], createdAt: stamp, updatedAt: stamp };
+      await store.put('outfits', outfit.id, outfit);
+      createdOutfit = { id: outfit.id, name: outfit.name ?? '(unnamed)' };
+      outfits.push({ id: outfit.id, name: outfit.name, itemIds, wears: [] });
+      outfitIds = [outfit.id];
+      itemIds = [];
+    }
+  }
+
   // A retry of the same request while it's still queued must not queue twice.
   const key = (d: unknown, i: string[], o: string[]) => `${d}|${[...i].sort()}|${[...o].sort()}`;
   const duplicate = inbox.find(
     (e) => e.type === 'wear' && !e.appliedAt && key(e.date, strings(e.itemIds), strings(e.outfitIds)) === key(args.date, itemIds, outfitIds),
   );
-  const names = [...outfitIds.map((id) => outfitById.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
+  const outfitNow = new Map(outfits.map((r) => [r.id, r]));
+  const names = [...outfitIds.map((id) => outfitNow.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
   if (duplicate) return ok(`Already queued for ${args.date}: ${names.join(', ')}.`);
 
   const stamp = now.toISOString();
@@ -264,7 +386,36 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
     updatedAt: stamp,
   };
   await store.put('inbox', request.id, request);
-  return ok(`Queued a wear for ${args.date}: ${names.join(', ')}. It appears in the app the next time it syncs (about a minute if the app is open).`);
+  const outfitNote = createdOutfit ? ` Saved these pieces as a new outfit (${createdOutfit.name}, id ${createdOutfit.id}).` : '';
+  return ok(`Queued a wear for ${args.date}: ${names.join(', ')}.${outfitNote} It appears in the app the next time it syncs (about a minute if the app is open).`);
+}
+
+async function addTags(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const tags = [
+    ...new Set(
+      strings(args.tags)
+        .map((t) => t.trim().replace(/^#/, '').replace(/\s+/g, ' ').toLowerCase().slice(0, 30))
+        .filter(Boolean),
+    ),
+  ];
+  if (tags.length === 0) return fail('Give at least one tag.');
+  if (tags.length > 5) return fail('At most 5 tags per call.');
+  const itemIds = [...new Set(strings(args.itemIds))];
+  const outfitIds = [...new Set(strings(args.outfitIds))];
+  if (itemIds.length + outfitIds.length === 0) return fail('Give at least one item id or outfit id.');
+  if (itemIds.length + outfitIds.length > MAX_IDS) return fail(`At most ${MAX_IDS} ids per call.`);
+
+  const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
+  const itemById = new Map(items.map((r) => [r.id, r]));
+  const outfitById = new Map(outfits.map((r) => [r.id, r]));
+  const unknown = [...itemIds.filter((id) => !itemById.has(id)), ...outfitIds.filter((id) => !outfitById.has(id))];
+  if (unknown.length) return fail(`Unknown ids: ${unknown.join(', ')}.`);
+
+  const stamp = now.toISOString();
+  const request: TagRequest = { id: newId(), type: 'tags', tags, itemIds, outfitIds, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  await store.put('inbox', request.id, request);
+  const names = [...outfitIds.map((id) => outfitById.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
+  return ok(`Queued tags [${tags.join(', ')}] for: ${names.join(', ')}. They appear in the app the next time it syncs.`);
 }
 
 async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
