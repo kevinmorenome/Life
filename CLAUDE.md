@@ -9,6 +9,8 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - Don't reintroduce `keep_vars` in `wrangler.jsonc`: preview versions carry `READ_ONLY=true`, and keeping vars could copy it into a production deploy.
 - Before pushing: `npm test` and `npm run build` must pass.
 
+- Upcoming work and ideas live in GitHub Issues (see `TODO.md` for labels and workflow); check them before starting a feature, reference the issue with `Closes #N` in the PR, and open new issues for follow-ups.
+
 ## Commands
 - `npm run dev` — dev server
 - `npm test` — vitest unit tests
