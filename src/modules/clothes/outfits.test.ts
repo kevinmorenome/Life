@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outfitName, outfitPieces, wearOutfit } from './outfits';
+import { outfitName, outfitPieces, outfitsWithItem, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 
 const piece = (id: string, wears: string[] = []): ClothingItem => ({
@@ -29,5 +29,11 @@ describe('outfits', () => {
   it('falls back to the creation date for unnamed outfits', () => {
     expect(outfitName(outfit)).toMatch(/^Outfit from /);
     expect(outfitName({ ...outfit, name: 'Friday' })).toBe('Friday');
+  });
+
+  it('lists outfits containing an item, most recently worn first', () => {
+    const o = (id: string, wears: string[], itemIds = ['a']): Outfit => ({ ...outfit, id, itemIds, wears });
+    const list = [o('old', ['2026-01-01']), o('other', ['2026-12-01'], ['z']), o('new', ['2026-09-01']), o('never', [])];
+    expect(outfitsWithItem('a', list).map((x) => x.id)).toEqual(['new', 'old', 'never']);
   });
 });
