@@ -1247,3 +1247,78 @@ progress {
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--surface);
 }
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 1rem 0;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--border);
+}
+.seg a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.seg a[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.seg .count {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.pack-tile .closet-tile {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.pack-tile.packed .closet-tile {
+  opacity: 0.45;
+}
+.pack-check {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: #fff;
+  cursor: pointer;
+}
+.pack-check.on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.pack-remove {
+  position: absolute;
+  bottom: 0.4rem;
+  right: 0.4rem;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.pack-tile {
+  position: relative;
+}

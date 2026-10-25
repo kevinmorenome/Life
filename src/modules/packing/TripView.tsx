@@ -9,15 +9,23 @@ import { label, type ClothingItem, type Outfit } from '../clothes/types';
 import { packingList, togglePacked, tripDays, unpackAll, withDayOutfits, withExtra, withoutExtra, withoutManualItem } from './packing';
 import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
+export type TripTab = 'outfits' | 'clothes' | 'other';
+const TABS: { id: TripTab; label: string }[] = [
+  { id: 'outfits', label: 'Outfits' },
+  { id: 'clothes', label: 'Clothes' },
+  { id: 'other', label: 'Other' },
+];
+
 interface Props {
   trip: Trip;
+  tab: TripTab;
   items: ClothingItem[];
   outfits: Outfit[];
   onSave: (t: Trip) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TripView({ trip, items, outfits, onSave, onDelete }: Props) {
+export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props) {
   const list = useMemo(() => packingList(trip, items, outfits, outfitName), [trip, items, outfits]);
   const days = tripDays(trip);
   const outfitById = new Map(outfits.map((o) => [o.id, o]));
@@ -35,8 +43,6 @@ export function TripView({ trip, items, outfits, onSave, onDelete }: Props) {
     setText('');
   }
 
-  const byCategory = new Map<string, typeof list.clothes>();
-  for (const c of list.clothes) byCategory.set(c.item.category, [...(byCategory.get(c.item.category) ?? []), c]);
   const extraGroups = EXTRA_GROUPS.filter((g) => list.extras.some((x) => x.group === g));
   const done = list.total > 0 && list.packedCount === list.total;
   const visible = <T extends { packed: boolean }>(xs: T[]) => (showPacked ? xs : xs.filter((x) => !x.packed));
@@ -75,8 +81,24 @@ export function TripView({ trip, items, outfits, onSave, onDelete }: Props) {
         </div>
       </div>
 
+      <nav className="seg" role="tablist" aria-label="Trip sections">
+        {TABS.map((t) => {
+          const count =
+            t.id === 'clothes'
+              ? `${list.clothes.filter((c) => c.packed).length}/${list.clothes.length}`
+              : t.id === 'other'
+                ? `${list.extras.filter((x) => x.packed).length}/${list.extras.length}`
+                : `${Object.values(trip.outfitPlan).flat().length}`;
+          return (
+            <a key={t.id} role="tab" aria-selected={tab === t.id} href={href(`/packing/${trip.id}/${t.id}`)}>
+              {t.label} <span className="count">{count}</span>
+            </a>
+          );
+        })}
+      </nav>
+
+      {tab === 'outfits' && (
       <section>
-        <h2>Outfits by day</h2>
         <ul className="plan-list">
           {days.map((date) => {
             const planned = (trip.outfitPlan[date] ?? []).map((id) => outfitById.get(id)).filter((o): o is Outfit => !!o);
@@ -117,57 +139,59 @@ export function TripView({ trip, items, outfits, onSave, onDelete }: Props) {
           })}
         </ul>
       </section>
-
+      )}
+      {tab === 'clothes' && (
       <section>
-        <h2>Clothes</h2>
         {list.clothes.length === 0 && (
-          <p className="muted">Plan outfits above, or pick pieces directly. They’ll show up here to check off.</p>
+          <p className="muted">Plan outfits, or pick pieces directly. They’ll show up here to check off.</p>
         )}
-        {[...byCategory].map(([category, entries]) => {
-          const shown = visible(entries);
-          if (!shown.length) return null;
-          return (
-            <div key={category} className="pack-group">
-              <h3>{label(category)}</h3>
-              <ul className="pack-list">
-                {shown.map((c) => (
-                  <li key={c.item.id} className={`pack-row${c.packed ? ' packed' : ''}`}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={c.packed}
-                        onChange={() => onSave(togglePacked(trip, c.item.id))}
-                      />
-                      <ItemThumb item={c.item} />
-                      <span className="pack-text">
-                        <strong>{c.item.name}</strong>
-                        {c.viaOutfits.length > 0 && (
-                          <span className="muted small">For {c.viaOutfits.join(', ')}</span>
-                        )}
-                      </span>
-                    </label>
-                    {c.manual && c.viaOutfits.length === 0 && (
-                      <button
-                        className="btn btn-ghost btn-small"
-                        aria-label={`Remove ${c.item.name} from this trip`}
-                        onClick={() => onSave(withoutManualItem(trip, c.item.id))}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-        <a className="btn" href={href(`/packing/${trip.id}/items`)}>
-          + Pick pieces
-        </a>
+        {list.clothes.length > 0 && (
+          <p className="muted small">Double-tap a piece (or tap its ✓) to mark it packed.</p>
+        )}
+        <ul className="closet-grid pack-grid">
+          {visible(list.clothes).map((c) => (
+            <li key={c.item.id} className={`pack-tile${c.packed ? ' packed' : ''}`}>
+              <button
+                type="button"
+                className="closet-tile"
+                aria-pressed={c.packed}
+                aria-label={`${c.item.name}, ${c.packed ? 'packed' : 'not packed'}. Double-tap to toggle`}
+                onDoubleClick={() => onSave(togglePacked(trip, c.item.id))}
+              >
+                <ItemThumb item={c.item} />
+                <span className="tile-name">{c.item.name}</span>
+                <span className="tile-meta">{c.viaOutfits.length ? `For ${c.viaOutfits.join(', ')}` : label(c.item.category)}</span>
+              </button>
+              <button
+                type="button"
+                className={`pack-check${c.packed ? ' on' : ''}`}
+                aria-label={c.packed ? `Unpack ${c.item.name}` : `Pack ${c.item.name}`}
+                onClick={() => onSave(togglePacked(trip, c.item.id))}
+              >
+                {c.packed ? '✓' : ''}
+              </button>
+              {c.manual && c.viaOutfits.length === 0 && (
+                <button
+                  type="button"
+                  className="pack-remove"
+                  aria-label={`Remove ${c.item.name} from this trip`}
+                  onClick={() => onSave(withoutManualItem(trip, c.item.id))}
+                >
+                  ✕
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p>
+          <a className="btn" href={href(`/packing/${trip.id}/items`)}>
+            + Pick pieces
+          </a>
+        </p>
       </section>
-
+      )}
+      {tab === 'other' && (
       <section>
-        <h2>Other things</h2>
         {extraGroups.map((g) => {
           const shown = visible(list.extras.filter((x) => x.group === g));
           if (!shown.length) return null;
@@ -217,6 +241,8 @@ export function TripView({ trip, items, outfits, onSave, onDelete }: Props) {
           </div>
         )}
       </section>
+
+      )}
 
       <div className="form-actions start day-actions">
         <a className="btn" href={href(`/packing/${trip.id}/edit`)}>

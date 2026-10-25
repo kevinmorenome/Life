@@ -3,7 +3,7 @@ import type { ClothingItem, Outfit } from '../clothes/types';
 import { DayOutfitPicker, TripItemsPicker } from './Pickers';
 import { TripForm } from './TripForm';
 import { TripList } from './TripList';
-import { TripView } from './TripView';
+import { TripView, type TripTab } from './TripView';
 import type { Trip } from './types';
 
 export function PackingRoot({ subroute }: { subroute: string[] }) {
@@ -22,7 +22,8 @@ export function PackingRoot({ subroute }: { subroute: string[] }) {
     if (second === 'edit') return <TripForm existing={trip} onSave={trips.save} />;
     if (second === 'items') return <TripItemsPicker {...props} />;
     if (second === 'day' && third && /^\d{4}-\d{2}-\d{2}$/.test(third)) return <DayOutfitPicker date={third} {...props} />;
-    return <TripView {...props} onDelete={trips.remove} />;
+    const tab: TripTab = second === 'clothes' || second === 'other' ? second : 'outfits';
+    return <TripView {...props} tab={tab} onDelete={trips.remove} />;
   }
   return <TripList trips={trips.items} items={clothes.items} outfits={outfits.items} />;
 }

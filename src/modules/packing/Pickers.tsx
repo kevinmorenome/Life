@@ -20,7 +20,7 @@ const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter(
 export function DayOutfitPicker({ trip, date, items, outfits, onSave }: Props & { date: string }) {
   const [selected, setSelected] = useState<string[]>(trip.outfitPlan[date] ?? []);
   const [query, setQuery] = useState('');
-  const back = `/packing/${trip.id}`;
+  const back = `/packing/${trip.id}/outfits`;
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return outfits.filter((o) => !q || [outfitName(o), ...(o.tags ?? [])].some((f) => f.toLowerCase().includes(q)));
@@ -80,7 +80,7 @@ export function DayOutfitPicker({ trip, date, items, outfits, onSave }: Props & 
 export function TripItemsPicker({ trip, items, onSave }: Props) {
   const [selected, setSelected] = useState<string[]>(trip.itemIds);
   const [query, setQuery] = useState('');
-  const back = `/packing/${trip.id}`;
+  const back = `/packing/${trip.id}/clothes`;
   const choices = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items
