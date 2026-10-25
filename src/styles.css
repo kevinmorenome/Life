@@ -1740,3 +1740,111 @@ progress {
   opacity: 0.45;
   cursor: default;
 }
+
+/* Closet: nudge to log today's outfit */
+.today-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Today: flat-lay tiles with floating round icon buttons, no boxes inside boxes */
+.today-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.today-head .page-title {
+  margin-bottom: 0;
+}
+.today-head p {
+  margin: 0.15rem 0 1rem;
+}
+.today-title {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1rem;
+}
+.menu a.menu-item {
+  text-decoration: none;
+}
+.menu-end {
+  right: 0;
+  left: auto;
+}
+.card-cover {
+  text-decoration: none;
+  position: absolute;
+  inset: 0;
+  padding: 0.75rem;
+  border-radius: 16px;
+  color: inherit;
+}
+.card-fab {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+}
+.card-fab svg {
+  width: 22px;
+  height: 22px;
+}
+.card-fab:active {
+  transform: scale(0.94);
+}
+.card-fab-done {
+  background: var(--accent);
+  color: var(--accent-text);
+  pointer-events: none;
+}
+.flat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flat-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+}
+.flat-list li:last-child {
+  border-bottom: 0;
+}
+.flat-list li span {
+  flex: 1;
+}
+/* Today: a borderless photo grid, pieces float on the page instead of sitting in boxed tiles */
+.today .outfit-cards {
+  gap: 1.25rem 0.5rem;
+}
+.today .outfit-card {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.today .card-cover {
+  padding: 0;
+}
+.today .card-fab {
+  top: 0;
+  right: 0;
+}

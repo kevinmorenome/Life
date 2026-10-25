@@ -1,5 +1,4 @@
 import { CalendarIcon, ChartIcon, CheckIcon, HangerIcon, PlusIcon, ShirtIcon } from '../../icons';
-import { today } from '../../lib/format';
 import type { LifeModule } from '../types';
 import { ClothesRoot } from './ClothesRoot';
 
@@ -17,7 +16,7 @@ export const clothesModule: LifeModule = {
       label: 'Closet',
       icon: <HangerIcon />,
       path: '/clothes',
-      matches: ([first]) => !first || !['outfits', 'calendar', 'stats'].includes(first),
+      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today'].includes(first),
     },
     {
       id: 'outfits',
@@ -36,7 +35,7 @@ export const clothesModule: LifeModule = {
     { id: 'stats', label: 'Stats', icon: <ChartIcon />, path: '/clothes/stats', matches: ([first]) => first === 'stats' },
   ],
   actions: [
-    { label: 'Log what I wore today', icon: <CheckIcon />, path: () => `/clothes/calendar/${today()}` },
+    { label: 'Log what I wore today', icon: <CheckIcon />, path: () => '/clothes/today' },
     { label: 'Add an item', icon: <PlusIcon />, path: () => '/clothes/new' },
     { label: 'New outfit', icon: <ShirtIcon />, path: () => '/clothes/outfits/new' },
   ],
