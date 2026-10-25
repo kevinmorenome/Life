@@ -87,7 +87,13 @@ jobs:
             --message "Preview of PR #$PR_NUMBER (${GITHUB_SHA::7})" \
             --var READ_ONLY:true | tee upload.log
           url=$(grep -oE 'https://pr-[0-9]+-[a-z0-9.-]+\.workers\.dev' upload.log | head -1)
-          if [ -z "$url" ]; then echo "::error::No preview alias URL in wrangler output"; exit 1; fi
+          if [ -z "$url" ]; then
+            # Wrangler only prints preview URLs when they're enabled on the Worker,
+            # which happens when main deploys with "preview_urls": true (or via the
+            # dashboard: Worker → Settings → Domains & Routes → Preview URLs).
+            echo "::error::Uploaded, but Cloudflare returned no preview URL: preview URLs are disabled on the Worker. Enable them (see comment above) and re-run this job."
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Comment preview link
         uses: actions/github-script@v7
