@@ -11,8 +11,8 @@ import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
 export type TripTab = 'outfits' | 'clothes' | 'other';
 const TABS: { id: TripTab; label: string }[] = [
-  { id: 'outfits', label: 'Outfits' },
   { id: 'clothes', label: 'Clothes' },
+  { id: 'outfits', label: 'Outfits' },
   { id: 'other', label: 'Other' },
 ];
 
