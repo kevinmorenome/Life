@@ -53,3 +53,10 @@ export const CheckIcon = () => (
     <path d="M4.5 12.5 9.5 17.5 19.5 6.5" />
   </Icon>
 );
+
+export const SuitcaseIcon = () => (
+  <Icon>
+    <rect x="3.5" y="7.5" width="17" height="13" rx="2.5" />
+    <path d="M9 7.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2.5M9 11v6M15 11v6" />
+  </Icon>
+);

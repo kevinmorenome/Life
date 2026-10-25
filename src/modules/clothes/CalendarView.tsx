@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { addMonths, monthGrid, wearsByDay, type DayWear } from './calendar';
+import { tripsOnDate } from '../packing/packing';
+import type { Trip } from '../packing/types';
 import { ItemThumb } from './ItemThumb';
 import { outfitPieces } from './outfits';
 import type { ClothingItem, Outfit } from './types';
@@ -11,9 +13,10 @@ interface Props {
   month?: string;
   items: ClothingItem[];
   outfits: Outfit[];
+  trips?: Trip[];
 }
 
-export function CalendarView({ month, items, outfits }: Props) {
+export function CalendarView({ month, items, outfits, trips = [] }: Props) {
   const now = today();
   const ym = month ?? now.slice(0, 7);
   const [year, m] = ym.split('-').map(Number);
@@ -71,7 +74,7 @@ export function CalendarView({ month, items, outfits }: Props) {
                 key={date}
                 role="gridcell"
                 href={href(`/clothes/calendar/${date}`)}
-                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}`}
+                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}`}
                 aria-label={date}
               >
                 <DayBubble wear={days.get(date)} items={items} />

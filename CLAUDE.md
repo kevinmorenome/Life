@@ -35,6 +35,7 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
   - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
+- `src/modules/packing/` — trips in the `trips` store (`Trip` in `types.ts`). The checklist is derived by `packingList()` in `packing.ts` from planned outfits per day (`outfitPlan`) + hand-picked items + custom extras; only `packed` ids are stored. Clothes' calendar reads trips to mark trip days and offer "Log as worn" for planned outfits
 
 ## Adding a module
 1. Create `src/modules/<id>/` with `types.ts`, an `index.tsx` exporting a `LifeModule` (including bottom-bar `tabs`, ＋ menu `actions`, and `hideNav` for form routes), and its screens.

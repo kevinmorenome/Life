@@ -9,15 +9,17 @@ import { LogItemsPicker, LogOutfitPicker } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
+import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit } from './types';
 
 export function ClothesRoot({ subroute }: { subroute: string[] }) {
   const clothes = useCollection<ClothingItem>('clothes');
   const outfits = useCollection<Outfit>('outfits');
+  const trips = useCollection<Trip>('trips');
   const { items, save } = clothes;
   const [first, second, third] = subroute;
 
-  if (clothes.loading || outfits.loading) return <p className="muted">Loading…</p>;
+  if (clothes.loading || outfits.loading || trips.loading) return <p className="muted">Loading…</p>;
 
   if (first === 'outfits') {
     const outfitProps = { items, onSaveOutfit: outfits.save, onSaveItem: save };
@@ -30,14 +32,14 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   }
 
   if (first === 'calendar') {
-    const props = { items, outfits: outfits.items, onSaveItem: save, onSaveOutfit: outfits.save };
+    const props = { items, outfits: outfits.items, trips: trips.items, onSaveItem: save, onSaveOutfit: outfits.save };
     if (second && /^\d{4}-\d{2}-\d{2}$/.test(second)) {
       if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
       if (third === 'items') return <LogItemsPicker date={second} {...props} />;
       return <DayView date={second} {...props} />;
     }
     const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
-    return <CalendarView month={month} items={items} outfits={outfits.items} />;
+    return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} />;
   }
 
   if (first === 'new') return <ItemForm onSave={save} />;
