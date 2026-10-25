@@ -41,6 +41,7 @@ export interface ClothingItem {
   /** Fabric or material, e.g. "Cotton, Elastane". */
   material?: string;
   tags?: string[];
+  favorite?: boolean;
   /** Situations it suits, e.g. "work", "date night". */
   occasions?: string[];
   /** One YYYY-MM-DD entry per time worn. */
@@ -58,6 +59,7 @@ export interface Outfit {
   name?: string;
   itemIds: string[];
   tags?: string[];
+  favorite?: boolean;
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];
   /** Wears counted before tracking started (e.g. imported), without dates. */

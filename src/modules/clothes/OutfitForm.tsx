@@ -6,13 +6,15 @@ import { label, type ClothingItem, type Outfit } from './types';
 
 interface Props {
   existing?: Outfit;
+  /** Pieces to start with, e.g. when launched from an item's page. */
+  initialItemIds?: string[];
   items: ClothingItem[];
   onSave: (o: Outfit) => Promise<void>;
 }
 
-export function OutfitForm({ existing, items, onSave }: Props) {
+export function OutfitForm({ existing, initialItemIds, items, onSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
-  const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? []);
+  const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
   const [query, setQuery] = useState('');
 
   const choices = useMemo(() => {
