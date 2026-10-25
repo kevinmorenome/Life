@@ -649,3 +649,371 @@ a:focus-visible {
 .preview-banner + .topbar {
   padding-top: 0.6rem;
 }
+
+/* Closet grid */
+.filter-row-pair {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 480px) {
+  .filter-row-pair select:last-child {
+    grid-column: auto;
+  }
+}
+.category-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0.75rem -16px 0;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+.category-tabs button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.category-tabs button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--text);
+  font-weight: 600;
+}
+.category-tabs .count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.closet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 -16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 640px) {
+  .closet-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+}
+.closet-grid li {
+  min-width: 0;
+  /* Right and bottom dividers; trailing empty cells stay blank. */
+  box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border);
+}
+.closet-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  height: 100%;
+  padding: 0.5rem 0.5rem 0.65rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.closet-tile .thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  margin-bottom: 0.35rem;
+  padding: 8%;
+  border-radius: 8px;
+  font-size: 2.2rem;
+}
+.closet-tile:active .thumb {
+  opacity: 0.8;
+}
+.tile-name,
+.tile-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.tile-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Calendar */
+.center {
+  text-align: center;
+}
+.month-nav,
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.month-nav .btn,
+.day-head .btn {
+  font-size: 1.5rem;
+  min-width: 44px;
+  padding: 0;
+}
+.month-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.month-title strong {
+  text-transform: capitalize;
+}
+.day-head h1 {
+  font-size: 1.15rem;
+  text-align: center;
+  text-transform: capitalize;
+  margin: 0;
+}
+.calendar {
+  display: grid;
+  gap: 0.25rem;
+}
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+.calendar-head span {
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  text-transform: capitalize;
+}
+.calendar-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-height: 44px;
+  border-radius: 50%;
+  color: var(--text);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-day.out {
+  opacity: 0.35;
+}
+.calendar-day.today .day-num {
+  color: var(--accent);
+  font-weight: 700;
+}
+.calendar-day:active {
+  background: var(--accent-soft);
+}
+.day-bubble {
+  position: absolute;
+  inset: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--photo-bg);
+}
+.day-bubble .thumb {
+  width: 70%;
+  height: 50%;
+  border-radius: 0;
+  background: none;
+  font-size: 0.9rem;
+}
+.day-bubble.pieces-1 .thumb {
+  height: 80%;
+}
+.calendar-day .day-num {
+  position: relative;
+  font-size: 0.9rem;
+}
+.day-bubble ~ .day-num {
+  align-self: end;
+  margin-bottom: -2px;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+.detail section + section {
+  margin-top: 1.25rem;
+}
+.day-items {
+  margin-bottom: 1rem;
+}
+.day-items li {
+  position: relative;
+}
+.tile-remove {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.day-actions {
+  margin-top: 1rem;
+}
+.picker-row {
+  width: 100%;
+  border: 1px solid var(--border);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Outfit flat-lay cards */
+.outfit-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .outfit-cards {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+.outfit-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  padding: 0.75rem;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  color: var(--text);
+  text-decoration: none;
+}
+.outfit-card:active {
+  opacity: 0.85;
+}
+.outfit-hero {
+  width: min(100%, 360px);
+  margin: 0 auto 1rem;
+  padding: 1rem;
+}
+.worn-badge,
+.outfit-card-name {
+  position: absolute;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.worn-badge {
+  top: 0.6rem;
+  left: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.outfit-card-name {
+  right: 0.75rem;
+  bottom: 0.5rem;
+  left: 0.75rem;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.board-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+}
+.board-upper,
+.board-lower {
+  flex: 5 1 0;
+}
+.board-feet {
+  flex: 2 1 0;
+}
+/* With no shoes, give tops and bottoms the room. */
+.rows-upper .board-upper,
+.rows-lower .board-lower,
+.rows-feet .board-feet {
+  flex: 1 1 0;
+}
+.board-row img {
+  min-width: 0;
+  height: 100%;
+  max-width: 70%;
+  object-fit: contain;
+}
+.board-row.n-2 img {
+  max-width: 52%;
+}
+.board-row.n-3 img {
+  max-width: 38%;
+}
+/* Pieces in a row overlap slightly, like clothes laid out together. */
+.board-row img + img {
+  margin-left: -6%;
+}
+.board-feet img {
+  max-width: 34%;
+}
+.board-extra {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 24%;
+}
+.board-extra img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.board-more {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--photo-bg);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.board-placeholder {
+  max-width: 45%;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--photo-bg);
+  font-size: 0.7rem;
+  text-align: center;
+}

@@ -1,34 +1,37 @@
 import { useMemo, useState } from 'react';
 import { href } from '../../lib/router';
-import { today } from '../../lib/format';
 import { ClothesTabs } from './ClothesTabs';
 import { ItemThumb } from './ItemThumb';
 import { lastWorn, wearCount } from './stats';
 import { CATEGORIES, STATUSES, label, type Category, type ClothingItem, type Status } from './types';
-import { withWear } from './wear';
 
 type Sort = 'recent' | 'name' | 'most-worn' | 'least-recent';
 
-interface Props {
-  items: ClothingItem[];
-  onSave: (item: ClothingItem) => Promise<void>;
-}
-
-export function ClothesList({ items, onSave }: Props) {
+export function ClothesList({ items }: { items: ClothingItem[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [status, setStatus] = useState<Status | 'all'>('active');
   const [sort, setSort] = useState<Sort>('recent');
 
-  const visible = useMemo(() => {
+  // Everything except the category filter, so the tabs can show counts.
+  const matching = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = items.filter(
+    return items.filter(
       (i) =>
-        (category === 'all' || i.category === category) &&
         (status === 'all' || i.status === status) &&
         (!q || [i.name, i.brand, i.color, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
     );
-    return filtered.sort((a, b) => {
+  }, [items, query, status]);
+
+  const counts = useMemo(() => {
+    const c = new Map<Category, number>();
+    for (const i of matching) c.set(i.category, (c.get(i.category) ?? 0) + 1);
+    return c;
+  }, [matching]);
+
+  const visible = useMemo(() => {
+    const inCategory = matching.filter((i) => category === 'all' || i.category === category);
+    return inCategory.sort((a, b) => {
       switch (sort) {
         case 'name':
           return a.name.localeCompare(b.name);
@@ -40,9 +43,9 @@ export function ClothesList({ items, onSave }: Props) {
           return b.createdAt.localeCompare(a.createdAt);
       }
     });
-  }, [items, query, category, status, sort]);
+  }, [matching, category, sort]);
 
-  const date = today();
+  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === category);
 
   return (
     <>
@@ -70,16 +73,14 @@ export function ClothesList({ items, onSave }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <div className="filter-row">
-              <select value={category} onChange={(e) => setCategory(e.target.value as Category | 'all')}>
-                <option value="all">All categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {label(c)}
-                  </option>
-                ))}
+            <div className="filter-row filter-row-pair">
+              <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                <option value="recent">Recently added</option>
+                <option value="name">Name</option>
+                <option value="most-worn">Most worn</option>
+                <option value="least-recent">Longest unworn</option>
               </select>
-              <select value={status} onChange={(e) => setStatus(e.target.value as Status | 'all')}>
+              <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as Status | 'all')}>
                 <option value="all">Any status</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -87,49 +88,45 @@ export function ClothesList({ items, onSave }: Props) {
                   </option>
                 ))}
               </select>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-                <option value="recent">Newest</option>
-                <option value="name">Name</option>
-                <option value="most-worn">Most worn</option>
-                <option value="least-recent">Longest unworn</option>
-              </select>
             </div>
           </div>
 
-          <p className="muted small">
-            {visible.length} of {items.length} items
-          </p>
+          <nav className="category-tabs" aria-label="Categories">
+            <button aria-pressed={category === 'all'} onClick={() => setCategory('all')}>
+              All <span className="count">{matching.length}</span>
+            </button>
+            {tabs.map((c) => (
+              <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>
+                {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
+              </button>
+            ))}
+          </nav>
 
-          <ul className="item-grid">
-            {visible.map((item) => {
-              const woreToday = item.wears.includes(date);
-              return (
-                <li key={item.id} className="card item-card">
-                  <a href={href(`/clothes/${item.id}`)} className="item-link">
+          {visible.length === 0 ? (
+            <p className="muted empty">No items match.</p>
+          ) : (
+            <ul className="closet-grid">
+              {visible.map((item) => (
+                <li key={item.id}>
+                  <a href={href(`/clothes/${item.id}`)} className="closet-tile">
                     <ItemThumb item={item} />
-                    <div className="item-text">
-                      <strong>{item.name}</strong>
-                      <span className="muted small">
-                        {[item.brand, item.color].filter(Boolean).join(' · ') || label(item.category)}
-                      </span>
-                      <span className="muted small">
-                        Worn {wearCount(item)}×{item.status !== 'active' && ` · ${label(item.status)}`}
-                      </span>
-                    </div>
+                    <span className="tile-name">{item.name}</span>
+                    <span className="tile-meta">{tileMeta(item)}</span>
                   </a>
-                  <button
-                    className="btn btn-small"
-                    disabled={woreToday}
-                    onClick={() => onSave(withWear(item, date))}
-                  >
-                    {woreToday ? 'Worn today ✓' : 'Wore today'}
-                  </button>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </>
   );
+}
+
+/** Brand, times worn (when worn) and non-active status, e.g. "Zara · Worn 3×". */
+function tileMeta(item: ClothingItem): string {
+  const worn = wearCount(item);
+  const parts = [item.brand, worn ? `Worn ${worn}×` : undefined];
+  if (item.status !== 'active') parts.push(label(item.status));
+  return parts.filter(Boolean).join(' · ') || 'Not worn yet';
 }
