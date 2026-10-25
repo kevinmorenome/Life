@@ -21,3 +21,23 @@ export function withPriorWears<T extends Wearable & { priorWears?: number }>(ite
   const priorWears = Math.max(0, (item.priorWears ?? 0) + delta);
   return { ...item, priorWears, updatedAt: new Date().toISOString() };
 }
+
+export interface WearMonth {
+  /** YYYY-MM */
+  month: string;
+  /** `index` is the position in the original `wears` array, for removal. */
+  entries: { date: string; index: number }[];
+}
+
+/** Dated wears grouped by month, newest first. */
+export function groupWearsByMonth(wears: string[]): WearMonth[] {
+  const months = new Map<string, WearMonth>();
+  wears.forEach((date, index) => {
+    const month = date.slice(0, 7);
+    if (!months.has(month)) months.set(month, { month, entries: [] });
+    months.get(month)!.entries.push({ date, index });
+  });
+  return [...months.values()]
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .map((m) => ({ ...m, entries: m.entries.sort((a, b) => b.date.localeCompare(a.date) || b.index - a.index) }));
+}

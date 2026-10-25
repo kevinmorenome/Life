@@ -3,12 +3,14 @@ import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { colorSwatches } from './colors';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
+import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitCollage } from './OutfitCollage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import { label, type ClothingItem, type Outfit } from './types';
+import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear } from './wear';
 
 interface Props {
@@ -26,7 +28,6 @@ const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats:
 
 export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   const [tab, setTab] = useState<Tab>('about');
-  const [wearDate, setWearDate] = useState(today());
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
@@ -52,17 +53,17 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         <ItemThumb item={item} large />
         <h1>{item.name}</h1>
         <p className="muted small">{[item.brand, label(item.category)].filter(Boolean).join(' · ')}</p>
-        <div className="hero-actions">
-          <a className="btn" href={href(`/clothes/${item.id}/edit`)}>
-            Edit
-          </a>
-          <button className="btn" onClick={() => onSave(withWear(item, today()))}>
-            Wore it today
-          </button>
+        <HeroActions
+          editPath={`/clothes/${item.id}/edit`}
+          favorite={!!item.favorite}
+          onToggleFavorite={() => onSave({ ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() })}
+          onDelete={del}
+          deleteLabel="Delete item"
+        >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
             Create outfit
           </a>
-        </div>
+        </HeroActions>
       </header>
 
       {inOutfits.length > 0 && (
@@ -97,23 +98,17 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
       </div>
 
       <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
-        {tab === 'about' && <About item={item} onDelete={del} />}
+        {tab === 'about' && <About item={item} />}
         {tab === 'style' && <Style item={item} />}
         {tab === 'stats' && (
-          <Stats
-            item={item}
-            outfitCount={inOutfits.length}
-            wearDate={wearDate}
-            setWearDate={setWearDate}
-            onSave={onSave}
-          />
+          <Stats item={item} outfits={inOutfits} onSave={onSave} />
         )}
       </div>
     </article>
   );
 }
 
-function About({ item, onDelete }: { item: ClothingItem; onDelete: () => void }) {
+function About({ item }: { item: ClothingItem }) {
   const facts: [string, string | undefined][] = [
     ['Category', label(item.category)],
     ['Status', label(item.status)],
@@ -150,11 +145,6 @@ function About({ item, onDelete }: { item: ClothingItem; onDelete: () => void })
           ))}
       </dl>
       {item.notes && <p className="notes">{item.notes}</p>}
-      <div className="form-actions">
-        <button className="btn btn-danger" onClick={onDelete}>
-          Delete item
-        </button>
-      </div>
     </>
   );
 }
@@ -199,13 +189,13 @@ function Style({ item }: { item: ClothingItem }) {
 
 interface StatsProps {
   item: ClothingItem;
-  outfitCount: number;
-  wearDate: string;
-  setWearDate: (d: string) => void;
+  /** Outfits that include the item. */
+  outfits: Outfit[];
   onSave: (item: ClothingItem) => Promise<void>;
 }
 
-function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps) {
+function Stats({ item, outfits, onSave }: StatsProps) {
+  const outfitCount = outfits.length;
   const last = lastWorn(item);
   const cpw = costPerWear(item);
   const undated = item.priorWears ?? 0;
@@ -252,36 +242,15 @@ function Stats({ item, outfitCount, wearDate, setWearDate, onSave }: StatsProps)
 
       <Insights insights={insights} />
 
-      <section className="plain">
-        <h2>Wear log</h2>
-        <div className="wear-add">
-          <input type="date" value={wearDate} max={today()} onChange={(e) => setWearDate(e.target.value)} />
-          <button className="btn btn-primary" disabled={!wearDate} onClick={() => onSave(withWear(item, wearDate))}>
-            Log wear
-          </button>
-        </div>
-        {item.wears.length === 0 ? (
-          <p className="muted small">No dated wears yet.</p>
-        ) : (
-          <ul className="wear-list">
-            {item.wears
-              .map((d, i) => ({ d, i }))
-              .reverse()
-              .map(({ d, i }) => (
-                <li key={`${d}-${i}`}>
-                  <span>{shortDate(d)}</span>
-                  <button
-                    className="btn btn-ghost btn-small"
-                    aria-label={`Remove wear on ${shortDate(d)}`}
-                    onClick={() => onSave(withoutWear(item, i))}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-          </ul>
-        )}
-      </section>
+      <WearLog
+        wears={item.wears}
+        noteFor={(d) => {
+          const names = outfits.filter((o) => o.wears.includes(d)).map(outfitName);
+          return names.length ? `with ${names.join(', ')}` : undefined;
+        }}
+        onAdd={(d) => onSave(withWear(item, d))}
+        onRemove={(i) => onSave(withoutWear(item, i))}
+      />
     </>
   );
 }
