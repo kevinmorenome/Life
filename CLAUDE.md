@@ -31,12 +31,14 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - `image.ts`, `format.ts` — photo downscaling, money/date helpers (`money()` uses the display currency)
   - `settings.tsx` — synced app settings (single record in the `settings` store), e.g. display currency
 - `worker/` — Cloudflare Worker: serves `dist/`, exposes `/api/sync/pull` and `/api/sync/push`, and verifies the Cloudflare Access JWT (`auth.ts`, fails closed). `protocol.ts` is shared with the client
+  - `mcp.ts` + `mcpTools.ts` — MCP endpoint (`/mcp`, bypassed in Access, guarded by the `MCP_TOKEN` secret) so Claude can read the closet and log wears; `records.ts` holds the D1 upsert/list helpers. Tools must never edit existing records: wears go through the `inbox` store (below); new items/outfits have fresh ids so they're written directly
 - `migrations/` — D1 schema. The server stores records as opaque JSON strings keyed by (store, id), so new modules need no server changes
 - `src/modules/` — feature modules, registered in `src/modules/index.ts`
 - `src/modules/clothes/` — first module; use it as the reference implementation
   - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
   - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
+- Inbox: `inbox` store holds `WearRequest`s queued by the MCP endpoint. `processInbox()` (`clothes/inboxRunner.ts`, registered with `setAfterPull` in `main.tsx`, skipped in PR previews) applies them via pure `applyInbox()` after each pull, then marks them applied; wears are idempotent per date
 - `src/modules/packing/` — trips in the `trips` store (`Trip` in `types.ts`). The checklist is derived by `packingList()` in `packing.ts` from planned outfits per day (`outfitPlan`) + hand-picked items + custom extras; only `packed` ids are stored. Clothes' calendar reads trips to mark trip days and offer "Log as worn" for planned outfits
 
 ## Adding a module

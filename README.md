@@ -38,6 +38,22 @@ Neither file is committed (see `.gitignore`); they contain your personal data.
 - The whole site sits behind **Cloudflare Access**, so only the email(s) you allow can open it. The Worker also re-checks the Access login token on every API call and refuses to serve data if Access isn't configured.
 - **Settings → Export backup** downloads everything as a JSON file at any time.
 
+## Talk to Claude (log outfits by chatting)
+
+The Worker exposes an [MCP](https://modelcontextprotocol.io) endpoint at `/mcp`, so Claude can look up your closet and log what you wore: *"I wore the navy blazer and the white tee today."* Tools: `find_items`, `list_outfits`, `get_wear_log`, `log_wear`, `add_item`, `create_outfit`.
+
+`log_wear` doesn't edit your records on the server. It queues a request in the synced `inbox` store, and the app applies it with its normal wear logic the next time it syncs (open app: about a minute). Applying is idempotent, so two devices can't double-log.
+
+One-time setup:
+
+1. **Secret:** generate a long random token (`openssl rand -hex 32`) and store it as the Worker secret `MCP_TOKEN` (`npx wrangler secret put MCP_TOKEN`, or the dashboard under **Settings → Variables and Secrets**). Until it's set (24+ characters), `/mcp` answers 503.
+2. **Let it past Access:** Claude can't sign in through Cloudflare Access, so add a second Access application for the same hostname with path `/mcp*` and a policy with action **Bypass** for Everyone. The endpoint then protects itself with the token; everything else stays behind Access.
+3. **Connect Claude:**
+   - Claude app / claude.ai: **Settings → Connectors → Add custom connector** with URL `https://life.<your-subdomain>.workers.dev/mcp/<token>`.
+   - Claude Code: `claude mcp add --transport http life https://life.<your-subdomain>.workers.dev/mcp --header "Authorization: Bearer <token>"`.
+
+Treat the URL like a password: anyone with it can read your closet and queue wears (not delete anything). To rotate, set a new `MCP_TOKEN` and update the connector. PR previews are read-only, so their write tools refuse.
+
 ## Development
 
 ```bash

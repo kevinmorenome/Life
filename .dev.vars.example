@@ -1,1 +1,3 @@
 DEV_ALLOW_UNAUTHENTICATED=true
+# Guards /mcp locally (24+ characters): http://localhost:8787/mcp/<this value>
+MCP_TOKEN=local-dev-token-0123456789abcdef
