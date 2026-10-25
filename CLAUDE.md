@@ -2,6 +2,11 @@
 
 Personal life-tracking web app (React + TypeScript + Vite), built one feature module at a time. Mobile-first, local-first storage (IndexedDB) synced to Cloudflare D1 through a Worker, hash routing. Hosted on Cloudflare Workers behind Cloudflare Access.
 
+## Workflow
+- `main` is production: CI deploys the repo's default branch (`main`) on every push. Never push to `main` directly.
+- Work on a feature branch from `main` and open a PR into `main`; the PR description says what changed, how it was tested, and whether it adds a D1 migration.
+- Before pushing: `npm test` and `npm run build` must pass.
+
 ## Commands
 - `npm run dev` — dev server
 - `npm test` — vitest unit tests
