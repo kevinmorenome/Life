@@ -1,14 +1,19 @@
 import { href } from '../../lib/router';
 
-export function ClothesTabs({ active }: { active: 'closet' | 'stats' }) {
+const TABS = [
+  { id: 'closet', label: 'Closet', path: '/clothes' },
+  { id: 'outfits', label: 'Outfits', path: '/clothes/outfits' },
+  { id: 'stats', label: 'Stats', path: '/clothes/stats' },
+] as const;
+
+export function ClothesTabs({ active }: { active: (typeof TABS)[number]['id'] }) {
   return (
     <div className="tabs" role="tablist">
-      <a role="tab" aria-selected={active === 'closet'} href={href('/clothes')}>
-        Closet
-      </a>
-      <a role="tab" aria-selected={active === 'stats'} href={href('/clothes/stats')}>
-        Stats
-      </a>
+      {TABS.map((t) => (
+        <a key={t.id} role="tab" aria-selected={active === t.id} href={href(t.path)}>
+          {t.label}
+        </a>
+      ))}
     </div>
   );
 }

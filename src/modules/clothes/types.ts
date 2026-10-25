@@ -38,6 +38,25 @@ export interface ClothingItem {
   /** JPEG data URL */
   photo?: string;
   notes?: string;
+  /** Fabric or material, e.g. "Cotton, Elastane". */
+  material?: string;
+  tags?: string[];
+  /** Situations it suits, e.g. "work", "date night". */
+  occasions?: string[];
+  /** One YYYY-MM-DD entry per time worn. */
+  wears: string[];
+  /** Wears counted before tracking started (e.g. imported), without dates. */
+  priorWears?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A set of items worn together. */
+export interface Outfit {
+  id: string;
+  /** Optional; the UI falls back to the creation date. */
+  name?: string;
+  itemIds: string[];
   tags?: string[];
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];

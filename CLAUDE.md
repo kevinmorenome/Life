@@ -23,7 +23,8 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - `migrations/` — D1 schema. The server stores records as opaque JSON strings keyed by (store, id), so new modules need no server changes
 - `src/modules/` — feature modules, registered in `src/modules/index.ts`
 - `src/modules/clothes/` — first module; use it as the reference implementation
-  - `importers/whering.ts` — pure Whering → ClothingItem mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
+  - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
+  - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
 
 ## Adding a module
 1. Create `src/modules/<id>/` with `types.ts`, an `index.tsx` exporting a `LifeModule`, and its screens.
@@ -35,6 +36,8 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 ## Conventions
 - Dates are stored as local `YYYY-MM-DD` strings (`today()` in `lib/format.ts`); timestamps as ISO strings.
 - Never hard-delete history that stats depend on; prefer a status field (see clothes `status`).
-- Use `wearCount(item)` for wear totals, never `item.wears.length`: imported items carry undated `priorWears`.
+- Use `wearCount(item)` for wear totals, never `item.wears.length`: imported items and outfits carry undated `priorWears`. Never invent wear dates.
+- Forms must spread the existing record before overwriting fields they edit, so fields they don't show (tags, priorWears, occasions…) survive an edit.
+- **Settings → Import items** upserts by `updatedAt` (newer wins); keep `updatedAt` current on every write.
 - Never commit personal data exports (Whering exports, import files, backups).
 - Styling lives in `src/styles.css` with CSS variables on `:root` and a dark-mode override. Keep touch targets ≥ 44px and check layouts at 390px width.

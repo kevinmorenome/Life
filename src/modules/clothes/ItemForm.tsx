@@ -56,6 +56,8 @@ export function ItemForm({ existing, onSave }: Props) {
     }
     const now = new Date().toISOString();
     const item: ClothingItem = {
+      // Keep fields this form doesn't edit (tags, priorWears, occasions…).
+      ...existing,
       id: existing?.id ?? newId(),
       name: name.trim(),
       category,

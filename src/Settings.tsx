@@ -32,7 +32,7 @@ export function Settings() {
     if (!file) return;
     try {
       const n = await mergeBackup(file);
-      setMessage(n ? `Added ${n} new records.` : 'Nothing new to add; everything in that file is already here.');
+      setMessage(n ? `Imported ${n} new or updated records.` : 'Nothing new; everything in that file is already here.');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Import failed');
     }
@@ -84,8 +84,8 @@ export function Settings() {
       <section className="card">
         <h2>Backup & import</h2>
         <p className="muted small">
-          Download a copy of all your data as a JSON file. <strong>Import items</strong> adds what’s new from a
-          file and keeps everything you have; <strong>Restore</strong> replaces your data with the file’s.
+          Download a copy of all your data as a JSON file. <strong>Import items</strong> adds new and updated records from
+          a file and keeps everything else; <strong>Restore</strong> replaces your data with the file’s.
         </p>
         <div className="form-actions start">
           <button className="btn btn-primary" onClick={onExport}>

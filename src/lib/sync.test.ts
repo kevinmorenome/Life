@@ -123,6 +123,22 @@ describe('sync', () => {
   });
 });
 
+describe('upsertNewer', () => {
+  it('adds new records and replaces only older ones', async () => {
+    const { db } = await device();
+    await db.put('clothes', { ...shirt, name: 'Mine', updatedAt: '2026-05-01' });
+    await db.put('clothes', { id: 'b', name: 'Edited later', updatedAt: '2026-12-01' } as typeof shirt);
+    const n = await db.upsertNewer('clothes', [
+      { ...shirt, name: 'Imported', updatedAt: '2026-10-25' },
+      { id: 'b', name: 'Imported', updatedAt: '2026-10-25' },
+      { id: 'c', name: 'New', updatedAt: '2026-10-25' },
+    ]);
+    expect(n).toBe(2);
+    const byId = Object.fromEntries((await db.getAll<typeof shirt>('clothes')).map((r) => [r.id, r.name]));
+    expect(byId).toEqual({ a: 'Imported', b: 'Edited later', c: 'New' });
+  });
+});
+
 describe('validateChanges', () => {
   it('rejects malformed input', () => {
     expect(validateChanges({})).toBeTypeOf('string');

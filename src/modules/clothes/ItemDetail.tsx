@@ -3,18 +3,21 @@ import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
 import { costPerWear, lastWorn, wearCount } from './stats';
-import { label, type ClothingItem } from './types';
+import { outfitName } from './outfits';
+import { label, type ClothingItem, type Outfit } from './types';
 import { withWear, withoutWear } from './wear';
 
 interface Props {
   item: ClothingItem;
+  outfits: Outfit[];
   onSave: (item: ClothingItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function ItemDetail({ item, onSave, onDelete }: Props) {
+export function ItemDetail({ item, outfits, onSave, onDelete }: Props) {
   const [wearDate, setWearDate] = useState(today());
   const cpw = costPerWear(item);
+  const inOutfits = outfits.filter((o) => o.itemIds.includes(item.id));
   const last = lastWorn(item);
 
   const facts: [string, string | undefined][] = [
@@ -23,6 +26,7 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
     ['Brand', item.brand],
     ['Color', item.color],
     ['Size', item.size],
+    ['Material', item.material],
     ['Condition', item.condition && label(item.condition)],
     ['Seasons', item.seasons.map(label).join(', ') || undefined],
     ['Price', item.price != null ? money(item.price) : undefined],
@@ -83,6 +87,19 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
         </ul>
       )}
 
+      {item.occasions && item.occasions.length > 0 && (
+        <section className="tag-section">
+          <h2 className="small muted">Occasions</h2>
+          <ul className="chips tag-list">
+            {item.occasions.map((t) => (
+              <li key={t} className="chip chip-static">
+                {t}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {item.notes && <p className="card notes">{item.notes}</p>}
 
       <section className="card">
@@ -120,6 +137,20 @@ export function ItemDetail({ item, onSave, onDelete }: Props) {
           </ul>
         )}
       </section>
+
+      {inOutfits.length > 0 && (
+        <section className="card">
+          <h2>In {inOutfits.length} {inOutfits.length === 1 ? 'outfit' : 'outfits'}</h2>
+          <ul className="rank-list">
+            {inOutfits.map((o) => (
+              <li key={o.id}>
+                <a href={href(`/clothes/outfits/${o.id}`)}>{outfitName(o)}</a>
+                <span className="muted small">{o.itemIds.length} pieces</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="form-actions">
         <button className="btn btn-danger" onClick={del}>

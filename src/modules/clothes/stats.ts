@@ -14,7 +14,7 @@ export interface ClothesStats {
 }
 
 /** Total times worn, including undated wears from before tracking. */
-export function wearCount(item: ClothingItem): number {
+export function wearCount(item: { wears: string[]; priorWears?: number }): number {
   return item.wears.length + (item.priorWears ?? 0);
 }
 
@@ -24,7 +24,7 @@ export function costPerWear(item: ClothingItem): number | null {
   return item.price / n;
 }
 
-export function lastWorn(item: ClothingItem): string | null {
+export function lastWorn(item: { wears: string[] }): string | null {
   return item.wears.length ? item.wears.reduce((a, b) => (a > b ? a : b)) : null;
 }
 

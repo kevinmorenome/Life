@@ -8,6 +8,7 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Wardrobe inventory: name, category, brand, color, size, seasons, price, purchase date, condition, photo, notes
 - Status tracking (active, storage, donated, sold, discarded), so past items still count toward spending history
 - Wear log: one tap for "Wore today", or log any past date
+- Outfits: combine pieces, log an outfit wear (also logs each piece), see which outfits an item is in
 - Search, filter by category or status, and sort by newest, name, most worn or longest unworn
 - Stats: closet value, total spent, wears in the last 30 days, items per category, most worn, best cost per wear, never worn
 - Import from Whering (see below)
@@ -15,10 +16,13 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 ### Importing from Whering
 
 1. Export your wardrobe from Whering's website to a JSON file shaped like `{ "items": [...] }` (category, brand, colors, size, price, currency, tags, timesWorn, imageUrls).
+   Optionally also a details file `{ items[], outfits[] }` from Whering's API (dateAdded, lastWorn, wornCount, seasons, occasions, fabric, archived, outfits with pieceIds), joined by image URL.
 2. Convert it, which downloads and shrinks every photo:
-   `node --experimental-strip-types scripts/import-whering.ts whering-export.json life-import-whering.json`
+   `node --experimental-strip-types scripts/import-whering.ts whering-export.json life-import-whering.json --details whering-details.json --currency EUR`
    (behind an HTTP proxy, prefix with `NODE_USE_ENV_PROXY=1`)
-3. In the app: **Settings → Import items** → pick `life-import-whering.json`. It only adds items that aren't there yet, so running it twice is safe. It also sets the display currency to the export's currency.
+3. In the app: **Settings → Import items** → pick `life-import-whering.json`. It adds new records and updates ones from an earlier import (the newer copy wins), so re-running is safe.
+
+Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
 
 Neither file is committed (see `.gitignore`); they contain your personal data.
 

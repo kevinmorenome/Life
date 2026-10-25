@@ -1,4 +1,4 @@
-import { STORES, addMissing, getAll, replaceAll, type StoreName } from './db';
+import { STORES, getAll, replaceAll, upsertNewer, type StoreName } from './db';
 
 interface Backup {
   app: 'life';
@@ -35,15 +35,15 @@ export async function importBackup(file: File): Promise<number> {
 }
 
 /**
- * Adds records from the file that aren't stored yet, keeping everything
- * already here (including edits to previously imported records).
+ * Adds records from the file that are new, and updates ones where the file's
+ * copy is newer. Everything else already here is kept.
  */
 export async function mergeBackup(file: File): Promise<number> {
   const data = await readBackup(file);
   let count = 0;
   for (const name of STORES) {
     const rows = data.stores[name];
-    if (Array.isArray(rows)) count += await addMissing(name, rows as { id: string }[]);
+    if (Array.isArray(rows)) count += await upsertNewer(name, rows as { id: string; updatedAt?: string }[]);
   }
   return count;
 }

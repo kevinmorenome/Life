@@ -7,11 +7,11 @@
 
 import type { Change } from '../../worker/protocol';
 
-export const STORES = ['clothes', 'settings'] as const;
+export const STORES = ['clothes', 'outfits', 'settings'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const OUTBOX = 'outbox';
 const META = 'meta';
 
@@ -146,11 +146,20 @@ export async function replaceAll<T extends Entity>(store: StoreName, values: T[]
   notify(store);
 }
 
-/** Adds records whose ids aren't stored yet, in one transaction. Returns how many were added. */
-export async function addMissing<T extends Entity>(store: StoreName, values: T[]): Promise<number> {
+/**
+ * Writes records that are new, or newer (by `updatedAt`) than the stored copy,
+ * in one transaction. Returns how many were written.
+ */
+export async function upsertNewer<T extends Entity & { updatedAt?: string }>(
+  store: StoreName,
+  values: T[],
+): Promise<number> {
   const db = await openDb();
-  const existing = new Set((await getAll<T>(store)).map((v) => v.id));
-  const fresh = values.filter((v) => !existing.has(v.id));
+  const existing = new Map((await getAll<T>(store)).map((v) => [v.id, v]));
+  const fresh = values.filter((v) => {
+    const old = existing.get(v.id);
+    return !old || (v.updatedAt ?? '') > (old.updatedAt ?? '');
+  });
   if (fresh.length === 0) return 0;
   const t = db.transaction([store, OUTBOX], 'readwrite');
   for (const v of fresh) {
