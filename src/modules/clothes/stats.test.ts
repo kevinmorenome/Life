@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStats, costPerWear, lastWorn, wearCount } from './stats';
+import { computeStats, costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import type { ClothingItem } from './types';
 
 function item(over: Partial<ClothingItem>): ClothingItem {
@@ -75,5 +75,16 @@ describe('clothes stats', () => {
     expect(s.wearsLast30).toBe(1);
     expect(s.mostWorn[0].name).toBe('imported');
     expect(s.neverWorn.map((i) => i.name)).toEqual(['new']);
+  });
+});
+
+describe('daysInCloset', () => {
+  it('counts from the purchase date, falling back to when it was added', () => {
+    expect(daysInCloset(item({ purchaseDate: '2026-07-07' }), '2026-10-25')).toBe(110);
+    expect(daysInCloset(item({ createdAt: '2026-10-20T10:00:00Z' }), '2026-10-25')).toBe(5);
+  });
+
+  it('never goes negative for future purchase dates', () => {
+    expect(daysInCloset(item({ purchaseDate: '2027-01-01' }), '2026-10-25')).toBe(0);
   });
 });

@@ -24,7 +24,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   if (first === 'outfits') {
     const outfitProps = { items, onSaveOutfit: outfits.save, onSaveItem: save };
     if (!second) return <OutfitList outfits={outfits.items} items={items} />;
-    if (second === 'new') return <OutfitForm items={items} onSave={outfits.save} />;
+    if (second === 'new') return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} />;
     const outfit = outfits.items.find((o) => o.id === second);
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;
     if (third === 'edit') return <OutfitForm existing={outfit} items={items} onSave={outfits.save} />;
@@ -48,7 +48,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
-    return <ItemDetail item={item} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
+    return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
   return <ClothesList items={items} />;
 }
