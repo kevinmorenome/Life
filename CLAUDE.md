@@ -54,5 +54,5 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - **Settings → Import items** upserts by `updatedAt` (newer wins); keep `updatedAt` current on every write.
 - Never commit personal data exports (Whering exports, import files, backups).
 - Prefer small icon buttons (≥ 44px touch target, with an `aria-label`) over text buttons for actions like add, remove, edit and toggle; keep text for primary Save/Cancel in forms.
-- UI should look like the Whering app: icon buttons over text buttons (text only for primary Save/Cancel), floating menus (`IconMenu`, `.menu`) over drawers or inline button rows, flat-lay outfit tiles with floating round icon buttons (`.card-fab`), and no cards inside cards — use flat sections and hairline lists instead of boxed rows.
+- UI should look like the Whering app: icon buttons over text buttons (text only for primary Save/Cancel), floating menus (`IconMenu`, `.menu`) over drawers or inline button rows, flat-lay outfit tiles with floating round icon buttons (`.card-fab`), borderless photo grids (pieces float on the page background, no boxed tiles), and no cards inside cards — use flat sections and hairline lists instead of boxed rows.
 - Styling lives in `src/styles.css` with CSS variables on `:root` and a dark-mode override. Keep touch targets ≥ 44px and check layouts at 390px width.

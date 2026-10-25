@@ -1832,3 +1832,19 @@ progress {
 .flat-list li span {
   flex: 1;
 }
+/* Today: a borderless photo grid, pieces float on the page instead of sitting in boxed tiles */
+.today .outfit-cards {
+  gap: 1.25rem 0.5rem;
+}
+.today .outfit-card {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.today .card-cover {
+  padding: 0;
+}
+.today .card-fab {
+  top: 0;
+  right: 0;
+}
