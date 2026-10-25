@@ -62,10 +62,10 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
       </a>
       <div className="title-row">
         <h1>{trip.name}</h1>
-        <a className="icon-action" href={href(`/packing/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
+        <a className="pack-icon" href={href(`/packing/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
           <EditIcon />
         </a>
-        <button className="icon-action" onClick={remove} aria-label="Delete trip" title="Delete trip">
+        <button className="pack-icon" onClick={remove} aria-label="Delete trip" title="Delete trip">
           <TrashIcon />
         </button>
       </div>
@@ -76,9 +76,9 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
       <div className="card pack-progress" aria-live="polite">
         <div className="progress-head">
           <strong>{done ? 'All packed 🎉' : `${list.packedCount} of ${list.total} packed`}</strong>
-          <span className="icon-actions">
+          <span className="pack-icons">
             <button
-              className="icon-action"
+              className="pack-icon"
               onClick={() => setShowPacked((x) => !x)}
               aria-label={showPacked ? 'Hide packed' : 'Show packed'}
               aria-pressed={!showPacked}
@@ -88,7 +88,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
             </button>
             {list.packedCount > 0 && (
               <button
-                className="icon-action"
+                className="pack-icon"
                 onClick={() => onSave(unpackAll(trip))}
                 aria-label="Unpack all"
                 title="Unpack all"
@@ -101,7 +101,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
         <progress max={Math.max(list.total, 1)} value={list.packedCount} />
       </div>
 
-      <nav className="seg" role="tablist" aria-label="Trip sections">
+      <nav className="trip-tabs" role="tablist" aria-label="Trip sections">
         {TABS.map((t) => {
           const count =
             t.id === 'clothes'
@@ -127,7 +127,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
           <p className="muted small">
             {list.clothes.length > 0 ? 'Double-tap a piece (or tap its ✓) to mark it packed.' : ''}
           </p>
-          <a className="icon-action" href={href(`/packing/${trip.id}/items`)} aria-label="Pick pieces" title="Pick pieces">
+          <a className="pack-icon" href={href(`/packing/${trip.id}/items`)} aria-label="Pick pieces" title="Pick pieces">
             <PlusIcon />
           </a>
         </div>
@@ -205,7 +205,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
             ))}
           </select>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add something…" aria-label="Item to pack" />
-          <button className="icon-action filled" disabled={!text.trim()} aria-label="Add" title="Add">
+          <button className="pack-icon filled" disabled={!text.trim()} aria-label="Add" title="Add">
             <PlusIcon />
           </button>
         </form>
