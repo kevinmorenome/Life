@@ -51,4 +51,5 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - Forms must spread the existing record before overwriting fields they edit, so fields they don't show (tags, priorWears, occasions…) survive an edit.
 - **Settings → Import items** upserts by `updatedAt` (newer wins); keep `updatedAt` current on every write.
 - Never commit personal data exports (Whering exports, import files, backups).
+- Prefer small icon buttons (≥ 44px touch target, with an `aria-label`) over text buttons for actions like add, remove, edit and toggle; keep text for primary Save/Cancel in forms.
 - Styling lives in `src/styles.css` with CSS variables on `:root` and a dark-mode override. Keep touch targets ≥ 44px and check layouts at 390px width.
