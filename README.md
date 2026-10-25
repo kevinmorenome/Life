@@ -56,7 +56,7 @@ GitHub Actions (`.github/workflows/ci.yml`) tests every push and deploys pushes 
 3. **GitHub secrets:** repo → **Settings → Secrets and variables → Actions → New repository secret**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 4. **Deploy:** repo → **Actions → CI / Deploy → Run workflow**. The app is published at `https://life.<your-subdomain>.workers.dev`.
 5. **Lock it down with Cloudflare Access:** Workers & Pages → **life** → **Settings → Domains & Routes** → on the `workers.dev` row, **Enable Cloudflare Access**. Then select **Manage Cloudflare Access** and make the policy allow only your email. Note the **team domain** (`<team>.cloudflareaccess.com`) and the application's **Audience (AUD) tag**.
-6. **Tell the Worker about Access:** **life → Settings → Variables and Secrets → Add**: `ACCESS_TEAM_DOMAIN` = your team domain, `ACCESS_AUD` = the AUD tag. Deploy.
+6. **Tell the Worker about Access:** put the team domain and AUD tag in `vars` in `wrangler.jsonc` (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`) and push. They aren't secrets.
 
 Until step 6 is done, the site loads but refuses to sync (the status dot shows "Sync not set up"), and nothing leaves your browser.
 
