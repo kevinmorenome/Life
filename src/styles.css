@@ -649,3 +649,104 @@ a:focus-visible {
 .preview-banner + .topbar {
   padding-top: 0.6rem;
 }
+
+/* Closet grid */
+.filter-row-pair {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 480px) {
+  .filter-row-pair select:last-child {
+    grid-column: auto;
+  }
+}
+.category-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0.75rem -16px 0;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+.category-tabs button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.category-tabs button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--text);
+  font-weight: 600;
+}
+.category-tabs .count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.closet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin: 0 -16px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+@media (min-width: 640px) {
+  .closet-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+}
+.closet-grid li {
+  min-width: 0;
+  background: var(--surface);
+}
+.closet-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  height: 100%;
+  padding: 0.5rem 0.5rem 0.65rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.closet-tile .thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  margin-bottom: 0.35rem;
+  padding: 8%;
+  border-radius: 8px;
+  font-size: 2.2rem;
+}
+.closet-tile:active .thumb {
+  opacity: 0.8;
+}
+.tile-name,
+.tile-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.tile-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
