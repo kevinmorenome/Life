@@ -76,13 +76,15 @@ export const TOOLS = [
   {
     name: 'log_wear',
     description:
-      'Log that the user wore items and/or whole outfits on a date. Wearing an outfit also logs each of its pieces, so do not list those pieces again. Resolve ids with find_items / list_outfits first and confirm ambiguous matches with the user. The wear shows up in the app the next time it syncs.',
+      'Log that the user wore items and/or whole outfits on a date. Wearing an outfit also logs each of its pieces, so do not list those pieces again. Resolve ids with find_items / list_outfits first and confirm ambiguous matches with the user. When two or more items are logged together without an outfit, an outfit is saved for them automatically, or an existing outfit with exactly those pieces is reused. If an existing outfit overlaps but differs (it has extra pieces the user may not have mentioned, or lacks some), nothing is logged and the candidates are returned: ask the user (show_photos helps), then call again with that outfit in outfitIds, or with createNewOutfit=true. The wear shows up in the app the next time it syncs.',
     inputSchema: {
       type: 'object',
       properties: {
         date: { type: 'string', description: 'YYYY-MM-DD, in the user’s local calendar. "Today" and "yesterday" must be turned into a date.' },
         itemIds: { type: 'array', items: { type: 'string' } },
         outfitIds: { type: 'array', items: { type: 'string' } },
+        outfitName: { type: 'string', description: 'Optional name for the outfit created from itemIds, e.g. "Grey sweats + white tee".' },
+        createNewOutfit: { type: 'boolean', description: 'Only after the user confirmed that similar existing outfits are not what they wore.' },
       },
       required: ['date'],
     },
@@ -292,8 +294,8 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
   if (!isRealDate(args.date)) return fail('date must be a real calendar date in YYYY-MM-DD form.');
   // One day of slack for users whose local date is ahead of UTC.
   if (args.date > addDays(utcToday(now), 1)) return fail('Can’t log a wear in the future.');
-  const itemIds = [...new Set(strings(args.itemIds))];
-  const outfitIds = [...new Set(strings(args.outfitIds))];
+  let itemIds = [...new Set(strings(args.itemIds))];
+  let outfitIds = [...new Set(strings(args.outfitIds))];
   if (itemIds.length + outfitIds.length === 0) return fail('Give at least one item id or outfit id.');
   if (itemIds.length + outfitIds.length > MAX_IDS) return fail(`At most ${MAX_IDS} ids per call.`);
 
@@ -303,12 +305,55 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
   const unknown = [...itemIds.filter((id) => !itemById.has(id)), ...outfitIds.filter((id) => !outfitById.has(id))];
   if (unknown.length) return fail(`Unknown ids: ${unknown.join(', ')}. Look them up with find_items / list_outfits.`);
 
+  // Pieces worn together become an outfit, without ever duplicating one.
+  let createdOutfit: { id: string; name: string } | undefined;
+  if (outfitIds.length === 0 && itemIds.length >= 2) {
+    const mine = new Set(itemIds);
+    const pieces = (o: Row) => new Set(strings(o.itemIds));
+    const exact = outfits.find((o) => pieces(o).size === mine.size && [...mine].every((id) => pieces(o).has(id)));
+    if (exact) {
+      outfitIds = [exact.id];
+      itemIds = [];
+    } else {
+      // Overlapping outfits might be the same look with a piece left out (or added), so don't guess.
+      const similar = outfits.filter((o) => {
+        const p = pieces(o);
+        const superset = [...mine].every((id) => p.has(id));
+        const subset = p.size >= 2 && [...p].every((id) => mine.has(id));
+        return superset || subset;
+      });
+      if (similar.length > 0 && args.createNewOutfit !== true) {
+        const name = (id: string) => String(itemById.get(id)?.name ?? '(deleted item)');
+        const candidates = similar.map((o) => ({
+          outfitId: o.id,
+          name: o.name ?? '(unnamed outfit)',
+          pieces: [...pieces(o)].map(name),
+          alsoInThisOutfit: [...pieces(o)].filter((id) => !mine.has(id)).map(name),
+          notInThisOutfit: [...mine].filter((id) => !pieces(o).has(id)).map(name),
+        }));
+        return ok(
+          'NOT LOGGED YET. These saved outfits overlap with what the user listed, and one may be the same look with a piece left out or added:\n' +
+            JSON.stringify(candidates, null, 1) +
+            '\nAsk the user which it was (show_photos helps). If it is one of these, call log_wear again with outfitIds=[its id] (plus itemIds for anything extra they wore). If it is a new combination, call again with the same itemIds and createNewOutfit=true.',
+        );
+      }
+      const stamp = now.toISOString();
+      const outfit = { id: newId(), name: text(args.outfitName), itemIds, wears: [], createdAt: stamp, updatedAt: stamp };
+      await store.put('outfits', outfit.id, outfit);
+      createdOutfit = { id: outfit.id, name: outfit.name ?? '(unnamed)' };
+      outfits.push({ id: outfit.id, name: outfit.name, itemIds, wears: [] });
+      outfitIds = [outfit.id];
+      itemIds = [];
+    }
+  }
+
   // A retry of the same request while it's still queued must not queue twice.
   const key = (d: unknown, i: string[], o: string[]) => `${d}|${[...i].sort()}|${[...o].sort()}`;
   const duplicate = inbox.find(
     (e) => e.type === 'wear' && !e.appliedAt && key(e.date, strings(e.itemIds), strings(e.outfitIds)) === key(args.date, itemIds, outfitIds),
   );
-  const names = [...outfitIds.map((id) => outfitById.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
+  const outfitNow = new Map(outfits.map((r) => [r.id, r]));
+  const names = [...outfitIds.map((id) => outfitNow.get(id)!), ...itemIds.map((id) => itemById.get(id)!)].map((r) => String(r.name ?? '(unnamed outfit)'));
   if (duplicate) return ok(`Already queued for ${args.date}: ${names.join(', ')}.`);
 
   const stamp = now.toISOString();
@@ -323,7 +368,8 @@ async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<
     updatedAt: stamp,
   };
   await store.put('inbox', request.id, request);
-  return ok(`Queued a wear for ${args.date}: ${names.join(', ')}. It appears in the app the next time it syncs (about a minute if the app is open).`);
+  const outfitNote = createdOutfit ? ` Saved these pieces as a new outfit (${createdOutfit.name}, id ${createdOutfit.id}).` : '';
+  return ok(`Queued a wear for ${args.date}: ${names.join(', ')}.${outfitNote} It appears in the app the next time it syncs (about a minute if the app is open).`);
 }
 
 async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

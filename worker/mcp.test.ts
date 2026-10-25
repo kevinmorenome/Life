@@ -233,6 +233,99 @@ describe('log_wear', () => {
   });
 });
 
+describe('log_wear saves outfits', () => {
+  const closet: Row[] = [
+    { id: 'blazer', name: 'Navy blazer', category: 'outerwear', status: 'active', wears: [] },
+    { id: 'tee', name: 'White tee', category: 'tops', status: 'active', wears: [] },
+    { id: 'shoes', name: 'White sneakers', category: 'shoes', status: 'active', wears: [] },
+    { id: 'sweats', name: 'Sweatpants', category: 'bottoms', status: 'active', wears: [] },
+  ];
+  const work: Row = { id: 'work', name: 'Work look', itemIds: ['blazer', 'tee'], wears: [] };
+  const log = (ctx: ToolContext, args: object) => call(ctx, 'log_wear', { date: '2026-10-25', ...args });
+
+  it('saves two or more loose pieces as a new outfit and logs that outfit', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    const r = await log(ctx, { itemIds: ['sweats', 'tee'], outfitName: 'Lazy Sunday' });
+    expect(r.text).toContain('new outfit (Lazy Sunday');
+    expect(data.outfits.get('id-1')).toMatchObject({ name: 'Lazy Sunday', itemIds: ['sweats', 'tee'], wears: [] });
+    expect(data.inbox.get('id-2')).toMatchObject({ outfitIds: ['id-1'], itemIds: [] });
+  });
+
+  it('reuses an outfit with exactly the same pieces, in any order', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { itemIds: ['tee', 'blazer'] });
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.get('id-1')).toMatchObject({ outfitIds: ['work'], itemIds: [] });
+  });
+
+  it('does not create a second outfit when the same request is repeated', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { itemIds: ['sweats', 'tee'] });
+    const again = await log(ctx, { itemIds: ['sweats', 'tee'] });
+    expect(again.text).toContain('Already queued');
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.size).toBe(1);
+  });
+
+  it('does not create an outfit for a single piece', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { itemIds: ['sweats'] });
+    expect(data.outfits.size).toBe(0);
+    expect(data.inbox.get('id-1')).toMatchObject({ itemIds: ['sweats'], outfitIds: [] });
+  });
+
+  it('asks before guessing when an existing outfit has more pieces than were mentioned', async () => {
+    const withShoes: Row = { id: 'full', name: 'Smart with sneakers', itemIds: ['blazer', 'tee', 'shoes'], wears: [] };
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [withShoes] });
+    const r = await log(ctx, { itemIds: ['blazer', 'tee'] });
+    expect(r.isError).toBe(false);
+    expect(r.text).toContain('NOT LOGGED YET');
+    const candidates = JSON.parse(r.text.slice(r.text.indexOf('\n[') + 1, r.text.indexOf('\nAsk the user')));
+    expect(candidates).toEqual([
+      {
+        outfitId: 'full',
+        name: 'Smart with sneakers',
+        pieces: ['Navy blazer', 'White tee', 'White sneakers'],
+        alsoInThisOutfit: ['White sneakers'],
+        notInThisOutfit: [],
+      },
+    ]);
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('also asks when the user mentioned more than an existing outfit contains', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    const r = await log(ctx, { itemIds: ['blazer', 'tee', 'shoes'] });
+    expect(r.text).toContain('NOT LOGGED YET');
+    expect(r.text).toContain('"notInThisOutfit": [\n   "White sneakers"');
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('logs the confirmed existing outfit', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { outfitIds: ['work'], itemIds: ['shoes'] });
+    expect(data.outfits.size).toBe(1);
+    expect(data.inbox.get('id-1')).toMatchObject({ outfitIds: ['work'], itemIds: ['shoes'] });
+  });
+
+  it('creates a new outfit once the user says the similar one is not it', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [work] });
+    await log(ctx, { itemIds: ['blazer', 'tee', 'shoes'], createNewOutfit: true });
+    expect(data.outfits.size).toBe(2);
+    expect(data.outfits.get('id-1')!.itemIds).toEqual(['blazer', 'tee', 'shoes']);
+  });
+
+  it('creates nothing when the request is invalid or the deployment is read-only', async () => {
+    const { ctx, data } = setup({}, { clothes: closet, outfits: [] });
+    await log(ctx, { date: 'nope', itemIds: ['sweats', 'tee'] });
+    await log(ctx, { itemIds: ['sweats', 'ghost'] });
+    const ro = setup({ readOnly: true }, { clothes: closet, outfits: [] });
+    await log(ro.ctx, { itemIds: ['sweats', 'tee'] });
+    expect(data.outfits.size + data.inbox.size + ro.data.outfits.size + ro.data.inbox.size).toBe(0);
+  });
+});
+
 describe('add_item and create_outfit', () => {
   it('adds an active item with the fields the app expects', async () => {
     const { ctx, data } = setup();
