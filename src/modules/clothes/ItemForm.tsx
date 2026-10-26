@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
+import { PALETTE, itemColors, swatchCss } from './colors';
 import {
   CATEGORIES,
   SUBCATEGORIES,
@@ -26,7 +27,7 @@ export function ItemForm({ existing, onSave }: Props) {
   const [category, setCategory] = useState<Category>(existing?.category ?? 'tops');
   const [subcategory, setSubcategory] = useState(existing?.subcategory ?? '');
   const [brand, setBrand] = useState(existing?.brand ?? '');
-  const [color, setColor] = useState(existing?.color ?? '');
+  const [colors, setColors] = useState<string[]>(existing ? itemColors(existing) : []);
   const [size, setSize] = useState(existing?.size ?? '');
   const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
   const [price, setPrice] = useState(existing?.price?.toString() ?? '');
@@ -39,6 +40,11 @@ export function ItemForm({ existing, onSave }: Props) {
 
   const toggleSeason = (s: Season) =>
     setSeasons((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
+  const toggleColor = (c: string) =>
+    setColors((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  // Names already on the item that the palette doesn't offer (legacy or imported) stay selectable.
+  const colorOptions = [...PALETTE, ...colors.filter((c) => !PALETTE.includes(c))];
 
   async function onPhoto(file: File | undefined) {
     if (!file) return;
@@ -65,7 +71,8 @@ export function ItemForm({ existing, onSave }: Props) {
       category,
       subcategory: subcategory.trim() || undefined,
       brand: brand.trim() || undefined,
-      color: color.trim() || undefined,
+      colors: colors.length ? colors : undefined,
+      color: colors.length ? colors.join(', ') : undefined,
       size: size.trim() || undefined,
       seasons: SEASONS.filter((s) => seasons.includes(s)),
       price: parsedPrice,
@@ -155,10 +162,6 @@ export function ItemForm({ existing, onSave }: Props) {
           <input value={brand} onChange={(e) => setBrand(e.target.value)} />
         </label>
         <label className="field">
-          <span>Color</span>
-          <input value={color} onChange={(e) => setColor(e.target.value)} />
-        </label>
-        <label className="field">
           <span>Size</span>
           <input value={size} onChange={(e) => setSize(e.target.value)} />
         </label>
@@ -200,6 +203,25 @@ export function ItemForm({ existing, onSave }: Props) {
               onClick={() => toggleSeason(s)}
             >
               {label(s)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="field">
+        <legend>Colors</legend>
+        <div className="swatch-picker">
+          {colorOptions.map((c) => (
+            <button
+              type="button"
+              key={c}
+              className="swatch-btn"
+              aria-label={c}
+              title={c}
+              aria-pressed={colors.includes(c)}
+              onClick={() => toggleColor(c)}
+            >
+              <span className="dot" style={swatchCss(c) ? { background: swatchCss(c)! } : undefined} aria-hidden />
             </button>
           ))}
         </div>

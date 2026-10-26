@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorSwatches } from './colors';
+import { colorSwatches, itemColors } from './colors';
 
 describe('colorSwatches', () => {
   it('splits comma and ampersand lists and keeps the original names', () => {
@@ -19,5 +19,16 @@ describe('colorSwatches', () => {
   it('returns nothing for an empty field', () => {
     expect(colorSwatches(undefined)).toEqual([]);
     expect(colorSwatches(' , ')).toEqual([]);
+  });
+});
+
+describe('itemColors', () => {
+  it('prefers the stored list', () => {
+    expect(itemColors({ colors: ['Red'], color: 'Blue' })).toEqual(['Red']);
+  });
+
+  it('falls back to the legacy string', () => {
+    expect(itemColors({ color: 'Blue & Navy' })).toEqual(['Blue', 'Navy']);
+    expect(itemColors({})).toEqual([]);
   });
 });
