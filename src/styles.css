@@ -745,7 +745,7 @@ a:focus-visible {
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background: var(--photo-bg);
+  background: none;
 }
 .day-bubble .thumb {
   width: 70%;
@@ -914,7 +914,7 @@ a:focus-visible {
   bottom: 0;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: var(--photo-bg);
+  background: none;
   color: var(--muted);
   font-size: 0.75rem;
 }
@@ -922,7 +922,7 @@ a:focus-visible {
   max-width: 45%;
   padding: 0.5rem;
   border-radius: 8px;
-  background: var(--photo-bg);
+  background: none;
   font-size: 0.7rem;
   text-align: center;
 }
