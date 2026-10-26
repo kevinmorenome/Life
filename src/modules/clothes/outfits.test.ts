@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outfitName, outfitPieces, outfitsWithItem, syncPieceWears, unwearOutfit, wearOutfit } from './outfits';
+import { outfitFromItems, outfitName, outfitPieces, outfitsWithItem, syncPieceWears, unwearOutfit, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 
 const piece = (id: string, wears: string[] = []): ClothingItem => ({
@@ -15,6 +15,13 @@ const piece = (id: string, wears: string[] = []): ClothingItem => ({
 const outfit: Outfit = { id: 'o', itemIds: ['a', 'b', 'gone'], wears: [], createdAt: '2026-07-20T07:53:54Z', updatedAt: 'x' };
 
 describe('outfits', () => {
+  it('builds an outfit worn on the day from already-logged pieces', () => {
+    const o = outfitFromItems([piece('a', ['2026-10-25']), piece('b', ['2026-10-25'])], '2026-10-25', 'now');
+    expect(o.itemIds).toEqual(['a', 'b']);
+    expect(o.wears).toEqual(['2026-10-25']);
+    expect(o.createdAt).toBe('now');
+  });
+
   it('resolves pieces in order and skips deleted ones', () => {
     expect(outfitPieces(outfit, [piece('b'), piece('a')]).map((p) => p.id)).toEqual(['a', 'b']);
   });
