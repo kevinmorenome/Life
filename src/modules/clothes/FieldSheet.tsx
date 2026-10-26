@@ -8,7 +8,7 @@ export interface FieldSpec {
   options?: { value: string; label: string }[];
   /** Suggestions for `text`. */
   suggestions?: string[];
-  /** For `select`: lets the user type a value that isn't in `options` ("New…" row), and filters long lists. */
+  /** For `select`: shows the options as chips plus a ＋ chip that becomes a text box for a new value. */
   creatable?: boolean;
   /** Whether an empty value is allowed (shows Restore to clear). */
   clearable?: boolean;
@@ -27,7 +27,6 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [filter, setFilter] = useState('');
   const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
   const [lift, setLift] = useState(0);
@@ -47,11 +46,11 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    input.current?.focus();
+    if (adding || spec.kind !== 'select') input.current?.focus();
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [onClose]);
+  }, [onClose, adding, spec.kind]);
 
   async function apply(v: string) {
     if (await onApply(v)) onClose();
@@ -67,7 +66,9 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
-          if (spec.kind !== 'select' || adding) apply(draft);
+          if (adding) {
+            if (draft.trim()) apply(draft);
+          } else if (spec.kind !== 'select') apply(draft);
         }}
       >
         <div className="field-sheet-head">
@@ -79,48 +80,46 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
           )}
         </div>
 
-        {spec.kind === 'select' && spec.creatable && adding ? (
-          <>
-            <input
-              ref={input}
-              type="text"
-              autoComplete="off"
-              value={draft}
-              placeholder={spec.placeholder}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-label={`New ${spec.title.toLowerCase()}`}
-            />
-            <button type="submit" className="btn btn-primary field-apply" disabled={!draft.trim()}>
-              Apply
-            </button>
-          </>
-        ) : spec.kind === 'select' ? (
-          <>
-            {spec.creatable && spec.options!.length > 8 && (
-              <input
-                type="search"
-                autoComplete="off"
-                value={filter}
-                placeholder="Search"
-                onChange={(e) => setFilter(e.target.value)}
-                aria-label={`Search ${spec.title.toLowerCase()}`}
-              />
-            )}
-            <ul className="field-options">
-            {spec.creatable && (
-              <li>
+        {spec.kind === 'select' && spec.creatable ? (
+          <ul className="chips field-suggestions">
+            {spec.options!.map((o) => (
+              <li key={o.value}>
+                <button type="button" className="chip" aria-pressed={value === o.value} onClick={() => apply(o.value)}>
+                  {o.label}
+                </button>
+              </li>
+            ))}
+            <li>
+              {adding ? (
+                <input
+                  ref={input}
+                  className="chip chip-input"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  value={draft}
+                  placeholder={spec.placeholder}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={() => !draft.trim() && setAdding(false)}
+                  aria-label={`New ${spec.title.toLowerCase()}`}
+                />
+              ) : (
                 <button
                   type="button"
-                  className="sheet-item"
+                  className="chip"
+                  aria-label={`New ${spec.title.toLowerCase()}`}
                   onClick={() => {
-                    setDraft(filter.trim());
+                    setDraft('');
                     setAdding(true);
                   }}
                 >
-                  ＋ New {spec.title.toLowerCase()}…
+                  ＋
                 </button>
-              </li>
-            )}
+              )}
+            </li>
+          </ul>
+        ) : spec.kind === 'select' ? (
+          <>
+            <ul className="field-options">
             {spec.clearable && (
               <li>
                 <button type="button" className="sheet-item" aria-pressed={value === ''} onClick={() => apply('')}>
@@ -128,9 +127,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 </button>
               </li>
             )}
-            {spec.options!
-              .filter((o) => o.label.toLowerCase().includes(filter.trim().toLowerCase()))
-              .map((o) => (
+            {spec.options!.map((o) => (
               <li key={o.value}>
                 <button type="button" className="sheet-item" aria-pressed={value === o.value} onClick={() => apply(o.value)}>
                   {o.label}
