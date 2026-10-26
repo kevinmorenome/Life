@@ -7,11 +7,11 @@
 
 import type { Change } from '../../worker/protocol';
 
-export const STORES = ['clothes', 'outfits', 'trips', 'settings', 'inbox'] as const;
+export const STORES = ['clothes', 'outfits', 'trips', 'plans', 'settings', 'inbox'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const OUTBOX = 'outbox';
 const META = 'meta';
 

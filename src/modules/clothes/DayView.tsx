@@ -4,9 +4,11 @@ import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
+import { CheckIcon } from '../../icons';
 import { OutfitCollage } from './OutfitCollage';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
-import type { ClothingItem, Outfit } from './types';
+import { pendingPlans } from './plans';
+import type { ClothingItem, Outfit, Plan } from './types';
 import { withoutWearOn } from './wear';
 
 interface Props {
@@ -14,11 +16,13 @@ interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
   trips?: Trip[];
+  plans?: Plan[];
+  onRemovePlan?: (id: string) => Promise<void>;
   onSaveItem: (i: ClothingItem) => Promise<void>;
   onSaveOutfit: (o: Outfit) => Promise<void>;
 }
 
-export function DayView({ date, items, outfits, trips = [], onSaveItem, onSaveOutfit }: Props) {
+export function DayView({ date, items, outfits, trips = [], plans = [], onRemovePlan, onSaveItem, onSaveOutfit }: Props) {
   const wear = wearsByDay(items, outfits).get(date) ?? { outfits: [], items: [] };
   const isFuture = date > today();
   const title = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
@@ -38,10 +42,13 @@ export function DayView({ date, items, outfits, trips = [], onSaveItem, onSaveOu
       .map((o) => ({ trip: t, outfit: o })),
   );
 
-  async function wearPlanned(o: Outfit) {
+  const scheduled = pendingPlans(plans, outfits, date);
+
+  async function wearPlanned(o: Outfit, planId?: string) {
     const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
     if (outfit) await onSaveOutfit(outfit);
     for (const p of pieces) await onSaveItem(p);
+    if (planId) await onRemovePlan?.(planId);
   }
 
   async function removeOutfit(o: Outfit) {
@@ -88,8 +95,35 @@ export function DayView({ date, items, outfits, trips = [], onSaveItem, onSaveOu
         </section>
       )}
 
-      {wear.outfits.length === 0 && wear.items.length === 0 && (
-        <p className="muted center">{isFuture ? 'Planning ahead isn’t supported yet.' : 'Nothing logged for this day.'}</p>
+      {scheduled.length > 0 && (
+        <section>
+          <h2>Planned</h2>
+          <ul className="item-grid">
+            {scheduled.map(({ plan, outfit }) => (
+              <li key={plan.id} className="card item-card">
+                <a href={href(`/clothes/outfits/${outfit.id}`)} className="item-link">
+                  <OutfitCollage pieces={outfitPieces(outfit, items)} />
+                  <div className="item-text">
+                    <strong>{outfitName(outfit)}</strong>
+                    <span className="muted small">{isFuture ? 'Planned' : 'Planned · not logged yet'}</span>
+                  </div>
+                </a>
+                {!isFuture && (
+                  <button className="icon-btn" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
+                    <CheckIcon />
+                  </button>
+                )}
+                <button className="btn btn-ghost btn-small" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {wear.outfits.length === 0 && wear.items.length === 0 && scheduled.length === 0 && planned.length === 0 && (
+        <p className="muted center">{isFuture ? 'Nothing planned for this day.' : 'Nothing logged for this day.'}</p>
       )}
 
       {wear.outfits.length > 0 && (
@@ -137,16 +171,16 @@ export function DayView({ date, items, outfits, trips = [], onSaveItem, onSaveOu
         </section>
       )}
 
-      {!isFuture && (
-        <div className="form-actions start day-actions">
-          <a className="btn btn-primary" href={href(`/clothes/calendar/${date}/outfit`)}>
-            + Log an outfit
-          </a>
+      <div className="form-actions start day-actions">
+        <a className="btn btn-primary" href={href(`/clothes/calendar/${date}/outfit`)}>
+          {isFuture ? '+ Plan an outfit' : '+ Log an outfit'}
+        </a>
+        {!isFuture && (
           <a className="btn" href={href(`/clothes/calendar/${date}/items`)}>
             + Log items
           </a>
-        </div>
-      )}
+        )}
+      </div>
     </article>
   );
 }

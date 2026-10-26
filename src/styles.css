@@ -1848,3 +1848,9 @@ progress {
   top: 0;
   right: 0;
 }
+
+/* Planned outfits on the calendar: dashed ring */
+.calendar-day.planned {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+}

@@ -95,6 +95,17 @@ export interface Outfit {
   updatedAt: string;
 }
 
+/** An outfit scheduled for a day. Kept apart from `wears` so stats never count it until it's worn. */
+export interface Plan {
+  /** `${outfitId}_${date}`, so planning the same outfit twice on a day is a no-op. */
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  outfitId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export function label(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

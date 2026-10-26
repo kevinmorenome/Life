@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { shortDate } from '../../lib/format';
+import { shortDate, today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
 import { OutfitCollage } from './OutfitCollage';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
+import { newPlan } from './plans';
 import { lastWorn } from './stats';
-import { label, type ClothingItem, type Outfit } from './types';
+import { label, type ClothingItem, type Outfit, type Plan } from './types';
 import { withWear } from './wear';
 
 interface Props {
@@ -14,12 +15,14 @@ interface Props {
   outfits: Outfit[];
   onSaveItem: (i: ClothingItem) => Promise<void>;
   onSaveOutfit: (o: Outfit) => Promise<void>;
+  onSavePlan?: (p: Plan) => Promise<void>;
 }
 
 const back = (date: string) => navigate(`/clothes/calendar/${date}`);
 
 /** Pick one outfit to log on `date` (also logs its pieces). */
-export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit }: Props) {
+export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit, onSavePlan }: Props) {
+  const future = date > today();
   const [query, setQuery] = useState('');
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -30,6 +33,10 @@ export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit
   }, [outfits, query, date]);
 
   async function pick(o: Outfit) {
+    if (future) {
+      await onSavePlan?.(newPlan(o.id, date));
+      return back(date);
+    }
     const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
     if (outfit) await onSaveOutfit(outfit);
     for (const p of pieces) await onSaveItem(p);
@@ -38,7 +45,7 @@ export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit
 
   return (
     <div className="form">
-      <h1>Log an outfit · {shortDate(date)}</h1>
+      <h1>{future ? 'Plan an outfit' : 'Log an outfit'} · {shortDate(date)}</h1>
       <input type="search" placeholder="Search outfits or tags…" value={query} onChange={(e) => setQuery(e.target.value)} />
       {list.length === 0 ? (
         <p className="muted">No outfits to pick. Build one in the Outfits tab, or log items instead.</p>
