@@ -40,12 +40,14 @@ export function withField(item: ClothingItem, key: FieldKey, raw: string): Cloth
   }
 }
 
-/** Distinct brands already used in the closet, case-insensitively de-duplicated, sorted A–Z. */
-export function brandsOf(items: ClothingItem[]): string[] {
+/** Distinct values of a text field already used in the closet (plus `extra`), case-insensitively de-duplicated, sorted A–Z. */
+export function valuesOf(items: ClothingItem[], key: 'brand' | 'size' | 'material' | 'subcategory', extra: string[] = []): string[] {
   const seen = new Map<string, string>();
-  for (const i of items) {
-    const b = i.brand?.trim();
-    if (b && !seen.has(b.toLowerCase())) seen.set(b.toLowerCase(), b);
+  for (const raw of [...extra, ...items.map((i) => i[key])]) {
+    const v = raw?.trim();
+    if (v && !seen.has(v.toLowerCase())) seen.set(v.toLowerCase(), v);
   }
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
+
+export const brandsOf = (items: ClothingItem[]) => valuesOf(items, 'brand');

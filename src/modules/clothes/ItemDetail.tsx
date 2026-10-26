@@ -3,7 +3,7 @@ import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
 import { FieldSheet, type FieldSpec } from './FieldSheet';
-import { brandsOf, withField, type FieldKey } from './fields';
+import { valuesOf, withField, type FieldKey } from './fields';
 import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
@@ -212,19 +212,20 @@ const SELECT = (values: readonly string[]) => values.map((v) => ({ value: v, lab
 
 /** Tappable value pill; opens a sheet and saves on Apply. */
 function FieldRows({ item, items, onSave }: SaveProps & { items: ClothingItem[] }) {
-  const brands = brandsOf(items);
+  const chipOptions = (key: 'brand' | 'size' | 'material' | 'subcategory', extra: string[] = []) =>
+    valuesOf(items, key, extra).map((v) => ({ value: v, label: v }));
   const [open, setOpen] = useState<FieldKey | null>(null);
   const rows: { key: FieldKey; spec: Omit<FieldSpec, 'key' | 'title'>; title: string; value: string; shown?: string }[] = [
     { key: 'category', title: 'Category', spec: { kind: 'select', options: SELECT(CATEGORIES) }, value: item.category, shown: label(item.category) },
     {
       key: 'subcategory',
       title: 'Sub-category',
-      spec: { kind: 'text', clearable: true, suggestions: SUBCATEGORIES[item.category], placeholder: 'Polo shirt' },
+      spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'Polo shirt', options: chipOptions('subcategory', SUBCATEGORIES[item.category]) },
       value: item.subcategory ?? '',
     },
-    { key: 'brand', title: 'Brand', spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'Brand name', options: brands.map((b) => ({ value: b, label: b })) }, value: item.brand ?? '' },
-    { key: 'size', title: 'Size', spec: { kind: 'text', clearable: true }, value: item.size ?? '' },
-    { key: 'material', title: 'Material', spec: { kind: 'text', clearable: true, placeholder: 'Cotton, Elastane' }, value: item.material ?? '' },
+    { key: 'brand', title: 'Brand', spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'Brand name', options: chipOptions('brand') }, value: item.brand ?? '' },
+    { key: 'size', title: 'Size', spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'M', options: chipOptions('size') }, value: item.size ?? '' },
+    { key: 'material', title: 'Material', spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'Cotton, Elastane', options: chipOptions('material') }, value: item.material ?? '' },
     {
       key: 'price',
       title: 'Price',
