@@ -7,7 +7,7 @@ import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { ItemThumb } from './ItemThumb';
 import { outfitPieces } from './outfits';
-import { plannedDays } from './plans';
+import { plannedByDay } from './plans';
 import type { ClothingItem, Outfit, Plan } from './types';
 
 interface Props {
@@ -24,7 +24,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
   const ym = month ?? now.slice(0, 7);
   const [year, m] = ym.split('-').map(Number);
   const days = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
-  const planned = useMemo(() => plannedDays(plans, outfits), [plans, outfits]);
+  const planned = useMemo(() => plannedByDay(plans, outfits), [plans, outfits]);
   const weeks = monthGrid(year, m);
   const title = new Date(Date.UTC(year, m - 1, 1)).toLocaleDateString(undefined, {
     month: 'long',
@@ -105,11 +105,11 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
                 key={date}
                 role="gridcell"
                 href={href(`/clothes/calendar/${date}`)}
-                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}${planned.has(date) ? ' planned' : ''}`}
+                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}${days.has(date) || planned.has(date) ? ' has-bubble' : ''}`}
                 aria-label={date}
                 onClick={(e) => openDay(e, date)}
               >
-                <DayBubble wear={days.get(date)} items={items} />
+                <DayBubble wear={days.get(date)} planned={planned.get(date)} items={items} />
                 <span className="day-num">{Number(date.slice(8))}</span>
               </a>
             ))}
@@ -133,13 +133,18 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
   );
 }
 
-/** Round photo of what was worn: the first outfit's top pieces, or the first item. */
-function DayBubble({ wear, items }: { wear?: DayWear; items: ClothingItem[] }) {
-  if (!wear) return null;
-  const pieces = wear.outfits.length ? outfitPieces(wear.outfits[0], items).slice(0, 2) : wear.items.slice(0, 2);
-  if (!pieces.length) return <span className="day-bubble" />;
+/** Round photo of what was worn (or, faded, what's planned): the first outfit's top pieces, or the first item. */
+function DayBubble({ wear, planned, items }: { wear?: DayWear; planned?: Outfit[]; items: ClothingItem[] }) {
+  const isPlan = !wear && !!planned?.length;
+  if (!wear && !isPlan) return null;
+  const pieces = wear
+    ? wear.outfits.length
+      ? outfitPieces(wear.outfits[0], items).slice(0, 2)
+      : wear.items.slice(0, 2)
+    : outfitPieces(planned![0], items).slice(0, 2);
+  if (!pieces.length) return <span className={`day-bubble${isPlan ? ' planned' : ''}`} />;
   return (
-    <span className={`day-bubble pieces-${pieces.length}`}>
+    <span className={`day-bubble pieces-${pieces.length}${isPlan ? ' planned' : ''}`}>
       {pieces.map((p) => (
         <ItemThumb key={p.id} item={p} />
       ))}

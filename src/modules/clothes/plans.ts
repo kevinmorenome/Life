@@ -17,13 +17,14 @@ export function pendingPlans(plans: Plan[], outfits: Outfit[], date: string): { 
     });
 }
 
-/** Days with at least one plan still waiting to be worn. */
-export function plannedDays(plans: Plan[], outfits: Outfit[]): Set<string> {
+/** Unworn planned outfits by day, in plan order. */
+export function plannedByDay(plans: Plan[], outfits: Outfit[]): Map<string, Outfit[]> {
   const byId = new Map(outfits.map((o) => [o.id, o]));
-  const days = new Set<string>();
-  for (const p of plans) {
+  const days = new Map<string, Outfit[]>();
+  for (const p of [...plans].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
     const o = byId.get(p.outfitId);
-    if (o && !o.wears.includes(p.date)) days.add(p.date);
+    if (!o || o.wears.includes(p.date)) continue;
+    days.set(p.date, [...(days.get(p.date) ?? []), o]);
   }
   return days;
 }

@@ -1763,10 +1763,23 @@ progress {
   color: #fff;
 }
 
-/* Planned outfits on the calendar: dashed ring */
-.calendar-day.planned {
-  outline: 2px dashed var(--accent);
-  outline-offset: -3px;
+/* Planned outfits show as a faded photo bubble with an accent ring; today is a solid accent circle */
+.day-bubble.planned {
+  opacity: 0.55;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.calendar-day.today:not(.has-bubble) {
+  background: var(--accent);
+}
+.calendar-day.today:not(.has-bubble) .day-num {
+  color: var(--accent-text);
+}
+.calendar-day.today .day-bubble {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.calendar-day.today .day-bubble ~ .day-num {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Outfit form: closet grid with selectable tiles */
