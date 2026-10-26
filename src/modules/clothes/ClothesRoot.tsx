@@ -5,7 +5,7 @@ import { ClothesStatsView } from './ClothesStats';
 import { DayView } from './DayView';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
-import { LogItemsPicker, LogOutfitPicker } from './LogWearPickers';
+import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
@@ -37,6 +37,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     const props = { items, outfits: outfits.items, trips: trips.items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveItem: save, onSaveOutfit: outfits.save };
     if (second && /^\d{4}-\d{2}-\d{2}$/.test(second)) {
       if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
+      if (third === 'new-outfit') return <NewOutfitForDay date={second} {...props} />;
       if (third === 'items') return <LogItemsPicker date={second} {...props} />;
       return <DayView date={second} {...props} />;
     }
