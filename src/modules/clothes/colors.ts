@@ -21,6 +21,7 @@ const KNOWN: Record<string, string> = {
   pink: '#f4a6c0',
   orange: '#ff9f0a',
   yellow: '#ffe600',
+  'baby yellow': '#fff3a8',
   gold: '#d4af37',
   green: '#2e9e4f',
   olive: '#6b7230',
@@ -70,8 +71,8 @@ const KNOWN: Record<string, string> = {
 /** Colours offered by the item form's picker, in display order. */
 export const PALETTE = [
   'Black', 'White', 'Grey', 'Charcoal', 'Beige', 'Cream', 'Brown', 'Tan', 'Camel',
-  'Red', 'Burgundy', 'Maroon', 'Pink', 'Coral', 'Orange', 'Mustard', 'Yellow', 'Gold',
-  'Green', 'Olive', 'Khaki', 'Mint', 'Teal', 'Turquoise', 'Light blue', 'Blue', 'Navy', 'Denim',
+  'Red', 'Burgundy', 'Maroon', 'Pink', 'Coral', 'Orange', 'Mustard', 'Baby yellow', 'Yellow', 'Gold',
+  'Green', 'Olive', 'Khaki', 'Mint', 'Teal', 'Turquoise', 'Baby blue', 'Light blue', 'Blue', 'Navy', 'Denim',
   'Purple', 'Lilac', 'Silver', 'Multicolor',
 ];
 
