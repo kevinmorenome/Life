@@ -210,7 +210,7 @@ export function ItemForm({ existing, onSave }: Props) {
 
       <fieldset className="field">
         <legend>Colors</legend>
-        <div className="chips">
+        <div className="chips color-grid">
           {colorOptions.map((c) => (
             <button
               type="button"
