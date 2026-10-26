@@ -642,6 +642,12 @@ a:focus-visible {
   padding: 8%;
   border-radius: 8px;
   font-size: 2.2rem;
+  background: none;
+}
+.piece .thumb-large,
+.picker-item .thumb,
+.pick-thumb .thumb {
+  background: none;
 }
 .closet-tile:active .thumb {
   opacity: 0.8;
