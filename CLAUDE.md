@@ -28,7 +28,7 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - `useCollection.ts` — React hook that loads a store and exposes `save`/`remove`
   - `router.ts` — `useRoute`, `navigate`, `href`
   - `backup.ts` — JSON export/import covering every store
-  - `image.ts`, `format.ts` — photo downscaling, money/date helpers (`money()` uses the display currency)
+  - `image.ts`, `format.ts` — photo downscaling and background removal for item photos (`cutOutImage`: on-device `@imgly/background-removal`, lazy-loaded, model files from IMG.LY's CDN; pure clean-up in `cutout.ts`), money/date helpers (`money()` uses the display currency)
   - `settings.tsx` — synced app settings (single record in the `settings` store), e.g. display currency
 - `worker/` — Cloudflare Worker: serves `dist/`, exposes `/api/sync/pull` and `/api/sync/push`, and verifies the Cloudflare Access JWT (`auth.ts`, fails closed). `protocol.ts` is shared with the client
   - `mcp.ts` + `mcpTools.ts` — MCP endpoint (`/mcp`, bypassed in Access, guarded by the `MCP_TOKEN` secret) so Claude can read the closet and log wears; `records.ts` holds the D1 upsert/list helpers. Tools must never edit existing records: wears go through the `inbox` store (below); new items/outfits have fresh ids so they're written directly
