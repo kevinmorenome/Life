@@ -85,4 +85,10 @@ describe('cutOut', () => {
     const cut = cutOut(grey)!;
     expect(alphaAt(cut, cut.width >> 1, cut.height >> 1)).toBe(255);
   });
+
+  it('does not cut an image that already has a transparent background', () => {
+    const src = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? red : null));
+    const once = cutOut(src)!;
+    expect(cutOut(once)).toBeNull();
+  });
 });

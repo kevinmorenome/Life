@@ -22,6 +22,8 @@ const dist = (d: Uint8ClampedArray, i: number, r: number, g: number, b: number) 
  * plain enough backdrop (caller keeps the original). Never mutates the input.
  */
 export function cutOut(src: Pixels, opts: CutoutOptions = {}): Pixels | null {
+  // Already a cutout: cutting again would only chew into the item.
+  if (opaqueArea(src) < 0.98 * (src.width * src.height)) return null;
   const first = cutOnce(src, { ...opts, padding: 0 }, false);
   if (!first) return null;
   // Screenshots and product pages: the photo's own backdrop (white) sits inside dark bars, so it
