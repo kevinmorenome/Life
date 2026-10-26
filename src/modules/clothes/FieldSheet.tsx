@@ -86,7 +86,6 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 ref={input}
                 type={spec.kind === 'date' ? 'date' : 'text'}
                 inputMode={spec.kind === 'number' ? 'decimal' : undefined}
-                list={spec.suggestions ? 'field-suggestions' : undefined}
                 value={draft}
                 placeholder={spec.placeholder}
                 onChange={(e) => {
@@ -97,12 +96,16 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 aria-invalid={error}
               />
             )}
-            {spec.suggestions && (
-              <datalist id="field-suggestions">
-                {spec.suggestions.map((s) => (
-                  <option key={s} value={s} />
+            {spec.suggestions && spec.suggestions.length > 0 && (
+              <ul className="chips field-suggestions">
+                {spec.suggestions.map((sg) => (
+                  <li key={sg}>
+                    <button type="button" className="chip" aria-pressed={draft === sg} onClick={() => apply(sg)}>
+                      {sg}
+                    </button>
+                  </li>
                 ))}
-              </datalist>
+              </ul>
             )}
             {error && <p className="error">That value isn’t valid.</p>}
             <button type="submit" className="btn btn-primary field-apply">
