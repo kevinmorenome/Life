@@ -50,7 +50,37 @@ export interface TagRequest extends RequestBase {
   tags: string[];
 }
 
-export type InboxRequest = WearRequest | TagRequest;
+/** Rename an outfit and/or change its pieces: `itemIds` are added, `removeItemIds` removed. `outfitIds` holds the one outfit. */
+export interface OutfitEditRequest extends RequestBase {
+  type: 'outfit-edit';
+  name?: string;
+  removeItemIds: string[];
+}
+
+/** Fields an item edit may set; `null` clears an optional field. Wears, photo and tags are never touched. */
+export interface ItemChanges {
+  name?: string;
+  category?: string;
+  subcategory?: string | null;
+  brand?: string | null;
+  colors?: string[] | null;
+  size?: string | null;
+  material?: string | null;
+  price?: number | null;
+  purchaseDate?: string | null;
+  seasons?: string[];
+  status?: string;
+  condition?: string | null;
+  notes?: string | null;
+}
+
+/** Change fields of one item (`itemIds` holds it). */
+export interface ItemEditRequest extends RequestBase {
+  type: 'item-edit';
+  changes: ItemChanges;
+}
+
+export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest;
 
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;

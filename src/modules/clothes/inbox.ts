@@ -1,4 +1,4 @@
-import type { InboxRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRequest, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { outfitPieces, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 import { withWear } from './wear';
@@ -38,12 +38,16 @@ export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], a
   const changedOutfits = new Set<string>();
   const applied: InboxRequest[] = [];
 
-  const pending = requests.filter((r) => (r.type === 'wear' || r.type === 'tags') && !r.appliedAt).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const pending = requests.filter((r) => !r.appliedAt).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   for (const req of pending) {
     const missing: string[] = [];
     if (req.type === 'tags') {
       applyTags(req, items, outfits, changedItems, changedOutfits, missing);
-    } else {
+    } else if (req.type === 'outfit-edit') {
+      applyOutfitEdit(req, items, outfits, changedOutfits, missing);
+    } else if (req.type === 'item-edit') {
+      applyItemEdit(req, items, changedItems, missing);
+    } else if (req.type === 'wear') {
       applyWear(req, items, outfits, changedItems, changedOutfits, missing);
     }
     applied.push({
@@ -97,6 +101,57 @@ function applyTags(
       changedItems.add(id);
     }
   }
+}
+
+const CLEARABLE = ['subcategory', 'brand', 'size', 'material', 'price', 'purchaseDate', 'condition', 'notes'] as const;
+
+/** Sets the given fields (null clears optional ones). Wears, photo and tags are left alone. Idempotent. */
+function applyItemEdit(req: ItemEditRequest, items: Records['items'], changedItems: Set<string>, missing: string[]) {
+  const item = items.get(req.itemIds[0]);
+  if (!item) {
+    missing.push(...req.itemIds);
+    return;
+  }
+  const c = req.changes;
+  const next: Record<string, unknown> = { ...item };
+  if (c.name?.trim()) next.name = c.name.trim();
+  if (c.category) next.category = c.category;
+  if (c.status) next.status = c.status;
+  if (c.seasons) next.seasons = c.seasons;
+  for (const f of CLEARABLE) {
+    if (c[f] === null) delete next[f];
+    else if (c[f] !== undefined) next[f] = c[f];
+  }
+  if (c.colors !== undefined) {
+    if (c.colors === null || c.colors.length === 0) {
+      delete next.colors;
+      delete next.color;
+    } else {
+      next.colors = c.colors;
+      next.color = c.colors.join(', ');
+    }
+  }
+  if (JSON.stringify(next) === JSON.stringify(item)) return;
+  items.set(item.id, { ...(next as unknown as ClothingItem), updatedAt: new Date().toISOString() });
+  changedItems.add(item.id);
+}
+
+/** Renames and/or adds/removes pieces; an edit that would leave the outfit empty is ignored. Idempotent. */
+function applyOutfitEdit(req: OutfitEditRequest, items: Records['items'], outfits: Records['outfits'], changedOutfits: Set<string>, missing: string[]) {
+  const outfit = outfits.get(req.outfitIds[0]);
+  if (!outfit) {
+    missing.push(...req.outfitIds);
+    return;
+  }
+  const add = req.itemIds.filter((id) => items.has(id));
+  missing.push(...req.itemIds.filter((id) => !items.has(id)));
+  const drop = new Set(req.removeItemIds);
+  const itemIds = [...new Set([...outfit.itemIds, ...add])].filter((id) => !drop.has(id));
+  const name = req.name?.trim() || outfit.name;
+  const samePieces = itemIds.length === outfit.itemIds.length && itemIds.every((id, i) => id === outfit.itemIds[i]);
+  if (itemIds.length === 0 || (samePieces && name === outfit.name)) return;
+  outfits.set(outfit.id, { ...outfit, name, itemIds, updatedAt: new Date().toISOString() });
+  changedOutfits.add(outfit.id);
 }
 
 function applyWear(

@@ -90,6 +90,8 @@ describe('protocol', () => {
       'add_tags',
       'add_item',
       'create_outfit',
+      'edit_outfit',
+      'edit_item',
     ]);
     expect(await rpc(ctx, 'notifications/initialized', undefined, true)).toBeNull();
     expect((await rpc(ctx, 'nope')).error.code).toBe(-32601);
@@ -477,5 +479,74 @@ describe('read-only deployments', () => {
       expect((await call(ctx, name, args)).isError).toBe(true);
     }
     expect(data.inbox.size + data.clothes.size + data.outfits.size).toBe(ITEMS.length + OUTFITS.length);
+  });
+});
+
+describe('edit_outfit', () => {
+  it('queues an edit instead of changing the outfit', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'edit_outfit', { outfitId: 'work', name: 'Smart', removeItemIds: ['tee'], addItemIds: ['old'] });
+    expect(r.isError).toBe(false);
+    expect(data.inbox.get('id-1')).toMatchObject({ type: 'outfit-edit', outfitIds: ['work'], itemIds: ['old'], removeItemIds: ['tee'], name: 'Smart', source: 'claude' });
+    expect(data.outfits.get('work')!.itemIds).toEqual(['blazer', 'tee']);
+  });
+
+  it.each([
+    [{ outfitId: 'ghost', name: 'x' }, 'Unknown outfit'],
+    [{ outfitId: 'work' }, 'new name'],
+    [{ outfitId: 'work', addItemIds: ['ghost'] }, 'Unknown item ids'],
+    [{ outfitId: 'work', removeItemIds: ['blazer', 'tee'] }, 'at least one piece'],
+    [{ outfitId: 'work', addItemIds: ['tee'], removeItemIds: ['tee'] }, 'both added and removed'],
+  ])('rejects %j', async (args, message) => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'edit_outfit', args);
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain(message);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('refuses on read-only deployments', async () => {
+    const { ctx, data } = setup({ readOnly: true });
+    expect((await call(ctx, 'edit_outfit', { outfitId: 'work', name: 'x' })).isError).toBe(true);
+    expect(data.inbox.size).toBe(0);
+  });
+});
+
+describe('edit_item', () => {
+  it('queues the changes instead of editing the item', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'edit_item', { itemId: 'blazer', brand: ' Massimo ', size: null, colors: ['Navy'], status: 'storage' });
+    expect(r.isError).toBe(false);
+    expect(data.inbox.get('id-1')).toMatchObject({
+      type: 'item-edit',
+      itemIds: ['blazer'],
+      changes: { brand: 'Massimo', size: null, colors: ['Navy'], status: 'storage' },
+      source: 'claude',
+    });
+    expect(data.clothes.get('blazer')!.brand).toBe('Zara');
+  });
+
+  it.each([
+    [{ itemId: 'ghost', name: 'x' }, 'Unknown item'],
+    [{ itemId: 'tee' }, 'at least one field'],
+    [{ itemId: 'tee', name: '  ' }, 'can’t be empty'],
+    [{ itemId: 'tee', category: 'hats' }, 'category must be'],
+    [{ itemId: 'tee', status: 'lost' }, 'status must be'],
+    [{ itemId: 'tee', price: -1 }, 'price'],
+    [{ itemId: 'tee', purchaseDate: '2026-13-01' }, 'purchaseDate'],
+    [{ itemId: 'tee', colors: ['Plaid'] }, 'colors must be'],
+    [{ itemId: 'tee', seasons: ['monsoon'] }, 'seasons must be'],
+  ])('rejects %j', async (args, message) => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'edit_item', args);
+    expect(r.isError).toBe(true);
+    expect(r.text).toContain(message);
+    expect(data.inbox.size).toBe(0);
+  });
+
+  it('refuses on read-only deployments', async () => {
+    const { ctx, data } = setup({ readOnly: true });
+    expect((await call(ctx, 'edit_item', { itemId: 'tee', name: 'x' })).isError).toBe(true);
+    expect(data.inbox.size).toBe(0);
   });
 });
