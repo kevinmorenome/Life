@@ -43,7 +43,8 @@ async function call(ctx: ToolContext, name: string, args: object) {
   const r = await rpc(ctx, 'tools/call', { name, arguments: args });
   const text: string = r.result.content[0].text;
   const content: { type: string; text?: string; data?: string; mimeType?: string }[] = r.result.content;
-  return { isError: r.result.isError as boolean, text, content, json: () => JSON.parse(text) };
+  const structured = r.result.structuredContent as { photos: { caption: string; mimeType: string; data: string }[]; note: string } | undefined;
+  return { isError: r.result.isError as boolean, text, content, structured, json: () => JSON.parse(text) };
 }
 
 describe('mcpAuthorized', () => {
@@ -122,6 +123,7 @@ describe('photo gallery (MCP App)', () => {
     expect(page.text).toContain('appCapabilities');
     expect(page.text).not.toContain('clientInfo');
     expect(page.text).toContain('ui/notifications/tool-result');
+    expect(page.text).toContain('structuredContent');
     // Self-contained: the host's default CSP blocks anything fetched from elsewhere.
     expect(page.text).not.toMatch(/https?:\/\//);
     expect((await rpc(ctx, 'resources/read', { uri: 'ui://life/other' })).error.code).toBe(-32002);
@@ -178,6 +180,16 @@ describe('show_photos', () => {
     const r = await call(ctx, 'show_photos', { outfitIds: ['work'] });
     expect(r.text).toContain('Work look: https://life.test/#/clothes/outfits/work');
     expect(r.text).toContain('Navy blazer: https://life.test/#/clothes/blazer');
+  });
+
+  it('also hands the photos to the gallery view as structured content, which hosts keep out of the model', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
+    expect(r.structured).toEqual({
+      photos: [{ caption: 'Navy blazer', mimeType: 'image/jpeg', data: '/9j/AAAA' }],
+      note: 'No photo for: White tee.',
+    });
+    expect((await call(ctx, 'find_items', {})).structured).toBeUndefined();
   });
 
   it('expands an outfit into its pieces, labelled with the outfit, without repeating an item', async () => {
