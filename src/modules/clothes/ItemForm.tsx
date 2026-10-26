@@ -210,18 +210,17 @@ export function ItemForm({ existing, onSave }: Props) {
 
       <fieldset className="field">
         <legend>Colors</legend>
-        <div className="swatch-picker">
+        <div className="chips">
           {colorOptions.map((c) => (
             <button
               type="button"
               key={c}
-              className="swatch-btn"
-              aria-label={c}
-              title={c}
+              className="chip chip-color"
               aria-pressed={colors.includes(c)}
               onClick={() => toggleColor(c)}
             >
               <span className="dot" style={swatchCss(c) ? { background: swatchCss(c)! } : undefined} aria-hidden />
+              {c}
             </button>
           ))}
         </div>
