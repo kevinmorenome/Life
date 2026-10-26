@@ -19,8 +19,8 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - `npm run deploy` — what CI runs: build, apply D1 migrations remotely, `wrangler deploy`
 
 ## Layout
-- `src/App.tsx` — shell (no top bar; each screen has its own title): routes `#/settings` and `#/<module>/...`; with a single module, `#/` opens it (Home lists modules once there are more)
-- `src/BottomNav.tsx` — Instagram-style bottom tab bar from the module's `tabs`, with a centre ＋ menu from its `actions` and an app-level **You** tab (settings, amber sync badge only when sync needs attention); hidden where `hideNav` says (forms with their own bottom Save)
+- `src/App.tsx` — shell: top bar (name, sync dot, settings), routes `#/settings` and `#/<module>/...`; with a single module, `#/` opens it (Home lists modules once there are more)
+- `src/BottomNav.tsx` — Instagram-style bottom tab bar from the module's `tabs`, with a centre ＋ menu from its `actions`; hidden where `hideNav` says (forms with their own bottom Save)
 - `src/icons.tsx` — inline line icons; `public/` holds the PWA manifest and icons (`node scripts/make-icons.mjs` regenerates them)
 - `src/lib/` — shared infrastructure
   - `db.ts` — IndexedDB wrapper; one object store per module (`STORES` + `DB_VERSION`). Every local write also queues an `outbox` entry
@@ -36,7 +36,6 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - `src/modules/` — feature modules, registered in `src/modules/index.ts`
 - `src/modules/clothes/` — first module; use it as the reference implementation
   - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
-  - Closet tab holds Items | Outfits (`ClosetSwitch`); `closetView.ts` remembers the last one so the tab reopens it
   - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
 - Inbox: `inbox` store holds `WearRequest`s, `TagRequest`s, `OutfitEditRequest`s (rename, add/remove pieces) and `ItemEditRequest`s (field changes, never wears/photo/tags) queued by the MCP endpoint. `processInbox()` (`clothes/inboxRunner.ts`, registered with `setAfterPull` in `main.tsx`, skipped in PR previews) applies them via pure `applyInbox()` after each pull, then marks them applied; wears are idempotent per date

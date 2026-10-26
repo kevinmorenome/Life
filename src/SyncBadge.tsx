@@ -1,3 +1,4 @@
+import { href } from './lib/router';
 import type { SyncState } from './lib/sync';
 import { useSyncStatus } from './lib/useSyncStatus';
 
@@ -23,10 +24,10 @@ const TONE: Record<SyncState, 'ok' | 'busy' | 'warn' | 'muted'> = {
   error: 'warn',
 };
 
-/** Amber dot for the You tab: only shown when sync needs attention or changes are waiting. */
 export function SyncBadge() {
   const { state, pending } = useSyncStatus();
-  if (TONE[state] !== 'warn' && !pending) return null;
   const title = pending ? `${SYNC_LABELS[state]} · ${pending} change(s) waiting` : SYNC_LABELS[state];
-  return <span className="sync-badge" role="img" aria-label={title} />;
+  return (
+    <a className={`sync-dot sync-${TONE[state]}`} href={href('/settings')} title={title} aria-label={title} />
+  );
 }

@@ -1,12 +1,16 @@
 import { BottomNav } from './BottomNav';
 import { Home } from './Home';
 import { Settings } from './Settings';
+import { SyncBadge } from './SyncBadge';
+import { GearIcon } from './icons';
 import { PREVIEW_LABEL } from './lib/preview';
-import { useRoute } from './lib/router';
+import { href, useRoute } from './lib/router';
+import { useHideOnScroll } from './lib/useHideOnScroll';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
 export function App() {
+  const topbarHidden = useHideOnScroll();
   const [section, ...rest] = useRoute();
   // With a single module the app opens straight into it; Home returns once there are more.
   const singleModule = MODULES.length === 1;
@@ -30,8 +34,24 @@ export function App() {
           <strong>Preview of {PREVIEW_LABEL}</strong> · shows your real data, but changes here aren’t saved
         </div>
       )}
+      <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
+        <div className="brand-row">
+          <a className="brand" href={href('/')}>
+            Life
+          </a>
+          <SyncBadge />
+        </div>
+        <a
+          className="icon-btn"
+          href={href('/settings')}
+          aria-label="Settings"
+          aria-current={section === 'settings' ? 'page' : undefined}
+        >
+          <GearIcon />
+        </a>
+      </header>
       <main className={`container${showNav ? ' with-nav' : ''}`}>{page}</main>
-      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} settingsActive={section === 'settings'} />}
+      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} />}
     </SettingsProvider>
   );
 }

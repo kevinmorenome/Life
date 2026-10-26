@@ -79,13 +79,37 @@ ul {
 }
 
 /* Layout */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 16px;
+  padding-top: max(0.6rem, env(safe-area-inset-top));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-hidden {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .topbar {
+    transition: transform 0.2s ease;
+  }
+}
+.brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--text);
+  text-decoration: none;
+}
 .container {
   max-width: 960px;
   margin: 0 auto;
-  padding: calc(1.25rem + env(safe-area-inset-top)) 16px 4rem;
-}
-.preview-banner + .container {
-  padding-top: 1.25rem;
+  padding: 1.25rem 16px 4rem;
 }
 
 /* Surfaces */
@@ -399,46 +423,39 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Sync badge on the You tab */
-.tab-icon {
-  position: relative;
+/* Sync indicator */
+.brand-row {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.sync-badge {
-  position: absolute;
-  top: -1px;
-  right: -3px;
+.sync-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  background: var(--muted);
+  /* Larger hit area than the visible dot. */
+  outline: 10px solid transparent;
+}
+.sync-ok {
+  background: var(--accent);
+}
+.sync-busy {
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+.sync-warn {
   background: #d08a1e;
-  border: 2px solid var(--surface);
-  box-sizing: content-box;
 }
-
-/* Items | Outfits toggle */
-.segmented {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 0.25rem 0 1rem;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--border);
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
 }
-.segmented a {
-  display: grid;
-  place-items: center;
-  min-height: 40px;
-  border-radius: 999px;
-  color: var(--muted);
-  font-weight: 500;
-  text-decoration: none;
-}
-.segmented a[aria-current='page'] {
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: var(--shadow);
+@media (prefers-reduced-motion: reduce) {
+  .sync-busy {
+    animation: none;
+  }
 }
 
 .thumb {
@@ -536,6 +553,9 @@ a:focus-visible {
   color: #1c1d20;
   font-size: 0.85rem;
   text-align: center;
+}
+.preview-banner + .topbar {
+  padding-top: 0.6rem;
 }
 
 /* Closet grid */

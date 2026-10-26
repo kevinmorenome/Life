@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react';
-import { PlusIcon, UserIcon } from './icons';
+import { PlusIcon } from './icons';
 import { href, navigate } from './lib/router';
 import type { LifeModule } from './modules/types';
-import { SyncBadge } from './SyncBadge';
 
-/** Instagram-style tab bar: module tabs around a ＋ menu, ending with the app-level You tab (settings + sync). */
-export function BottomNav({
-  module,
-  subroute,
-  settingsActive,
-}: {
-  module: LifeModule;
-  subroute: string[] | null;
-  settingsActive: boolean;
-}) {
+/** Instagram-style tab bar: two tabs, a ＋ menu, two tabs. */
+export function BottomNav({ module, subroute }: { module: LifeModule; subroute: string[] | null }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const half = Math.ceil(module.tabs.length / 2);
 
@@ -71,13 +62,6 @@ export function BottomNav({
           <PlusIcon />
         </button>
         {module.tabs.slice(half).map(tab)}
-        <a href={href('/settings')} className="tab" aria-current={settingsActive ? 'page' : undefined}>
-          <span className="tab-icon">
-            <UserIcon />
-            <SyncBadge />
-          </span>
-          <span>You</span>
-        </a>
       </nav>
     </>
   );
