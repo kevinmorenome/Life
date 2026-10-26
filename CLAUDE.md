@@ -36,6 +36,7 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
 - `src/modules/` — feature modules, registered in `src/modules/index.ts`
 - `src/modules/clothes/` — first module; use it as the reference implementation
   - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
+  - Closet list: search bar + filter button; `FilterSheet` is the full-screen filter page (sub-category, colors, sort, status, favorites; category stays as tabs on the list) and `closetFilter.ts` holds the pure filter/sort logic
   - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
 - Inbox: `inbox` store holds `WearRequest`s, `TagRequest`s, `OutfitEditRequest`s (rename, add/remove pieces) and `ItemEditRequest`s (field changes, never wears/photo/tags) queued by the MCP endpoint. `processInbox()` (`clothes/inboxRunner.ts`, registered with `setAfterPull` in `main.tsx`, skipped in PR previews) applies them via pure `applyInbox()` after each pull, then marks them applied; wears are idempotent per date
