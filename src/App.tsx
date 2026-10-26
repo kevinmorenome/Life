@@ -44,8 +44,8 @@ export function App() {
           <a className="brand" href={href('/')}>
             Life
           </a>
-          {pageTab && <h1 className="brand-page">{pageTab.label}</h1>}
           <SyncBadge />
+          {pageTab && <h1 className="brand-page">{pageTab.label}</h1>}
         </div>
         <a
           className="icon-btn"
