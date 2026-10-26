@@ -28,6 +28,8 @@ export interface ToolResult {
   text: string;
   isError?: boolean;
   images?: ToolImage[];
+  /** Data for the in-chat view (MCP Apps), kept out of the model's context by hosts. */
+  structured?: Record<string, unknown>;
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -314,7 +316,12 @@ async function showPhotos(args: Args, { store, appUrl }: ToolContext): Promise<T
   const more = wanted.size > ids.length ? ` ${wanted.size - ids.length} more not shown (limit ${MAX_PHOTOS}).` : '';
   const missing = without.length ? ` No photo for: ${without.join(', ')}.` : '';
   const linkText = links.length ? `\nOpen in the app:\n${links.join('\n')}` : '';
-  return { text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}${linkText}`, images };
+  return {
+    text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}${linkText}`,
+    images,
+    // The gallery reads the photos from here: hosts may strip image blocks from what they forward to the view.
+    structured: { photos: images, note: `${missing}${more}`.trim() },
+  };
 }
 
 // ---- writes ----

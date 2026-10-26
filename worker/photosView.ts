@@ -18,7 +18,7 @@ export const PHOTOS_HTML = `<!doctype html>
   :root[data-theme='dark'] { --tile: #2a2b30; --text: #ececee; --muted: #9a9ba2; }
   * { box-sizing: border-box; }
   /* No color-scheme: a mismatch with the host page would give the frame an opaque background. */
-  body { margin: 0; padding: 4px 2px 8px; font: 14px/1.3 system-ui, -apple-system, sans-serif; color: var(--text); background: transparent; }
+  body { margin: 0; padding: 8px; font: 14px/1.3 system-ui, -apple-system, sans-serif; color: var(--text); background: transparent; }
   ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px 10px; margin: 0; padding: 0; list-style: none; }
   figure { margin: 0; }
   img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; background: var(--tile); }
@@ -34,31 +34,45 @@ export const PHOTOS_HTML = `<!doctype html>
   var nextId = 1;
   function send(msg) { window.parent.postMessage(msg, '*'); }
 
+  function add(grid, caption, mimeType, data) {
+    var li = document.createElement('li');
+    var fig = document.createElement('figure');
+    var img = document.createElement('img');
+    img.alt = caption;
+    img.src = 'data:' + mimeType + ';base64,' + data;
+    var cap = document.createElement('figcaption');
+    cap.textContent = caption;
+    fig.appendChild(img); fig.appendChild(cap); li.appendChild(fig); grid.appendChild(li);
+  }
+
   function render(result) {
     var grid = document.getElementById('grid');
     var note = document.getElementById('note');
     grid.textContent = '';
     var content = (result && result.content) || [];
-    var caption = '';
     var shown = 0;
-    for (var i = 1; i < content.length; i++) { // content[0] is the summary
-      var block = content[i];
-      if (block.type === 'text') { caption = block.text; continue; }
-      if (block.type === 'image') {
-        var li = document.createElement('li');
-        var fig = document.createElement('figure');
-        var img = document.createElement('img');
-        img.alt = caption;
-        img.src = 'data:' + block.mimeType + ';base64,' + block.data;
-        var cap = document.createElement('figcaption');
-        cap.textContent = caption;
-        fig.appendChild(img); fig.appendChild(cap); li.appendChild(fig); grid.appendChild(li);
-        caption = ''; shown++;
+    // Preferred: structuredContent.photos (meant for this view). Fallback: caption + image blocks in content.
+    var photos = result && result.structuredContent && result.structuredContent.photos;
+    if (photos && photos.length) {
+      photos.forEach(function (p) { add(grid, p.caption, p.mimeType, p.data); shown++; });
+    } else {
+      var caption = '';
+      for (var i = 1; i < content.length; i++) {
+        var block = content[i];
+        if (block.type === 'text') { caption = block.text; continue; }
+        if (block.type === 'image') { add(grid, caption, block.mimeType, block.data); caption = ''; shown++; }
       }
     }
     var summary = content[0] && content[0].type === 'text' ? content[0].text.split('\\nOpen in the app')[0] : '';
-    var extra = summary.replace(/^Showing \\d+ photos?\\.?\\s*/, '');
-    note.textContent = shown === 0 ? summary || 'No photos to show.' : extra;
+    var extra = (result && result.structuredContent && result.structuredContent.note) || summary.replace(/^Showing \\d+ photos?\\.?\\s*/, '');
+    if (shown === 0) {
+      // Say what arrived, so a miss can be diagnosed from a screenshot.
+      var kinds = content.map(function (c) { return c.type; }).join(', ') || 'nothing';
+      var keys = result ? Object.keys(result).join(', ') : 'nothing';
+      note.textContent = (summary || 'No photos to show.') + ' [received: ' + kinds + ' | fields: ' + keys + ']';
+    } else {
+      note.textContent = extra;
+    }
     note.hidden = !note.textContent;
     reportSize();
   }

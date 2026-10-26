@@ -111,7 +111,7 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
             { type: 'image', data: img.data, mimeType: img.mimeType },
           ]),
         ];
-        return rpc(id, { content, isError: result.isError ?? false });
+        return rpc(id, { content, ...(result.structured ? { structuredContent: result.structured } : {}), isError: result.isError ?? false });
       } catch (e) {
         console.error('mcp tool failed', name, e);
         return rpc(id, { content: [{ type: 'text', text: 'Something went wrong on the server.' }], isError: true });
