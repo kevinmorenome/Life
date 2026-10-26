@@ -30,7 +30,7 @@ describe('cutOut', () => {
 
   it('keeps backdrop-coloured areas enclosed by the item', () => {
     const src = image(100, 100, white, (x, y) => {
-      if (x >= 45 && x < 55 && y >= 45 && y < 55) return white; // button-sized hole
+      if (x >= 48 && x < 52 && y >= 48 && y < 52) return white; // button-sized hole
       return x >= 20 && x < 80 && y >= 20 && y < 80 ? red : null;
     });
     const out = cutOut(src)!;
@@ -90,5 +90,20 @@ describe('cutOut', () => {
     const src = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? red : null));
     const once = cutOut(src)!;
     expect(cutOut(once)).toBeNull();
+  });
+
+  it('removes a large enclosed gap of backdrop but keeps a small one', () => {
+    // A hollow red frame: a big window in the middle, plus a tiny "button hole" in the frame.
+    const src = image(120, 120, white, (x, y) => {
+      const inside = x >= 20 && x < 100 && y >= 20 && y < 100;
+      if (!inside) return null;
+      if (x >= 40 && x < 80 && y >= 40 && y < 80) return null; // big gap
+      if (x >= 28 && x < 30 && y >= 28 && y < 30) return white; // small hole
+      return red;
+    });
+    const out = cutOut(src, { padding: 0 })!;
+    const at = (x: number, y: number) => alphaAt(out, x, y);
+    expect(at(out.width >> 1, out.height >> 1)).toBe(0); // window is see-through
+    expect(at(9, 9)).toBe(255); // frame is solid next to the small hole
   });
 });

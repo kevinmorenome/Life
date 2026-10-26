@@ -105,6 +105,29 @@ function cutOnce(src: Pixels, opts: CutoutOptions, lightOnly: boolean): Pixels |
     }
   }
 
+  // Enclosed pockets of backdrop (neck opening, gap between arm and body, under the hem) never
+  // touch the border. Large ones are backdrop too; small ones (buttons, prints) stay in the item.
+  // Light backdrops only: a dark "backdrop" colour (phone bars) also matches dark garment areas.
+  const lightMatches = (p: number) =>
+    palette.some(([r, g, b]) => Math.min(r, g, b) >= 150 && dist(d, p * 4, r, g, b) <= tolerance);
+  const minPocket = Math.max(40, Math.round(w * h * 0.003));
+  const seen = new Uint8Array(w * h);
+  for (let start = 0; start < w * h; start++) {
+    if (isBg[start] || seen[start] || !lightMatches(start)) continue;
+    const pocket = [start];
+    seen[start] = 1;
+    for (let i = 0; i < pocket.length; i++) {
+      const p = pocket[i];
+      const x = p % w;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
+        if (q < 0 || q >= w * h || isBg[q] || seen[q] || !lightMatches(q)) continue;
+        seen[q] = 1;
+        pocket.push(q);
+      }
+    }
+    if (pocket.length >= minPocket) for (const p of pocket) isBg[p] = 1;
+  }
+
   // Keep only the largest remaining blob (the item); page text, UI bits and specks become backdrop.
   const label = new Int32Array(w * h);
   let best = 0;
