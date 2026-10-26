@@ -1924,3 +1924,142 @@ progress {
   width: 20px;
   height: 20px;
 }
+
+/* Inline chip editing on the item page */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-head h2 {
+  margin: 0;
+}
+.chip-x {
+  min-width: 28px;
+  min-height: 28px;
+  margin-right: -0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.chip-add input {
+  width: 100%;
+  min-height: 44px;
+}
+
+/* Inline field rows and their bottom sheet */
+.field-pill {
+  min-width: 140px;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 10px;
+  background: var(--photo-bg);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.field-pill-text {
+  display: block;
+  max-width: 55vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.field-empty {
+  color: #d63ba6;
+}
+.rows.field-rows dd {
+  padding: 0;
+  background: none;
+}
+.field-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1rem 16px calc(1rem + env(safe-area-inset-bottom));
+}
+.field-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.field-sheet-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.field-sheet input,
+.field-sheet textarea {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1.25rem;
+  text-align: center;
+}
+.field-apply {
+  width: 100%;
+  min-height: 52px;
+}
+.field-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.title-edit,
+.photo-edit {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.photo-edit {
+  display: block;
+}
+
+/* More breathing room around buttons and chips on the item page */
+.item-detail .chips {
+  gap: 0.6rem;
+}
+.item-detail .tag-section {
+  margin-bottom: 1.5rem;
+}
+.item-detail .section-head {
+  margin-bottom: 0.5rem;
+}
+.item-detail .icon-row {
+  gap: 0.75rem;
+}
+.item-detail .rows > div {
+  min-height: 60px;
+  padding: 0.25rem 0;
+}
+.item-detail .chip-x {
+  margin-left: 0.25rem;
+}
+.notes-field {
+  margin-top: 1.5rem;
+}
+.notes-field h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.notes-field textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 0.75rem;
+}
+.field-suggestions {
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: 0.6rem;
+}
