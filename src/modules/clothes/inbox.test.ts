@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TagRequest, WearRequest } from '../../../worker/protocol';
+import type { OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { applyInbox, withTags } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
@@ -125,5 +125,37 @@ describe('withTags', () => {
     const next = withTags(rec, ['b', 'B']);
     expect(next.tags).toEqual(['a', 'b']);
     expect(next.updatedAt).not.toBe('x');
+  });
+});
+
+describe('applyInbox outfit edits', () => {
+  const edit = (patch: Partial<OutfitEditRequest>): OutfitEditRequest => ({
+    id: 'e1',
+    type: 'outfit-edit',
+    outfitIds: ['o'],
+    itemIds: [],
+    removeItemIds: [],
+    source: 'claude',
+    createdAt: '2026-10-25T10:00:00Z',
+    updatedAt: '2026-10-25T10:00:00Z',
+    ...patch,
+  });
+  const items = [item('a'), item('b'), item('c')];
+
+  it('renames and swaps pieces, keeping wears', () => {
+    const r = applyInbox([edit({ name: 'Smart', itemIds: ['c'], removeItemIds: ['a'] })], items, [outfit('o', ['a', 'b'], ['2026-10-01'])], NOW);
+    expect(r.outfits).toMatchObject([{ id: 'o', name: 'Smart', itemIds: ['b', 'c'], wears: ['2026-10-01'] }]);
+    expect(r.requests[0].appliedAt).toBe(NOW.toISOString());
+  });
+
+  it('ignores edits that would empty the outfit, and reports missing ids', () => {
+    const r = applyInbox([edit({ removeItemIds: ['a', 'b'], itemIds: ['ghost'] })], items, [outfit('o', ['a', 'b'])], NOW);
+    expect(r.outfits).toEqual([]);
+    expect(r.requests[0].error).toContain('ghost');
+  });
+
+  it('is a no-op when nothing changes', () => {
+    const r = applyInbox([edit({ itemIds: ['a'] })], items, [outfit('o', ['a', 'b'])], NOW);
+    expect(r.outfits).toEqual([]);
   });
 });

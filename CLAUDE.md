@@ -38,7 +38,7 @@ Personal life-tracking web app (React + TypeScript + Vite), built one feature mo
   - `importers/whering.ts` — pure Whering → ClothingItem/Outfit mapping (type-only imports so Node can run it), used by `scripts/import-whering.ts`
   - Outfits live in their own `outfits` store (`Outfit` in `types.ts`, helpers in `outfits.ts`); logging an outfit wear also logs each piece
   - Calendar (`#/clothes/calendar[/YYYY-MM | /YYYY-MM-DD[/outfit|/items]]`) is derived from dated `wears` only (`calendar.ts`); there's no separate calendar store
-- Inbox: `inbox` store holds `WearRequest`s queued by the MCP endpoint. `processInbox()` (`clothes/inboxRunner.ts`, registered with `setAfterPull` in `main.tsx`, skipped in PR previews) applies them via pure `applyInbox()` after each pull, then marks them applied; wears are idempotent per date
+- Inbox: `inbox` store holds `WearRequest`s, `TagRequest`s and `OutfitEditRequest`s (rename, add/remove pieces) queued by the MCP endpoint. `processInbox()` (`clothes/inboxRunner.ts`, registered with `setAfterPull` in `main.tsx`, skipped in PR previews) applies them via pure `applyInbox()` after each pull, then marks them applied; wears are idempotent per date
 - `src/modules/packing/` — trips in the `trips` store (`Trip` in `types.ts`). The checklist is derived by `packingList()` in `packing.ts` from planned outfits per day (`outfitPlan`) + hand-picked items + custom extras; only `packed` ids are stored. Clothes' calendar reads trips to mark trip days and offer "Log as worn" for planned outfits
 
 ## Adding a module

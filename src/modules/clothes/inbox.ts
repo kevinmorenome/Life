@@ -1,4 +1,4 @@
-import type { InboxRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { outfitPieces, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 import { withWear } from './wear';
@@ -38,12 +38,14 @@ export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], a
   const changedOutfits = new Set<string>();
   const applied: InboxRequest[] = [];
 
-  const pending = requests.filter((r) => (r.type === 'wear' || r.type === 'tags') && !r.appliedAt).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const pending = requests.filter((r) => !r.appliedAt).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   for (const req of pending) {
     const missing: string[] = [];
     if (req.type === 'tags') {
       applyTags(req, items, outfits, changedItems, changedOutfits, missing);
-    } else {
+    } else if (req.type === 'outfit-edit') {
+      applyOutfitEdit(req, items, outfits, changedOutfits, missing);
+    } else if (req.type === 'wear') {
       applyWear(req, items, outfits, changedItems, changedOutfits, missing);
     }
     applied.push({
@@ -97,6 +99,24 @@ function applyTags(
       changedItems.add(id);
     }
   }
+}
+
+/** Renames and/or adds/removes pieces; an edit that would leave the outfit empty is ignored. Idempotent. */
+function applyOutfitEdit(req: OutfitEditRequest, items: Records['items'], outfits: Records['outfits'], changedOutfits: Set<string>, missing: string[]) {
+  const outfit = outfits.get(req.outfitIds[0]);
+  if (!outfit) {
+    missing.push(...req.outfitIds);
+    return;
+  }
+  const add = req.itemIds.filter((id) => items.has(id));
+  missing.push(...req.itemIds.filter((id) => !items.has(id)));
+  const drop = new Set(req.removeItemIds);
+  const itemIds = [...new Set([...outfit.itemIds, ...add])].filter((id) => !drop.has(id));
+  const name = req.name?.trim() || outfit.name;
+  const samePieces = itemIds.length === outfit.itemIds.length && itemIds.every((id, i) => id === outfit.itemIds[i]);
+  if (itemIds.length === 0 || (samePieces && name === outfit.name)) return;
+  outfits.set(outfit.id, { ...outfit, name, itemIds, updatedAt: new Date().toISOString() });
+  changedOutfits.add(outfit.id);
 }
 
 function applyWear(

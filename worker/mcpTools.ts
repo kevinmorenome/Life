@@ -5,7 +5,7 @@
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
 import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
-import type { TagRequest, WearRequest } from './protocol';
+import type { OutfitEditRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
 import type { RecordStore, Row } from './records';
 
@@ -146,6 +146,21 @@ export const TOOLS = [
       required: ['itemIds'],
     },
   },
+  {
+    name: 'edit_outfit',
+    description:
+      'Change an existing outfit: rename it and/or add or remove pieces. Resolve ids with list_outfits / find_items first. Only edit when the user asks; past wears are kept as they are. An outfit must keep at least one piece. The change shows up in the app the next time it syncs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        outfitId: { type: 'string' },
+        name: { type: 'string', description: 'New name.' },
+        addItemIds: { type: 'array', items: { type: 'string' } },
+        removeItemIds: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['outfitId'],
+    },
+  },
 ] as const;
 
 type Args = Record<string, unknown>;
@@ -168,6 +183,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addItem(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
+    case 'edit_outfit':
+      return ctx.readOnly ? fail(READ_ONLY) : editOutfit(args, ctx);
     default:
       return fail(`Unknown tool: ${name}`);
   }
@@ -498,4 +515,42 @@ async function createOutfit(args: Args, { store, now, newId }: ToolContext): Pro
   };
   await store.put('outfits', outfit.id, outfit);
   return ok({ created: { id: outfit.id, name: outfit.name ?? '(unnamed)' } });
+}
+
+async function editOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const outfitId = text(args.outfitId);
+  const name = text(args.name);
+  const addItemIds = [...new Set(strings(args.addItemIds))];
+  const removeItemIds = [...new Set(strings(args.removeItemIds))];
+  if (!outfitId) return fail('outfitId is required.');
+  if (!name && addItemIds.length + removeItemIds.length === 0) return fail('Give a new name and/or items to add or remove.');
+  if (addItemIds.length + removeItemIds.length > MAX_IDS) return fail(`At most ${MAX_IDS} ids per call.`);
+  if (addItemIds.some((id) => removeItemIds.includes(id))) return fail('An item can’t be both added and removed.');
+
+  const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
+  const outfit = outfits.find((o) => o.id === outfitId);
+  if (!outfit) return fail(`Unknown outfit id: ${outfitId}. Look it up with list_outfits.`);
+  const known = new Set(items.map((r) => r.id));
+  const unknown = addItemIds.filter((id) => !known.has(id));
+  if (unknown.length) return fail(`Unknown item ids: ${unknown.join(', ')}.`);
+
+  const result = [...new Set([...strings(outfit.itemIds), ...addItemIds])].filter((id) => !removeItemIds.includes(id));
+  if (result.length === 0) return fail('An outfit needs at least one piece. Add items in the same call, or leave some in place.');
+
+  const stamp = now.toISOString();
+  const request: OutfitEditRequest = {
+    id: newId(),
+    type: 'outfit-edit',
+    outfitIds: [outfitId],
+    itemIds: addItemIds,
+    removeItemIds,
+    ...(name ? { name } : {}),
+    source: 'claude',
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+  await store.put('inbox', request.id, request);
+  const names = new Map(items.map((r) => [r.id, String(r.name)]));
+  const pieces = result.map((id) => names.get(id) ?? '(deleted item)').join(', ');
+  return ok(`Queued an edit to “${outfit.name ?? 'unnamed outfit'}”${name ? ` (new name “${name}”)` : ''}. Pieces will be: ${pieces}. It appears in the app the next time it syncs.`);
 }

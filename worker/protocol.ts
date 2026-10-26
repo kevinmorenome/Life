@@ -50,7 +50,14 @@ export interface TagRequest extends RequestBase {
   tags: string[];
 }
 
-export type InboxRequest = WearRequest | TagRequest;
+/** Rename an outfit and/or change its pieces: `itemIds` are added, `removeItemIds` removed. `outfitIds` holds the one outfit. */
+export interface OutfitEditRequest extends RequestBase {
+  type: 'outfit-edit';
+  name?: string;
+  removeItemIds: string[];
+}
+
+export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest;
 
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;
