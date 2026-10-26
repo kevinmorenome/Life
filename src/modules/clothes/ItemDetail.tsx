@@ -13,7 +13,6 @@ import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
-import { isStored, withStatus } from './storage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import {
@@ -95,12 +94,13 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
               icon: <CalendarCheckIcon />,
               onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
             },
-            ...(item.status === 'active' || isStored(item)
+            ...(item.status === 'active' || item.status === 'storage'
               ? [
                   {
-                    label: isStored(item) ? 'Bring back' : 'Put away',
-                    icon: isStored(item) ? <EyeIcon /> : <EyeOffIcon />,
-                    onClick: () => onSave(withStatus(item, isStored(item) ? 'active' : 'storage', today())),
+                    label: item.status === 'storage' ? 'Bring back' : 'Put away',
+                    icon: item.status === 'storage' ? <EyeIcon /> : <EyeOffIcon />,
+                    onClick: () =>
+                      onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() }),
                   },
                 ]
               : []),
