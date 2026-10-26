@@ -1875,3 +1875,6 @@ progress {
   width: 18px;
   height: 18px;
 }
+.menu-item:disabled {
+  opacity: 0.5;
+}

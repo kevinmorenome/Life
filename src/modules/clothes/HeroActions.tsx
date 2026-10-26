@@ -8,12 +8,14 @@ interface Props {
   onToggleFavorite: () => void;
   onDelete: () => void;
   deleteLabel: string;
+  /** Extra ⋮ menu entries, shown above Delete. */
+  menuItems?: { label: string; icon: ReactNode; onClick: () => void; disabled?: boolean }[];
   /** The primary call-to-action, shown on the right. */
   children: ReactNode;
 }
 
 /** Edit / favourite / ⋮ icons on the left of the hero, primary action on the right. */
-export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, deleteLabel, children }: Props) {
+export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, deleteLabel, menuItems = [], children }: Props) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -50,6 +52,20 @@ export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, de
           </button>
           {open && (
             <div className="menu" role="menu">
+              {menuItems.map((m) => (
+                <button
+                  key={m.label}
+                  role="menuitem"
+                  className="menu-item"
+                  disabled={m.disabled}
+                  onClick={() => {
+                    setOpen(false);
+                    m.onClick();
+                  }}
+                >
+                  {m.icon} {m.label}
+                </button>
+              ))}
               <button
                 role="menuitem"
                 className="menu-item menu-danger"

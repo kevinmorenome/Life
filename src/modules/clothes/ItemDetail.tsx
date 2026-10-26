@@ -31,6 +31,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
+  const wornToday = item.wears.includes(today());
 
   async function del() {
     if (confirm(`Delete “${item.name}”? This can’t be undone.`)) {
@@ -59,6 +60,14 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           onToggleFavorite={() => onSave({ ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() })}
           onDelete={del}
           deleteLabel="Delete item"
+          menuItems={[
+            {
+              label: wornToday ? 'Worn today' : 'Wore it today',
+              icon: <CalendarCheckIcon />,
+              disabled: wornToday,
+              onClick: () => onSave(withWear(item, today())),
+            },
+          ]}
         >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
             Create outfit
