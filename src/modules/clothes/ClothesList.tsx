@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { HeartIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { lastWorn, wearCount } from './stats';
 import { CATEGORIES, STATUSES, label, type Category, type ClothingItem, type Status } from './types';
@@ -13,6 +14,7 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
   const [subcategory, setSubcategory] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('active');
   const [sort, setSort] = useState<Sort>('recent');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   // Everything except the category filter, so the tabs can show counts.
   const matching = useMemo(() => {
@@ -20,9 +22,10 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
     return items.filter(
       (i) =>
         (status === 'all' || i.status === status) &&
+        (!favoritesOnly || i.favorite) &&
         (!q || [i.name, i.brand, i.color, i.subcategory, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
     );
-  }, [items, query, status]);
+  }, [items, query, status, favoritesOnly]);
 
   const counts = useMemo(() => {
     const c = new Map<Category, number>();
@@ -87,12 +90,23 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
       ) : (
         <>
           <div className="filters">
-            <input
-              type="search"
-              placeholder="Search name, brand, color…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+            <div className="search-row">
+              <input
+                type="search"
+                placeholder="Search name, brand, color…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                className="fav-toggle"
+                aria-label="Favorites only"
+                aria-pressed={favoritesOnly}
+                onClick={() => setFavoritesOnly(!favoritesOnly)}
+              >
+                <HeartIcon filled={favoritesOnly} />
+              </button>
+            </div>
             <div className="filter-row filter-row-pair">
               <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
                 <option value="recent">Recently added</option>
@@ -133,13 +147,14 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
           )}
 
           {visible.length === 0 ? (
-            <p className="muted empty">No items match.</p>
+            <p className="muted empty">{favoritesOnly && !query && status === 'active' && category === 'all' ? 'No favorites yet.' : 'No items match.'}</p>
           ) : (
             <ul className="closet-grid">
               {visible.map((item) => (
                 <li key={item.id}>
                   <a href={href(`/clothes/${item.id}`)} className="closet-tile">
                     <ItemThumb item={item} />
+                    {item.favorite && <FavMark />}
                     <span className="tile-name">{item.name}</span>
                     <span className="tile-meta">{tileMeta(item)}</span>
                   </a>
@@ -150,6 +165,14 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
         </>
       )}
     </>
+  );
+}
+
+export function FavMark() {
+  return (
+    <span className="fav-mark" role="img" aria-label="Favorite">
+      <HeartIcon filled />
+    </span>
   );
 }
 

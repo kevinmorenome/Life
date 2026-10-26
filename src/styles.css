@@ -469,6 +469,9 @@ a:focus-visible {
 .filter-row-2 {
   grid-template-columns: 1fr auto;
 }
+.filter-row-fav {
+  grid-template-columns: 1fr auto auto;
+}
 .piece-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -1828,4 +1831,47 @@ progress {
 .day-menu {
   position: fixed;
   width: 180px;
+}
+
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.search-row input {
+  flex: 1;
+  min-width: 0;
+}
+.fav-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+.fav-toggle[aria-pressed='true'] {
+  color: var(--accent);
+}
+.fav-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+.closet-tile,
+.outfit-card {
+  position: relative;
+}
+.fav-mark {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  display: grid;
+  color: var(--accent);
+  pointer-events: none;
+}
+.fav-mark svg {
+  width: 18px;
+  height: 18px;
 }
