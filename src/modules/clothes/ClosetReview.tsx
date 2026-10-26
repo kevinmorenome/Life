@@ -145,6 +145,10 @@ function ReviewStepView({ step, items, onSave }: { step: ReviewStep; items: Clot
             <li key={item.id} className="review-item">
               <ItemThumb item={item} />
               <div className="review-chips">
+                <p className="review-name">
+                  <strong>{item.name}</strong>
+                  {item.brand && <span className="muted">{item.brand}</span>}
+                </p>
                 <div className="chips">
                   {step === 'season' && (
                     <button
