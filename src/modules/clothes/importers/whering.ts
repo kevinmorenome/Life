@@ -259,6 +259,7 @@ function convertBasic(
     category: mapCategory(item.category),
     subcategory: mapCategory(item.category) === 'other' ? undefined : capitalize(typeLabel(item.category)),
     brand: item.brand ? brandLabel(item.brand) : undefined,
+    colors: item.colors?.length ? item.colors.map(colorLabel) : undefined,
     color: item.colors?.length ? item.colors.map(colorLabel).join(', ') : undefined,
     size: sizeLabel(item.size),
     seasons: [],

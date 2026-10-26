@@ -35,6 +35,20 @@ const KNOWN: Record<string, string> = {
   purple: '#8a3ffc',
   lilac: '#c8a8f0',
   silver: '#c0c0c0',
+  charcoal: '#3b3d42',
+  ivory: '#fffff0',
+  mustard: '#d9a81e',
+  coral: '#ff7a66',
+  peach: '#ffc3a0',
+  maroon: '#5c1020',
+  mint: '#a8e6c3',
+  sage: '#9caf88',
+  lavender: '#d3c1f0',
+  magenta: '#d6247d',
+  'dark green': '#16542c',
+  'light grey': '#d4d5d9',
+  denim: '#3f5f8f',
+  bronze: '#a9743a',
   multicolor: MULTI,
   multicolour: MULTI,
   // Spanish, as shown in the app the design is based on.
@@ -53,12 +67,38 @@ const KNOWN: Record<string, string> = {
   morado: '#8a3ffc',
 };
 
-/** Splits a free-text colour field ("Blue, Navy blue & Red") into named swatches. */
-export function colorSwatches(color: string | undefined): Swatch[] {
-  if (!color) return [];
-  return color
+/** Colours offered by the item form's picker, in display order. */
+export const PALETTE = [
+  'Black', 'White', 'Grey', 'Charcoal', 'Beige', 'Cream', 'Brown', 'Tan', 'Camel',
+  'Red', 'Burgundy', 'Maroon', 'Pink', 'Coral', 'Orange', 'Mustard', 'Yellow', 'Gold',
+  'Green', 'Olive', 'Khaki', 'Mint', 'Teal', 'Turquoise', 'Light blue', 'Blue', 'Navy', 'Denim',
+  'Purple', 'Lilac', 'Silver', 'Multicolor',
+];
+
+/** CSS background for one colour name; `null` when unknown. */
+export function swatchCss(name: string): string | null {
+  return KNOWN[name.trim().toLowerCase()] ?? null;
+}
+
+/** Splits a legacy free-text colour field ("Blue, Navy blue & Red") into names. */
+export function splitColors(color: string | undefined): string[] {
+  return (color ?? '')
     .split(/,|&|\//)
     .map((s) => s.trim())
-    .filter(Boolean)
-    .map((name) => ({ name, css: KNOWN[name.toLowerCase()] ?? null }));
+    .filter(Boolean);
+}
+
+/** The item's colour names: the stored list, else the legacy `color` string. */
+export function itemColors(item: { colors?: string[]; color?: string }): string[] {
+  return item.colors ?? splitColors(item.color);
+}
+
+/** Named swatches for a list of colour names. */
+export function swatches(names: string[]): Swatch[] {
+  return names.map((name) => ({ name, css: swatchCss(name) }));
+}
+
+/** Splits a free-text colour field into named swatches. */
+export function colorSwatches(color: string | undefined): Swatch[] {
+  return swatches(splitColors(color));
 }
