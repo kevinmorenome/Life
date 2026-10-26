@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
+import { FieldSheet, type FieldSpec } from './FieldSheet';
+import { withField, type FieldKey } from './fields';
+import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
@@ -11,7 +14,18 @@ import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
-import { categoryLabel, label, type ClothingItem, type Outfit } from './types';
+import {
+  CATEGORIES,
+  CONDITIONS,
+  SEASONS,
+  STATUSES,
+  SUBCATEGORIES,
+  categoryLabel,
+  label,
+  type ClothingItem,
+  type Outfit,
+  type Season,
+} from './types';
 import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
@@ -53,8 +67,19 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
           </p>
         </div>
-        <ItemThumb item={item} large />
-        <h1>{item.name}</h1>
+        <label className="photo-edit" aria-label="Change photo">
+          <ItemThumb item={item} large />
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) onSave({ ...item, photo: await resizeImage(file), updatedAt: new Date().toISOString() }).catch(() => {});
+            }}
+          />
+        </label>
+        <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
         <HeroActions
           editPath={`/clothes/${item.id}/edit`}
@@ -119,15 +144,6 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
 }
 
 function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingItem) => Promise<void> }) {
-  const facts: [string, string | undefined][] = [
-    ['Category', categoryLabel(item)],
-    ['Status', label(item.status)],
-    ['Brand', item.brand],
-    ['Size', item.size],
-    ['Material', item.material],
-    ['Price', item.price != null ? money(item.price) : undefined],
-    ['Purchased', item.purchaseDate && shortDate(item.purchaseDate)],
-  ];
   const colors = itemColors(item);
   return (
     <>
@@ -141,49 +157,38 @@ function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingIt
         onAdd={(c) => onSave(withColors(item, addChip(colors, c)))}
         onRemove={(c) => onSave(withColors(item, removeChip(colors, c)))}
       />
-      <dl className="rows">
-        {facts
-          .filter(([, v]) => v)
-          .map(([k, v]) => (
-            <div key={k}>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-      </dl>
-      {item.notes && <p className="notes">{item.notes}</p>}
+      <FieldRows item={item} onSave={onSave} />
     </>
   );
 }
 
 function Style({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingItem) => Promise<void> }) {
-  const groups: [string, string[] | undefined][] = [
-    ['Seasons', item.seasons.map(label)],
-    ['Occasions', item.occasions],
-  ];
-  const shown = groups.filter(([, v]) => v && v.length > 0);
+  const touch = <T extends ClothingItem>(patch: Partial<T>) => onSave({ ...item, ...patch, updatedAt: new Date().toISOString() });
+  const seasons = item.seasons.map(label);
+  const occasions = item.occasions ?? [];
   return (
     <>
-      {item.condition && (
-        <dl className="rows">
-          <div>
-            <dt>Condition</dt>
-            <dd>{label(item.condition)}</dd>
-          </div>
-        </dl>
-      )}
-      {shown.map(([title, values]) => (
-        <section key={title} className="tag-section">
-          <h2 className="small muted">{title}</h2>
-          <ul className="chips tag-list">
-            {values!.map((v) => (
-              <li key={v} className="chip chip-static">
-                {v}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <ChipEditor
+        title="Seasons"
+        noun="season"
+        values={seasons}
+        options={SEASONS.map(label)}
+        emptyHint="No seasons yet."
+        onAdd={(s) => touch({ seasons: SEASONS.filter((x) => item.seasons.includes(x) || x === (s.toLowerCase() as Season)) })}
+        onRemove={(s) => touch({ seasons: item.seasons.filter((x) => x !== s.toLowerCase()) })}
+      />
+      <ChipEditor
+        title="Occasions"
+        noun="occasion"
+        values={occasions}
+        freeText
+        emptyHint="No occasions yet."
+        onAdd={(o) => touch({ occasions: addChip(occasions, o) })}
+        onRemove={(o) => {
+          const rest = removeChip(occasions, o);
+          return touch({ occasions: rest.length ? rest : undefined });
+        }}
+      />
       <ChipEditor
         title="Tags"
         noun="tag"
@@ -193,6 +198,114 @@ function Style({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingIt
         onAdd={(t) => onSave(withTags(item, addChip(item.tags ?? [], t)))}
         onRemove={(t) => onSave(withTags(item, removeChip(item.tags ?? [], t)))}
       />
+    </>
+  );
+}
+
+interface SaveProps {
+  item: ClothingItem;
+  onSave: (item: ClothingItem) => Promise<void>;
+}
+
+const SELECT = (values: readonly string[]) => values.map((v) => ({ value: v, label: label(v) }));
+
+/** Tappable value pill; opens a sheet and saves on Apply. */
+function FieldRows({ item, onSave }: SaveProps) {
+  const [open, setOpen] = useState<FieldKey | null>(null);
+  const rows: { key: FieldKey; spec: Omit<FieldSpec, 'key' | 'title'>; title: string; value: string; shown?: string }[] = [
+    { key: 'category', title: 'Category', spec: { kind: 'select', options: SELECT(CATEGORIES) }, value: item.category, shown: label(item.category) },
+    {
+      key: 'subcategory',
+      title: 'Sub-category',
+      spec: { kind: 'text', clearable: true, suggestions: SUBCATEGORIES[item.category], placeholder: 'Polo shirt' },
+      value: item.subcategory ?? '',
+    },
+    { key: 'brand', title: 'Brand', spec: { kind: 'text', clearable: true }, value: item.brand ?? '' },
+    { key: 'size', title: 'Size', spec: { kind: 'text', clearable: true }, value: item.size ?? '' },
+    { key: 'material', title: 'Material', spec: { kind: 'text', clearable: true, placeholder: 'Cotton, Elastane' }, value: item.material ?? '' },
+    {
+      key: 'price',
+      title: 'Price',
+      spec: { kind: 'number', clearable: true, placeholder: '0.00' },
+      value: item.price != null ? String(item.price) : '',
+      shown: item.price != null ? money(item.price) : undefined,
+    },
+    {
+      key: 'purchaseDate',
+      title: 'Purchased',
+      spec: { kind: 'date', clearable: true },
+      value: item.purchaseDate ?? '',
+      shown: item.purchaseDate && shortDate(item.purchaseDate),
+    },
+    { key: 'status', title: 'Status', spec: { kind: 'select', options: SELECT(STATUSES) }, value: item.status, shown: label(item.status) },
+    {
+      key: 'condition',
+      title: 'Condition',
+      spec: { kind: 'select', clearable: true, options: SELECT(CONDITIONS) },
+      value: item.condition ?? '',
+      shown: item.condition && label(item.condition),
+    },
+    { key: 'notes', title: 'Notes', spec: { kind: 'textarea', clearable: true }, value: item.notes ?? '' },
+  ];
+  const current = rows.find((r) => r.key === open);
+
+  return (
+    <>
+      <dl className="rows field-rows">
+        {rows.map((r) => {
+          const text = r.shown ?? r.value;
+          return (
+            <div key={r.key}>
+              <dt>{r.title}</dt>
+              <dd>
+                <button className={`field-pill${text ? '' : ' field-empty'}`} onClick={() => setOpen(r.key)} aria-label={`Edit ${r.title.toLowerCase()}`}>
+                  <span className="field-pill-text">{text || 'Add'}</span>
+                </button>
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+      {current && (
+        <FieldSheet
+          spec={{ key: current.key, title: current.title, ...current.spec }}
+          value={current.value}
+          onClose={() => setOpen(null)}
+          onApply={async (v) => {
+            const next = withField(item, current.key, v);
+            if (!next) return false;
+            await onSave(next);
+            return true;
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** The item name, tap to rename. */
+function FieldTitle({ item, onSave }: SaveProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <h1>
+        <button className="title-edit" onClick={() => setOpen(true)} aria-label="Rename item">
+          {item.name}
+        </button>
+      </h1>
+      {open && (
+        <FieldSheet
+          spec={{ key: 'name', title: 'Name', kind: 'text' }}
+          value={item.name}
+          onClose={() => setOpen(false)}
+          onApply={async (v) => {
+            const next = withField(item, 'name', v);
+            if (!next) return false;
+            await onSave(next);
+            return true;
+          }}
+        />
+      )}
     </>
   );
 }
