@@ -53,6 +53,7 @@ export interface WheringOutfit {
 // First match wins, so more specific rules come first.
 const CATEGORY_RULES: [RegExp, Category][] = [
   [/PYJAMA|NIGHT|ROBE|LOUNGE/, 'sleepwear'],
+  [/SWIM|BIKINI|BATHING|BOARDSHORT/, 'swimwear'],
   [/RUNNING|SPORTSWEAR|LEGGINGS|TRACK/, 'activewear'],
   [/UNDERWEAR|TRUNKS|BOXER|BRIEF|SOCKS|BRA\b/, 'underwear'],
   [/SNEAKERS|BOOTS|SHOE|SANDAL|LOAFER|HEELS|TRAINERS/, 'shoes'],

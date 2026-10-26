@@ -30,6 +30,8 @@ describe('whering import', () => {
       ['TROUSER-PANTS', 'bottoms'],
       ['PYJAMA-BOTTOMS', 'sleepwear'],
       ['RUNNING-SHORTS', 'activewear'],
+      ['SWIMMING-TRUNKS', 'swimwear'],
+      ['BIKINI-TOP', 'swimwear'],
       ['TRUNKS', 'underwear'],
       ['HIGH-SOCKS', 'underwear'],
       ['CANVAS-SNEAKERS', 'shoes'],
