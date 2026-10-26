@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
-import { itemColors, swatches as toSwatches } from './colors';
+import { ChipEditor } from './ChipEditor';
+import { addChip, removeChip, withColors, withTags } from './chips';
+import { PALETTE, itemColors, swatchCss } from './colors';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
@@ -106,8 +108,8 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
       </div>
 
       <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
-        {tab === 'about' && <About item={item} />}
-        {tab === 'style' && <Style item={item} />}
+        {tab === 'about' && <About item={item} onSave={onSave} />}
+        {tab === 'style' && <Style item={item} onSave={onSave} />}
         {tab === 'stats' && (
           <Stats item={item} outfits={inOutfits} onSave={onSave} />
         )}
@@ -116,7 +118,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   );
 }
 
-function About({ item }: { item: ClothingItem }) {
+function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingItem) => Promise<void> }) {
   const facts: [string, string | undefined][] = [
     ['Category', categoryLabel(item)],
     ['Status', label(item.status)],
@@ -126,22 +128,19 @@ function About({ item }: { item: ClothingItem }) {
     ['Price', item.price != null ? money(item.price) : undefined],
     ['Purchased', item.purchaseDate && shortDate(item.purchaseDate)],
   ];
-  const swatches = toSwatches(itemColors(item));
+  const colors = itemColors(item);
   return (
     <>
-      {swatches.length > 0 && (
-        <section className="tag-section">
-          <h2>Colors</h2>
-          <ul className="chips tag-list">
-            {swatches.map((c) => (
-              <li key={c.name} className="chip chip-static chip-color">
-                <span className="dot" style={c.css ? { background: c.css } : undefined} aria-hidden />
-                {c.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <ChipEditor
+        title="Colors"
+        noun="color"
+        values={colors}
+        options={PALETTE}
+        emptyHint="No colors yet."
+        prefix={(c) => <span className="dot" style={swatchCss(c) ? { background: swatchCss(c)! } : undefined} aria-hidden />}
+        onAdd={(c) => onSave(withColors(item, addChip(colors, c)))}
+        onRemove={(c) => onSave(withColors(item, removeChip(colors, c)))}
+      />
       <dl className="rows">
         {facts
           .filter(([, v]) => v)
@@ -157,11 +156,10 @@ function About({ item }: { item: ClothingItem }) {
   );
 }
 
-function Style({ item }: { item: ClothingItem }) {
+function Style({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingItem) => Promise<void> }) {
   const groups: [string, string[] | undefined][] = [
     ['Seasons', item.seasons.map(label)],
     ['Occasions', item.occasions],
-    ['Tags', item.tags],
   ];
   const shown = groups.filter(([, v]) => v && v.length > 0);
   return (
@@ -186,11 +184,15 @@ function Style({ item }: { item: ClothingItem }) {
           </ul>
         </section>
       ))}
-      {shown.length === 0 && !item.condition && (
-        <p className="muted">
-          Nothing here yet. <a href={href(`/clothes/${item.id}/edit`)}>Add seasons, occasions or tags.</a>
-        </p>
-      )}
+      <ChipEditor
+        title="Tags"
+        noun="tag"
+        values={item.tags ?? []}
+        freeText
+        emptyHint="No tags yet."
+        onAdd={(t) => onSave(withTags(item, addChip(item.tags ?? [], t)))}
+        onRemove={(t) => onSave(withTags(item, removeChip(item.tags ?? [], t)))}
+      />
     </>
   );
 }

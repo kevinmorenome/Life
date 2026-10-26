@@ -1924,3 +1924,28 @@ progress {
   width: 20px;
   height: 20px;
 }
+
+/* Inline chip editing on the item page */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-head h2 {
+  margin: 0;
+}
+.chip-x {
+  min-width: 28px;
+  min-height: 28px;
+  margin-right: -0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.chip-add input {
+  width: 100%;
+  min-height: 44px;
+}
