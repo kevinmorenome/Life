@@ -68,6 +68,22 @@ function cutOnce(src: Pixels, opts: CutoutOptions): Pixels | null {
   // A busy border (patterned floor, hand in frame) means the backdrop guess would be unreliable.
   if (border.filter(matches).length / border.length < 0.7) return null;
 
+  // Soft shadows: a darker, same-hue version of a backdrop colour that fades in smoothly. Only
+  // reachable from backdrop, and a garment's own edge is too abrupt to qualify.
+  const shadowLike = (p: number) =>
+    palette.some(([r, g, b]) => {
+      const len2 = r * r + g * g + b * b;
+      if (len2 < 60 * 60) return false;
+      const k = (d[p * 4] * r + d[p * 4 + 1] * g + d[p * 4 + 2] * b) / len2;
+      return k >= 0.55 && k <= 1 && dist(d, p * 4, r * k, g * k, b * k) <= 14;
+    });
+  const smooth = (p: number, q: number) =>
+    Math.max(
+      Math.abs(d[p * 4] - d[q * 4]),
+      Math.abs(d[p * 4 + 1] - d[q * 4 + 1]),
+      Math.abs(d[p * 4 + 2] - d[q * 4 + 2]),
+    ) <= 7;
+
   const isBg = new Uint8Array(w * h);
   const stack: number[] = border.filter(matches);
   for (const p of stack) isBg[p] = 1;
@@ -75,7 +91,8 @@ function cutOnce(src: Pixels, opts: CutoutOptions): Pixels | null {
     const p = stack.pop()!;
     const x = p % w;
     for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
-      if (q < 0 || q >= w * h || isBg[q] || !matches(q)) continue;
+      if (q < 0 || q >= w * h || isBg[q]) continue;
+      if (!matches(q) && !(smooth(p, q) && shadowLike(q))) continue;
       isBg[q] = 1;
       stack.push(q);
     }

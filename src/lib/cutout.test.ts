@@ -68,4 +68,21 @@ describe('cutOut', () => {
     expect(alphaAt(out, 0, 0)).toBe(0);
     expect(alphaAt(out, out.width >> 1, out.height >> 1)).toBe(255);
   });
+
+  it('drops a soft shadow under the item but keeps a grey item with a sharp edge', () => {
+    const shadowed = image(100, 100, white, (x, y) => {
+      if (x >= 30 && x < 70 && y >= 20 && y < 70) return red;
+      if (x >= 25 && x < 75 && y >= 70 && y < 82) {
+        const v = 250 - (82 - y) * 6; // darkest against the item, fading out
+        return [v, v, v];
+      }
+      return null;
+    });
+    const out = cutOut(shadowed)!;
+    expect(out.height).toBeLessThan(60); // item is 50 tall; the 12px shadow is not included
+
+    const grey = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? [150, 150, 150] : null));
+    const cut = cutOut(grey)!;
+    expect(alphaAt(cut, cut.width >> 1, cut.height >> 1)).toBe(255);
+  });
 });
