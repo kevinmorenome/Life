@@ -15,6 +15,28 @@ export const CATEGORIES = [
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+/** Suggested sub-categories; the field is free text, so anything else is allowed. */
+export const SUBCATEGORIES: Record<Category, string[]> = {
+  tops: ['T-shirt', 'Shirt', 'Polo shirt', 'Blouse', 'Sweater', 'Hoodie', 'Cardigan', 'Tank top'],
+  bottoms: ['Jeans', 'Trousers', 'Shorts', 'Skirt', 'Joggers', 'Leggings'],
+  dresses: ['Mini dress', 'Midi dress', 'Maxi dress', 'Jumpsuit'],
+  outerwear: ['Jacket', 'Coat', 'Blazer', 'Puffer', 'Raincoat', 'Gilet'],
+  shoes: ['Sneakers', 'Boots', 'Sandals', 'Loafers', 'Heels', 'Flats'],
+  accessories: ['Hat', 'Cap', 'Beanie', 'Scarf', 'Belt', 'Gloves', 'Sunglasses', 'Watch'],
+  bags: ['Backpack', 'Tote', 'Crossbody', 'Clutch', 'Handbag'],
+  jewelry: ['Necklace', 'Earrings', 'Ring', 'Bracelet'],
+  swimwear: ['Swim trunks', 'Bikini top', 'Bikini bottoms', 'One-piece', 'Cover-up'],
+  activewear: ['Sports bra', 'Running shorts', 'Leggings', 'Track jacket'],
+  sleepwear: ['Pyjama set', 'Nightgown', 'Robe'],
+  underwear: ['Briefs', 'Boxers', 'Socks', 'Bra'],
+  other: [],
+};
+
+/** "Tops › Polo shirt", or just the category when there is no sub-category. */
+export function categoryLabel(item: Pick<ClothingItem, 'category' | 'subcategory'>): string {
+  return item.subcategory ? `${label(item.category)} › ${item.subcategory}` : label(item.category);
+}
+
 export const SEASONS = ['spring', 'summer', 'fall', 'winter'] as const;
 export type Season = (typeof SEASONS)[number];
 
@@ -29,6 +51,8 @@ export interface ClothingItem {
   id: string;
   name: string;
   category: Category;
+  /** Optional refinement of the category, e.g. "Polo shirt". */
+  subcategory?: string;
   brand?: string;
   color?: string;
   size?: string;

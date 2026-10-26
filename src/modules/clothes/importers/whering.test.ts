@@ -44,6 +44,11 @@ describe('whering import', () => {
     for (const [w, ours] of cases) expect([w, mapCategory(w)]).toEqual([w, ours]);
   });
 
+  it('has a readable label to use as the sub-category', () => {
+    expect(mapCategory('POLO-SHIRT')).toBe('tops');
+    expect(typeLabel('POLO-SHIRT')).toBe('polo shirt');
+  });
+
   it('humanizes labels', () => {
     expect(typeLabel('SHORT-SLEEVED-TSHIRT')).toBe('short-sleeved T-shirt');
     expect(typeLabel('GRAPHIC-SHORT-SLEEVED-TSHIRT')).toBe('graphic short-sleeved T-shirt');

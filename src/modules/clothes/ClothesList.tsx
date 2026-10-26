@@ -10,6 +10,7 @@ type Sort = 'recent' | 'name' | 'most-worn' | 'least-recent';
 export function ClothesList({ items }: { items: ClothingItem[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category | 'all'>('all');
+  const [subcategory, setSubcategory] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('active');
   const [sort, setSort] = useState<Sort>('recent');
 
@@ -19,7 +20,7 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
     return items.filter(
       (i) =>
         (status === 'all' || i.status === status) &&
-        (!q || [i.name, i.brand, i.color, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
+        (!q || [i.name, i.brand, i.color, i.subcategory, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
     );
   }, [items, query, status]);
 
@@ -29,9 +30,22 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
     return c;
   }, [matching]);
 
+  const inCategory = useMemo(
+    () => matching.filter((i) => category === 'all' || i.category === category),
+    [matching, category],
+  );
+
+  // Sub-categories in use within the chosen category, for the second filter row.
+  const subs = useMemo(() => {
+    const c = new Map<string, number>();
+    if (category === 'all') return c;
+    for (const i of inCategory) if (i.subcategory) c.set(i.subcategory, (c.get(i.subcategory) ?? 0) + 1);
+    return new Map([...c].sort(([a], [b]) => a.localeCompare(b)));
+  }, [inCategory, category]);
+
   const visible = useMemo(() => {
-    const inCategory = matching.filter((i) => category === 'all' || i.category === category);
-    return inCategory.sort((a, b) => {
+    const picked = inCategory.filter((i) => !subcategory || i.subcategory === subcategory);
+    return picked.sort((a, b) => {
       switch (sort) {
         case 'name':
           return a.name.localeCompare(b.name);
@@ -43,7 +57,12 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
           return b.createdAt.localeCompare(a.createdAt);
       }
     });
-  }, [matching, category, sort]);
+  }, [inCategory, subcategory, sort]);
+
+  const pickCategory = (c: Category | 'all') => {
+    setCategory(c);
+    setSubcategory('');
+  };
 
   const tabs = CATEGORIES.filter((c) => counts.get(c) || c === category);
 
@@ -93,15 +112,25 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
           </div>
 
           <nav className="category-tabs" aria-label="Categories">
-            <button aria-pressed={category === 'all'} onClick={() => setCategory('all')}>
+            <button aria-pressed={category === 'all'} onClick={() => pickCategory('all')}>
               All <span className="count">{matching.length}</span>
             </button>
             {tabs.map((c) => (
-              <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>
+              <button key={c} aria-pressed={category === c} onClick={() => pickCategory(c)}>
                 {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
               </button>
             ))}
           </nav>
+
+          {subs.size > 0 && (
+            <nav className="category-tabs" aria-label="Sub-categories">
+              {[...subs].map(([s, n]) => (
+                <button key={s} aria-pressed={subcategory === s} onClick={() => setSubcategory(subcategory === s ? '' : s)}>
+                  {s} <span className="count">{n}</span>
+                </button>
+              ))}
+            </nav>
+          )}
 
           {visible.length === 0 ? (
             <p className="muted empty">No items match.</p>

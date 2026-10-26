@@ -4,6 +4,7 @@ import { resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import {
   CATEGORIES,
+  SUBCATEGORIES,
   CONDITIONS,
   SEASONS,
   STATUSES,
@@ -23,6 +24,7 @@ interface Props {
 export function ItemForm({ existing, onSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [category, setCategory] = useState<Category>(existing?.category ?? 'tops');
+  const [subcategory, setSubcategory] = useState(existing?.subcategory ?? '');
   const [brand, setBrand] = useState(existing?.brand ?? '');
   const [color, setColor] = useState(existing?.color ?? '');
   const [size, setSize] = useState(existing?.size ?? '');
@@ -61,6 +63,7 @@ export function ItemForm({ existing, onSave }: Props) {
       id: existing?.id ?? newId(),
       name: name.trim(),
       category,
+      subcategory: subcategory.trim() || undefined,
       brand: brand.trim() || undefined,
       color: color.trim() || undefined,
       size: size.trim() || undefined,
@@ -122,6 +125,20 @@ export function ItemForm({ existing, onSave }: Props) {
               </option>
             ))}
           </select>
+        </label>
+        <label className="field">
+          <span>Sub-category</span>
+          <input
+            list="subcategory-options"
+            value={subcategory}
+            onChange={(e) => setSubcategory(e.target.value)}
+            placeholder="Polo shirt"
+          />
+          <datalist id="subcategory-options">
+            {SUBCATEGORIES[category].map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </label>
         <label className="field">
           <span>Status</span>

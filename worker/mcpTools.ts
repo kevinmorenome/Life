@@ -118,6 +118,7 @@ export const TOOLS = [
       properties: {
         name: { type: 'string' },
         category: { type: 'string', enum: [...CATEGORIES] },
+        subcategory: { type: 'string', description: 'Optional refinement of the category, e.g. "Polo shirt".' },
         brand: { type: 'string' },
         color: { type: 'string', description: 'Free text, e.g. "Navy" or "Black & white".' },
         size: { type: 'string' },
@@ -229,7 +230,7 @@ async function findItems(args: Args, { store }: ToolContext): Promise<ToolResult
   const rows = (await store.list('clothes'))
     .filter((r) => r.status === 'active' || r.status === undefined)
     .filter((r) => !args.category || r.category === args.category)
-    .filter((r) => matches([String(r.name ?? ''), String(r.brand ?? ''), String(r.color ?? ''), String(r.category ?? ''), ...strings(r.tags)], query))
+    .filter((r) => matches([String(r.name ?? ''), String(r.brand ?? ''), String(r.color ?? ''), String(r.category ?? ''), String(r.subcategory ?? ''), ...strings(r.tags)], query))
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   return ok({ total: rows.length, items: rows.slice(0, limit).map(itemSummary) });
 }
@@ -449,6 +450,7 @@ async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<
     id: newId(),
     name,
     category: args.category,
+    subcategory: text(args.subcategory, 50),
     brand: text(args.brand),
     color: text(args.color),
     size: text(args.size, 50),
