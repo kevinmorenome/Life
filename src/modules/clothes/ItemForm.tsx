@@ -61,10 +61,19 @@ export function ItemForm({ existing, onSave }: Props) {
     }
   }
 
-  function toggleBackground() {
+  async function toggleBackground() {
+    if (!picked) {
+      if (!photo) return setRemoveBg(!removeBg);
+      // Saved photo, nothing picked this session: cut it out now (Change photo to start over).
+      setRemoveBg(true);
+      const cutout = await cutOutImage(await (await fetch(photo)).blob()).catch(() => null);
+      setPicked({ original: photo, cutout });
+      if (cutout) setPhoto(cutout);
+      return;
+    }
     const next = !removeBg;
     setRemoveBg(next);
-    if (picked) setPhoto(next && picked.cutout ? picked.cutout : picked.original);
+    setPhoto(next && picked.cutout ? picked.cutout : picked.original);
   }
 
   async function submit(e: FormEvent) {
@@ -124,7 +133,7 @@ export function ItemForm({ existing, onSave }: Props) {
           <button
             type="button"
             className="chip"
-            aria-pressed={removeBg && (!picked || !!picked.cutout)}
+            aria-pressed={removeBg && !!picked?.cutout}
             disabled={!!picked && !picked.cutout}
             onClick={toggleBackground}
           >

@@ -26,7 +26,7 @@ export function resizeImage(file: File, maxSize = 800, quality = 0.8): Promise<s
  * Like `resizeImage`, but also removes a plain backdrop and crops to the item (see `cutOut`).
  * Resolves to a transparent PNG data URL, or `null` when no clean cut was possible.
  */
-export function cutOutImage(file: File, maxSize = 800): Promise<string | null> {
+export function cutOutImage(file: Blob, maxSize = 800): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
