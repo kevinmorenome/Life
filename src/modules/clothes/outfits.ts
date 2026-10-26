@@ -1,3 +1,4 @@
+import { newId } from '../../lib/db';
 import { shortDate } from '../../lib/format';
 import type { ClothingItem, Outfit } from './types';
 import { withoutWearOn, withWear } from './wear';
@@ -21,6 +22,14 @@ export function wearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
     outfit: o.wears.includes(date) ? null : withWear(o, date),
     pieces: pieces.filter((p) => !p.wears.includes(date)).map((p) => withWear(p, date)),
   };
+}
+
+/**
+ * An outfit made from pieces already logged on `date`, worn that day. The pieces
+ * keep their own wears, so nothing is double-counted.
+ */
+export function outfitFromItems(pieces: ClothingItem[], date: string, now = new Date().toISOString()): Outfit {
+  return { id: newId(), itemIds: pieces.map((p) => p.id), wears: [date], createdAt: now, updatedAt: now };
 }
 
 /** Undoes `wearOutfit`: removes the day from the outfit and from each piece that has it. */

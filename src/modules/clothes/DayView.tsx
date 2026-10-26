@@ -4,9 +4,9 @@ import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
-import { CheckIcon, TrashIcon } from '../../icons';
+import { CheckIcon, ShirtIcon, TrashIcon } from '../../icons';
 import { OutfitCard } from './OutfitCard';
-import { outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
+import { outfitFromItems, outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
 import { pendingPlans } from './plans';
 import type { ClothingItem, Outfit, Plan } from './types';
 import { withoutWearOn } from './wear';
@@ -56,6 +56,10 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
     const { outfit, pieces } = unwearOutfit(o, outfitPieces(o, items), date);
     if (outfit) await onSaveOutfit(outfit);
     for (const p of pieces) await onSaveItem(p);
+  }
+
+  async function saveAsOutfit() {
+    await onSaveOutfit(outfitFromItems(wear.items, date));
   }
 
   return (
@@ -146,7 +150,14 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
 
       {wear.items.length > 0 && (
         <section>
-          <h2>{wear.outfits.length ? 'Also worn' : 'Items'}</h2>
+          <div className="section-head">
+            <h2>{wear.outfits.length ? 'Also worn' : 'Items'}</h2>
+            {wear.items.length > 1 && (
+              <button className="icon-btn" aria-label="Save these items as an outfit" onClick={saveAsOutfit}>
+                <ShirtIcon />
+              </button>
+            )}
+          </div>
           <ul className="closet-grid day-items">
             {wear.items.map((i) => (
               <li key={i.id}>

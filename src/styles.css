@@ -759,6 +759,11 @@ a:focus-visible {
 .detail section + section {
   margin-top: 1.25rem;
 }
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .day-items {
   margin-bottom: 1rem;
 }
