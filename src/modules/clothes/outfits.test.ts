@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outfitName, outfitPieces, outfitsWithItem, unwearOutfit, wearOutfit } from './outfits';
+import { outfitName, outfitPieces, outfitsWithItem, syncPieceWears, unwearOutfit, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 
 const piece = (id: string, wears: string[] = []): ClothingItem => ({
@@ -43,5 +43,23 @@ describe('outfits', () => {
     const o = (id: string, wears: string[], itemIds = ['a']): Outfit => ({ ...outfit, id, itemIds, wears });
     const list = [o('old', ['2026-01-01']), o('other', ['2026-12-01'], ['z']), o('new', ['2026-09-01']), o('never', [])];
     expect(outfitsWithItem('a', list).map((x) => x.id)).toEqual(['new', 'old', 'never']);
+  });
+
+  it('moves logged wears to the new pieces when a worn outfit is edited', () => {
+    const before: Outfit = { ...outfit, itemIds: ['a', 'b'], wears: ['2026-10-26'] };
+    const after: Outfit = { ...before, itemIds: ['a', 'c'] };
+    const items = [piece('a', ['2026-10-26']), piece('b', ['2026-10-26', '2026-10-01']), piece('c')];
+    const changed = syncPieceWears(before, after, items, []);
+    expect(changed.map((p) => [p.id, p.wears])).toEqual([
+      ['b', ['2026-10-01']],
+      ['c', ['2026-10-26']],
+    ]);
+  });
+
+  it('keeps a removed piece\'s wear when another outfit worn that day includes it', () => {
+    const before: Outfit = { ...outfit, itemIds: ['a', 'b'], wears: ['2026-10-26'] };
+    const after: Outfit = { ...before, itemIds: ['a'] };
+    const other: Outfit = { ...outfit, id: 'p', itemIds: ['b'], wears: ['2026-10-26'] };
+    expect(syncPieceWears(before, after, [piece('b', ['2026-10-26'])], [other])).toEqual([]);
   });
 });

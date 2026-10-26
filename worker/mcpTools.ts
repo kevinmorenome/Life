@@ -3,6 +3,7 @@
 // own wear logic. New items and outfits have fresh ids, so they can be written
 // directly without risking a clobbered edit.
 
+import { PALETTE, itemColors } from '../src/modules/clothes/colors';
 import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
 import type { TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
@@ -120,7 +121,7 @@ export const TOOLS = [
         category: { type: 'string', enum: [...CATEGORIES] },
         subcategory: { type: 'string', description: 'Optional refinement of the category, e.g. "Polo shirt".' },
         brand: { type: 'string' },
-        color: { type: 'string', description: 'Free text, e.g. "Navy" or "Black & white".' },
+        colors: { type: 'array', items: { type: 'string', enum: [...PALETTE] }, maxItems: 5, description: 'Colours from the app\'s swatch palette, e.g. ["Navy", "White"].' },
         size: { type: 'string' },
         material: { type: 'string' },
         price: { type: 'number', minimum: 0 },
@@ -209,13 +210,17 @@ function matches(fields: string[], query: string): boolean {
     .every((w) => hay.includes(w));
 }
 
+function colorList(r: Row): string[] {
+  return itemColors({ colors: Array.isArray(r.colors) ? strings(r.colors) : undefined, color: typeof r.color === 'string' ? r.color : undefined });
+}
+
 function itemSummary(r: Row) {
   return {
     id: r.id,
     name: r.name,
     category: r.category,
     ...(r.brand ? { brand: r.brand } : {}),
-    ...(r.color ? { color: r.color } : {}),
+    ...(colorList(r).length ? { colors: colorList(r) } : {}),
     ...(strings(r.tags).length ? { tags: strings(r.tags) } : {}),
     timesWorn: timesWorn(r),
     lastWorn: lastWorn(r),
@@ -445,6 +450,8 @@ async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<
   if (args.price !== undefined && !(typeof args.price === 'number' && args.price >= 0)) return fail('price must be a non-negative number.');
 
   const stamp = now.toISOString();
+  const colors = [...new Set(strings(args.colors))];
+  if (colors.some((c) => !PALETTE.includes(c))) return fail(`colors must be from: ${PALETTE.join(', ')}.`);
   const tags = strings(args.tags).map((t) => t.trim().slice(0, 50)).filter(Boolean).slice(0, 20);
   const item = {
     id: newId(),
@@ -452,7 +459,8 @@ async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<
     category: args.category,
     subcategory: text(args.subcategory, 50),
     brand: text(args.brand),
-    color: text(args.color),
+    colors: colors.length ? colors : undefined,
+    color: colors.length ? colors.join(', ') : undefined,
     size: text(args.size, 50),
     material: text(args.material),
     price: args.price,

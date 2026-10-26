@@ -54,6 +54,9 @@ export interface ClothingItem {
   /** Optional refinement of the category, e.g. "Polo shirt". */
   subcategory?: string;
   brand?: string;
+  /** Colour names. Older records only have the free-text `color`; read both via `itemColors()`. */
+  colors?: string[];
+  /** Comma-joined mirror of `colors`, kept for older records, search and the MCP endpoint. */
   color?: string;
   size?: string;
   seasons: Season[];

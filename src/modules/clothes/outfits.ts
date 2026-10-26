@@ -1,6 +1,6 @@
 import { shortDate } from '../../lib/format';
 import type { ClothingItem, Outfit } from './types';
-import { withWear, withoutWearOn } from './wear';
+import { withoutWearOn, withWear } from './wear';
 
 export function outfitName(o: Outfit): string {
   return o.name || `Outfit from ${shortDate(o.createdAt)}`;
@@ -29,6 +29,32 @@ export function unwearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
     outfit: o.wears.includes(date) ? withoutWearOn(o, date) : null,
     pieces: pieces.filter((p) => p.wears.includes(date)).map((p) => withoutWearOn(p, date)),
   };
+}
+
+/**
+ * After editing an outfit's pieces, brings the pieces' wear logs in line with
+ * the outfit's dated wears: pieces added get those days, pieces removed lose
+ * them (unless another outfit worn that day still includes them). Returns the
+ * item records to save.
+ */
+export function syncPieceWears(before: Outfit, after: Outfit, items: ClothingItem[], otherOutfits: Outfit[]): ClothingItem[] {
+  if (after.wears.length === 0) return [];
+  const added = new Set(after.itemIds.filter((id) => !before.itemIds.includes(id)));
+  const removed = new Set(before.itemIds.filter((id) => !after.itemIds.includes(id)));
+  const changed: ClothingItem[] = [];
+  for (const item of items) {
+    let next = item;
+    if (added.has(item.id)) {
+      for (const date of after.wears) if (!next.wears.includes(date)) next = withWear(next, date);
+    } else if (removed.has(item.id)) {
+      for (const date of after.wears) {
+        const keptByOther = otherOutfits.some((o) => o.id !== after.id && o.itemIds.includes(item.id) && o.wears.includes(date));
+        if (!keptByOther && next.wears.includes(date)) next = withoutWearOn(next, date);
+      }
+    }
+    if (next !== item) changed.push(next);
+  }
+  return changed;
 }
 
 /** Outfits that include the item, most recently worn first. */

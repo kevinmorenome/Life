@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
-import { colorSwatches } from './colors';
+import { itemColors, swatches as toSwatches } from './colors';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
@@ -126,7 +126,7 @@ function About({ item }: { item: ClothingItem }) {
     ['Price', item.price != null ? money(item.price) : undefined],
     ['Purchased', item.purchaseDate && shortDate(item.purchaseDate)],
   ];
-  const swatches = colorSwatches(item.color);
+  const swatches = toSwatches(itemColors(item));
   return (
     <>
       {swatches.length > 0 && (

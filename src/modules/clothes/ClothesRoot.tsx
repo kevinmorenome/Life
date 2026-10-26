@@ -9,6 +9,7 @@ import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPicke
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
+import { syncPieceWears } from './outfits';
 import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
@@ -29,7 +30,13 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     if (second === 'new') return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} />;
     const outfit = outfits.items.find((o) => o.id === second);
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;
-    if (third === 'edit') return <OutfitForm existing={outfit} items={items} onSave={outfits.save} />;
+    if (third === 'edit') {
+      const saveEdited = async (o: Outfit) => {
+        await outfits.save(o);
+        for (const piece of syncPieceWears(outfit, o, items, outfits.items)) await save(piece);
+      };
+      return <OutfitForm existing={outfit} items={items} onSave={saveEdited} />;
+    }
     return <OutfitDetail outfit={outfit} onDelete={outfits.remove} {...outfitProps} />;
   }
 

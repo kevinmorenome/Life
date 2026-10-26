@@ -93,6 +93,7 @@ describe('whering import', () => {
       name: 'Blue & navy short-sleeved shirt',
       category: 'tops',
       brand: 'Zara',
+      colors: ['Blue', 'Navy'],
       color: 'Blue, Navy',
       size: "Men's S",
       price: 13,
