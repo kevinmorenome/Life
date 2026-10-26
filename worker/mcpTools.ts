@@ -5,10 +5,13 @@
 
 import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
 import type { TagRequest, WearRequest } from './protocol';
+import { PHOTOS_URI } from './photosView';
 import type { RecordStore, Row } from './records';
 
 export interface ToolContext {
   store: RecordStore;
+  /** Origin of the app, e.g. https://life.example.workers.dev, for links back into it. */
+  appUrl: string;
   readOnly: boolean;
   now: Date;
   newId: () => string;
@@ -57,6 +60,8 @@ export const TOOLS = [
   },
   {
     name: 'show_photos',
+    // Hosts that support MCP Apps render this gallery in the chat; others only get the result below.
+    _meta: { ui: { resourceUri: PHOTOS_URI }, 'ui/resourceUri': PHOTOS_URI },
     description:
       'Show the photos of items (and of the pieces of outfits) in the chat. Use it whenever there is any doubt about which item the user means, before logging if a match is ambiguous, and whenever the user asks to see an item, an outfit or what they wore. Up to 8 photos per call; items without a photo are listed by name.',
     inputSchema: {
@@ -272,7 +277,7 @@ async function getWearLog(args: Args, { store, now }: ToolContext): Promise<Tool
   });
 }
 
-async function showPhotos(args: Args, { store }: ToolContext): Promise<ToolResult> {
+async function showPhotos(args: Args, { store, appUrl }: ToolContext): Promise<ToolResult> {
   const [items, outfits] = await Promise.all([store.list('clothes'), store.list('outfits')]);
   const itemName = new Map(items.map((r) => [r.id, String(r.name)]));
   const outfitById = new Map(outfits.map((r) => [r.id, r]));
@@ -301,9 +306,15 @@ async function showPhotos(args: Args, { store }: ToolContext): Promise<ToolResul
     if (match && match[2].length <= MAX_PHOTO_LENGTH) images.push({ caption: wanted.get(id)!, mimeType: match[1], data: match[2] });
     else without.push(wanted.get(id)!);
   }
+  // Tappable links into the app, for clients that can't display the photos inline.
+  const links = [
+    ...[...new Set(strings(args.outfitIds))].map((id) => `${outfitById.get(id)?.name ?? 'Outfit'}: ${appUrl}/#/clothes/outfits/${id}`),
+    ...ids.map((id) => `${itemName.get(id)}: ${appUrl}/#/clothes/${id}`),
+  ];
   const more = wanted.size > ids.length ? ` ${wanted.size - ids.length} more not shown (limit ${MAX_PHOTOS}).` : '';
   const missing = without.length ? ` No photo for: ${without.join(', ')}.` : '';
-  return { text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}`, images };
+  const linkText = links.length ? `\nOpen in the app:\n${links.join('\n')}` : '';
+  return { text: `Showing ${images.length} photo${images.length === 1 ? '' : 's'}.${missing}${more}${linkText}`, images };
 }
 
 // ---- writes ----
