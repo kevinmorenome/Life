@@ -27,7 +27,7 @@ const OUTFITS: Row[] = [{ id: 'work', name: 'Work look', itemIds: ['blazer', 'te
 function setup(overrides: Partial<ToolContext> = {}, seed = { clothes: ITEMS, outfits: OUTFITS }) {
   const { data, store } = fakeStore(seed);
   let n = 0;
-  const ctx: ToolContext = { store, readOnly: false, now: new Date('2026-10-25T12:00:00Z'), newId: () => `id-${++n}`, ...overrides };
+  const ctx: ToolContext = { store, readOnly: false, now: new Date('2026-10-25T12:00:00Z'), newId: () => `id-${++n}`, appUrl: 'https://life.test', ...overrides };
   return { data, ctx };
 }
 
@@ -100,6 +100,30 @@ describe('protocol', () => {
   });
 });
 
+describe('photo gallery (MCP App)', () => {
+  it('points show_photos at a ui:// resource and advertises resources', async () => {
+    const { ctx } = setup();
+    expect((await rpc(ctx, 'initialize', { protocolVersion: '2025-06-18' })).result.capabilities.resources).toBeDefined();
+    const tool = (await rpc(ctx, 'tools/list')).result.tools.find((t: { name: string }) => t.name === 'show_photos');
+    expect(tool._meta.ui.resourceUri).toBe('ui://life/photos');
+    expect(tool._meta['ui/resourceUri']).toBe('ui://life/photos');
+  });
+
+  it('serves the gallery page as an MCP App resource', async () => {
+    const { ctx } = setup();
+    const list = await rpc(ctx, 'resources/list');
+    expect(list.result.resources).toEqual([expect.objectContaining({ uri: 'ui://life/photos', mimeType: 'text/html;profile=mcp-app' })]);
+    const read = await rpc(ctx, 'resources/read', { uri: 'ui://life/photos' });
+    const [page] = read.result.contents;
+    expect(page.mimeType).toBe('text/html;profile=mcp-app');
+    expect(page.text).toContain('ui/initialize');
+    expect(page.text).toContain('ui/notifications/tool-result');
+    // Self-contained: the host's default CSP blocks anything fetched from elsewhere.
+    expect(page.text).not.toMatch(/https?:\/\//);
+    expect((await rpc(ctx, 'resources/read', { uri: 'ui://life/other' })).error.code).toBe(-32002);
+  });
+});
+
 describe('reads', () => {
   it('finds active items by every word, across fields', async () => {
     const { ctx } = setup();
@@ -136,11 +160,20 @@ describe('show_photos', () => {
     const { ctx } = setup({}, photoSeed);
     const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
     expect(r.isError).toBe(false);
-    expect(r.text).toBe('Showing 1 photo. No photo for: White tee.');
+    expect(r.text).toBe(
+      'Showing 1 photo. No photo for: White tee.\nOpen in the app:\nNavy blazer: https://life.test/#/clothes/blazer\nWhite tee: https://life.test/#/clothes/tee',
+    );
     expect(r.content.slice(1)).toEqual([
       { type: 'text', text: 'Navy blazer' },
       { type: 'image', data: '/9j/AAAA', mimeType: 'image/jpeg' },
     ]);
+  });
+
+  it('links outfits and items back into the app', async () => {
+    const { ctx } = setup({}, photoSeed);
+    const r = await call(ctx, 'show_photos', { outfitIds: ['work'] });
+    expect(r.text).toContain('Work look: https://life.test/#/clothes/outfits/work');
+    expect(r.text).toContain('Navy blazer: https://life.test/#/clothes/blazer');
   });
 
   it('expands an outfit into its pieces, labelled with the outfit, without repeating an item', async () => {

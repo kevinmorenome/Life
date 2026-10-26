@@ -3,6 +3,7 @@
 // so this path is bypassed in Access and guarded by its own secret instead.
 
 import { callTool, TOOLS, type ToolContext } from './mcpTools';
+import { MCP_APP_MIME, PHOTOS_HTML, PHOTOS_URI } from './photosView';
 
 export interface McpEnv {
   /** Secret that guards /mcp. Unset = endpoint disabled (fails closed). */
@@ -76,7 +77,7 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
       const asked = msg.params?.protocolVersion;
       return rpc(id, {
         protocolVersion: SUPPORTED_VERSIONS.includes(asked as string) ? asked : SUPPORTED_VERSIONS[0],
-        capabilities: { tools: {} },
+        capabilities: { tools: {}, resources: {} },
         serverInfo: { name: 'life', version: '0.1.0' },
         instructions:
           'Life tracks a personal wardrobe. To log what the user wore: find_items / list_outfits to get ids, confirm any ambiguous match, then log_wear with a YYYY-MM-DD date. Whenever it is unclear which item the user means, or they ask to see something, call show_photos so they can see the items in the chat. Only add tags (add_tags) when the user themselves describes the style, mood or occasion of what they wore.',
@@ -84,6 +85,16 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
     }
     case 'ping':
       return rpc(id, {});
+    case 'resources/list':
+      return rpc(id, {
+        resources: [{ uri: PHOTOS_URI, name: 'Life photos', description: 'Photo gallery shown in the chat by show_photos.', mimeType: MCP_APP_MIME }],
+      });
+    case 'resources/read': {
+      if (msg.params?.uri !== PHOTOS_URI) return rpc(id, undefined, { code: -32002, message: 'Resource not found' });
+      return rpc(id, {
+        contents: [{ uri: PHOTOS_URI, mimeType: MCP_APP_MIME, text: PHOTOS_HTML, _meta: { ui: { prefersBorder: false } } }],
+      });
+    }
     case 'tools/list':
       return rpc(id, { tools: TOOLS });
     case 'tools/call': {

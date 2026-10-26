@@ -31,6 +31,7 @@ export default {
       if (allowed === 'denied') return json({ error: 'Not allowed' }, 401);
       return handleMcp(request, {
         store: d1Store(env.DB),
+        appUrl: url.origin,
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
         newId: () => crypto.randomUUID(),
