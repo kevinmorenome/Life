@@ -22,12 +22,12 @@ const dist = (d: Uint8ClampedArray, i: number, r: number, g: number, b: number) 
  * plain enough backdrop (caller keeps the original). Never mutates the input.
  */
 export function cutOut(src: Pixels, opts: CutoutOptions = {}): Pixels | null {
-  const first = cutOnce(src, { ...opts, padding: 0 });
+  const first = cutOnce(src, { ...opts, padding: 0 }, false);
   if (!first) return null;
   // Screenshots and product pages: the photo's own backdrop (white) sits inside dark bars, so it
   // only becomes the border after the first crop. Keep the second cut only if the item survives it.
-  const second = cutOnce(first, opts);
-  return second && opaqueArea(second) >= 0.25 * opaqueArea(first) ? second : cutOnce(src, opts);
+  const second = cutOnce(first, opts, true);
+  return second && opaqueArea(second) >= 0.25 * opaqueArea(first) ? second : cutOnce(src, opts, false);
 }
 
 const opaqueArea = (p: Pixels) => {
@@ -36,15 +36,18 @@ const opaqueArea = (p: Pixels) => {
   return n;
 };
 
-function cutOnce(src: Pixels, opts: CutoutOptions): Pixels | null {
+/** `lightOnly`: second pass, where a tight crop puts the item itself on the border; trust only near-white. */
+function cutOnce(src: Pixels, opts: CutoutOptions, lightOnly: boolean): Pixels | null {
   const { tolerance = 42, padding = 0.04 } = opts;
   const { width: w, height: h } = src;
   if (w < 8 || h < 8) return null;
   const d = src.data;
 
+  // Second pass samples a ring just inside the edge: after a crop the outermost pixels are blurred.
+  const inset = lightOnly ? Math.max(2, Math.round(Math.min(w, h) * 0.02)) : 0;
   const border: number[] = [];
-  for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x);
-  for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
+  for (let x = inset; x < w - inset; x++) border.push(inset * w + x, (h - 1 - inset) * w + x);
+  for (let y = inset + 1; y < h - 1 - inset; y++) border.push(y * w + inset, y * w + w - 1 - inset);
 
   // Backdrop palette: the dominant border colours (a screenshot has dark bars beside a white page).
   const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
@@ -62,18 +65,20 @@ function cutOnce(src: Pixels, opts: CutoutOptions): Pixels | null {
     .filter((e) => e.n / border.length >= 0.06)
     .sort((x, y) => y.n - x.n)
     .slice(0, 4)
-    .map((e) => [e.r / e.n, e.g / e.n, e.b / e.n]);
+    .map((e) => [e.r / e.n, e.g / e.n, e.b / e.n])
+    .filter(([r, g, b]) => !lightOnly || Math.min(r, g, b) >= 190);
   const matches = (p: number) =>
     d[p * 4 + 3] < 128 || palette.some(([r, g, b]) => dist(d, p * 4, r, g, b) <= tolerance);
   // A busy border (patterned floor, hand in frame) means the backdrop guess would be unreliable.
-  if (border.filter(matches).length / border.length < 0.7) return null;
+  if (border.filter(matches).length / border.length < (lightOnly ? 0.5 : 0.7)) return null;
 
   // Soft shadows: a darker, same-hue version of a backdrop colour that fades in smoothly. Only
   // reachable from backdrop, and a garment's own edge is too abrupt to qualify.
   const shadowLike = (p: number) =>
     palette.some(([r, g, b]) => {
+      // Studio-style light backdrops only: a dark "backdrop" colour is more likely the item itself.
+      if (Math.min(r, g, b) < 150) return false;
       const len2 = r * r + g * g + b * b;
-      if (len2 < 60 * 60) return false;
       const k = (d[p * 4] * r + d[p * 4 + 1] * g + d[p * 4 + 2] * b) / len2;
       return k >= 0.55 && k <= 1 && dist(d, p * 4, r * k, g * k, b * k) <= 14;
     });
