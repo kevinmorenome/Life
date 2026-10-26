@@ -2,4 +2,5 @@
 
 interface ImportMetaEnv {
   readonly VITE_PREVIEW_LABEL?: string;
+  readonly VITE_PREVIEW_COMMIT?: string;
 }
