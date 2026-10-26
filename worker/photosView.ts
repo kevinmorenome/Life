@@ -28,7 +28,7 @@ export const PHOTOS_HTML = `<!doctype html>
 </head>
 <body>
 <ul id="grid"></ul>
-<p class="note" id="note" hidden></p>
+<p class="note" id="note">Loading photos…</p>
 <script>
 (function () {
   var nextId = 1;
@@ -58,8 +58,15 @@ export const PHOTOS_HTML = `<!doctype html>
     }
     var summary = content[0] && content[0].type === 'text' ? content[0].text.split('\\nOpen in the app')[0] : '';
     var extra = summary.replace(/^Showing \\d+ photos?\\.?\\s*/, '');
-    note.textContent = shown === 0 ? summary : extra;
+    note.textContent = shown === 0 ? summary || 'No photos to show.' : extra;
     note.hidden = !note.textContent;
+    reportSize();
+  }
+
+  function status(text) {
+    var note = document.getElementById('note');
+    note.textContent = text;
+    note.hidden = false;
     reportSize();
   }
 
@@ -70,9 +77,12 @@ export const PHOTOS_HTML = `<!doctype html>
   window.addEventListener('message', function (event) {
     var msg = event.data;
     if (!msg || msg.jsonrpc !== '2.0') return;
-    if (msg.id === 1 && msg.result) { // reply to ui/initialize
+    if (msg.id === 1 && msg.error) { // the host rejected ui/initialize: say so instead of staying blank
+      status('Couldn’t connect to the chat app: ' + (msg.error.message || 'rejected'));
+    } else if (msg.id === 1 && msg.result) { // reply to ui/initialize
       var theme = msg.result.hostContext && msg.result.hostContext.theme;
       if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+      status('Waiting for the photos…');
       send({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} });
     } else if (msg.method === 'ui/notifications/tool-result') {
       render(msg.params);
@@ -84,10 +94,10 @@ export const PHOTOS_HTML = `<!doctype html>
   });
 
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(reportSize).observe(document.body);
+  // Field names as in the ext-apps SDK (McpUiInitializeRequest): appInfo, appCapabilities, protocolVersion.
   send({ jsonrpc: '2.0', id: nextId++, method: 'ui/initialize', params: {
+    appInfo: { name: 'Life photos', version: '1.0.0' },
     appCapabilities: { availableDisplayModes: ['inline'] },
-    capabilities: {},
-    clientInfo: { name: 'Life photos', version: '1.0.0' },
     protocolVersion: '2026-01-26'
   } });
 })();

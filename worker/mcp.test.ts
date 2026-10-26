@@ -117,6 +117,10 @@ describe('photo gallery (MCP App)', () => {
     const [page] = read.result.contents;
     expect(page.mimeType).toBe('text/html;profile=mcp-app');
     expect(page.text).toContain('ui/initialize');
+    // Field names the host validates (ext-apps McpUiInitializeRequest); the spec's prose names others.
+    expect(page.text).toContain('appInfo');
+    expect(page.text).toContain('appCapabilities');
+    expect(page.text).not.toContain('clientInfo');
     expect(page.text).toContain('ui/notifications/tool-result');
     // Self-contained: the host's default CSP blocks anything fetched from elsewhere.
     expect(page.text).not.toMatch(/https?:\/\//);
