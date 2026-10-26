@@ -9,6 +9,8 @@ export interface ModuleTab {
   path: string;
   /** Whether this tab is active for the module's subroute. */
   matches(subroute: string[]): boolean;
+  /** Shown in a floating menu when the tab is long-pressed. */
+  longPress?: ModuleAction[];
 }
 
 /** An entry in the ＋ menu. */

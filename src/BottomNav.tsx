@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from './icons';
 import { href, navigate } from './lib/router';
 import type { LifeModule } from './modules/types';
@@ -15,12 +15,86 @@ export function BottomNav({ module, subroute }: { module: LifeModule; subroute: 
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
+  const [tabMenu, setTabMenu] = useState<string | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const longPressed = useRef(false);
+
+  useEffect(() => {
+    if (!tabMenu) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest('.tab-menu')) setTabMenu(null);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [tabMenu]);
+
   const tab = (t: LifeModule['tabs'][number]) => {
     const active = subroute !== null && t.matches(subroute);
-    return (
-      <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active ? 'page' : undefined}>
+    const link = (
+      <a
+        href={href(t.path)}
+        className="tab"
+        aria-label={t.label}
+        aria-current={active ? 'page' : undefined}
+        aria-haspopup={t.longPress ? 'menu' : undefined}
+        onPointerDown={
+          t.longPress
+            ? () => {
+                longPressed.current = false;
+                window.clearTimeout(timer.current);
+                timer.current = window.setTimeout(() => {
+                  longPressed.current = true;
+                  setTabMenu(t.id);
+                }, 450);
+              }
+            : undefined
+        }
+        onPointerUp={t.longPress ? () => window.clearTimeout(timer.current) : undefined}
+        onPointerLeave={t.longPress ? () => window.clearTimeout(timer.current) : undefined}
+        onPointerCancel={t.longPress ? () => window.clearTimeout(timer.current) : undefined}
+        onContextMenu={t.longPress ? (e) => e.preventDefault() : undefined}
+        onClick={
+          t.longPress
+            ? (e) => {
+                // The release after a long press must not also navigate to the tab.
+                if (longPressed.current) {
+                  e.preventDefault();
+                  longPressed.current = false;
+                }
+              }
+            : undefined
+        }
+      >
         {t.icon}
       </a>
+    );
+    if (!t.longPress) return <span key={t.id} className="tab-slot">{link}</span>;
+    return (
+      <span key={t.id} className="tab-slot">
+        {link}
+        {tabMenu === t.id && (
+          <div className="menu tab-menu" role="menu">
+            {t.longPress.map((a) => (
+              <button
+                key={a.label}
+                role="menuitem"
+                className="menu-item"
+                onClick={() => {
+                  setTabMenu(null);
+                  navigate(a.path());
+                }}
+              >
+                {a.icon}
+                <span>{a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
     );
   };
 

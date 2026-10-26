@@ -2367,3 +2367,21 @@ progress {
 .review-name .muted {
   font-size: 0.8rem;
 }
+
+/* Bottom-bar tab long-press menu */
+.tab-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.tab-slot .tab {
+  flex: 1;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.tab-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  white-space: nowrap;
+}
