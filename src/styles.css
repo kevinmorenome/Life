@@ -2197,3 +2197,66 @@ progress {
   list-style: none;
   gap: 0.6rem;
 }
+
+/* Multi-select in the closet */
+.tile-select {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tile-select[aria-pressed='true'] .thumb {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+.select-mark {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent-text);
+}
+.tile-select[aria-pressed='true'] .select-mark {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.select-mark svg {
+  width: 16px;
+  height: 16px;
+}
+.select-bar {
+  position: fixed;
+  right: 0;
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.select-action {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+.select-action svg {
+  width: 22px;
+  height: 22px;
+}
