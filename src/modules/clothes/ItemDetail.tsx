@@ -3,7 +3,7 @@ import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
 import { FieldSheet, type FieldSpec } from './FieldSheet';
-import { withField, type FieldKey } from './fields';
+import { brandsOf, withField, type FieldKey } from './fields';
 import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
@@ -133,7 +133,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
       </div>
 
       <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
-        {tab === 'about' && <About item={item} onSave={onSave} />}
+        {tab === 'about' && <About item={item} items={items} onSave={onSave} />}
         {tab === 'style' && <Style item={item} onSave={onSave} />}
         {tab === 'stats' && (
           <Stats item={item} outfits={inOutfits} onSave={onSave} />
@@ -143,7 +143,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   );
 }
 
-function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingItem) => Promise<void> }) {
+function About({ item, items, onSave }: { item: ClothingItem; items: ClothingItem[]; onSave: (item: ClothingItem) => Promise<void> }) {
   const colors = itemColors(item);
   return (
     <>
@@ -157,7 +157,7 @@ function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingIt
         onAdd={(c) => onSave(withColors(item, addChip(colors, c)))}
         onRemove={(c) => onSave(withColors(item, removeChip(colors, c)))}
       />
-      <FieldRows item={item} onSave={onSave} />
+      <FieldRows item={item} items={items} onSave={onSave} />
       <NotesField item={item} onSave={onSave} />
     </>
   );
@@ -211,7 +211,8 @@ interface SaveProps {
 const SELECT = (values: readonly string[]) => values.map((v) => ({ value: v, label: label(v) }));
 
 /** Tappable value pill; opens a sheet and saves on Apply. */
-function FieldRows({ item, onSave }: SaveProps) {
+function FieldRows({ item, items, onSave }: SaveProps & { items: ClothingItem[] }) {
+  const brands = brandsOf(items);
   const [open, setOpen] = useState<FieldKey | null>(null);
   const rows: { key: FieldKey; spec: Omit<FieldSpec, 'key' | 'title'>; title: string; value: string; shown?: string }[] = [
     { key: 'category', title: 'Category', spec: { kind: 'select', options: SELECT(CATEGORIES) }, value: item.category, shown: label(item.category) },
@@ -221,7 +222,7 @@ function FieldRows({ item, onSave }: SaveProps) {
       spec: { kind: 'text', clearable: true, suggestions: SUBCATEGORIES[item.category], placeholder: 'Polo shirt' },
       value: item.subcategory ?? '',
     },
-    { key: 'brand', title: 'Brand', spec: { kind: 'text', clearable: true }, value: item.brand ?? '' },
+    { key: 'brand', title: 'Brand', spec: { kind: 'select', creatable: true, clearable: true, placeholder: 'Brand name', options: brands.map((b) => ({ value: b, label: b })) }, value: item.brand ?? '' },
     { key: 'size', title: 'Size', spec: { kind: 'text', clearable: true }, value: item.size ?? '' },
     { key: 'material', title: 'Material', spec: { kind: 'text', clearable: true, placeholder: 'Cotton, Elastane' }, value: item.material ?? '' },
     {

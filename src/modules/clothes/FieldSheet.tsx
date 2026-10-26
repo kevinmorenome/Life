@@ -8,6 +8,8 @@ export interface FieldSpec {
   options?: { value: string; label: string }[];
   /** Suggestions for `text`. */
   suggestions?: string[];
+  /** For `select`: lets the user type a value that isn't in `options` ("New…" row), and filters long lists. */
+  creatable?: boolean;
   /** Whether an empty value is allowed (shows Restore to clear). */
   clearable?: boolean;
   placeholder?: string;
@@ -24,6 +26,8 @@ interface Props {
 export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState('');
   const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -47,7 +51,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
-          if (spec.kind !== 'select') apply(draft);
+          if (spec.kind !== 'select' || adding) apply(draft);
         }}
       >
         <div className="field-sheet-head">
@@ -59,8 +63,47 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
           )}
         </div>
 
-        {spec.kind === 'select' ? (
-          <ul className="field-options">
+        {spec.kind === 'select' && spec.creatable && adding ? (
+          <>
+            <input
+              ref={input}
+              type="text"
+              value={draft}
+              placeholder={spec.placeholder}
+              onChange={(e) => setDraft(e.target.value)}
+              aria-label={`New ${spec.title.toLowerCase()}`}
+            />
+            <button type="submit" className="btn btn-primary field-apply" disabled={!draft.trim()}>
+              Apply
+            </button>
+          </>
+        ) : spec.kind === 'select' ? (
+          <>
+            {spec.creatable && spec.options!.length > 8 && (
+              <input
+                ref={input}
+                type="search"
+                value={filter}
+                placeholder="Search"
+                onChange={(e) => setFilter(e.target.value)}
+                aria-label={`Search ${spec.title.toLowerCase()}`}
+              />
+            )}
+            <ul className="field-options">
+            {spec.creatable && (
+              <li>
+                <button
+                  type="button"
+                  className="sheet-item"
+                  onClick={() => {
+                    setDraft(filter.trim());
+                    setAdding(true);
+                  }}
+                >
+                  ＋ New {spec.title.toLowerCase()}…
+                </button>
+              </li>
+            )}
             {spec.clearable && (
               <li>
                 <button type="button" className="sheet-item" aria-pressed={value === ''} onClick={() => apply('')}>
@@ -68,7 +111,9 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 </button>
               </li>
             )}
-            {spec.options!.map((o) => (
+            {spec.options!
+              .filter((o) => o.label.toLowerCase().includes(filter.trim().toLowerCase()))
+              .map((o) => (
               <li key={o.value}>
                 <button type="button" className="sheet-item" aria-pressed={value === o.value} onClick={() => apply(o.value)}>
                   {o.label}
@@ -76,7 +121,8 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 </button>
               </li>
             ))}
-          </ul>
+            </ul>
+          </>
         ) : (
           <>
             {spec.kind === 'textarea' ? (

@@ -39,3 +39,13 @@ export function withField(item: ClothingItem, key: FieldKey, raw: string): Cloth
       return { ...next, [key]: v || undefined };
   }
 }
+
+/** Distinct brands already used in the closet, case-insensitively de-duplicated, sorted A–Z. */
+export function brandsOf(items: ClothingItem[]): string[] {
+  const seen = new Map<string, string>();
+  for (const i of items) {
+    const b = i.brand?.trim();
+    if (b && !seen.has(b.toLowerCase())) seen.set(b.toLowerCase(), b);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
