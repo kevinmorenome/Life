@@ -82,14 +82,14 @@ function cutOnce(src: Pixels, opts: CutoutOptions, lightOnly: boolean): Pixels |
       if (Math.min(r, g, b) < 150) return false;
       const len2 = r * r + g * g + b * b;
       const k = (d[p * 4] * r + d[p * 4 + 1] * g + d[p * 4 + 2] * b) / len2;
-      return k >= 0.55 && k <= 1 && dist(d, p * 4, r * k, g * k, b * k) <= 14;
+      return k >= 0.5 && k <= 1 && dist(d, p * 4, r * k, g * k, b * k) <= 8;
     });
   const smooth = (p: number, q: number) =>
     Math.max(
       Math.abs(d[p * 4] - d[q * 4]),
       Math.abs(d[p * 4 + 1] - d[q * 4 + 1]),
       Math.abs(d[p * 4 + 2] - d[q * 4 + 2]),
-    ) <= 7;
+    ) <= 3;
 
   const isBg = new Uint8Array(w * h);
   const stack: number[] = border.filter(matches);

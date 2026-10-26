@@ -73,7 +73,7 @@ describe('cutOut', () => {
     const shadowed = image(100, 100, white, (x, y) => {
       if (x >= 30 && x < 70 && y >= 20 && y < 70) return red;
       if (x >= 25 && x < 75 && y >= 70 && y < 82) {
-        const v = 250 - (82 - y) * 6; // darkest against the item, fading out
+        const v = 250 - (82 - y) * 3; // darkest against the item, fading out
         return [v, v, v];
       }
       return null;
