@@ -607,23 +607,16 @@ a:focus-visible {
 .closet-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin: 0 -16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  margin: 0 -8px;
 }
 @media (min-width: 640px) {
   .closet-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     margin: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
   }
 }
 .closet-grid li {
   min-width: 0;
-  /* Right and bottom dividers; trailing empty cells stay blank. */
-  box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border);
 }
 .closet-tile {
   display: flex;
