@@ -6,20 +6,24 @@ import { Insights } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
+import { newPlan, upcomingPlans } from './plans';
 import { lastWorn, wearCount } from './stats';
-import type { ClothingItem, Outfit } from './types';
+import type { ClothingItem, Outfit, Plan } from './types';
 import { WearLog } from './WearLog';
 import { withoutWear } from './wear';
 
 interface Props {
   outfit: Outfit;
   items: ClothingItem[];
+  plans: Plan[];
+  onSavePlan: (p: Plan) => Promise<void>;
+  onRemovePlan: (id: string) => Promise<void>;
   onSaveOutfit: (o: Outfit) => Promise<void>;
   onSaveItem: (i: ClothingItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function OutfitDetail({ outfit, items, onSaveOutfit, onSaveItem, onDelete }: Props) {
+export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, onSaveOutfit, onSaveItem, onDelete }: Props) {
   const pieces = outfitPieces(outfit, items);
   const last = lastWorn(outfit);
 
@@ -27,6 +31,16 @@ export function OutfitDetail({ outfit, items, onSaveOutfit, onSaveItem, onDelete
     const { outfit: o, pieces: ps } = wearOutfit(outfit, pieces, date);
     if (o) await onSaveOutfit(o);
     for (const p of ps) await onSaveItem(p);
+  }
+
+  const upcoming = upcomingPlans(plans, outfit, today());
+  const dayLabel = (d: string) =>
+    new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  // Future dates become plans; today and past dates are real wears.
+  async function addDate(date: string) {
+    if (date > today()) await onSavePlan(newPlan(outfit.id, date));
+    else await logWear(date);
   }
 
   async function del() {
@@ -98,12 +112,34 @@ export function OutfitDetail({ outfit, items, onSaveOutfit, onSaveItem, onDelete
         ]}
       />
 
+      {upcoming.length > 0 && (
+        <section className="plain">
+          <h2>
+            Planned <span className="count-badge">{upcoming.length}</span>
+          </h2>
+          <ul className="wear-entries">
+            {upcoming.map((p) => (
+              <li key={p.id}>
+                <span className="wear-dot" aria-hidden />
+                <a className="wear-main" href={href(`/clothes/calendar/${p.date}`)}>
+                  {dayLabel(p.date)}
+                </a>
+                <button className="wear-remove" aria-label={`Remove plan on ${dayLabel(p.date)}`} onClick={() => onRemovePlan(p.id)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <WearLog
+        allowFuture
         wears={outfit.wears}
         priorWears={outfit.priorWears}
-        hint="Logging a wear here also logs it for each piece."
+        hint="Logging a wear here also logs it for each piece. Pick a future date to plan it."
         canAdd={(d) => !outfit.wears.includes(d)}
-        onAdd={logWear}
+        onAdd={addDate}
         onRemove={(i) => onSaveOutfit(withoutWear(outfit, i))}
       />
     </article>

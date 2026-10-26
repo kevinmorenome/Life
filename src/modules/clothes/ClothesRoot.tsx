@@ -11,19 +11,20 @@ import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
 import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
-import type { ClothingItem, Outfit } from './types';
+import type { ClothingItem, Outfit, Plan } from './types';
 
 export function ClothesRoot({ subroute }: { subroute: string[] }) {
   const clothes = useCollection<ClothingItem>('clothes');
   const outfits = useCollection<Outfit>('outfits');
   const trips = useCollection<Trip>('trips');
+  const plans = useCollection<Plan>('plans');
   const { items, save } = clothes;
   const [first, second, third] = subroute;
 
-  if (clothes.loading || outfits.loading || trips.loading) return <p className="muted">Loading…</p>;
+  if (clothes.loading || outfits.loading || trips.loading || plans.loading) return <p className="muted">Loading…</p>;
 
   if (first === 'outfits') {
-    const outfitProps = { items, onSaveOutfit: outfits.save, onSaveItem: save };
+    const outfitProps = { items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveOutfit: outfits.save, onSaveItem: save };
     if (!second) return <OutfitList outfits={outfits.items} items={items} />;
     if (second === 'new') return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} />;
     const outfit = outfits.items.find((o) => o.id === second);
@@ -33,14 +34,14 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   }
 
   if (first === 'calendar') {
-    const props = { items, outfits: outfits.items, trips: trips.items, onSaveItem: save, onSaveOutfit: outfits.save };
+    const props = { items, outfits: outfits.items, trips: trips.items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveItem: save, onSaveOutfit: outfits.save };
     if (second && /^\d{4}-\d{2}-\d{2}$/.test(second)) {
       if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
       if (third === 'items') return <LogItemsPicker date={second} {...props} />;
       return <DayView date={second} {...props} />;
     }
     const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
-    return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} />;
+    return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} plans={plans.items} />;
   }
 
   if (first === 'today') {

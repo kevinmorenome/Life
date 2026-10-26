@@ -1849,6 +1849,12 @@ progress {
   right: 0;
 }
 
+/* Planned outfits on the calendar: dashed ring */
+.calendar-day.planned {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+}
+
 /* Outfit form: closet grid with selectable tiles */
 .pick-tile {
   width: 100%;

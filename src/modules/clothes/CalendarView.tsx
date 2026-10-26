@@ -6,7 +6,8 @@ import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { ItemThumb } from './ItemThumb';
 import { outfitPieces } from './outfits';
-import type { ClothingItem, Outfit } from './types';
+import { plannedDays } from './plans';
+import type { ClothingItem, Outfit, Plan } from './types';
 
 interface Props {
   /** YYYY-MM; defaults to the current month. */
@@ -14,13 +15,15 @@ interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
   trips?: Trip[];
+  plans?: Plan[];
 }
 
-export function CalendarView({ month, items, outfits, trips = [] }: Props) {
+export function CalendarView({ month, items, outfits, trips = [], plans = [] }: Props) {
   const now = today();
   const ym = month ?? now.slice(0, 7);
   const [year, m] = ym.split('-').map(Number);
   const days = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
+  const planned = useMemo(() => plannedDays(plans, outfits), [plans, outfits]);
   const weeks = monthGrid(year, m);
   const title = new Date(Date.UTC(year, m - 1, 1)).toLocaleDateString(undefined, {
     month: 'long',
@@ -74,7 +77,7 @@ export function CalendarView({ month, items, outfits, trips = [] }: Props) {
                 key={date}
                 role="gridcell"
                 href={href(`/clothes/calendar/${date}`)}
-                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}`}
+                className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}${planned.has(date) ? ' planned' : ''}`}
                 aria-label={date}
               >
                 <DayBubble wear={days.get(date)} items={items} />
