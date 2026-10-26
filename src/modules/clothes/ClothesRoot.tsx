@@ -1,5 +1,6 @@
 import { useCollection } from '../../lib/useCollection';
 import { CalendarView } from './CalendarView';
+import { ClosetReview } from './ClosetReview';
 import { ClothesList } from './ClothesList';
 import { ClothesStatsView } from './ClothesStats';
 import { DayView } from './DayView';
@@ -55,6 +56,8 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   if (first === 'today') {
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
+
+  if (first === 'review') return <ClosetReview step={second} items={items} onSave={save} />;
 
   if (first === 'new') return <ItemForm onSave={save} />;
   if (first === 'stats') return <ClothesStatsView items={items} />;

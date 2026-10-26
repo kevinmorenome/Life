@@ -1,4 +1,5 @@
 import { CalendarIcon, ChartIcon, CheckIcon, HangerIcon, PlusIcon, ShirtIcon } from '../../icons';
+import { ClipboardCheckIcon } from './icons';
 import type { LifeModule } from '../types';
 import { ClothesRoot } from './ClothesRoot';
 
@@ -16,7 +17,7 @@ export const clothesModule: LifeModule = {
       label: 'Closet',
       icon: <HangerIcon />,
       path: '/clothes',
-      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today'].includes(first),
+      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today', 'review'].includes(first),
     },
     {
       id: 'outfits',
@@ -38,10 +39,12 @@ export const clothesModule: LifeModule = {
     { label: 'Log what I wore today', icon: <CheckIcon />, path: () => '/clothes/today' },
     { label: 'Add an item', icon: <PlusIcon />, path: () => '/clothes/new' },
     { label: 'New outfit', icon: <ShirtIcon />, path: () => '/clothes/outfits/new' },
+    { label: 'Review closet', icon: <ClipboardCheckIcon />, path: () => '/clothes/review' },
   ],
   // Forms and pickers have their own sticky Save/Cancel at the bottom.
   hideNav: ([first, second, third]) =>
     first === 'new' ||
+    (first === 'review' && Boolean(second)) ||
     second === 'edit' ||
     (first === 'outfits' && (second === 'new' || third === 'edit')) ||
     (first === 'calendar' && DATE.test(second ?? '') && (third === 'outfit' || third === 'items' || third === 'new-outfit')),
