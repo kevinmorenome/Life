@@ -64,6 +64,8 @@ export interface ClothingItem {
   /** YYYY-MM-DD */
   purchaseDate?: string;
   status: Status;
+  /** Spells in `storage`, so time put away doesn't count towards "in the closet". Maintain via `withStatus()`. */
+  storedPeriods?: { from: string; to?: string }[];
   condition?: Condition;
   /** JPEG data URL */
   photo?: string;

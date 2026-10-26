@@ -7,11 +7,13 @@ import { valuesOf, withField, type FieldKey } from './fields';
 import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
+import { EyeIcon, EyeOffIcon } from '../../icons';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
+import { isStored, withStatus } from './storage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import {
@@ -93,6 +95,15 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
               icon: <CalendarCheckIcon />,
               onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
             },
+            ...(item.status === 'active' || isStored(item)
+              ? [
+                  {
+                    label: isStored(item) ? 'Bring back' : 'Put away',
+                    icon: isStored(item) ? <EyeIcon /> : <EyeOffIcon />,
+                    onClick: () => onSave(withStatus(item, isStored(item) ? 'active' : 'storage', today())),
+                  },
+                ]
+              : []),
           ]}
         >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>

@@ -1,3 +1,4 @@
+import { storedDays } from './storage';
 import type { Category, ClothingItem } from './types';
 
 export interface ClothesStats {
@@ -28,11 +29,14 @@ export function lastWorn(item: { wears: string[] }): string | null {
   return item.wears.length ? item.wears.reduce((a, b) => (a > b ? a : b)) : null;
 }
 
-/** Whole days since the item was bought (or added, if there's no purchase date). */
-export function daysInCloset(item: Pick<ClothingItem, 'purchaseDate' | 'createdAt'>, today: string): number {
+/** Whole days since the item was bought (or added, if there's no purchase date), minus time put away. */
+export function daysInCloset(
+  item: Pick<ClothingItem, 'purchaseDate' | 'createdAt' | 'storedPeriods'>,
+  today: string,
+): number {
   const start = item.purchaseDate ?? item.createdAt.slice(0, 10);
   const ms = Date.parse(today + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z');
-  return Math.max(0, Math.round(ms / 86_400_000));
+  return Math.max(0, Math.round(ms / 86_400_000) - storedDays(item, today));
 }
 
 /** `today` is YYYY-MM-DD; passed in so the function stays pure for tests. */

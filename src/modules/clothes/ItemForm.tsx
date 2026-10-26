@@ -1,8 +1,10 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
+import { today } from '../../lib/format';
 import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { PALETTE, itemColors, swatchCss } from './colors';
+import { withStatus } from './storage';
 import {
   CATEGORIES,
   SUBCATEGORIES,
@@ -106,6 +108,7 @@ export function ItemForm({ existing, onSave }: Props) {
     const item: ClothingItem = {
       // Keep fields this form doesn't edit (tags, priorWears, occasions…).
       ...existing,
+      status: existing?.status ?? 'active',
       id: existing?.id ?? newId(),
       name: name.trim(),
       category,
@@ -117,7 +120,6 @@ export function ItemForm({ existing, onSave }: Props) {
       seasons: SEASONS.filter((s) => seasons.includes(s)),
       price: parsedPrice,
       purchaseDate: purchaseDate || undefined,
-      status,
       condition: condition || undefined,
       photo,
       notes: notes.trim() || undefined,
@@ -125,8 +127,9 @@ export function ItemForm({ existing, onSave }: Props) {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    await onSave(item);
-    navigate(`/clothes/${item.id}`);
+    const saved = withStatus(item, status, today());
+    await onSave(saved);
+    navigate(`/clothes/${saved.id}`);
   }
 
   return (
