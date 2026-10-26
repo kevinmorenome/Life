@@ -5,10 +5,12 @@ import { SyncBadge } from './SyncBadge';
 import { GearIcon } from './icons';
 import { PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
+import { useHideOnScroll } from './lib/useHideOnScroll';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
 export function App() {
+  const topbarHidden = useHideOnScroll();
   const [section, ...rest] = useRoute();
   // With a single module the app opens straight into it; Home returns once there are more.
   const singleModule = MODULES.length === 1;
@@ -32,7 +34,7 @@ export function App() {
           <strong>Preview of {PREVIEW_LABEL}</strong> · shows your real data, but changes here aren’t saved
         </div>
       )}
-      <header className="topbar">
+      <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
         <div className="brand-row">
           <a className="brand" href={href('/')}>
             Life

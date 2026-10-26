@@ -92,6 +92,14 @@ ul {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+.topbar-hidden {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .topbar {
+    transition: transform 0.2s ease;
+  }
+}
 .brand {
   font-weight: 700;
   font-size: 1.15rem;
