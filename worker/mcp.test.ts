@@ -442,11 +442,18 @@ describe('add_item and create_outfit', () => {
     });
   });
 
+  it('stores colours from the swatch palette as a list', async () => {
+    const { ctx, data } = setup();
+    await call(ctx, 'add_item', { name: 'Tee', category: 'tops', colors: ['Navy', 'White', 'Navy'] });
+    expect(data.clothes.get('id-1')).toMatchObject({ colors: ['Navy', 'White'], color: 'Navy, White' });
+  });
+
   it('validates item input', async () => {
     const { ctx } = setup();
     expect((await call(ctx, 'add_item', { name: 'x', category: 'hats' })).isError).toBe(true);
     expect((await call(ctx, 'add_item', { name: '  ', category: 'tops' })).isError).toBe(true);
     expect((await call(ctx, 'add_item', { name: 'x', category: 'tops', price: -1 })).isError).toBe(true);
+    expect((await call(ctx, 'add_item', { name: 'x', category: 'tops', colors: ['Periwinkle'] })).isError).toBe(true);
   });
 
   it('creates an outfit from existing items only', async () => {
