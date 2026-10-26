@@ -21,10 +21,6 @@ export const PHOTOS_HTML = `<!doctype html>
   body { margin: 0; padding: 8px; font: 14px/1.3 system-ui, -apple-system, sans-serif; color: var(--text); background: transparent; }
   ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px 10px; margin: 0; padding: 0; list-style: none; }
   figure { margin: 0; }
-  button.pick { display: block; width: 100%; min-height: 44px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  button.pick:disabled { cursor: default; }
-  button.pick:enabled:active img { opacity: 0.7; }
-  button.pick:focus-visible { outline: 2px solid var(--muted); outline-offset: 2px; border-radius: 14px; }
   img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; background: var(--tile); }
   figcaption { margin-top: 6px; text-align: center; font-size: 13px; overflow-wrap: anywhere; }
   .note { margin: 6px 2px 0; color: var(--muted); font-size: 12px; }
@@ -36,22 +32,9 @@ export const PHOTOS_HTML = `<!doctype html>
 <script>
 (function () {
   var nextId = 1;
-  var canPick = false; // only once the host confirms it can take a message from the view
-  var picks = {};      // ui/message request id -> caption, to report how the host answered
   function send(msg) { window.parent.postMessage(msg, '*'); }
 
-  function pick(button, id, caption) {
-    var name = caption.split(' · from')[0];
-    var reqId = nextId++;
-    picks[reqId] = name;
-    button.disabled = true;
-    send({ jsonrpc: '2.0', id: reqId, method: 'ui/message', params: {
-      role: 'user',
-      content: [{ type: 'text', text: 'I meant the ' + name + (id ? ' (item id: ' + id + ')' : '') + '.' }]
-    } });
-  }
-
-  function add(grid, id, caption, mimeType, data) {
+  function add(grid, caption, mimeType, data) {
     var li = document.createElement('li');
     var fig = document.createElement('figure');
     var img = document.createElement('img');
@@ -59,14 +42,7 @@ export const PHOTOS_HTML = `<!doctype html>
     img.src = 'data:' + mimeType + ';base64,' + data;
     var cap = document.createElement('figcaption');
     cap.textContent = caption;
-    var button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'pick';
-    button.setAttribute('aria-label', 'Pick ' + caption);
-    button.disabled = !canPick;
-    button.addEventListener('click', function () { pick(button, id, caption); });
-    button.appendChild(img); button.appendChild(cap);
-    fig.appendChild(button); li.appendChild(fig); grid.appendChild(li);
+    fig.appendChild(img); fig.appendChild(cap); li.appendChild(fig); grid.appendChild(li);
   }
 
   function render(result) {
@@ -78,13 +54,13 @@ export const PHOTOS_HTML = `<!doctype html>
     // Preferred: structuredContent.photos (meant for this view). Fallback: caption + image blocks in content.
     var photos = result && result.structuredContent && result.structuredContent.photos;
     if (photos && photos.length) {
-      photos.forEach(function (p) { add(grid, p.id, p.caption, p.mimeType, p.data); shown++; });
+      photos.forEach(function (p) { add(grid, p.caption, p.mimeType, p.data); shown++; });
     } else {
       var caption = '';
       for (var i = 1; i < content.length; i++) {
         var block = content[i];
         if (block.type === 'text') { caption = block.text; continue; }
-        if (block.type === 'image') { add(grid, '', caption, block.mimeType, block.data); caption = ''; shown++; }
+        if (block.type === 'image') { add(grid, caption, block.mimeType, block.data); caption = ''; shown++; }
       }
     }
     var summary = content[0] && content[0].type === 'text' ? content[0].text.split('\\nOpen in the app')[0] : '';
@@ -95,7 +71,7 @@ export const PHOTOS_HTML = `<!doctype html>
       var keys = result ? Object.keys(result).join(', ') : 'nothing';
       note.textContent = (summary || 'No photos to show.') + ' [received: ' + kinds + ' | fields: ' + keys + ']';
     } else {
-      note.textContent = [extra, canPick ? 'Tap a photo to pick it.' : ''].filter(Boolean).join(' ');
+      note.textContent = extra;
     }
     note.hidden = !note.textContent;
     reportSize();
@@ -115,22 +91,10 @@ export const PHOTOS_HTML = `<!doctype html>
   window.addEventListener('message', function (event) {
     var msg = event.data;
     if (!msg || msg.jsonrpc !== '2.0') return;
-    if (msg.id !== undefined && picks[msg.id] !== undefined && !msg.method) { // answer to a ui/message
-      var name = picks[msg.id];
-      delete picks[msg.id];
-      if (msg.error) { // the host can't take it after all: stop offering it, replying by text still works
-        canPick = false;
-        Array.prototype.forEach.call(document.querySelectorAll('button.pick'), function (b) { b.disabled = true; });
-        status('Couldn’t send that. Tell Claude which one you meant.');
-      } else {
-        status('Sent: ' + name);
-      }
-    } else if (msg.id === 1 && msg.error) { // the host rejected ui/initialize: say so instead of staying blank
+    if (msg.id === 1 && msg.error) { // the host rejected ui/initialize: say so instead of staying blank
       status('Couldn’t connect to the chat app: ' + (msg.error.message || 'rejected'));
     } else if (msg.id === 1 && msg.result) { // reply to ui/initialize
       var theme = msg.result.hostContext && msg.result.hostContext.theme;
-      var caps = msg.result.hostCapabilities;
-      canPick = !!(caps && caps.message);
       if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
       status('Waiting for the photos…');
       send({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} });

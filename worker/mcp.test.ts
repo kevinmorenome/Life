@@ -92,7 +92,6 @@ describe('protocol', () => {
       'create_outfit',
       'edit_outfit',
       'edit_item',
-      'ask_to_choose',
     ]);
     expect(await rpc(ctx, 'notifications/initialized', undefined, true)).toBeNull();
     expect((await rpc(ctx, 'nope')).error.code).toBe(-32601);
@@ -127,9 +126,6 @@ describe('photo gallery (MCP App)', () => {
     expect(page.text).not.toContain('clientInfo');
     expect(page.text).toContain('ui/notifications/tool-result');
     expect(page.text).toContain('structuredContent');
-    // Tap-to-pick is offered only when the host advertises message support.
-    expect(page.text).toContain('ui/message');
-    expect(page.text).toContain('hostCapabilities');
     // Self-contained: the host's default CSP blocks anything fetched from elsewhere.
     expect(page.text).not.toMatch(/https?:\/\//);
     expect((await rpc(ctx, 'resources/read', { uri: 'ui://life/other' })).error.code).toBe(-32002);
@@ -192,7 +188,7 @@ describe('show_photos', () => {
     const { ctx } = setup({}, photoSeed);
     const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
     expect(r.structured).toEqual({
-      photos: [{ id: 'blazer', caption: 'Navy blazer', mimeType: 'image/jpeg', data: '/9j/AAAA' }],
+      photos: [{ caption: 'Navy blazer', mimeType: 'image/jpeg', data: '/9j/AAAA' }],
       note: 'No photo for: White tee.',
     });
     expect((await call(ctx, 'find_items', {})).structured).toBeUndefined();
@@ -552,44 +548,5 @@ describe('edit_item', () => {
     const { ctx, data } = setup({ readOnly: true });
     expect((await call(ctx, 'edit_item', { itemId: 'tee', name: 'x' })).isError).toBe(true);
     expect(data.inbox.size).toBe(0);
-  });
-});
-
-describe('ask_to_choose (elicitation)', () => {
-  const start = (ctx: ToolContext, args: object = { question: 'Which tee?', options: ['A', 'B'] }) =>
-    handleMcp(new Request('https://x/mcp', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ask_to_choose', arguments: args } }) }), ctx);
-  const answer = (ctx: ToolContext, msg: object) => handleMcp(new Request('https://x/mcp', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', ...msg }) }), ctx);
-
-  async function ask(reply: (id: string) => object) {
-    const { ctx } = setup();
-    const res = await start(ctx);
-    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
-    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
-    const first = JSON.parse((await reader.read()).value!.replace(/^event: message\ndata: /, ''));
-    expect(first).toMatchObject({ method: 'elicitation/create', params: { message: 'Which tee?' } });
-    expect(first.params.requestedSchema.properties.choice.enum).toEqual(['A', 'B']);
-    expect((await answer(ctx, reply(first.id))).status).toBe(202);
-    let rest = '';
-    for (let r = await reader.read(); !r.done; r = await reader.read()) rest += r.value;
-    return JSON.parse(rest.replace(/^event: message\ndata: /, ''));
-  }
-
-  it('asks the client and returns what the user picked', async () => {
-    const final = await ask((id) => ({ id, result: { action: 'accept', content: { choice: 'B' } } }));
-    expect(final.id).toBe(7);
-    expect(final.result).toEqual({ content: [{ type: 'text', text: 'The user chose: B' }], isError: false });
-  });
-
-  it('reports a decline, and a client that cannot elicit', async () => {
-    expect((await ask((id) => ({ id, result: { action: 'decline' } }))).result.content[0].text).toBe('The user declined without choosing.');
-    const unsupported = await ask((id) => ({ id, error: { code: -32601, message: 'Method not found' } }));
-    expect(unsupported.result.isError).toBe(true);
-    expect(unsupported.result.content[0].text).toContain('Ask the user in plain text');
-  });
-
-  it('rejects bad arguments and stray replies without streaming', async () => {
-    const { ctx } = setup();
-    expect(((await (await start(ctx, { question: 'x', options: ['only'] })).json()) as any).result.isError).toBe(true);
-    expect((await answer(ctx, { id: 'elicit-ghost', result: {} })).status).toBe(200); // JSON-RPC error body
   });
 });
