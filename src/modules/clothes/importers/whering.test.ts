@@ -30,6 +30,8 @@ describe('whering import', () => {
       ['TROUSER-PANTS', 'bottoms'],
       ['PYJAMA-BOTTOMS', 'sleepwear'],
       ['RUNNING-SHORTS', 'activewear'],
+      ['SWIMMING-TRUNKS', 'swimwear'],
+      ['BIKINI-TOP', 'swimwear'],
       ['TRUNKS', 'underwear'],
       ['HIGH-SOCKS', 'underwear'],
       ['CANVAS-SNEAKERS', 'shoes'],
@@ -40,6 +42,11 @@ describe('whering import', () => {
       ['OTHER-OTHER', 'other'],
     ];
     for (const [w, ours] of cases) expect([w, mapCategory(w)]).toEqual([w, ours]);
+  });
+
+  it('has a readable label to use as the sub-category', () => {
+    expect(mapCategory('POLO-SHIRT')).toBe('tops');
+    expect(typeLabel('POLO-SHIRT')).toBe('polo shirt');
   });
 
   it('humanizes labels', () => {

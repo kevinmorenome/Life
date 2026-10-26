@@ -10,6 +10,9 @@ const ZONE: Record<Category, Zone> = {
   bottoms: 'lower',
   shoes: 'feet',
   accessories: 'extra',
+  bags: 'extra',
+  jewelry: 'extra',
+  swimwear: 'extra',
   activewear: 'extra',
   sleepwear: 'extra',
   underwear: 'extra',
@@ -27,13 +30,16 @@ export interface Board {
   hidden: number;
 }
 
+/** Categories that are add-ons, never a main garment. */
+const ADD_ONS: Category[] = ['accessories', 'bags', 'jewelry'];
+
 const LOWER_WORDS = /short|pant|trouser|bottom|jogger|legging|skirt|jean/i;
 const UPPER_WORDS = /shirt|\btop|\btee\b|hoodie|jumper|sweater|bra\b/i;
 
 /** Activewear, sleepwear and the like can be worn on top or bottom; guess from the name. */
 function zoneOf(p: ClothingItem): Zone {
   const zone = ZONE[p.category];
-  if (zone !== 'extra' || p.category === 'accessories') return zone;
+  if (zone !== 'extra' || ADD_ONS.includes(p.category)) return zone;
   if (LOWER_WORDS.test(p.name)) return 'lower';
   if (UPPER_WORDS.test(p.name)) return 'upper';
   return 'extra';
@@ -46,7 +52,7 @@ export function boardLayout(pieces: ClothingItem[]): Board {
   const zones = new Map(ordered.map((p) => [p, zoneOf(p)]));
   // An outfit with nothing for the legs: the first unplaced non-accessory goes there.
   if (![...zones.values()].includes('lower')) {
-    const filler = ordered.find((p) => zones.get(p) === 'extra' && p.category !== 'accessories');
+    const filler = ordered.find((p) => zones.get(p) === 'extra' && !ADD_ONS.includes(p.category));
     if (filler) zones.set(filler, 'lower');
   }
   for (const p of ordered) {

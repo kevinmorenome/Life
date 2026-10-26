@@ -9,7 +9,7 @@ import { ItemThumb } from './ItemThumb';
 import { OutfitCollage } from './OutfitCollage';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
-import { label, type ClothingItem, type Outfit } from './types';
+import { categoryLabel, label, type ClothingItem, type Outfit } from './types';
 import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear } from './wear';
 
@@ -52,7 +52,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         </div>
         <ItemThumb item={item} large />
         <h1>{item.name}</h1>
-        <p className="muted small">{[item.brand, label(item.category)].filter(Boolean).join(' · ')}</p>
+        <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
         <HeroActions
           editPath={`/clothes/${item.id}/edit`}
           favorite={!!item.favorite}
@@ -110,7 +110,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
 
 function About({ item }: { item: ClothingItem }) {
   const facts: [string, string | undefined][] = [
-    ['Category', label(item.category)],
+    ['Category', categoryLabel(item)],
     ['Status', label(item.status)],
     ['Brand', item.brand],
     ['Size', item.size],
