@@ -83,7 +83,20 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
         <HeroActions
-          editPath={`/clothes/${item.id}/edit`}
+          leading={
+            item.status === 'active' || item.status === 'storage' ? (
+              <button
+                className="icon-action"
+                aria-label={item.status === 'storage' ? 'Bring back to closet' : 'Put away in storage'}
+                aria-pressed={item.status === 'storage'}
+                onClick={() =>
+                  onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() })
+                }
+              >
+                {item.status === 'storage' ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            ) : undefined
+          }
           favorite={!!item.favorite}
           onToggleFavorite={() => onSave({ ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() })}
           onDelete={del}
@@ -94,16 +107,6 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
               icon: <CalendarCheckIcon />,
               onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
             },
-            ...(item.status === 'active' || item.status === 'storage'
-              ? [
-                  {
-                    label: item.status === 'storage' ? 'Bring back' : 'Put away',
-                    icon: item.status === 'storage' ? <EyeIcon /> : <EyeOffIcon />,
-                    onClick: () =>
-                      onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() }),
-                  },
-                ]
-              : []),
           ]}
         >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
