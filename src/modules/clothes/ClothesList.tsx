@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { activeFilterCount, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
+import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
 import { FilterSheet } from './FilterSheet';
 import { HeartIcon, SlidersIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { wearCount } from './stats';
-import { label, type ClothingItem } from './types';
+import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
 export function ClothesList({ items }: { items: ClothingItem[] }) {
   const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
@@ -14,6 +14,10 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
 
   const visible = useMemo(() => filterItems(items, filters), [items, filters]);
   const active = activeFilterCount(filters);
+  const counts = useMemo(() => categoryCounts(items, filters), [items, filters]);
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === filters.category);
+  const pickCategory = (category: Category | 'all') => setFilters({ ...filters, category, subcategory: '' });
 
   return (
     <>
@@ -53,6 +57,17 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
               {active > 0 && <span className="filter-count">{active}</span>}
             </button>
           </div>
+
+          <nav className="category-tabs" aria-label="Categories">
+            <button aria-pressed={filters.category === 'all'} onClick={() => pickCategory('all')}>
+              All <span className="count">{total}</span>
+            </button>
+            {tabs.map((c) => (
+              <button key={c} aria-pressed={filters.category === c} onClick={() => pickCategory(c)}>
+                {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
+              </button>
+            ))}
+          </nav>
 
           {visible.length === 0 ? (
             <p className="muted empty">{filters.favoritesOnly && !filters.query && active === 1 ? 'No favorites yet.' : 'No items match.'}</p>

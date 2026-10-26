@@ -73,10 +73,9 @@ export function filterItems(items: ClothingItem[], f: ClosetFilters): ClothingIt
     });
 }
 
-/** How many filters from the sheet differ from the defaults (the search text doesn't count). */
+/** How many sheet filters differ from the defaults (search text and the category tabs don't count). */
 export function activeFilterCount(f: ClosetFilters): number {
   return [
-    f.category !== DEFAULT_FILTERS.category,
     f.subcategory !== DEFAULT_FILTERS.subcategory,
     f.status !== DEFAULT_FILTERS.status,
     f.sort !== DEFAULT_FILTERS.sort,

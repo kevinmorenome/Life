@@ -52,7 +52,7 @@ describe('closet filters', () => {
   });
 
   it('counts only sheet filters that differ from the defaults', () => {
-    expect(activeFilterCount({ ...DEFAULT_FILTERS, query: 'x' })).toBe(0);
-    expect(activeFilterCount({ ...DEFAULT_FILTERS, category: 'tops', favoritesOnly: true, status: 'all' })).toBe(3);
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, query: 'x', category: 'tops' })).toBe(0);
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, favoritesOnly: true, status: 'all', sort: 'name' })).toBe(3);
   });
 });

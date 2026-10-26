@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CloseIcon, HeartIcon } from './icons';
 import {
-  categoryCounts,
   DEFAULT_FILTERS,
   filterItems,
   SORTS,
   subcategoryCounts,
   type ClosetFilters,
 } from './closetFilter';
-import { CATEGORIES, STATUSES, label, type ClothingItem } from './types';
+import { STATUSES, label, type ClothingItem } from './types';
 
 interface Props {
   items: ClothingItem[];
@@ -28,7 +27,6 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
     return () => document.removeEventListener('keydown', esc);
   }, [onClose]);
 
-  const cats = categoryCounts(items, draft);
   const subs = subcategoryCounts(items, draft);
   const result = filterItems(items, draft).length;
 
@@ -45,31 +43,6 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
       </header>
 
       <div className="filter-body">
-        <section>
-          <h3>Category</h3>
-          <div className="chips">
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={draft.category === 'all'}
-              onClick={() => set({ category: 'all', subcategory: '' })}
-            >
-              All
-            </button>
-            {CATEGORIES.filter((c) => cats.get(c) || c === draft.category).map((c) => (
-              <button
-                key={c}
-                type="button"
-                className="chip"
-                aria-pressed={draft.category === c}
-                onClick={() => set({ category: c, subcategory: '' })}
-              >
-                {label(c)} · {cats.get(c) ?? 0}
-              </button>
-            ))}
-          </div>
-        </section>
-
         {subs.size > 0 && (
           <section>
             <h3>Sub-category</h3>
