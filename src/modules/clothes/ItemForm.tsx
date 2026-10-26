@@ -121,17 +121,15 @@ export function ItemForm({ existing, onSave }: Props) {
               onChange={(e) => onPhoto(e.target.files?.[0])}
             />
           </label>
-          {picked && (
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={removeBg && !!picked.cutout}
-              disabled={!picked.cutout}
-              onClick={toggleBackground}
-            >
-              {picked.cutout ? 'Remove background' : 'No clean cut-out'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={removeBg && (!picked || !!picked.cutout)}
+            disabled={!!picked && !picked.cutout}
+            onClick={toggleBackground}
+          >
+            {picked && !picked.cutout ? 'No clean cut-out' : 'Remove background'}
+          </button>
           {photo && (
             <button type="button" className="btn btn-ghost" onClick={() => setPhoto(undefined)}>
               Remove
