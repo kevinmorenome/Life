@@ -14,6 +14,7 @@ import {
   stepValues,
   STEPS,
   subcategoryOptions,
+  toggleAllSeasons,
   toggleStepValue,
   toggleSubcategory,
   type ReviewStep,
@@ -145,6 +146,16 @@ function ReviewStepView({ step, items, onSave }: { step: ReviewStep; items: Clot
               <ItemThumb item={item} />
               <div className="review-chips">
                 <div className="chips">
+                  {step === 'season' && (
+                    <button
+                      type="button"
+                      className="chip chip-review"
+                      aria-pressed={current.length === info.options.length}
+                      onClick={() => edit(toggleAllSeasons(item))}
+                    >
+                      All
+                    </button>
+                  )}
                   {info.options.map((o) => (
                     <button
                       key={o}

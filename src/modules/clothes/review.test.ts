@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isReviewed, markReviewed, stepItems, stepProgress, stepValues, toggleStepValue, toggleSubcategory } from './review';
+import { isReviewed, markReviewed, stepItems, stepProgress, stepValues, toggleAllSeasons, toggleStepValue, toggleSubcategory } from './review';
 import type { ClothingItem } from './types';
 
 const item = (over: Partial<ClothingItem> = {}): ClothingItem => ({
@@ -91,4 +91,10 @@ describe('progress', () => {
     expect(isReviewed(m, 'season')).toBe(true);
     expect(isReviewed(m, 'fit')).toBe(false);
   });
+});
+
+it('toggleAllSeasons selects all, then clears', () => {
+  const all = toggleAllSeasons(item({ seasons: ['winter'] }));
+  expect(all.seasons).toEqual(['spring', 'summer', 'fall', 'winter']);
+  expect(toggleAllSeasons(all).seasons).toEqual([]);
 });

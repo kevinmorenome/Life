@@ -101,6 +101,12 @@ export function toggleStepValue(item: ClothingItem, step: ReviewStep, option: st
   }
 }
 
+/** Selects every season, or clears them all when every season is already selected. */
+export function toggleAllSeasons(item: ClothingItem): ClothingItem {
+  const all = SEASONS.every((s) => item.seasons.includes(s));
+  return { ...item, seasons: all ? [] : [...SEASONS], updatedAt: new Date().toISOString() };
+}
+
 /** Sets or clears (same value again) the sub-category, offered once a category is chosen. */
 export function toggleSubcategory(item: ClothingItem, sub: string): ClothingItem {
   const subcategory = item.subcategory && same(item.subcategory, sub) ? undefined : sub;
