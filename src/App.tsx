@@ -41,13 +41,10 @@ export function App() {
       )}
       <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
         <div className="brand-row">
-          {pageTab ? (
-            <h1 className="brand">{pageTab.label}</h1>
-          ) : (
-            <a className="brand" href={href('/')}>
-              Life
-            </a>
-          )}
+          <a className="brand" href={href('/')}>
+            Life
+          </a>
+          {pageTab && <h1 className="brand-page">{pageTab.label}</h1>}
           <SyncBadge />
         </div>
         <a

@@ -100,8 +100,15 @@ ul {
     transition: transform 0.2s ease;
   }
 }
-.brand {
+.brand-page {
   margin: 0;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--border);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.brand {
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--text);
