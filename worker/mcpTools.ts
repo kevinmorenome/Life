@@ -19,6 +19,8 @@ export interface ToolContext {
 }
 
 export interface ToolImage {
+  /** The item the photo belongs to, so the gallery can say which one was picked. */
+  id: string;
   caption: string;
   mimeType: string;
   /** Base64, without the data: prefix. */
@@ -356,7 +358,7 @@ async function showPhotos(args: Args, { store, appUrl }: ToolContext): Promise<T
   const without: string[] = [];
   for (const id of ids) {
     const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(photos.get(id) ?? '');
-    if (match && match[2].length <= MAX_PHOTO_LENGTH) images.push({ caption: wanted.get(id)!, mimeType: match[1], data: match[2] });
+    if (match && match[2].length <= MAX_PHOTO_LENGTH) images.push({ id, caption: wanted.get(id)!, mimeType: match[1], data: match[2] });
     else without.push(wanted.get(id)!);
   }
   // Tappable links into the app, for clients that can't display the photos inline.
