@@ -3,7 +3,7 @@ import { Home } from './Home';
 import { Settings } from './Settings';
 import { SyncBadge } from './SyncBadge';
 import { GearIcon } from './icons';
-import { PREVIEW_LABEL } from './lib/preview';
+import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
 import { useHideOnScroll } from './lib/useHideOnScroll';
 import { SettingsProvider } from './lib/settings';
@@ -36,7 +36,8 @@ export function App() {
     <SettingsProvider>
       {PREVIEW_LABEL && (
         <div className="preview-banner" role="status">
-          <strong>Preview of {PREVIEW_LABEL}</strong> · shows your real data, but changes here aren’t saved
+          <strong>Preview of {PREVIEW_LABEL}</strong>
+          {PREVIEW_COMMIT && <> · {PREVIEW_COMMIT}</>}
         </div>
       )}
       <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
