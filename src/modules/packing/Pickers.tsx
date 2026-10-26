@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
-import { OutfitCollage } from '../clothes/OutfitCollage';
-import { outfitName, outfitPieces } from '../clothes/outfits';
+import { OutfitCard } from '../clothes/OutfitCard';
+import { outfitName } from '../clothes/outfits';
 import type { ClothingItem, Outfit } from '../clothes/types';
 import { withDayOutfits } from './packing';
 import type { Trip } from './types';
@@ -43,23 +43,15 @@ export function DayOutfitPicker({ trip, date, items, outfits, onSave }: Props & 
           No outfits yet. Build some in Clothes → Outfits, or pick pieces directly instead.
         </p>
       ) : (
-        <ul className="item-grid">
+        <ul className="outfit-cards">
           {list.map((o) => (
             <li key={o.id}>
-              <button
-                className="card item-card picker-row"
-                aria-pressed={selected.includes(o.id)}
+              <OutfitCard
+                outfit={o}
+                items={items}
+                selected={selected.includes(o.id)}
                 onClick={() => setSelected((s) => toggle(s, o.id))}
-              >
-                <OutfitCollage pieces={outfitPieces(o, items)} />
-                <span className="item-text">
-                  <strong>{outfitName(o)}</strong>
-                  <span className="muted small">{o.itemIds.length} pieces</span>
-                </span>
-                <span className="pick-mark" aria-hidden>
-                  {selected.includes(o.id) ? '✓' : ''}
-                </span>
-              </button>
+              />
             </li>
           ))}
         </ul>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
-import { OutfitCollage } from './OutfitCollage';
+import { OutfitCard } from './OutfitCard';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
 import { newPlan } from './plans';
 import { lastWorn } from './stats';
@@ -50,16 +50,10 @@ export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit
       {list.length === 0 ? (
         <p className="muted">No outfits to pick. Build one in the Outfits tab, or log items instead.</p>
       ) : (
-        <ul className="item-grid">
+        <ul className="outfit-cards">
           {list.map((o) => (
             <li key={o.id}>
-              <button className="card item-card picker-row" onClick={() => pick(o)}>
-                <OutfitCollage pieces={outfitPieces(o, items)} />
-                <span className="item-text">
-                  <strong>{outfitName(o)}</strong>
-                  <span className="muted small">{o.itemIds.length} pieces</span>
-                </span>
-              </button>
+              <OutfitCard outfit={o} items={items} onClick={() => pick(o)} label={`${future ? 'Plan' : 'Log'} ${outfitName(o)}`} />
             </li>
           ))}
         </ul>

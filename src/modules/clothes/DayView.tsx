@@ -4,8 +4,8 @@ import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
-import { CheckIcon } from '../../icons';
-import { OutfitCollage } from './OutfitCollage';
+import { CheckIcon, TrashIcon } from '../../icons';
+import { OutfitCard } from './OutfitCard';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
 import { pendingPlans } from './plans';
 import type { ClothingItem, Outfit, Plan } from './types';
@@ -80,42 +80,42 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
               🧳 <a href={href(`/packing/${t.id}`)}>{t.name}</a>
             </p>
           ))}
-          {planned.map(({ trip, outfit }) => (
-            <div key={trip.id + outfit.id} className="card item-card">
-              <OutfitCollage pieces={outfitPieces(outfit, items)} />
-              <div className="item-text">
-                <strong>{outfitName(outfit)}</strong>
-                <span className="muted small">Planned for {trip.name}</span>
-              </div>
-              <button className="btn btn-small" onClick={() => wearPlanned(outfit)}>
-                Log as worn
-              </button>
-            </div>
-          ))}
+          <ul className="outfit-cards">
+            {planned.map(({ trip, outfit }) => (
+              <li key={trip.id + outfit.id}>
+                <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
+                  <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn, planned for ${trip.name}`} onClick={() => wearPlanned(outfit)}>
+                    <CheckIcon />
+                  </button>
+                </OutfitCard>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
       {scheduled.length > 0 && (
         <section>
           <h2>Planned</h2>
-          <ul className="item-grid">
+          <ul className="outfit-cards">
             {scheduled.map(({ plan, outfit }) => (
-              <li key={plan.id} className="card item-card">
-                <a href={href(`/clothes/outfits/${outfit.id}`)} className="item-link">
-                  <OutfitCollage pieces={outfitPieces(outfit, items)} />
-                  <div className="item-text">
-                    <strong>{outfitName(outfit)}</strong>
-                    <span className="muted small">{isFuture ? 'Planned' : 'Planned · not logged yet'}</span>
-                  </div>
-                </a>
-                {!isFuture && (
-                  <button className="icon-btn" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
-                    <CheckIcon />
-                  </button>
-                )}
-                <button className="btn btn-ghost btn-small" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
-                  ✕
-                </button>
+              <li key={plan.id}>
+                <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
+                  {isFuture ? (
+                    <button className="card-fab" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+                      <TrashIcon />
+                    </button>
+                  ) : (
+                    <>
+                      <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
+                        <CheckIcon />
+                      </button>
+                      <button className="card-fab card-fab-left" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+                        <TrashIcon />
+                      </button>
+                    </>
+                  )}
+                </OutfitCard>
               </li>
             ))}
           </ul>
@@ -129,19 +129,14 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
       {wear.outfits.length > 0 && (
         <section>
           <h2>Outfits</h2>
-          <ul className="item-grid">
+          <ul className="outfit-cards">
             {wear.outfits.map((o) => (
-              <li key={o.id} className="card item-card">
-                <a href={href(`/clothes/outfits/${o.id}`)} className="item-link">
-                  <OutfitCollage pieces={outfitPieces(o, items)} />
-                  <div className="item-text">
-                    <strong>{outfitName(o)}</strong>
-                    <span className="muted small">{o.itemIds.length} pieces</span>
-                  </div>
-                </a>
-                <button className="btn btn-ghost btn-small" aria-label={`Remove ${outfitName(o)}`} onClick={() => removeOutfit(o)}>
-                  ✕
-                </button>
+              <li key={o.id}>
+                <OutfitCard outfit={o} items={items} to={`/clothes/outfits/${o.id}`}>
+                  <button className="card-fab" aria-label={`Remove ${outfitName(o)} from this day`} onClick={() => removeOutfit(o)}>
+                    <TrashIcon />
+                  </button>
+                </OutfitCard>
               </li>
             ))}
           </ul>
