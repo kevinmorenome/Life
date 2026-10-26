@@ -11,7 +11,7 @@ import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import { categoryLabel, label, type ClothingItem, type Outfit } from './types';
 import { WearLog } from './WearLog';
-import { withPriorWears, withWear, withoutWear } from './wear';
+import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
 interface Props {
   item: ClothingItem;
@@ -62,10 +62,9 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           deleteLabel="Delete item"
           menuItems={[
             {
-              label: wornToday ? 'Worn today' : 'Wore it today',
+              label: wornToday ? 'Undo wore it today' : 'Wore it today',
               icon: <CalendarCheckIcon />,
-              disabled: wornToday,
-              onClick: () => onSave(withWear(item, today())),
+              onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
             },
           ]}
         >

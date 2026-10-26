@@ -1,6 +1,6 @@
 import { shortDate } from '../../lib/format';
 import type { ClothingItem, Outfit } from './types';
-import { withWear } from './wear';
+import { withWear, withoutWearOn } from './wear';
 
 export function outfitName(o: Outfit): string {
   return o.name || `Outfit from ${shortDate(o.createdAt)}`;
@@ -20,6 +20,14 @@ export function wearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
   return {
     outfit: o.wears.includes(date) ? null : withWear(o, date),
     pieces: pieces.filter((p) => !p.wears.includes(date)).map((p) => withWear(p, date)),
+  };
+}
+
+/** Undoes `wearOutfit`: removes the day from the outfit and from each piece that has it. */
+export function unwearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
+  return {
+    outfit: o.wears.includes(date) ? withoutWearOn(o, date) : null,
+    pieces: pieces.filter((p) => p.wears.includes(date)).map((p) => withoutWearOn(p, date)),
   };
 }
 

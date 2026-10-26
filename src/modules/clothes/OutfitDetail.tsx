@@ -5,7 +5,7 @@ import { HeroActions } from './HeroActions';
 import { Insights } from './Insights';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
-import { outfitName, outfitPieces, wearOutfit } from './outfits';
+import { outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
 import { newPlan, upcomingPlans } from './plans';
 import { lastWorn, wearCount } from './stats';
 import type { ClothingItem, Outfit, Plan } from './types';
@@ -30,6 +30,12 @@ export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, o
 
   async function logWear(date: string) {
     const { outfit: o, pieces: ps } = wearOutfit(outfit, pieces, date);
+    if (o) await onSaveOutfit(o);
+    for (const p of ps) await onSaveItem(p);
+  }
+
+  async function undoWear(date: string) {
+    const { outfit: o, pieces: ps } = unwearOutfit(outfit, pieces, date);
     if (o) await onSaveOutfit(o);
     for (const p of ps) await onSaveItem(p);
   }
@@ -76,8 +82,9 @@ export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, o
         >
           <button
             className={wornToday ? 'btn btn-primary btn-done' : 'btn btn-primary'}
-            disabled={wornToday}
-            onClick={() => logWear(today())}
+            aria-pressed={wornToday}
+            aria-label={wornToday ? 'Worn today. Tap to undo' : undefined}
+            onClick={() => (wornToday ? undoWear(today()) : logWear(today()))}
           >
             {wornToday ? (
               <>
