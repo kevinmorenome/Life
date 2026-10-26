@@ -53,4 +53,19 @@ describe('cutOut', () => {
     expect(cutOut(image(50, 50, white, () => null))).toBeNull();
     expect(cutOut(image(50, 50, white, (x, y) => (x === 25 && y === 25 ? red : null)))).toBeNull();
   });
+
+  it('handles a product screenshot: dark bars, white page, stray text', () => {
+    const black = [10, 10, 10];
+    const src = image(120, 100, black, (x, y) => {
+      if (x < 20 || x >= 100) return null; // dark phone bars
+      if (x >= 40 && x < 80 && y >= 25 && y < 70) return red; // the item
+      if (x >= 30 && x < 50 && y >= 85 && y < 88) return black; // caption text on the page
+      return white;
+    });
+    const out = cutOut(src)!;
+    expect(out.width).toBeLessThan(50);
+    expect(out.height).toBeLessThan(55);
+    expect(alphaAt(out, 0, 0)).toBe(0);
+    expect(alphaAt(out, out.width >> 1, out.height >> 1)).toBe(255);
+  });
 });

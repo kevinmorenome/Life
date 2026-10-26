@@ -15,15 +15,28 @@ export interface CutoutOptions {
 const dist = (d: Uint8ClampedArray, i: number, r: number, g: number, b: number) =>
   Math.hypot(d[i] - r, d[i + 1] - g, d[i + 2] - b);
 
-const median = (v: number[]) => v.sort((a, b) => a - b)[v.length >> 1];
-
 /**
- * Removes a plain backdrop and crops to the item. The backdrop colour is the median of the
- * border; background is whatever connects to the border within `tolerance` of it, so same-coloured
- * areas inside the garment survive. Returns a new buffer, or `null` when the photo doesn't have a
+ * Removes a plain backdrop and crops to the item. The backdrop is the dominant border colours;
+ * background is whatever connects to the border within `tolerance` of them, so same-coloured
+ * areas inside the garment survive, and only the largest blob is kept (page text, specks go). Returns a new buffer, or `null` when the photo doesn't have a
  * plain enough backdrop (caller keeps the original). Never mutates the input.
  */
 export function cutOut(src: Pixels, opts: CutoutOptions = {}): Pixels | null {
+  const first = cutOnce(src, { ...opts, padding: 0 });
+  if (!first) return null;
+  // Screenshots and product pages: the photo's own backdrop (white) sits inside dark bars, so it
+  // only becomes the border after the first crop. Keep the second cut only if the item survives it.
+  const second = cutOnce(first, opts);
+  return second && opaqueArea(second) >= 0.25 * opaqueArea(first) ? second : cutOnce(src, opts);
+}
+
+const opaqueArea = (p: Pixels) => {
+  let n = 0;
+  for (let i = 3; i < p.data.length; i += 4) if (p.data[i] >= 128) n++;
+  return n;
+};
+
+function cutOnce(src: Pixels, opts: CutoutOptions): Pixels | null {
   const { tolerance = 42, padding = 0.04 } = opts;
   const { width: w, height: h } = src;
   if (w < 8 || h < 8) return null;
@@ -33,9 +46,26 @@ export function cutOut(src: Pixels, opts: CutoutOptions = {}): Pixels | null {
   for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x);
   for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
 
-  const bg = [0, 1, 2].map((c) => median(border.map((p) => d[p * 4 + c])));
-  const matches = (p: number) => dist(d, p * 4, bg[0], bg[1], bg[2]) <= tolerance;
-  // A busy border (patterned floor, hand in frame) means the colour guess would be unreliable.
+  // Backdrop palette: the dominant border colours (a screenshot has dark bars beside a white page).
+  const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
+  for (const p of border) {
+    if (d[p * 4 + 3] < 128) continue;
+    const key = ((d[p * 4] >> 5) << 6) | ((d[p * 4 + 1] >> 5) << 3) | (d[p * 4 + 2] >> 5);
+    const e = buckets.get(key) ?? { n: 0, r: 0, g: 0, b: 0 };
+    e.n++;
+    e.r += d[p * 4];
+    e.g += d[p * 4 + 1];
+    e.b += d[p * 4 + 2];
+    buckets.set(key, e);
+  }
+  const palette = [...buckets.values()]
+    .filter((e) => e.n / border.length >= 0.06)
+    .sort((x, y) => y.n - x.n)
+    .slice(0, 4)
+    .map((e) => [e.r / e.n, e.g / e.n, e.b / e.n]);
+  const matches = (p: number) =>
+    d[p * 4 + 3] < 128 || palette.some(([r, g, b]) => dist(d, p * 4, r, g, b) <= tolerance);
+  // A busy border (patterned floor, hand in frame) means the backdrop guess would be unreliable.
   if (border.filter(matches).length / border.length < 0.7) return null;
 
   const isBg = new Uint8Array(w * h);
@@ -50,6 +80,33 @@ export function cutOut(src: Pixels, opts: CutoutOptions = {}): Pixels | null {
       stack.push(q);
     }
   }
+
+  // Keep only the largest remaining blob (the item); page text, UI bits and specks become backdrop.
+  const label = new Int32Array(w * h);
+  let best = 0;
+  let bestSize = 0;
+  for (let start = 0; start < w * h; start++) {
+    if (isBg[start] || label[start]) continue;
+    const id = start + 1;
+    let size = 0;
+    label[start] = id;
+    stack.push(start);
+    while (stack.length) {
+      const p = stack.pop()!;
+      size++;
+      const x = p % w;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
+        if (q < 0 || q >= w * h || isBg[q] || label[q]) continue;
+        label[q] = id;
+        stack.push(q);
+      }
+    }
+    if (size > bestSize) {
+      bestSize = size;
+      best = id;
+    }
+  }
+  for (let p = 0; p < w * h; p++) if (label[p] !== best) isBg[p] = 1;
 
   // Soft edge: average the mask over 3×3 so the cut doesn't look jagged.
   const alpha = new Uint8ClampedArray(w * h);
