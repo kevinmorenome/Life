@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { href } from '../../lib/router';
 import { FavMark } from './ClothesList';
+import { ClosetSwitch } from './ClosetSwitch';
 import { HeartIcon } from './icons';
 import { OutfitBoard } from './OutfitBoard';
 import { outfitName, outfitPieces } from './outfits';
@@ -27,7 +28,7 @@ export function OutfitList({ outfits, items }: { outfits: Outfit[]; items: Cloth
 
   return (
     <>
-      <h1 className="page-title">Outfits</h1>
+      <ClosetSwitch view="outfits" />
 
       {outfits.length === 0 ? (
         <div className="empty">

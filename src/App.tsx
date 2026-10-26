@@ -1,10 +1,8 @@
 import { BottomNav } from './BottomNav';
 import { Home } from './Home';
 import { Settings } from './Settings';
-import { SyncBadge } from './SyncBadge';
-import { GearIcon } from './icons';
 import { PREVIEW_LABEL } from './lib/preview';
-import { href, useRoute } from './lib/router';
+import { useRoute } from './lib/router';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
@@ -32,24 +30,8 @@ export function App() {
           <strong>Preview of {PREVIEW_LABEL}</strong> · shows your real data, but changes here aren’t saved
         </div>
       )}
-      <header className="topbar">
-        <div className="brand-row">
-          <a className="brand" href={href('/')}>
-            Life
-          </a>
-          <SyncBadge />
-        </div>
-        <a
-          className="icon-btn"
-          href={href('/settings')}
-          aria-label="Settings"
-          aria-current={section === 'settings' ? 'page' : undefined}
-        >
-          <GearIcon />
-        </a>
-      </header>
       <main className={`container${showNav ? ' with-nav' : ''}`}>{page}</main>
-      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} />}
+      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} settingsActive={section === 'settings'} />}
     </SettingsProvider>
   );
 }

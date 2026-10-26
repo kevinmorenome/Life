@@ -1,6 +1,7 @@
 import { CalendarIcon, ChartIcon, CheckIcon, HangerIcon, PlusIcon, ShirtIcon } from '../../icons';
 import type { LifeModule } from '../types';
 import { ClothesRoot } from './ClothesRoot';
+import { closetPath, lastClosetView } from './closetView';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -15,15 +16,11 @@ export const clothesModule: LifeModule = {
       id: 'closet',
       label: 'Closet',
       icon: <HangerIcon />,
-      path: '/clothes',
-      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today'].includes(first),
-    },
-    {
-      id: 'outfits',
-      label: 'Outfits',
-      icon: <ShirtIcon />,
-      path: '/clothes/outfits',
-      matches: ([first]) => first === 'outfits',
+      // Items and outfits share this tab; it reopens whichever you used last.
+      get path() {
+        return closetPath(lastClosetView());
+      },
+      matches: ([first]) => !first || !['calendar', 'stats', 'today'].includes(first),
     },
     {
       id: 'calendar',
