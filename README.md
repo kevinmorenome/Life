@@ -23,7 +23,7 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
    (behind an HTTP proxy, prefix with `NODE_USE_ENV_PROXY=1`)
 3. In the app: **Settings → Import items** → pick `life-import-whering.json`. It adds new records and updates ones from an earlier import (the newer copy wins), so re-running is safe.
 
-Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
+Whering's "date added" becomes the item's purchase date (dropped if it is in the future). Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
 
 Neither file is committed (see `.gitignore`); they contain your personal data.
 

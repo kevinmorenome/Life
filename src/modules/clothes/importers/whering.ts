@@ -209,6 +209,7 @@ export function convertItem(
     ...base,
     status: d.archived ? 'storage' : base.status,
     price: typeof d.price === 'number' ? Math.round(d.price * 100) / 100 : base.price,
+    purchaseDate: purchaseDateFrom(d.dateAdded, opts.updatedAt ?? new Date().toISOString()),
     seasons: mapSeasons(d.seasons),
     material: d.fabric?.length ? d.fabric.map(colorLabel).join(', ') : undefined,
     occasions: occasionLabels(d.occasions),
@@ -216,6 +217,20 @@ export function convertItem(
     ...splitWears(d.wornCount ?? item.timesWorn ?? 0, d.lastWorn),
     createdAt: addedAt(d, opts.updatedAt ?? new Date().toISOString()) ?? base.createdAt,
   };
+}
+
+/**
+ * Whering's "date added" as a local purchase date. Dates picked in the app are
+ * stored as local midnight (22:00/23:00Z for CET/CEST), so those roll forward a
+ * day; ones in the future are dropped.
+ */
+export function purchaseDateFrom(iso: string | null | undefined, now: string): string | undefined {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso) || iso > now) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const atLocalMidnight = d.getUTCHours() >= 22 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
+  if (atLocalMidnight) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function addedAt(d: WheringDetails, now: string): string | undefined {
