@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { href } from '../../lib/router';
-import { DotsIcon, HeartIcon, PencilIcon, TrashIcon } from './icons';
+import { CheckIcon, DotsIcon, HeartIcon, PencilIcon, TrashIcon } from './icons';
 
 interface Props {
   editPath: string;
@@ -17,6 +17,7 @@ interface Props {
 /** Edit / favourite / ⋮ icons on the left of the hero, primary action on the right. */
 export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, deleteLabel, menuItems = [], children }: Props) {
   const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,6 +32,13 @@ export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, de
       document.removeEventListener('keydown', close);
     };
   }, [open]);
+
+  // Brief check on the ⋮ button after a menu action, since the menu closes right away.
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => setDone(false), 1500);
+    return () => clearTimeout(t);
+  }, [done]);
 
   return (
     <div className="hero-actions">
@@ -47,8 +55,14 @@ export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, de
           <HeartIcon filled={favorite} />
         </button>
         <div className="menu-wrap" ref={box}>
-          <button className="icon-action" aria-label="More" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-            <DotsIcon />
+          <button
+            className={done ? 'icon-action icon-action-done' : 'icon-action'}
+            aria-label={done ? 'Done' : 'More'}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            {done ? <CheckIcon /> : <DotsIcon />}
           </button>
           {open && (
             <div className="menu" role="menu">
@@ -60,6 +74,7 @@ export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, de
                   disabled={m.disabled}
                   onClick={() => {
                     setOpen(false);
+                    setDone(true);
                     m.onClick();
                   }}
                 >

@@ -1878,3 +1878,7 @@ progress {
 .menu-item:disabled {
   opacity: 0.5;
 }
+.icon-action-done {
+  background: var(--accent);
+  color: var(--accent-text);
+}
