@@ -158,6 +158,7 @@ function About({ item, onSave }: { item: ClothingItem; onSave: (item: ClothingIt
         onRemove={(c) => onSave(withColors(item, removeChip(colors, c)))}
       />
       <FieldRows item={item} onSave={onSave} />
+      <NotesField item={item} onSave={onSave} />
     </>
   );
 }
@@ -245,7 +246,6 @@ function FieldRows({ item, onSave }: SaveProps) {
       value: item.condition ?? '',
       shown: item.condition && label(item.condition),
     },
-    { key: 'notes', title: 'Notes', spec: { kind: 'textarea', clearable: true }, value: item.notes ?? '' },
   ];
   const current = rows.find((r) => r.key === open);
 
@@ -280,6 +280,27 @@ function FieldRows({ item, onSave }: SaveProps) {
         />
       )}
     </>
+  );
+}
+
+/** Notes as a text area; saves when you leave the field. */
+function NotesField({ item, onSave }: SaveProps) {
+  const [draft, setDraft] = useState(item.notes ?? '');
+  return (
+    <section className="notes-field">
+      <h2>Notes</h2>
+      <textarea
+        rows={4}
+        value={draft}
+        placeholder="Add notes"
+        aria-label="Notes"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const next = withField(item, 'notes', draft);
+          if (next && (next.notes ?? '') !== (item.notes ?? '')) onSave(next);
+        }}
+      />
+    </section>
   );
 }
 

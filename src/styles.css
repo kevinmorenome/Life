@@ -2022,3 +2022,37 @@ progress {
 .photo-edit {
   display: block;
 }
+
+/* More breathing room around buttons and chips on the item page */
+.item-detail .chips {
+  gap: 0.6rem;
+}
+.item-detail .tag-section {
+  margin-bottom: 1.5rem;
+}
+.item-detail .section-head {
+  margin-bottom: 0.5rem;
+}
+.item-detail .icon-row {
+  gap: 0.75rem;
+}
+.item-detail .rows > div {
+  min-height: 60px;
+  padding: 0.25rem 0;
+}
+.item-detail .chip-x {
+  margin-left: 0.25rem;
+}
+.notes-field {
+  margin-top: 1.5rem;
+}
+.notes-field h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.notes-field textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 0.75rem;
+}
