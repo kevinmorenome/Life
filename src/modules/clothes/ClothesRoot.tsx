@@ -64,5 +64,5 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
     return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
-  return <ClothesList items={items} />;
+  return <ClothesList items={items} onSave={save} />;
 }
