@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newPlan, pendingPlans, plannedDays, upcomingPlans } from './plans';
+import { newPlan, pendingPlans, plannedByDay, upcomingPlans } from './plans';
 import type { Outfit } from './types';
 
 const outfit = (id: string, wears: string[] = []): Outfit => ({ id, itemIds: [], wears, createdAt: 'x', updatedAt: 'x' });
@@ -16,10 +16,12 @@ describe('plans', () => {
     expect(pendingPlans(plans, outfits, '2026-11-02')).toEqual([]);
   });
 
-  it('marks planned days, dropping ones already worn', () => {
-    const plans = [newPlan('a', '2026-11-01'), newPlan('b', '2026-11-02')];
-    const outfits = [outfit('a'), outfit('b', ['2026-11-02'])];
-    expect([...plannedDays(plans, outfits)]).toEqual(['2026-11-01']);
+  it('groups planned outfits by day, dropping ones already worn', () => {
+    const plans = [newPlan('a', '2026-11-01'), newPlan('b', '2026-11-02'), newPlan('c', '2026-11-01')];
+    const outfits = [outfit('a'), outfit('b', ['2026-11-02']), outfit('c')];
+    const byDay = plannedByDay(plans, outfits);
+    expect([...byDay.keys()]).toEqual(['2026-11-01']);
+    expect(byDay.get('2026-11-01')?.map((o) => o.id)).toEqual(['a', 'c']);
   });
 
   it('returns an outfit’s upcoming plans soonest first, including past unworn ones from `from`', () => {

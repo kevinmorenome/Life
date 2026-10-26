@@ -6,7 +6,7 @@ import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './ic
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
-import { OutfitCollage } from './OutfitCollage';
+import { OutfitBoard } from './OutfitBoard';
 import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import { categoryLabel, label, type ClothingItem, type Outfit } from './types';
@@ -73,7 +73,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
             {inOutfits.map((o) => (
               <li key={o.id}>
                 <a href={href(`/clothes/outfits/${o.id}`)} className="use-with-card" title={outfitName(o)}>
-                  <OutfitCollage pieces={outfitPieces(o, items)} />
+                  <OutfitBoard pieces={outfitPieces(o, items)} />
                   <span className="small">{outfitName(o)}</span>
                 </a>
               </li>

@@ -44,5 +44,5 @@ export const clothesModule: LifeModule = {
     first === 'new' ||
     second === 'edit' ||
     (first === 'outfits' && (second === 'new' || third === 'edit')) ||
-    (first === 'calendar' && DATE.test(second ?? '') && (third === 'outfit' || third === 'items')),
+    (first === 'calendar' && DATE.test(second ?? '') && (third === 'outfit' || third === 'items' || third === 'new-outfit')),
 };

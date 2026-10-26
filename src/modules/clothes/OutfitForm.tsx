@@ -10,9 +10,11 @@ interface Props {
   initialItemIds?: string[];
   items: ClothingItem[];
   onSave: (o: Outfit) => Promise<void>;
+  /** Runs after saving instead of opening the outfit's page, e.g. to plan it for a day. */
+  afterSave?: (o: Outfit) => Promise<void>;
 }
 
-export function OutfitForm({ existing, initialItemIds, items, onSave }: Props) {
+export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
   const [query, setQuery] = useState('');
@@ -81,7 +83,8 @@ export function OutfitForm({ existing, initialItemIds, items, onSave }: Props) {
       updatedAt: now,
     };
     await onSave(outfit);
-    navigate(`/clothes/outfits/${outfit.id}`);
+    if (afterSave) await afterSave(outfit);
+    else navigate(`/clothes/outfits/${outfit.id}`);
   }
 
   return (

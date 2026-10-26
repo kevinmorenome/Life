@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
-import { navigate } from '../../lib/router';
+import { PlusIcon } from '../../icons';
+import { href, navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
-import { OutfitCollage } from './OutfitCollage';
+import { OutfitCard } from './OutfitCard';
+import { OutfitForm } from './OutfitForm';
 import { outfitName, outfitPieces, wearOutfit } from './outfits';
 import { newPlan } from './plans';
 import { lastWorn } from './stats';
@@ -45,21 +47,20 @@ export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit
 
   return (
     <div className="form">
-      <h1>{future ? 'Plan an outfit' : 'Log an outfit'} · {shortDate(date)}</h1>
+      <div className="today-head">
+        <h1>{future ? 'Plan an outfit' : 'Log an outfit'} · {shortDate(date)}</h1>
+        <a className="icon-action" href={href(`/clothes/calendar/${date}/new-outfit`)} aria-label="Create a new outfit">
+          <PlusIcon />
+        </a>
+      </div>
       <input type="search" placeholder="Search outfits or tags…" value={query} onChange={(e) => setQuery(e.target.value)} />
       {list.length === 0 ? (
-        <p className="muted">No outfits to pick. Build one in the Outfits tab, or log items instead.</p>
+        <p className="muted">No outfits to pick. Create one with the + button{future ? '.' : ', or log items instead.'}</p>
       ) : (
-        <ul className="item-grid">
+        <ul className="outfit-cards">
           {list.map((o) => (
             <li key={o.id}>
-              <button className="card item-card picker-row" onClick={() => pick(o)}>
-                <OutfitCollage pieces={outfitPieces(o, items)} />
-                <span className="item-text">
-                  <strong>{outfitName(o)}</strong>
-                  <span className="muted small">{o.itemIds.length} pieces</span>
-                </span>
-              </button>
+              <OutfitCard outfit={o} items={items} onClick={() => pick(o)} label={`${future ? 'Plan' : 'Log'} ${outfitName(o)}`} />
             </li>
           ))}
         </ul>
@@ -71,6 +72,20 @@ export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit
       </div>
     </div>
   );
+}
+
+/** Build a new outfit, then plan it (future day) or log it (today/past) and return to the day. */
+export function NewOutfitForDay({ date, items, onSaveItem, onSaveOutfit, onSavePlan }: Props) {
+  async function apply(o: Outfit) {
+    if (date > today()) await onSavePlan?.(newPlan(o.id, date));
+    else {
+      const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
+      if (outfit) await onSaveOutfit(outfit);
+      for (const p of pieces) await onSaveItem(p);
+    }
+    back(date);
+  }
+  return <OutfitForm items={items} onSave={onSaveOutfit} afterSave={apply} />;
 }
 
 /** Pick any number of items to log on `date`. */
