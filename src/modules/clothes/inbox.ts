@@ -1,4 +1,4 @@
-import type { InboxRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRequest, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { outfitPieces, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 import { withWear } from './wear';
@@ -45,6 +45,8 @@ export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], a
       applyTags(req, items, outfits, changedItems, changedOutfits, missing);
     } else if (req.type === 'outfit-edit') {
       applyOutfitEdit(req, items, outfits, changedOutfits, missing);
+    } else if (req.type === 'item-edit') {
+      applyItemEdit(req, items, changedItems, missing);
     } else if (req.type === 'wear') {
       applyWear(req, items, outfits, changedItems, changedOutfits, missing);
     }
@@ -99,6 +101,39 @@ function applyTags(
       changedItems.add(id);
     }
   }
+}
+
+const CLEARABLE = ['subcategory', 'brand', 'size', 'material', 'price', 'purchaseDate', 'condition', 'notes'] as const;
+
+/** Sets the given fields (null clears optional ones). Wears, photo and tags are left alone. Idempotent. */
+function applyItemEdit(req: ItemEditRequest, items: Records['items'], changedItems: Set<string>, missing: string[]) {
+  const item = items.get(req.itemIds[0]);
+  if (!item) {
+    missing.push(...req.itemIds);
+    return;
+  }
+  const c = req.changes;
+  const next: Record<string, unknown> = { ...item };
+  if (c.name?.trim()) next.name = c.name.trim();
+  if (c.category) next.category = c.category;
+  if (c.status) next.status = c.status;
+  if (c.seasons) next.seasons = c.seasons;
+  for (const f of CLEARABLE) {
+    if (c[f] === null) delete next[f];
+    else if (c[f] !== undefined) next[f] = c[f];
+  }
+  if (c.colors !== undefined) {
+    if (c.colors === null || c.colors.length === 0) {
+      delete next.colors;
+      delete next.color;
+    } else {
+      next.colors = c.colors;
+      next.color = c.colors.join(', ');
+    }
+  }
+  if (JSON.stringify(next) === JSON.stringify(item)) return;
+  items.set(item.id, { ...(next as unknown as ClothingItem), updatedAt: new Date().toISOString() });
+  changedItems.add(item.id);
 }
 
 /** Renames and/or adds/removes pieces; an edit that would leave the outfit empty is ignored. Idempotent. */

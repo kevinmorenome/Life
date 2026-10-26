@@ -4,8 +4,8 @@
 // directly without risking a clobbered edit.
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
-import { CATEGORIES, SEASONS } from '../src/modules/clothes/types';
-import type { OutfitEditRequest, TagRequest, WearRequest } from './protocol';
+import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
+import type { ItemChanges, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
 import type { RecordStore, Row } from './records';
 
@@ -161,6 +161,31 @@ export const TOOLS = [
       required: ['outfitId'],
     },
   },
+  {
+    name: 'edit_item',
+    description:
+      'Change fields of an existing wardrobe item (name, category, brand, colours, size, material, price, purchase date, seasons, status, condition, notes). Only edit when the user asks, and only the fields they mention. Pass null for an optional field to clear it. Wear history, photos and tags are never changed here (use add_tags for tags). To retire an item set status (donated / sold / discarded) rather than deleting. The change shows up in the app the next time it syncs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: { type: 'string' },
+        name: { type: 'string' },
+        category: { type: 'string', enum: [...CATEGORIES] },
+        subcategory: { type: ['string', 'null'] },
+        brand: { type: ['string', 'null'] },
+        colors: { type: ['array', 'null'], items: { type: 'string', enum: [...PALETTE] }, maxItems: 5 },
+        size: { type: ['string', 'null'] },
+        material: { type: ['string', 'null'] },
+        price: { type: ['number', 'null'], minimum: 0 },
+        purchaseDate: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+        seasons: { type: 'array', items: { type: 'string', enum: [...SEASONS] } },
+        status: { type: 'string', enum: [...STATUSES] },
+        condition: { type: ['string', 'null'], enum: [...CONDITIONS, null] },
+        notes: { type: ['string', 'null'] },
+      },
+      required: ['itemId'],
+    },
+  },
 ] as const;
 
 type Args = Record<string, unknown>;
@@ -185,6 +210,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : editOutfit(args, ctx);
+    case 'edit_item':
+      return ctx.readOnly ? fail(READ_ONLY) : editItem(args, ctx);
     default:
       return fail(`Unknown tool: ${name}`);
   }
@@ -207,7 +234,8 @@ function text(v: unknown, max = 200): string | undefined {
 
 function isRealDate(s: unknown): s is string {
   if (typeof s !== 'string' || !DATE.test(s)) return false;
-  return new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
+  const d = new Date(s + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
 function addDays(date: string, n: number): string {
@@ -553,4 +581,62 @@ async function editOutfit(args: Args, { store, now, newId }: ToolContext): Promi
   const names = new Map(items.map((r) => [r.id, String(r.name)]));
   const pieces = result.map((id) => names.get(id) ?? '(deleted item)').join(', ');
   return ok(`Queued an edit to “${outfit.name ?? 'unnamed outfit'}”${name ? ` (new name “${name}”)` : ''}. Pieces will be: ${pieces}. It appears in the app the next time it syncs.`);
+}
+
+const CLEARABLE_TEXT = { subcategory: 50, brand: 200, size: 50, material: 200, notes: 1000 } as const;
+
+async function editItem(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const itemId = text(args.itemId);
+  if (!itemId) return fail('itemId is required.');
+  const changes: ItemChanges = {};
+
+  if (args.name !== undefined) {
+    const name = text(args.name);
+    if (!name) return fail('name can’t be empty.');
+    changes.name = name;
+  }
+  if (args.category !== undefined) {
+    if (!(CATEGORIES as readonly string[]).includes(args.category as string)) return fail(`category must be one of: ${CATEGORIES.join(', ')}.`);
+    changes.category = args.category as string;
+  }
+  if (args.status !== undefined) {
+    if (!(STATUSES as readonly string[]).includes(args.status as string)) return fail(`status must be one of: ${STATUSES.join(', ')}.`);
+    changes.status = args.status as string;
+  }
+  if (args.condition !== undefined) {
+    if (args.condition !== null && !(CONDITIONS as readonly string[]).includes(args.condition as string)) return fail(`condition must be null or one of: ${CONDITIONS.join(', ')}.`);
+    changes.condition = args.condition as string | null;
+  }
+  for (const [field, max] of Object.entries(CLEARABLE_TEXT) as [keyof typeof CLEARABLE_TEXT, number][]) {
+    if (args[field] === undefined) continue;
+    if (args[field] !== null && typeof args[field] !== 'string') return fail(`${field} must be a string or null.`);
+    changes[field] = args[field] === null ? null : (text(args[field], max) ?? null);
+  }
+  if (args.price !== undefined) {
+    if (args.price !== null && !(typeof args.price === 'number' && args.price >= 0)) return fail('price must be a non-negative number or null.');
+    changes.price = args.price as number | null;
+  }
+  if (args.purchaseDate !== undefined) {
+    if (args.purchaseDate !== null && !isRealDate(args.purchaseDate)) return fail('purchaseDate must be YYYY-MM-DD or null.');
+    changes.purchaseDate = args.purchaseDate as string | null;
+  }
+  if (args.colors !== undefined) {
+    const colors = args.colors === null ? null : [...new Set(strings(args.colors))];
+    if (colors && (colors.length > 5 || colors.some((c) => !PALETTE.includes(c)))) return fail(`colors must be at most 5 from: ${PALETTE.join(', ')}.`);
+    changes.colors = colors;
+  }
+  if (args.seasons !== undefined) {
+    const seasons = strings(args.seasons);
+    if (seasons.some((s) => !(SEASONS as readonly string[]).includes(s))) return fail(`seasons must be from: ${SEASONS.join(', ')}.`);
+    changes.seasons = [...new Set(seasons)];
+  }
+  if (Object.keys(changes).length === 0) return fail('Give at least one field to change.');
+
+  const item = (await store.list('clothes')).find((r) => r.id === itemId);
+  if (!item) return fail(`Unknown item id: ${itemId}. Look it up with find_items.`);
+
+  const stamp = now.toISOString();
+  const request: ItemEditRequest = { id: newId(), type: 'item-edit', itemIds: [itemId], outfitIds: [], changes, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  await store.put('inbox', request.id, request);
+  return ok(`Queued an edit to “${item.name}”: ${Object.keys(changes).join(', ')}. It appears in the app the next time it syncs.`);
 }

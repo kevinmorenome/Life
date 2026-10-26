@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { applyInbox, withTags } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
@@ -157,5 +157,30 @@ describe('applyInbox outfit edits', () => {
   it('is a no-op when nothing changes', () => {
     const r = applyInbox([edit({ itemIds: ['a'] })], items, [outfit('o', ['a', 'b'])], NOW);
     expect(r.outfits).toEqual([]);
+  });
+});
+
+describe('applyInbox item edits', () => {
+  const edit = (changes: ItemEditRequest['changes'], id = 'a'): ItemEditRequest => ({
+    id: 'i1',
+    type: 'item-edit',
+    itemIds: [id],
+    outfitIds: [],
+    changes,
+    source: 'claude',
+    createdAt: '2026-10-25T10:00:00Z',
+    updatedAt: '2026-10-25T10:00:00Z',
+  });
+  const base = { ...item('a', ['2026-10-01']), brand: 'Zara', size: 'M', tags: ['x'] };
+
+  it('sets and clears fields, mirrors colours, keeps wears and tags', () => {
+    const r = applyInbox([edit({ name: 'Navy tee', brand: null, colors: ['Navy', 'White'], status: 'storage' })], [base], [], NOW);
+    expect(r.items[0]).toMatchObject({ name: 'Navy tee', colors: ['Navy', 'White'], color: 'Navy, White', status: 'storage', size: 'M', wears: ['2026-10-01'], tags: ['x'] });
+    expect(r.items[0]).not.toHaveProperty('brand');
+  });
+
+  it('is a no-op when nothing differs, and reports a missing item', () => {
+    expect(applyInbox([edit({ brand: 'Zara', size: 'M' })], [base], [], NOW).items).toEqual([]);
+    expect(applyInbox([edit({ name: 'x' }, 'ghost')], [base], [], NOW).requests[0].error).toContain('ghost');
   });
 });
