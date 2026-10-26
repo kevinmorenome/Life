@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { today } from '../../lib/format';
-import { href } from '../../lib/router';
+import { PlusIcon, ShirtIcon } from '../../icons';
+import { href, navigate } from '../../lib/router';
 import { addMonths, monthGrid, wearsByDay, type DayWear } from './calendar';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
@@ -34,6 +35,33 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
   const weekdays = Array.from({ length: 7 }, (_, i) =>
     new Date(Date.UTC(2026, 0, 5 + i)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }),
   );
+  // Empty days open a floating menu instead of a blank day screen.
+  const [menu, setMenu] = useState<{ date: string; top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest?.('.day-menu')) setMenu(null);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [menu]);
+
+  function openDay(e: MouseEvent<HTMLAnchorElement>, date: string) {
+    const empty = !days.has(date) && !planned.has(date) && !tripsOnDate(trips, date).length;
+    if (!empty) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    setMenu({ date, top: r.bottom + 4, left: Math.min(Math.max(8, r.left + r.width / 2 - 90), window.innerWidth - 188) });
+  }
+
+  const go = (path: string) => {
+    setMenu(null);
+    navigate(path);
+  };
   const wornThisMonth = [...days.keys()].filter((d) => d.startsWith(ym)).length;
 
   return (
@@ -79,6 +107,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
                 href={href(`/clothes/calendar/${date}`)}
                 className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}${planned.has(date) ? ' planned' : ''}`}
                 aria-label={date}
+                onClick={(e) => openDay(e, date)}
               >
                 <DayBubble wear={days.get(date)} items={items} />
                 <span className="day-num">{Number(date.slice(8))}</span>
@@ -87,6 +116,19 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
           </div>
         ))}
       </div>
+
+      {menu && (
+        <div className="menu day-menu" role="menu" style={{ top: menu.top, left: menu.left }}>
+          <button role="menuitem" className="menu-item" onClick={() => go(`/clothes/calendar/${menu.date}/outfit`)}>
+            <ShirtIcon /> {menu.date > now ? 'Plan an outfit' : 'Log an outfit'}
+          </button>
+          {menu.date <= now && (
+            <button role="menuitem" className="menu-item" onClick={() => go(`/clothes/calendar/${menu.date}/items`)}>
+              <PlusIcon /> Log items
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -1812,3 +1812,7 @@ progress {
 .outfit-card > .board {
   height: calc(100% - 1.5rem);
 }
+.day-menu {
+  position: fixed;
+  width: 180px;
+}
