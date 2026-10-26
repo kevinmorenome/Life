@@ -1882,3 +1882,18 @@ progress {
   background: var(--accent);
   color: var(--accent-text);
 }
+.btn-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.btn-done:disabled {
+  opacity: 1;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.btn-done svg {
+  width: 20px;
+  height: 20px;
+}

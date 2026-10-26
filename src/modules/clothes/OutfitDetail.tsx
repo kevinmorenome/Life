@@ -1,6 +1,6 @@
 import { shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
-import { CalendarCheckIcon, SparkleIcon, WardrobeIcon } from './icons';
+import { CalendarCheckIcon, CheckIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights } from './Insights';
 import { ItemThumb } from './ItemThumb';
@@ -26,6 +26,7 @@ interface Props {
 export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, onSaveOutfit, onSaveItem, onDelete }: Props) {
   const pieces = outfitPieces(outfit, items);
   const last = lastWorn(outfit);
+  const wornToday = outfit.wears.includes(today());
 
   async function logWear(date: string) {
     const { outfit: o, pieces: ps } = wearOutfit(outfit, pieces, date);
@@ -73,8 +74,18 @@ export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, o
           onDelete={del}
           deleteLabel="Delete outfit"
         >
-          <button className="btn btn-primary" disabled={outfit.wears.includes(today())} onClick={() => logWear(today())}>
-            Wore it today
+          <button
+            className={wornToday ? 'btn btn-primary btn-done' : 'btn btn-primary'}
+            disabled={wornToday}
+            onClick={() => logWear(today())}
+          >
+            {wornToday ? (
+              <>
+                <CheckIcon /> Worn today
+              </>
+            ) : (
+              'Wore it today'
+            )}
           </button>
         </HeroActions>
       </header>
