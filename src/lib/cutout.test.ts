@@ -1,109 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import { cutOut, type Pixels } from './cutout';
+import { hasTransparency, tidyCutout, type Pixels } from './cutout';
 
-function image(w: number, h: number, bg: number[], paint: (x: number, y: number) => number[] | null): Pixels {
+/** A transparent canvas with opaque red wherever `solid` says so. */
+function image(w: number, h: number, solid: (x: number, y: number) => boolean): Pixels {
   const data = new Uint8ClampedArray(w * h * 4);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const [r, g, b] = paint(x, y) ?? bg;
-      data.set([r, g, b, 255], (y * w + x) * 4);
+      if (solid(x, y)) data.set([200, 30, 30, 255], (y * w + x) * 4);
     }
   }
   return { data, width: w, height: h };
 }
 
 const alphaAt = (p: Pixels, x: number, y: number) => p.data[(y * p.width + x) * 4 + 3];
+const rect = (x0: number, y0: number, x1: number, y1: number) => (x: number, y: number) =>
+  x >= x0 && x < x1 && y >= y0 && y < y1;
 
-describe('cutOut', () => {
-  const white = [250, 250, 250];
-  const red = [200, 30, 30];
+describe('hasTransparency', () => {
+  it('tells a photo from a cut-out', () => {
+    expect(hasTransparency(image(10, 10, () => true))).toBe(false);
+    expect(hasTransparency(image(10, 10, rect(0, 0, 5, 10)))).toBe(true);
+  });
+});
 
-  it('crops to the item and makes the backdrop transparent', () => {
-    const src = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? red : null));
-    const out = cutOut(src)!;
-    expect(out.width).toBeLessThan(60);
-    expect(out.height).toBeLessThan(75);
-    expect(out.width).toBeGreaterThanOrEqual(40);
+describe('tidyCutout', () => {
+  it('crops to the item with a small margin', () => {
+    const out = tidyCutout(image(100, 100, rect(30, 20, 70, 80)), 0.05)!;
+    expect(out.width).toBe(40 + 2 * 3);
+    expect(out.height).toBe(60 + 2 * 3);
     expect(alphaAt(out, 0, 0)).toBe(0);
     expect(alphaAt(out, out.width >> 1, out.height >> 1)).toBe(255);
   });
 
-  it('keeps backdrop-coloured areas enclosed by the item', () => {
-    const src = image(100, 100, white, (x, y) => {
-      if (x >= 48 && x < 52 && y >= 48 && y < 52) return white; // button-sized hole
-      return x >= 20 && x < 80 && y >= 20 && y < 80 ? red : null;
-    });
-    const out = cutOut(src)!;
-    expect(alphaAt(out, out.width >> 1, out.height >> 1)).toBe(255);
+  it('drops stray specks such as page text from a screenshot', () => {
+    const item = rect(30, 20, 70, 60);
+    const caption = rect(10, 90, 20, 93);
+    const out = tidyCutout(image(100, 100, (x, y) => item(x, y) || caption(x, y)), 0)!;
+    expect(out.width).toBe(40);
+    expect(out.height).toBe(40);
+  });
+
+  it('keeps both shoes of a pair', () => {
+    const left = rect(10, 40, 40, 60);
+    const right = rect(60, 40, 88, 60);
+    const out = tidyCutout(image(100, 100, (x, y) => left(x, y) || right(x, y)), 0)!;
+    expect(out.width).toBe(78);
   });
 
   it('does not mutate the source', () => {
-    const src = image(60, 60, white, (x, y) => (x >= 20 && x < 40 && y >= 20 && y < 40 ? red : null));
+    const src = image(40, 40, rect(10, 10, 30, 30));
     const copy = Uint8ClampedArray.from(src.data);
-    cutOut(src);
+    tidyCutout(src);
     expect(src.data).toEqual(copy);
   });
 
-  it('gives up on a busy border', () => {
-    const src = image(60, 60, white, (x, y) => ((x + y) % 2 ? [10, 10, 10] : [240, 240, 240]));
-    expect(cutOut(src)).toBeNull();
-  });
-
-  it('gives up when there is nothing to remove or nothing left', () => {
-    expect(cutOut(image(50, 50, white, () => null))).toBeNull();
-    expect(cutOut(image(50, 50, white, (x, y) => (x === 25 && y === 25 ? red : null)))).toBeNull();
-  });
-
-  it('handles a product screenshot: dark bars, white page, stray text', () => {
-    const black = [10, 10, 10];
-    const src = image(120, 100, black, (x, y) => {
-      if (x < 20 || x >= 100) return null; // dark phone bars
-      if (x >= 40 && x < 80 && y >= 25 && y < 70) return red; // the item
-      if (x >= 30 && x < 50 && y >= 85 && y < 88) return black; // caption text on the page
-      return white;
-    });
-    const out = cutOut(src)!;
-    expect(out.width).toBeLessThan(50);
-    expect(out.height).toBeLessThan(55);
-    expect(alphaAt(out, 0, 0)).toBe(0);
-    expect(alphaAt(out, out.width >> 1, out.height >> 1)).toBe(255);
-  });
-
-  it('drops a soft shadow under the item but keeps a grey item with a sharp edge', () => {
-    const shadowed = image(100, 100, white, (x, y) => {
-      if (x >= 30 && x < 70 && y >= 20 && y < 70) return red;
-      if (x >= 25 && x < 75 && y >= 70 && y < 82) {
-        const v = 250 - (82 - y) * 3; // darkest against the item, fading out
-        return [v, v, v];
-      }
-      return null;
-    });
-    const out = cutOut(shadowed)!;
-    expect(out.height).toBeLessThan(60); // item is 50 tall; the 12px shadow is not included
-
-    const grey = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? [150, 150, 150] : null));
-    const cut = cutOut(grey)!;
-    expect(alphaAt(cut, cut.width >> 1, cut.height >> 1)).toBe(255);
-  });
-
-  it('does not cut an image that already has a transparent background', () => {
-    const src = image(100, 100, white, (x, y) => (x >= 30 && x < 70 && y >= 20 && y < 80 ? red : null));
-    const once = cutOut(src)!;
-    expect(cutOut(once)).toBeNull();
-  });
-
-  it('removes a large enclosed gap of backdrop but keeps a small one', () => {
-    // A hollow red frame: a big window in the middle, plus a tiny "button hole" in the frame.
-    const src = image(120, 120, white, (x, y) => {
-      const inside = x >= 20 && x < 100 && y >= 20 && y < 100;
-      if (!inside) return null;
-      if (x >= 40 && x < 80 && y >= 40 && y < 80) return null; // big gap
-      if (x >= 28 && x < 30 && y >= 28 && y < 30) return white; // small hole
-      return red;
-    });
-    const out = cutOut(src, { padding: 0 })!;
-    const at = (x: number, y: number) => alphaAt(out, x, y);
-    expect(at(out.width >> 1, out.height >> 1)).toBe(0); // window is see-through
-    expect(at(9, 9)).toBe(255); // frame is solid next to the small hole
+  it('returns null when nothing was kept', () => {
+    expect(tidyCutout(image(20, 20, () => false))).toBeNull();
   });
 });

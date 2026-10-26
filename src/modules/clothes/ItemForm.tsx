@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
@@ -35,9 +35,11 @@ export function ItemForm({ existing, onSave }: Props) {
   const [status, setStatus] = useState<Status>(existing?.status ?? 'active');
   const [condition, setCondition] = useState<Condition | ''>(existing?.condition ?? '');
   const [photo, setPhoto] = useState(existing?.photo);
-  // Last picked photo: the plain resize, and the background-free version when one could be made.
-  const [picked, setPicked] = useState<{ original: string; cutout: string | null }>();
+  // Photo being worked on: its plain resize, its source, and the cut-out once made (null: none found).
+  const [picked, setPicked] = useState<{ original: string; source: Blob; cutout?: string | null }>();
   const [removeBg, setRemoveBg] = useState(true);
+  const [cutting, setCutting] = useState(false);
+  const cutRun = useRef(0);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [error, setError] = useState('');
 
@@ -49,13 +51,31 @@ export function ItemForm({ existing, onSave }: Props) {
   // Names already on the item that the palette doesn't offer (legacy or imported) stay selectable.
   const colorOptions = [...PALETTE, ...colors.filter((c) => !PALETTE.includes(c))];
 
+  async function cutOut(p: { original: string; source: Blob }) {
+    const run = ++cutRun.current;
+    setCutting(true);
+    let cutout: string | null = null;
+    try {
+      cutout = await cutOutImage(p.source);
+    } catch {
+      setError('Could not remove the background (the first time needs a connection).');
+    }
+    if (run !== cutRun.current) return; // another photo was picked meanwhile
+    setCutting(false);
+    setPicked({ ...p, cutout });
+    if (cutout) setPhoto(cutout);
+  }
+
   async function onPhoto(file: File | undefined) {
     if (!file) return;
+    cutRun.current++;
+    setCutting(false);
+    setError('');
     try {
-      const original = await resizeImage(file);
-      const cutout = await cutOutImage(file).catch(() => null);
-      setPicked({ original, cutout });
-      setPhoto(removeBg && cutout ? cutout : original);
+      const p = { original: await resizeImage(file), source: file };
+      setPhoto(p.original);
+      setPicked(p);
+      if (removeBg) await cutOut(p);
     } catch {
       setError('Could not read that image.');
     }
@@ -64,16 +84,15 @@ export function ItemForm({ existing, onSave }: Props) {
   async function toggleBackground() {
     if (!picked) {
       if (!photo) return setRemoveBg(!removeBg);
-      // Saved photo, nothing picked this session: cut it out now (Change photo to start over).
+      // Saved photo, nothing picked this session: cut it out now.
       setRemoveBg(true);
-      const cutout = await cutOutImage(await (await fetch(photo)).blob()).catch(() => null);
-      setPicked({ original: photo, cutout });
-      if (cutout) setPhoto(cutout);
-      return;
+      return cutOut({ original: photo, source: await (await fetch(photo)).blob() });
     }
     const next = !removeBg;
     setRemoveBg(next);
-    setPhoto(next && picked.cutout ? picked.cutout : picked.original);
+    if (!next) setPhoto(picked.original);
+    else if (picked.cutout) setPhoto(picked.cutout);
+    else if (picked.cutout === undefined) await cutOut(picked);
   }
 
   async function submit(e: FormEvent) {
@@ -133,14 +152,23 @@ export function ItemForm({ existing, onSave }: Props) {
           <button
             type="button"
             className="chip"
-            aria-pressed={removeBg && !!picked?.cutout}
-            disabled={!!picked && !picked.cutout}
+            aria-pressed={picked ? removeBg && !!picked.cutout : !photo && removeBg}
+            disabled={cutting || picked?.cutout === null}
             onClick={toggleBackground}
           >
-            {picked && !picked.cutout ? 'No clean cut-out' : 'Remove background'}
+            {cutting ? 'Removing background…' : picked?.cutout === null ? 'No clean cut-out' : 'Remove background'}
           </button>
           {photo && (
-            <button type="button" className="btn btn-ghost" onClick={() => setPhoto(undefined)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                cutRun.current++;
+                setCutting(false);
+                setPicked(undefined);
+                setPhoto(undefined);
+              }}
+            >
               Remove
             </button>
           )}
