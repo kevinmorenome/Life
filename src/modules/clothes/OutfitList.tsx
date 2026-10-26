@@ -27,8 +27,6 @@ export function OutfitList({ outfits, items }: { outfits: Outfit[]; items: Cloth
 
   return (
     <>
-      <h1 className="page-title">Outfits</h1>
-
       {outfits.length === 0 ? (
         <div className="empty">
           <p>No outfits yet.</p>

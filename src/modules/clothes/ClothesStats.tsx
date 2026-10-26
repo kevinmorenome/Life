@@ -10,8 +10,6 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
 
   return (
     <>
-      <h1 className="page-title">Stats</h1>
-
       <div className="tiles">
         <Tile value={String(s.activeCount)} label="items in closet" />
         <Tile value={money(s.activeValue)} label="closet value" />

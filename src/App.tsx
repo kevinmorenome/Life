@@ -26,6 +26,11 @@ export function App() {
   // Settings and Home keep the bar of the default module so you can always get back.
   const navModule = mod ?? MODULES[0];
   const showNav = !(mod && subroute && mod.hideNav?.(subroute));
+  // The tab's name stands in for the page title: Closet only on its own landing page, since it also matches item pages.
+  const pageTab =
+    mod && subroute && showNav
+      ? mod.tabs.find((t) => t.matches(subroute) && (t.id !== 'closet' || subroute.length === 0))
+      : undefined;
 
   return (
     <SettingsProvider>
@@ -36,9 +41,13 @@ export function App() {
       )}
       <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
         <div className="brand-row">
-          <a className="brand" href={href('/')}>
-            Life
-          </a>
+          {pageTab ? (
+            <h1 className="brand">{pageTab.label}</h1>
+          ) : (
+            <a className="brand" href={href('/')}>
+              Life
+            </a>
+          )}
           <SyncBadge />
         </div>
         <a

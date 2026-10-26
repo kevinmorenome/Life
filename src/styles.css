@@ -101,6 +101,7 @@ ul {
   }
 }
 .brand {
+  margin: 0;
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--text);

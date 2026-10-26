@@ -66,8 +66,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
 
   return (
     <>
-      <h1 className="page-title">Calendar</h1>
-
       <div className="month-nav">
         <a className="btn btn-ghost" href={href(`/clothes/calendar/${addMonths(ym, -1)}`)} aria-label="Previous month">
           ‹
