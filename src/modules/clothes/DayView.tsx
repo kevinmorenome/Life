@@ -6,7 +6,7 @@ import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
 import { CheckIcon, TrashIcon } from '../../icons';
 import { OutfitCard } from './OutfitCard';
-import { outfitName, outfitPieces, wearOutfit } from './outfits';
+import { outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
 import { pendingPlans } from './plans';
 import type { ClothingItem, Outfit, Plan } from './types';
 import { withoutWearOn } from './wear';
@@ -53,8 +53,9 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
 
   async function removeOutfit(o: Outfit) {
     if (!confirm(`Remove “${outfitName(o)}” from this day? Its pieces’ wears on this day are removed too.`)) return;
-    await onSaveOutfit(withoutWearOn(o, date));
-    for (const p of outfitPieces(o, items)) if (p.wears.includes(date)) await onSaveItem(withoutWearOn(p, date));
+    const { outfit, pieces } = unwearOutfit(o, outfitPieces(o, items), date);
+    if (outfit) await onSaveOutfit(outfit);
+    for (const p of pieces) await onSaveItem(p);
   }
 
   return (

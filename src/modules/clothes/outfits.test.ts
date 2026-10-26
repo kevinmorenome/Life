@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outfitName, outfitPieces, outfitsWithItem, syncPieceWears, wearOutfit } from './outfits';
+import { outfitName, outfitPieces, outfitsWithItem, syncPieceWears, unwearOutfit, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 
 const piece = (id: string, wears: string[] = []): ClothingItem => ({
@@ -24,6 +24,14 @@ describe('outfits', () => {
     expect(o?.wears).toEqual(['2026-10-25']);
     expect(pieces.map((p) => p.id)).toEqual(['a']);
     expect(wearOutfit({ ...outfit, wears: ['2026-10-25'] }, [], '2026-10-25').outfit).toBeNull();
+  });
+
+  it('undoes a wear on the outfit and its pieces for that day only', () => {
+    const o = { ...outfit, wears: ['2026-10-24', '2026-10-25'] };
+    const r = unwearOutfit(o, [piece('a', ['2026-10-24', '2026-10-25']), piece('b')], '2026-10-25');
+    expect(r.outfit?.wears).toEqual(['2026-10-24']);
+    expect(r.pieces.map((p) => [p.id, p.wears])).toEqual([['a', ['2026-10-24']]]);
+    expect(unwearOutfit(outfit, [], '2026-10-25').outfit).toBeNull();
   });
 
   it('falls back to the creation date for unnamed outfits', () => {

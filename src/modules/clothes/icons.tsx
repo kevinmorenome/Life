@@ -77,3 +77,9 @@ export const RepeatIcon = () => (
     <path d="M17 3l3 3-3 3M4 11V9a3 3 0 013-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 01-3 3H4" />
   </Icon>
 );
+
+export const CheckIcon = () => (
+  <Icon>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+);

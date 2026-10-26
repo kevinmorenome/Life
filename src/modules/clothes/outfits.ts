@@ -23,6 +23,14 @@ export function wearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
   };
 }
 
+/** Undoes `wearOutfit`: removes the day from the outfit and from each piece that has it. */
+export function unwearOutfit(o: Outfit, pieces: ClothingItem[], date: string) {
+  return {
+    outfit: o.wears.includes(date) ? withoutWearOn(o, date) : null,
+    pieces: pieces.filter((p) => p.wears.includes(date)).map((p) => withoutWearOn(p, date)),
+  };
+}
+
 /**
  * After editing an outfit's pieces, brings the pieces' wear logs in line with
  * the outfit's dated wears: pieces added get those days, pieces removed lose

@@ -11,7 +11,7 @@ import { costPerWear, daysInCloset, lastWorn, wearCount } from './stats';
 import { outfitName, outfitPieces, outfitsWithItem } from './outfits';
 import { categoryLabel, label, type ClothingItem, type Outfit } from './types';
 import { WearLog } from './WearLog';
-import { withPriorWears, withWear, withoutWear } from './wear';
+import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
 interface Props {
   item: ClothingItem;
@@ -31,6 +31,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
+  const wornToday = item.wears.includes(today());
 
   async function del() {
     if (confirm(`Delete “${item.name}”? This can’t be undone.`)) {
@@ -59,6 +60,13 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           onToggleFavorite={() => onSave({ ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() })}
           onDelete={del}
           deleteLabel="Delete item"
+          menuItems={[
+            {
+              label: wornToday ? 'Undo wore it today' : 'Wore it today',
+              icon: <CalendarCheckIcon />,
+              onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
+            },
+          ]}
         >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
             Create outfit
