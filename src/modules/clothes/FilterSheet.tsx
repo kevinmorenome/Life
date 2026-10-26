@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { swatchCss } from './colors';
 import { CloseIcon, HeartIcon } from './icons';
 import {
+  colorOptions,
   DEFAULT_FILTERS,
   filterItems,
   SORTS,
@@ -28,6 +30,7 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
   }, [onClose]);
 
   const subs = subcategoryCounts(items, draft);
+  const colors = colorOptions(items, draft);
   const result = filterItems(items, draft).length;
 
   return (
@@ -58,6 +61,29 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
                   {s} · {n}
                 </button>
               ))}
+            </div>
+          </section>
+        )}
+
+        {colors.length > 0 && (
+          <section>
+            <h3>Colors</h3>
+            <div className="chips color-grid">
+              {colors.map((c) => {
+                const on = draft.colors.some((d) => d.toLowerCase() === c.toLowerCase());
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    className="chip chip-color"
+                    aria-pressed={on}
+                    onClick={() => set({ colors: on ? draft.colors.filter((d) => d.toLowerCase() !== c.toLowerCase()) : [...draft.colors, c] })}
+                  >
+                    <span className="dot" style={swatchCss(c) ? { background: swatchCss(c)! } : undefined} aria-hidden />
+                    {c}
+                  </button>
+                );
+              })}
             </div>
           </section>
         )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, subcategoryCounts } from './closetFilter';
+import { activeFilterCount, categoryCounts, colorOptions, DEFAULT_FILTERS, filterItems, subcategoryCounts } from './closetFilter';
 import type { ClothingItem } from './types';
 
 function item(over: Partial<ClothingItem>): ClothingItem {
@@ -51,8 +51,22 @@ describe('closet filters', () => {
     });
   });
 
+  it('filters by any of the picked colours, ignoring case, and falls back to the legacy colour string', () => {
+    const red = item({ name: 'Red tee', colors: ['Red'] });
+    const old = item({ name: 'Old', color: 'Blue, navy' });
+    const set = [red, old, tee];
+    expect(filterItems(set, { ...DEFAULT_FILTERS, colors: ['red'] })).toEqual([red]);
+    expect(filterItems(set, { ...DEFAULT_FILTERS, colors: ['Navy', 'Red'] }).map((i) => i.name).sort()).toEqual(['Old', 'Red tee']);
+  });
+
+  it('offers only colours in use, palette order first, keeping picked ones', () => {
+    const set = [item({ colors: ['Zebra', 'Red', 'black'] }), item({ colors: ['Blue'], status: 'donated' })];
+    expect(colorOptions(set, DEFAULT_FILTERS)).toEqual(['Black', 'Red', 'Zebra']);
+    expect(colorOptions(set, { ...DEFAULT_FILTERS, colors: ['Blue'] })).toEqual(['Black', 'Red', 'Blue', 'Zebra']);
+  });
+
   it('counts only sheet filters that differ from the defaults', () => {
     expect(activeFilterCount({ ...DEFAULT_FILTERS, query: 'x', category: 'tops' })).toBe(0);
-    expect(activeFilterCount({ ...DEFAULT_FILTERS, favoritesOnly: true, status: 'all', sort: 'name' })).toBe(3);
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, favoritesOnly: true, status: 'all', sort: 'name', colors: ['Red'] })).toBe(4);
   });
 });

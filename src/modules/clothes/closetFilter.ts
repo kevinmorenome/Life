@@ -1,3 +1,4 @@
+import { itemColors, PALETTE } from './colors';
 import { lastWorn, wearCount } from './stats';
 import type { Category, ClothingItem, Status } from './types';
 
@@ -7,6 +8,8 @@ export interface ClosetFilters {
   query: string;
   category: Category | 'all';
   subcategory: string;
+  /** Any-of: an item matches when it has at least one of these colours. */
+  colors: string[];
   status: Status | 'all';
   sort: Sort;
   favoritesOnly: boolean;
@@ -16,6 +19,7 @@ export const DEFAULT_FILTERS: ClosetFilters = {
   query: '',
   category: 'all',
   subcategory: '',
+  colors: [],
   status: 'active',
   sort: 'recent',
   favoritesOnly: false,
@@ -56,9 +60,35 @@ export function subcategoryCounts(items: ClothingItem[], f: ClosetFilters): Map<
   return new Map([...counts].sort(([a], [b]) => a.localeCompare(b)));
 }
 
+const sameColor = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+function hasAnyColor(item: ClothingItem, wanted: string[]): boolean {
+  return itemColors(item).some((c) => wanted.some((w) => sameColor(c, w)));
+}
+
+/** Colours in use under the other filters (not the colour filter itself): palette order first, then the rest A–Z. */
+export function colorOptions(items: ClothingItem[], f: ClosetFilters): string[] {
+  const seen = new Map<string, string>();
+  for (const i of filterItems(items, { ...f, colors: [] })) {
+    for (const c of itemColors(i)) if (!seen.has(c.trim().toLowerCase())) seen.set(c.trim().toLowerCase(), c.trim());
+  }
+  // Keep a picked colour visible even if the other filters now rule it out.
+  for (const c of f.colors) if (!seen.has(c.trim().toLowerCase())) seen.set(c.trim().toLowerCase(), c.trim());
+  const rank = (name: string) => {
+    const at = PALETTE.findIndex((p) => sameColor(p, name));
+    return at < 0 ? PALETTE.length : at;
+  };
+  return [...seen.values()].map((c) => PALETTE.find((p) => sameColor(p, c)) ?? c).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
 export function filterItems(items: ClothingItem[], f: ClosetFilters): ClothingItem[] {
   return baseMatches(items, f)
-    .filter((i) => (f.category === 'all' || i.category === f.category) && (!f.subcategory || i.subcategory === f.subcategory))
+    .filter(
+      (i) =>
+        (f.category === 'all' || i.category === f.category) &&
+        (!f.subcategory || i.subcategory === f.subcategory) &&
+        (!f.colors.length || hasAnyColor(i, f.colors)),
+    )
     .sort((a, b) => {
       switch (f.sort) {
         case 'name':
@@ -77,6 +107,7 @@ export function filterItems(items: ClothingItem[], f: ClosetFilters): ClothingIt
 export function activeFilterCount(f: ClosetFilters): number {
   return [
     f.subcategory !== DEFAULT_FILTERS.subcategory,
+    f.colors.length > 0,
     f.status !== DEFAULT_FILTERS.status,
     f.sort !== DEFAULT_FILTERS.sort,
     f.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly,
