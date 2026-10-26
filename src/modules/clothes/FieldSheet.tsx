@@ -30,6 +30,22 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   const [filter, setFilter] = useState('');
   const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
+  const [lift, setLift] = useState(0);
+
+  // iOS doesn't resize fixed layouts for the keyboard: lift the sheet above it.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setLift(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   useEffect(() => {
     input.current?.focus();
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -43,7 +59,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" style={lift ? { paddingBottom: lift } : undefined} onClick={onClose}>
       <form
         className="sheet field-sheet"
         role="dialog"
@@ -68,6 +84,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
             <input
               ref={input}
               type="text"
+              autoComplete="off"
               value={draft}
               placeholder={spec.placeholder}
               onChange={(e) => setDraft(e.target.value)}
@@ -81,8 +98,8 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
           <>
             {spec.creatable && spec.options!.length > 8 && (
               <input
-                ref={input}
                 type="search"
+                autoComplete="off"
                 value={filter}
                 placeholder="Search"
                 onChange={(e) => setFilter(e.target.value)}
@@ -130,6 +147,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
             ) : (
               <input
                 ref={input}
+                autoComplete="off"
                 type={spec.kind === 'date' ? 'date' : 'text'}
                 inputMode={spec.kind === 'number' ? 'decimal' : undefined}
                 value={draft}
