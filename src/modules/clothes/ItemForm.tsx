@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
-import { resizeImage } from '../../lib/image';
+import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { PALETTE, itemColors, swatchCss } from './colors';
 import {
@@ -35,6 +35,9 @@ export function ItemForm({ existing, onSave }: Props) {
   const [status, setStatus] = useState<Status>(existing?.status ?? 'active');
   const [condition, setCondition] = useState<Condition | ''>(existing?.condition ?? '');
   const [photo, setPhoto] = useState(existing?.photo);
+  // Last picked photo: the plain resize, and the background-free version when one could be made.
+  const [picked, setPicked] = useState<{ original: string; cutout: string | null }>();
+  const [removeBg, setRemoveBg] = useState(true);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [error, setError] = useState('');
 
@@ -49,10 +52,19 @@ export function ItemForm({ existing, onSave }: Props) {
   async function onPhoto(file: File | undefined) {
     if (!file) return;
     try {
-      setPhoto(await resizeImage(file));
+      const original = await resizeImage(file);
+      const cutout = await cutOutImage(file).catch(() => null);
+      setPicked({ original, cutout });
+      setPhoto(removeBg && cutout ? cutout : original);
     } catch {
       setError('Could not read that image.');
     }
+  }
+
+  function toggleBackground() {
+    const next = !removeBg;
+    setRemoveBg(next);
+    if (picked) setPhoto(next && picked.cutout ? picked.cutout : picked.original);
   }
 
   async function submit(e: FormEvent) {
@@ -109,6 +121,17 @@ export function ItemForm({ existing, onSave }: Props) {
               onChange={(e) => onPhoto(e.target.files?.[0])}
             />
           </label>
+          {picked && (
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={removeBg && !!picked.cutout}
+              disabled={!picked.cutout}
+              onClick={toggleBackground}
+            >
+              {picked.cutout ? 'Remove background' : 'No clean cut-out'}
+            </button>
+          )}
           {photo && (
             <button type="button" className="btn btn-ghost" onClick={() => setPhoto(undefined)}>
               Remove
