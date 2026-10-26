@@ -8,6 +8,8 @@ export interface FieldSpec {
   options?: { value: string; label: string }[];
   /** Suggestions for `text`. */
   suggestions?: string[];
+  /** For `select`: shows the options as chips plus a ＋ chip that becomes a text box for a new value. */
+  creatable?: boolean;
   /** Whether an empty value is allowed (shows Restore to clear). */
   clearable?: boolean;
   placeholder?: string;
@@ -24,14 +26,31 @@ interface Props {
 export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState(false);
+  const [adding, setAdding] = useState(false);
   const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
+  const [lift, setLift] = useState(0);
+
+  // iOS doesn't resize fixed layouts for the keyboard: lift the sheet above it.
   useEffect(() => {
-    input.current?.focus();
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setLift(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (adding || spec.kind !== 'select') input.current?.focus();
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [onClose]);
+  }, [onClose, adding, spec.kind]);
 
   async function apply(v: string) {
     if (await onApply(v)) onClose();
@@ -39,7 +58,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" style={lift ? { paddingBottom: lift } : undefined} onClick={onClose}>
       <form
         className="sheet field-sheet"
         role="dialog"
@@ -47,7 +66,9 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
-          if (spec.kind !== 'select') apply(draft);
+          if (adding) {
+            if (draft.trim()) apply(draft);
+          } else if (spec.kind !== 'select') apply(draft);
         }}
       >
         <div className="field-sheet-head">
@@ -59,8 +80,46 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
           )}
         </div>
 
-        {spec.kind === 'select' ? (
-          <ul className="field-options">
+        {spec.kind === 'select' && spec.creatable ? (
+          <ul className="chips field-suggestions">
+            {spec.options!.map((o) => (
+              <li key={o.value}>
+                <button type="button" className="chip" aria-pressed={value === o.value} onClick={() => apply(o.value)}>
+                  {o.label}
+                </button>
+              </li>
+            ))}
+            <li>
+              {adding ? (
+                <input
+                  ref={input}
+                  className="chip chip-input"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  value={draft}
+                  placeholder={spec.placeholder}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={() => !draft.trim() && setAdding(false)}
+                  aria-label={`New ${spec.title.toLowerCase()}`}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="chip"
+                  aria-label={`New ${spec.title.toLowerCase()}`}
+                  onClick={() => {
+                    setDraft('');
+                    setAdding(true);
+                  }}
+                >
+                  ＋
+                </button>
+              )}
+            </li>
+          </ul>
+        ) : spec.kind === 'select' ? (
+          <>
+            <ul className="field-options">
             {spec.clearable && (
               <li>
                 <button type="button" className="sheet-item" aria-pressed={value === ''} onClick={() => apply('')}>
@@ -76,7 +135,8 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
                 </button>
               </li>
             ))}
-          </ul>
+            </ul>
+          </>
         ) : (
           <>
             {spec.kind === 'textarea' ? (
@@ -84,6 +144,7 @@ export function FieldSheet({ spec, value, onApply, onClose }: Props) {
             ) : (
               <input
                 ref={input}
+                autoComplete="off"
                 type={spec.kind === 'date' ? 'date' : 'text'}
                 inputMode={spec.kind === 'number' ? 'decimal' : undefined}
                 value={draft}

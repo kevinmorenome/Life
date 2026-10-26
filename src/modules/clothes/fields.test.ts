@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withField } from './fields';
+import { brandsOf, valuesOf, withField } from './fields';
 import type { ClothingItem } from './types';
 
 const item: ClothingItem = {
@@ -34,5 +34,19 @@ describe('withField', () => {
     expect(withField(item, 'status', 'sold')!.status).toBe('sold');
     expect(withField(item, 'condition', '')!.condition).toBeUndefined();
     expect(withField(item, 'condition', 'new')!.condition).toBe('new');
+  });
+});
+
+describe('brandsOf', () => {
+  it('lists distinct brands case-insensitively, sorted', () => {
+    const items = [{ ...item, brand: 'Zara' }, { ...item, brand: 'zara ' }, { ...item, brand: 'Arket' }, { ...item, brand: undefined }];
+    expect(brandsOf(items)).toEqual(['Arket', 'Zara']);
+  });
+});
+
+describe('valuesOf', () => {
+  it('merges extra suggestions with used values', () => {
+    const items = [{ ...item, subcategory: 'Jeans' }, { ...item, subcategory: 'Chinos' }];
+    expect(valuesOf(items, 'subcategory', ['Jeans', 'Shorts'])).toEqual(['Chinos', 'Jeans', 'Shorts']);
   });
 });
