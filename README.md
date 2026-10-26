@@ -25,6 +25,8 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 
 Whering's "date added" becomes the item's purchase date (dropped if it is in the future). Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
 
+If you've already used the app since importing, don't re-run the full import (it replaces each imported item with Whering's copy). To add only purchase dates, export a backup from Settings and run `node --experimental-strip-types scripts/patch-purchase-dates.ts whering-details.json life-backup.json out.json`, then import `out.json`. Only items without a purchase date are touched, and every other field stays as in the backup.
+
 Neither file is committed (see `.gitignore`); they contain your personal data.
 
 ### App shell
