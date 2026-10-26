@@ -18,9 +18,8 @@ export function BottomNav({ module, subroute }: { module: LifeModule; subroute: 
   const tab = (t: LifeModule['tabs'][number]) => {
     const active = subroute !== null && t.matches(subroute);
     return (
-      <a key={t.id} href={href(t.path)} className="tab" aria-current={active ? 'page' : undefined}>
+      <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active ? 'page' : undefined}>
         {t.icon}
-        <span>{t.label}</span>
       </a>
     );
   };
