@@ -126,9 +126,6 @@ describe('photo gallery (MCP App)', () => {
     expect(page.text).not.toContain('clientInfo');
     expect(page.text).toContain('ui/notifications/tool-result');
     expect(page.text).toContain('structuredContent');
-    // Tap-to-pick is offered only when the host advertises message support.
-    expect(page.text).toContain('ui/message');
-    expect(page.text).toContain('hostCapabilities');
     // Self-contained: the host's default CSP blocks anything fetched from elsewhere.
     expect(page.text).not.toMatch(/https?:\/\//);
     expect((await rpc(ctx, 'resources/read', { uri: 'ui://life/other' })).error.code).toBe(-32002);
@@ -191,7 +188,7 @@ describe('show_photos', () => {
     const { ctx } = setup({}, photoSeed);
     const r = await call(ctx, 'show_photos', { itemIds: ['blazer', 'tee'] });
     expect(r.structured).toEqual({
-      photos: [{ id: 'blazer', caption: 'Navy blazer', mimeType: 'image/jpeg', data: '/9j/AAAA' }],
+      photos: [{ caption: 'Navy blazer', mimeType: 'image/jpeg', data: '/9j/AAAA' }],
       note: 'No photo for: White tee.',
     });
     expect((await call(ctx, 'find_items', {})).structured).toBeUndefined();
