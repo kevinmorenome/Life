@@ -558,8 +558,6 @@ describe('edit_item', () => {
 describe('ask_to_choose (elicitation)', () => {
   const start = (ctx: ToolContext, args: object = { question: 'Which tee?', options: ['A', 'B'] }) =>
     handleMcp(new Request('https://x/mcp', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ask_to_choose', arguments: args } }) }), ctx);
-  const events = async (res: Response) =>
-    (await res.text()).split('\n\n').filter(Boolean).map((e) => JSON.parse(e.replace(/^event: message\ndata: /, '')));
   const answer = (ctx: ToolContext, msg: object) => handleMcp(new Request('https://x/mcp', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', ...msg }) }), ctx);
 
   async function ask(reply: (id: string) => object) {
@@ -591,7 +589,7 @@ describe('ask_to_choose (elicitation)', () => {
 
   it('rejects bad arguments and stray replies without streaming', async () => {
     const { ctx } = setup();
-    expect((await (await start(ctx, { question: 'x', options: ['only'] })).json()).result.isError).toBe(true);
+    expect(((await (await start(ctx, { question: 'x', options: ['only'] })).json()) as any).result.isError).toBe(true);
     expect((await answer(ctx, { id: 'elicit-ghost', result: {} })).status).toBe(200); // JSON-RPC error body
   });
 });
