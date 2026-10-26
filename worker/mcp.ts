@@ -1,8 +1,7 @@
-// Minimal MCP server (Streamable HTTP, stateless, JSON responses; only `ask_to_choose` streams) so Claude
+// Minimal MCP server (Streamable HTTP, stateless, JSON responses only) so Claude
 // can read the wardrobe and log wears. Cloudflare Access can't sign Claude in,
 // so this path is bypassed in Access and guarded by its own secret instead.
 
-import { ELICIT_TOOL, resolveElicitation, streamElicitation } from './elicit';
 import { callTool, TOOLS, type ToolContext } from './mcpTools';
 import { MCP_APP_MIME, PHOTOS_HTML, PHOTOS_URI } from './photosView';
 
@@ -59,15 +58,6 @@ export async function handleMcp(request: Request, ctx: ToolContext): Promise<Res
     return rpcError(null, -32700, 'Parse error');
   }
 
-  // A client's answer to a question we asked (elicitation): hand it to the waiting tool call.
-  if (body && typeof body === 'object' && !Array.isArray(body) && !('method' in body)) {
-    return resolveElicitation(body as Record<string, unknown>) ? new Response(null, { status: 202 }) : rpcError(null, -32600, 'Invalid request');
-  }
-  const single = body as RpcRequest;
-  if (single?.method === 'tools/call' && single.params?.name === ELICIT_TOOL.name) {
-    return streamElicitation(single.id ?? null, (single.params.arguments ?? {}) as Record<string, unknown>);
-  }
-
   const messages = Array.isArray(body) ? body : [body];
   const replies = (await Promise.all(messages.map((m) => handleMessage(m as RpcRequest, ctx)))).filter((r) => r !== null);
   if (replies.length === 0) return new Response(null, { status: 202 });
@@ -106,7 +96,7 @@ async function handleMessage(msg: RpcRequest, ctx: ToolContext): Promise<unknown
       });
     }
     case 'tools/list':
-      return rpc(id, { tools: [...TOOLS, ELICIT_TOOL] });
+      return rpc(id, { tools: TOOLS });
     case 'tools/call': {
       const name = msg.params?.name;
       if (typeof name !== 'string') return rpc(id, undefined, { code: -32602, message: 'Missing tool name' });
