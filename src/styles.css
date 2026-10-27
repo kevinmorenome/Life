@@ -2378,3 +2378,20 @@ progress {
 .section-toggle[aria-expanded='false'] svg {
   transform: rotate(-90deg);
 }
+
+.editor-close {
+  font-size: 1.6rem;
+  width: 48px;
+  height: 48px;
+}
+.editor-next {
+  min-height: 44px;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+.sheet-scroll {
+  overscroll-behavior: contain;
+}
+.editor-sheet {
+  transition: none;
+}

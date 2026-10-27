@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { newId } from '../../lib/db';
 import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
@@ -125,11 +125,58 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     const [min, , max] = snaps();
     setSheetH(Math.min(max, Math.max(min, drag.current.h + drag.current.y - e.clientY)));
   };
+  const settle = () => setSheetH((h) => snaps().reduce((best, v) => (Math.abs(v - h) < Math.abs(best - h) ? v : best)));
   const onHandleUp = () => {
     if (!drag.current) return;
     drag.current = null;
-    setSheetH((h) => snaps().reduce((best, v) => (Math.abs(v - h) < Math.abs(best - h) ? v : best)));
+    settle();
   };
+
+  // Swiping the grid up grows the sheet over the canvas before the grid scrolls;
+  // swiping down at the top of the grid shrinks it so the canvas gets bigger.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef(sheetH);
+  sheetRef.current = sheetH;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let lastY = 0;
+    const clamp = (h: number) => Math.min(Math.round(window.innerHeight * 0.85), Math.max(120, h));
+    const start = (e: TouchEvent) => {
+      lastY = e.touches[0].clientY;
+    };
+    const move = (e: TouchEvent) => {
+      const y = e.touches[0].clientY;
+      const dy = lastY - y; // > 0: finger moving up
+      lastY = y;
+      const h = sheetRef.current;
+      const max = Math.round(window.innerHeight * 0.85);
+      if ((dy > 0 && h < max) || (dy < 0 && el.scrollTop <= 0 && h > 120)) {
+        e.preventDefault();
+        setSheetH(clamp(h + dy));
+      }
+    };
+    const wheel = (e: WheelEvent) => {
+      const h = sheetRef.current;
+      const max = Math.round(window.innerHeight * 0.85);
+      if ((e.deltaY > 0 && h < max) || (e.deltaY < 0 && el.scrollTop <= 0 && h > 120)) {
+        e.preventDefault();
+        setSheetH(clamp(h + e.deltaY));
+      }
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', settle);
+    el.addEventListener('touchcancel', settle);
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', settle);
+      el.removeEventListener('touchcancel', settle);
+      el.removeEventListener('wheel', wheel);
+    };
+  }, [step]);
 
   if (step === 'details') {
     return (
@@ -211,15 +258,15 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   return (
     <div className="outfit-editor">
       <header className="editor-bar">
-        <button type="button" className="icon-action" aria-label="Cancel" onClick={() => history.back()}>
+        <button type="button" className="icon-action editor-close" aria-label="Cancel" onClick={() => history.back()}>
           ✕
         </button>
-        <button type="button" className="btn btn-primary" disabled={selected.length === 0} onClick={() => setStep('details')}>
+        <button type="button" className="btn btn-primary editor-next" disabled={selected.length === 0} onClick={() => setStep('details')}>
           Next
         </button>
       </header>
 
-      <div className="editor-canvas" style={{ bottom: sheetH }} aria-label="Outfit canvas">
+      <div className="editor-canvas" style={{ bottom: Math.min(sheetH, snaps()[1]) }} aria-label="Outfit canvas">
         {pieces.length ? <OutfitBoard pieces={pieces} large /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
       </div>
 
@@ -261,7 +308,7 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
             ))}
           </nav>
         )}
-        <div className="sheet-scroll">
+        <div className="sheet-scroll" ref={scrollRef}>
           {visible.length === 0 ? (
             <p className="muted empty">{category === 'selected' ? 'Nothing selected yet.' : 'No items match.'}</p>
           ) : (
