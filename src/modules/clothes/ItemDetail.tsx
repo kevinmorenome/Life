@@ -7,6 +7,7 @@ import { valuesOf, withField, type FieldKey } from './fields';
 import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
+import { EyeIcon, EyeOffIcon } from '../../icons';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
@@ -93,6 +94,16 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
               icon: <CalendarCheckIcon />,
               onClick: () => onSave(wornToday ? withoutWearOn(item, today()) : withWear(item, today())),
             },
+            ...(item.status === 'active' || item.status === 'storage'
+              ? [
+                  {
+                    label: item.status === 'storage' ? 'Bring back' : 'Put away',
+                    icon: item.status === 'storage' ? <EyeIcon /> : <EyeOffIcon />,
+                    onClick: () =>
+                      onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() }),
+                  },
+                ]
+              : []),
           ]}
         >
           <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
