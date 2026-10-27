@@ -54,16 +54,11 @@ One-time setup:
 
 Treat the URL like a password: anyone with it can read your closet and queue wears (not delete anything). To rotate, set a new `MCP_TOKEN` and update the connector. PR previews are read-only, so their write tools refuse.
 
-## Forwarding receipts
+## Receipts from Gmail
 
-Forward a purchase receipt to a Cloudflare Email Routing address and the clothes in it show up under **Closet → "receipts to review"**. Nothing joins the closet until you accept it.
+Claude can read your order emails through the Gmail connector and queue the clothes it finds with the `add_receipt_draft` MCP tool. They show up under **Closet → "receipts to review"**, and nothing joins the closet until you accept it there. Accepted items have no photo yet (product image URLs are only shown while reviewing).
 
-One-time setup (needs a domain on Cloudflare):
-
-1. **Secrets:** `npx wrangler secret put ANTHROPIC_API_KEY` (extraction calls the Claude API, roughly a cent per receipt on the default small model; override with the `RECEIPT_MODEL` variable) and `npx wrangler secret put RECEIPT_SENDERS`, a comma-separated list of the addresses (or `@domains`) allowed to send receipts, e.g. your own address. Mail from anyone else is dropped; with the secret unset nothing is accepted.
-2. **Route:** Cloudflare dashboard → your domain → **Email → Email Routing → Routing rules** → custom address (e.g. `receipts@yourdomain`) → action **Send to a Worker** → **life**.
-
-Limits: the sender check uses the envelope address, which a determined attacker could forge, so every extraction is a draft you confirm. Product image URLs are shown while reviewing but not downloaded, so accepted items have no photo yet.
+Setup: connect Gmail in Claude (Settings → Connectors) and have the Life MCP connector set up (above). Then ask Claude to "check my email for clothing orders", or run it on a schedule. Claude passes each email's message id, so the same receipt is never queued twice while it waits; it should also label processed threads in Gmail so later runs skip them.
 
 ## Development
 

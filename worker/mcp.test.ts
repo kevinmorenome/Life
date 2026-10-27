@@ -89,6 +89,7 @@ describe('protocol', () => {
       'log_wear',
       'add_tags',
       'add_item',
+      'add_receipt_draft',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -475,6 +476,7 @@ describe('read-only deployments', () => {
       ['log_wear', { date: '2026-10-25', itemIds: ['tee'] }],
       ['add_item', { name: 'x', category: 'tops' }],
       ['create_outfit', { itemIds: ['tee'] }],
+      ['add_receipt_draft', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
     ] as const) {
       expect((await call(ctx, name, args)).isError).toBe(true);
     }
@@ -547,6 +549,47 @@ describe('edit_item', () => {
   it('refuses on read-only deployments', async () => {
     const { ctx, data } = setup({ readOnly: true });
     expect((await call(ctx, 'edit_item', { itemId: 'tee', name: 'x' })).isError).toBe(true);
+    expect(data.inbox.size).toBe(0);
+  });
+});
+
+describe('add_receipt_draft', () => {
+  it('queues a draft for review instead of adding to the closet', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'add_receipt_draft', {
+      sourceId: 'msg/1',
+      subject: 'Your order',
+      items: [
+        { name: 'Polo', category: 'tops', colors: ['Navy', 'Neon'], price: 80, imageUrl: 'https://x.com/p.jpg' },
+        { name: 'Odd', category: 'spaceship', imageUrl: 'http://insecure.com/p.jpg' },
+      ],
+    });
+    expect(r.isError).toBe(false);
+    expect(data.clothes.size).toBe(ITEMS.length);
+    expect(data.inbox.get('receipt-msg1')).toMatchObject({
+      type: 'receipt-draft',
+      subject: 'Your order',
+      items: [
+        { name: 'Polo', category: 'tops', colors: ['Navy'], price: 80, purchaseDate: '2026-10-25', imageUrl: 'https://x.com/p.jpg' },
+        { name: 'Odd', category: 'other' },
+      ],
+    });
+    expect(data.inbox.get('receipt-msg1')!.items).toHaveLength(2);
+  });
+
+  it('does not queue the same email twice', async () => {
+    const { ctx, data } = setup();
+    const args = { sourceId: 'm1', items: [{ name: 'Tee', category: 'tops' }] };
+    await call(ctx, 'add_receipt_draft', args);
+    const again = await call(ctx, 'add_receipt_draft', { ...args, items: [{ name: 'Changed', category: 'tops' }] });
+    expect(again.json()).toEqual({ alreadyQueued: 'receipt-m1' });
+    expect((data.inbox.get('receipt-m1')!.items as { name: string }[])[0].name).toBe('Tee');
+  });
+
+  it('rejects calls without a source id or valid items', async () => {
+    const { ctx, data } = setup();
+    expect((await call(ctx, 'add_receipt_draft', { items: [{ name: 'x', category: 'tops' }] })).isError).toBe(true);
+    expect((await call(ctx, 'add_receipt_draft', { sourceId: 'm1', items: [{ category: 'tops' }] })).isError).toBe(true);
     expect(data.inbox.size).toBe(0);
   });
 });

@@ -15,7 +15,6 @@
   "dependencies": {
     "@imgly/background-removal": "^1.4.5",
     "jose": "^6.2.13",
-    "postal-mime": "^4.1.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
