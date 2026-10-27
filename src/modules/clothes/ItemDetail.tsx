@@ -86,13 +86,13 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           leading={
             item.status === 'active' || item.status === 'storage' ? (
               <button
-                className="icon-action icon-action-sm"
+                className={`icon-action icon-action-sm${item.status === 'storage' ? ' icon-action-on' : ''}`}
                 aria-label={item.status === 'storage' ? 'Bring back to closet' : 'Put away in storage'}
                 onClick={() =>
                   onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() })
                 }
               >
-                {item.status === 'storage' ? <EyeIcon /> : <EyeOffIcon />}
+                {item.status === 'storage' ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             ) : undefined
           }
