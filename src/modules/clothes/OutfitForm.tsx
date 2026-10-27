@@ -26,7 +26,6 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
   // Same filters as the closet; "Selected" is an extra tab that shows just the chosen pieces.
   const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
-  const [showSelected, setShowSelected] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
@@ -46,14 +45,9 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   const tabs = CATEGORIES.filter((c) => counts.get(c) || c === filters.category);
   const active = activeFilterCount(filters);
 
-  const visible = useMemo(() => {
-    if (!showSelected) return filterItems(items, filters);
-    const q = filters.query.trim().toLowerCase();
-    return pieces.filter((i) => !q || [i.name, i.brand, i.color, i.subcategory, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q)));
-  }, [items, filters, showSelected, pieces]);
+  const visible = useMemo(() => filterItems(items, filters), [items, filters]);
 
   const pickCategory = (c: Category | 'all') => {
-    setShowSelected(false);
     setFilters({ ...filters, category: c, subcategory: '' });
   };
 
@@ -182,7 +176,7 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
 
       {/* Fixed size: the picker slides over the pieces instead of resizing them. */}
       <div className="editor-canvas" style={{ bottom: snaps()[1] }} aria-label="Outfit canvas">
-        {pieces.length ? <OutfitBoard pieces={pieces} large /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
+        {pieces.length ? <OutfitBoard pieces={pieces} large onRemove={toggle} /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
       </div>
 
       <section className="editor-sheet" style={{ height: sheetH }} aria-label="Pieces">
@@ -217,21 +211,18 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
           </button>
         </div>
         <nav className="category-tabs" aria-label="Categories">
-          <button type="button" aria-pressed={!showSelected && filters.category === 'all'} onClick={() => pickCategory('all')}>
+          <button type="button" aria-pressed={filters.category === 'all'} onClick={() => pickCategory('all')}>
             All <span className="count">{total}</span>
           </button>
-          <button type="button" aria-pressed={showSelected} onClick={() => setShowSelected(true)}>
-            Selected <span className="count">{selected.length}</span>
-          </button>
           {tabs.map((c) => (
-            <button key={c} type="button" aria-pressed={!showSelected && filters.category === c} onClick={() => pickCategory(c)}>
+            <button key={c} type="button" aria-pressed={filters.category === c} onClick={() => pickCategory(c)}>
               {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
             </button>
           ))}
         </nav>
         <div className="sheet-scroll" ref={scrollRef}>
           {visible.length === 0 ? (
-            <p className="muted empty">{showSelected ? 'Nothing selected yet.' : 'No items match.'}</p>
+            <p className="muted empty">No items match.</p>
           ) : (
             <ul className="closet-grid">
               {visible.map((i) => (
@@ -259,8 +250,7 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
           value={filters}
           onApply={(f) => {
             setFilters(f);
-            setShowSelected(false);
-            setFiltersOpen(false);
+                    setFiltersOpen(false);
           }}
           onClose={() => setFiltersOpen(false)}
         />

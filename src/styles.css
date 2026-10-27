@@ -2558,3 +2558,48 @@ button.detail-row {
 .editor-sheet {
   transition: none;
 }
+
+/* Editor canvas: pieces wrapped so each can carry a ✕ */
+.board-piece {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  max-width: 70%;
+}
+.board-row.n-2 .board-piece {
+  max-width: 52%;
+}
+.board-row.n-3 .board-piece {
+  max-width: 38%;
+}
+.board-feet .board-piece {
+  max-width: 34%;
+}
+.board-piece img {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+}
+.board-piece + .board-piece {
+  margin-left: -6%;
+}
+.board-extra .board-piece {
+  max-width: none;
+  height: auto;
+}
+.piece-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
