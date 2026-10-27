@@ -82,39 +82,6 @@ export interface ItemEditRequest extends RequestBase {
 
 export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest;
 
-/** One piece of clothing the Worker read out of a receipt email. Not yet a ClothingItem. */
-export interface ReceiptDraftItem {
-  name: string;
-  category: string;
-  subcategory?: string;
-  brand?: string;
-  colors?: string[];
-  size?: string;
-  price?: number;
-  /** YYYY-MM-DD */
-  purchaseDate?: string;
-  /** Product image from the email (https), shown in review; not downloaded. */
-  imageUrl?: string;
-}
-
-/**
- * Clothes found in a forwarded receipt, waiting in the `inbox` store for the
- * owner to confirm in the app. Accepting creates fresh ClothingItems; accepted
- * or dismissed drafts are deleted. Not an InboxRequest: `applyInbox` ignores it.
- */
-export interface ReceiptDraft {
-  id: string;
-  type: 'receipt-draft';
-  /** Email subject, to recognise the order. */
-  subject: string;
-  items: ReceiptDraftItem[];
-  source: 'email';
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type InboxRecord = InboxRequest | ReceiptDraft;
-
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;
 /** D1 caps a row at 2 MB; leave headroom for the other columns. */

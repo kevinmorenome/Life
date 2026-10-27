@@ -8,7 +8,7 @@ import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
 import { EyeIcon, EyeOffIcon } from '../../icons';
-import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
+import { CalendarCheckIcon, CheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
@@ -82,6 +82,19 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         </label>
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
+        {item.needsReview && (
+          <p className="review-note">
+            <span>Added automatically. Check the details.</span>
+            <button
+              type="button"
+              className="filter-btn"
+              aria-label="Mark as reviewed"
+              onClick={() => onSave({ ...item, needsReview: undefined, updatedAt: new Date().toISOString() })}
+            >
+              <CheckIcon />
+            </button>
+          </p>
+        )}
         <HeroActions
           leading={
             item.status === 'active' || item.status === 'storage' ? (

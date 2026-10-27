@@ -5,9 +5,9 @@
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
-import type { ItemChanges, ItemEditRequest, OutfitEditRequest, ReceiptDraft, TagRequest, WearRequest } from './protocol';
+import type { ItemChanges, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
-import { parseExtraction } from './receipt';
+import { fetchPhoto, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
 
 export interface ToolContext {
@@ -17,6 +17,8 @@ export interface ToolContext {
   readOnly: boolean;
   now: Date;
   newId: () => string;
+  /** Downloads a product image as a data URL (undefined if unusable). Faked in tests. */
+  fetchPhoto?: (url: string) => Promise<string | undefined>;
 }
 
 export interface ToolImage {
@@ -135,14 +137,13 @@ export const TOOLS = [
     },
   },
   {
-    name: 'add_receipt_draft',
+    name: 'add_receipt_items',
     description:
-      'Queue clothes found in a purchase receipt or order confirmation email for the owner to review in the app. They are NOT added to the closet until the owner accepts them there, so never use add_item for receipts. One call per email; pass the email\'s message id as sourceId so the same email is never queued twice. Only include wearable items actually bought (no shipping, tax or discounts). Leave out fields you cannot read from the email.',
+      'Add the clothes from a purchase receipt or order confirmation email to the closet, flagged "needs review" so the owner can check them in the app. They can be used in outfits and wears straight away. One call per email, with every wearable item actually bought (no shipping, tax or discounts). Fill in everything the email says: brand, colours, size, material, price per piece, order date, season, the product image URL and anything useful in notes (retailer, order number). Leave out what the email does not say. Pass the email\'s message id as sourceId so the same email is never added twice. Check find_items first if the item may already exist.',
     inputSchema: {
       type: 'object',
       properties: {
         sourceId: { type: 'string', description: 'Gmail message id of the receipt email' },
-        subject: { type: 'string', description: 'Email subject, to recognise the order' },
         items: {
           type: 'array',
           minItems: 1,
@@ -152,13 +153,17 @@ export const TOOLS = [
             properties: {
               name: { type: 'string', description: 'Product name without brand or size' },
               category: { type: 'string', enum: [...CATEGORIES] },
-              subcategory: { type: 'string' },
+              subcategory: { type: 'string', description: 'e.g. "Polo shirt"' },
               brand: { type: 'string' },
               colors: { type: 'array', items: { type: 'string', enum: [...PALETTE] }, maxItems: 5 },
               size: { type: 'string' },
+              material: { type: 'string' },
               price: { type: 'number', minimum: 0, description: 'Price paid for one piece' },
               purchaseDate: { type: 'string', description: 'Order date, YYYY-MM-DD' },
-              imageUrl: { type: 'string', description: 'https URL of the product image from the email, if any' },
+              seasons: { type: 'array', items: { type: 'string', enum: [...SEASONS] } },
+              notes: { type: 'string', description: 'e.g. retailer and order number' },
+              tags: { type: 'array', items: { type: 'string' } },
+              imageUrl: { type: 'string', description: 'https URL of the product image from the email' },
             },
             required: ['name', 'category'],
           },
@@ -240,8 +245,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addTags(args, ctx);
     case 'add_item':
       return ctx.readOnly ? fail(READ_ONLY) : addItem(args, ctx);
-    case 'add_receipt_draft':
-      return ctx.readOnly ? fail(READ_ONLY) : addReceiptDraft(args, ctx);
+    case 'add_receipt_items':
+      return ctx.readOnly ? fail(READ_ONLY) : addReceiptItems(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
@@ -558,30 +563,23 @@ async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<
   return ok({ added: { id: item.id, name } });
 }
 
-async function addReceiptDraft(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+async function addReceiptItems(args: Args, { store, now, fetchPhoto: download = fetchPhoto }: ToolContext): Promise<ToolResult> {
   const sourceId = text(args.sourceId, 100)?.replace(/[^A-Za-z0-9_-]/g, '');
   if (!sourceId) return fail('sourceId is required (the email message id).');
-  const lines = Array.isArray(args.items) ? args.items : [];
-  const images = lines.flatMap((l) => (typeof l?.imageUrl === 'string' && l.imageUrl.startsWith('https://') ? [l.imageUrl as string] : []));
-  const items = parseExtraction({ items: lines }, utcToday(now), images);
-  if (items.length === 0) return fail('No valid items. Each needs a name and a category.');
+  const lines = parseReceiptLines(args.items, utcToday(now));
+  if (lines.length === 0) return fail('No valid items. Each needs a name and a category.');
 
-  // The id comes from the email, so the same receipt is never queued twice while it waits for review.
-  const id = `receipt-${sourceId}`;
-  if ((await store.list('inbox')).some((r) => r.id === id)) return ok({ alreadyQueued: id });
-
-  const stamp = now.toISOString();
-  const draft: ReceiptDraft = {
-    id,
-    type: 'receipt-draft',
-    subject: text(args.subject) ?? 'Receipt',
-    items,
-    source: 'email',
-    createdAt: stamp,
-    updatedAt: stamp,
-  };
-  await store.put('inbox', id, draft);
-  return ok({ queued: { id, items: items.length }, note: 'Waiting for the owner to review it in the app.' });
+  // Ids come from the email, so adding the same receipt again changes nothing (and never overwrites edits).
+  const known = new Set((await store.list('clothes')).map((r) => r.id));
+  const added: { id: string; name: string; photo: boolean }[] = [];
+  for (const [i, line] of lines.entries()) {
+    const id = `receipt-${sourceId}-${i}`;
+    if (known.has(id)) continue;
+    const photo = line.imageUrl ? await download(line.imageUrl) : undefined;
+    await store.put('clothes', id, receiptItem(line, id, photo, now));
+    added.push({ id, name: line.name, photo: !!photo });
+  }
+  return ok(added.length ? { added, note: 'Flagged "needs review" in the app.' } : { alreadyAdded: true });
 }
 
 async function createOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

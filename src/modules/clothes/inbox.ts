@@ -1,4 +1,4 @@
-import type { InboxRecord, InboxRequest, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRequest, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { outfitPieces, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 import { withWear } from './wear';
@@ -31,8 +31,7 @@ export function withTags<T extends { tags?: string[]; updatedAt: string }>(recor
  * applying twice (e.g. from two devices) changes nothing. Ids that no longer
  * exist are reported on the request, not fatal.
  */
-export function applyInbox(records: InboxRecord[], allItems: ClothingItem[], allOutfits: Outfit[], now: Date): InboxResult {
-  const requests = records.filter((r): r is InboxRequest => r.type !== 'receipt-draft');
+export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], allOutfits: Outfit[], now: Date): InboxResult {
   const items = new Map(allItems.map((i) => [i.id, i]));
   const outfits = new Map(allOutfits.map((o) => [o.id, o]));
   const changedItems = new Set<string>();

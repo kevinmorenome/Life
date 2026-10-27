@@ -89,7 +89,7 @@ describe('protocol', () => {
       'log_wear',
       'add_tags',
       'add_item',
-      'add_receipt_draft',
+      'add_receipt_items',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -476,7 +476,7 @@ describe('read-only deployments', () => {
       ['log_wear', { date: '2026-10-25', itemIds: ['tee'] }],
       ['add_item', { name: 'x', category: 'tops' }],
       ['create_outfit', { itemIds: ['tee'] }],
-      ['add_receipt_draft', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
+      ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
     ] as const) {
       expect((await call(ctx, name, args)).isError).toBe(true);
     }
@@ -553,43 +553,43 @@ describe('edit_item', () => {
   });
 });
 
-describe('add_receipt_draft', () => {
-  it('queues a draft for review instead of adding to the closet', async () => {
-    const { ctx, data } = setup();
-    const r = await call(ctx, 'add_receipt_draft', {
+describe('add_receipt_items', () => {
+  const photo = 'data:image/jpeg;base64,AAAA';
+  const withPhotos = (urls: string[] = []) => ({ fetchPhoto: async (url: string) => (urls.includes(url) ? photo : undefined) });
+
+  it('adds flagged items with the details and photo from the email', async () => {
+    const { ctx, data } = setup(withPhotos(['https://x.com/p.jpg']));
+    const r = await call(ctx, 'add_receipt_items', {
       sourceId: 'msg/1',
-      subject: 'Your order',
       items: [
-        { name: 'Polo', category: 'tops', colors: ['Navy', 'Neon'], price: 80, imageUrl: 'https://x.com/p.jpg' },
+        { name: 'Polo', category: 'tops', brand: 'Lacoste', colors: ['Navy', 'Neon'], size: 'M', material: 'Cotton', price: 80, purchaseDate: '2026-10-01', seasons: ['summer', 'bogus'], notes: 'Order 42', imageUrl: 'https://x.com/p.jpg' },
         { name: 'Odd', category: 'spaceship', imageUrl: 'http://insecure.com/p.jpg' },
       ],
     });
     expect(r.isError).toBe(false);
-    expect(data.clothes.size).toBe(ITEMS.length);
-    expect(data.inbox.get('receipt-msg1')).toMatchObject({
-      type: 'receipt-draft',
-      subject: 'Your order',
-      items: [
-        { name: 'Polo', category: 'tops', colors: ['Navy'], price: 80, purchaseDate: '2026-10-25', imageUrl: 'https://x.com/p.jpg' },
-        { name: 'Odd', category: 'other' },
-      ],
+    expect(data.clothes.get('receipt-msg1-0')).toMatchObject({
+      name: 'Polo', category: 'tops', brand: 'Lacoste', colors: ['Navy'], color: 'Navy', size: 'M', material: 'Cotton', price: 80,
+      purchaseDate: '2026-10-01', seasons: ['summer'], notes: 'Order 42', photo, status: 'active', needsReview: true, wears: [],
     });
-    expect(data.inbox.get('receipt-msg1')!.items).toHaveLength(2);
+    expect(data.clothes.get('receipt-msg1-1')).toMatchObject({ category: 'other', purchaseDate: '2026-10-25', needsReview: true });
+    expect(data.clothes.get('receipt-msg1-1')!.photo).toBeUndefined();
+    expect(r.json().added).toHaveLength(2);
   });
 
-  it('does not queue the same email twice', async () => {
-    const { ctx, data } = setup();
+  it('is idempotent and never overwrites an edited item', async () => {
+    const { ctx, data } = setup(withPhotos());
     const args = { sourceId: 'm1', items: [{ name: 'Tee', category: 'tops' }] };
-    await call(ctx, 'add_receipt_draft', args);
-    const again = await call(ctx, 'add_receipt_draft', { ...args, items: [{ name: 'Changed', category: 'tops' }] });
-    expect(again.json()).toEqual({ alreadyQueued: 'receipt-m1' });
-    expect((data.inbox.get('receipt-m1')!.items as { name: string }[])[0].name).toBe('Tee');
+    await call(ctx, 'add_receipt_items', args);
+    data.clothes.set('receipt-m1-0', { ...data.clothes.get('receipt-m1-0')!, name: 'My edit', needsReview: undefined });
+    const again = await call(ctx, 'add_receipt_items', args);
+    expect(again.json()).toEqual({ alreadyAdded: true });
+    expect(data.clothes.get('receipt-m1-0')).toMatchObject({ name: 'My edit' });
   });
 
   it('rejects calls without a source id or valid items', async () => {
     const { ctx, data } = setup();
-    expect((await call(ctx, 'add_receipt_draft', { items: [{ name: 'x', category: 'tops' }] })).isError).toBe(true);
-    expect((await call(ctx, 'add_receipt_draft', { sourceId: 'm1', items: [{ category: 'tops' }] })).isError).toBe(true);
-    expect(data.inbox.size).toBe(0);
+    expect((await call(ctx, 'add_receipt_items', { items: [{ name: 'x', category: 'tops' }] })).isError).toBe(true);
+    expect((await call(ctx, 'add_receipt_items', { sourceId: 'm1', items: [{ category: 'tops' }] })).isError).toBe(true);
+    expect(data.clothes.size).toBe(ITEMS.length);
   });
 });

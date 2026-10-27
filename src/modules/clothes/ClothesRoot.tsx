@@ -9,11 +9,8 @@ import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPicke
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
-import { ReceiptReview } from './ReceiptReview';
-import { pendingDrafts } from './receipts';
 import { syncPieceWears } from './outfits';
 import { TodayView } from './TodayView';
-import type { InboxRecord } from '../../../worker/protocol';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
 
@@ -22,11 +19,10 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   const outfits = useCollection<Outfit>('outfits');
   const trips = useCollection<Trip>('trips');
   const plans = useCollection<Plan>('plans');
-  const inbox = useCollection<InboxRecord>('inbox');
   const { items, save } = clothes;
   const [first, second, third] = subroute;
 
-  if (clothes.loading || outfits.loading || trips.loading || plans.loading || inbox.loading) return <p className="muted">Loading…</p>;
+  if (clothes.loading || outfits.loading || trips.loading || plans.loading) return <p className="muted">Loading…</p>;
 
   if (first === 'outfits') {
     const outfitProps = { items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveOutfit: outfits.save, onSaveItem: save };
@@ -60,7 +56,6 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
-  if (first === 'receipts') return <ReceiptReview drafts={pendingDrafts(inbox.items)} onSaveItem={save} onRemoveDraft={inbox.remove} />;
   if (first === 'new') return <ItemForm onSave={save} />;
   if (first === 'stats') return <ClothesStatsView items={items} />;
   if (first) {
@@ -69,5 +64,5 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
     return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
-  return <ClothesList items={items} onSave={save} receiptDrafts={pendingDrafts(inbox.items).length} />;
+  return <ClothesList items={items} onSave={save} />;
 }

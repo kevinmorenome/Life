@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { swatchCss } from './colors';
-import { CloseIcon, HeartIcon } from './icons';
+import { CloseIcon, HeartIcon, SparkleIcon } from './icons';
 import {
   colorOptions,
   DEFAULT_FILTERS,
@@ -120,6 +120,9 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
               onClick={() => set({ favoritesOnly: !draft.favoritesOnly })}
             >
               <HeartIcon filled={draft.favoritesOnly} /> Favorites only
+            </button>
+            <button type="button" className="chip chip-icon" aria-pressed={draft.reviewOnly} onClick={() => set({ reviewOnly: !draft.reviewOnly })}>
+              <SparkleIcon /> Needs review
             </button>
           </div>
         </section>

@@ -56,9 +56,9 @@ Treat the URL like a password: anyone with it can read your closet and queue wea
 
 ## Receipts from Gmail
 
-Claude can read your order emails through the Gmail connector and queue the clothes it finds with the `add_receipt_draft` MCP tool. They show up under **Closet → "receipts to review"**, and nothing joins the closet until you accept it there. Accepted items have no photo yet (product image URLs are only shown while reviewing).
+Claude can read your order emails through the Gmail connector and add the clothes to your closet with the `add_receipt_items` MCP tool. Each item arrives with everything the email says (brand, colours, size, material, price, order date, notes) and its product photo, and is marked **needs review**: a sparkle on its tile, a "N new items to review" banner on the closet (and a **Needs review** filter), and a ✓ on the item page to mark it checked. Until then it works like any other item, so it can go into outfits and wears.
 
-Setup: connect Gmail in Claude (Settings → Connectors) and have the Life MCP connector set up (above). Then ask Claude to "check my email for clothing orders", or run it on a schedule. Claude passes each email's message id, so the same receipt is never queued twice while it waits; it should also label processed threads in Gmail so later runs skip them.
+Setup: connect Gmail in Claude (Settings → Connectors) and have the Life MCP connector set up (above). Then ask Claude to "check my email for clothing orders", or run it on a schedule. Each item's id comes from the email's message id, so the same receipt is never added twice (and never overwrites your edits); Claude should also label processed threads in Gmail so later runs skip them. The Worker downloads the product image as is (it can't resize), so images over about 700 KB are skipped and the item has no photo.
 
 ## Development
 
