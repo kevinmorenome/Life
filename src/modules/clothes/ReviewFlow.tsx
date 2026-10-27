@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { navigate } from '../../lib/router';
 import { ItemDetail } from './ItemDetail';
 import { markReviewed, reviewQueue } from './review';
 import type { ClothingItem, Outfit } from './types';
 
 const SLIDE_MS = 220;
+/** How far left (px) a swipe must go to count as "check later". */
+const SWIPE_DISTANCE = 90;
 
 /**
  * Drawer over the closet that steps through the items needing review, each
  * shown as the normal item page (every field editable in place). Save marks
  * the item reviewed; "Check later" leaves it flagged (it comes back next
- * visit). Either way the page slides left to the next item.
+ * visit). Swiping the page left does the same as "Check later". Either way
+ * the page slides left to the next item.
  */
 export function ReviewFlow({
   items,
@@ -30,6 +33,12 @@ export function ReviewFlow({
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // Swipe: the page follows the finger (`dragX`, only while dragging or settling; a lingering transform would trap the fixed field sheets).
+  const [dragX, setDragX] = useState<number | null>(null);
+  const [settling, setSettling] = useState(false);
+  const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+
   const queue = reviewQueue(items, later);
   const flagged = items.filter((i) => i.needsReview).length;
   // Keep showing the item being handled while it slides out, even though it already left the queue.
@@ -44,7 +53,45 @@ export function ReviewFlow({
       setLater(nowLater);
       setCurrentId(reviewQueue(items, nowLater).find((i) => i.id !== handled.id)?.id ?? '');
       setLeaving(false);
+      setDragX(null);
+      setSettling(false);
     }, SLIDE_MS);
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    // Leave text fields alone so selecting and moving the caret keep working.
+    if (leaving || settling || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null };
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (d.horizontal === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      d.horizontal = Math.abs(dx) > Math.abs(dy);
+      if (d.horizontal) e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (d.horizontal) setDragX(Math.min(0, dx));
+  }
+
+  function onPointerEnd(e: PointerEvent, cancelled = false) {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || e.pointerId !== d.id || !d.horizontal || !current) return;
+    const dx = e.clientX - d.x;
+    setSettling(true);
+    if (!cancelled && dx <= -SWIPE_DISTANCE) {
+      setDragX(-(pageRef.current?.offsetWidth ?? 400));
+      advance(current, new Set(later).add(current.id));
+    } else {
+      // Not far enough: spring back, then drop the transform.
+      setDragX(0);
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => (setDragX(null), setSettling(false)), SLIDE_MS);
+    }
   }
 
   return (
@@ -58,8 +105,31 @@ export function ReviewFlow({
           </p>
         </div>
 
+        {dragX !== null && dragX < -20 && (
+          <p className="review-swipe-hint" style={{ opacity: Math.min(1, Math.abs(dragX) / SWIPE_DISTANCE) }} aria-hidden>
+            Check later
+          </p>
+        )}
+
         {current ? (
-          <div key={current.id} className={leaving ? 'review-page review-out' : 'review-page review-in'}>
+          <div
+            key={current.id}
+            ref={pageRef}
+            className={dragX !== null ? 'review-page' : leaving ? 'review-page review-out' : 'review-page review-in'}
+            style={
+              dragX !== null
+                ? {
+                    transform: `translateX(${dragX}px)`,
+                    opacity: 1 - Math.min(0.5, Math.abs(dragX) / 500),
+                    transition: settling ? `transform ${SLIDE_MS}ms ease-out, opacity ${SLIDE_MS}ms ease-out` : 'none',
+                  }
+                : undefined
+            }
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={(e) => onPointerEnd(e, true)}
+          >
             <ItemDetail
               item={current}
               items={items}

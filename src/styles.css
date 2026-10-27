@@ -2366,8 +2366,24 @@ progress {
     opacity: 0;
   }
 }
+.review-page {
+  /* Vertical scrolling stays native; horizontal drags are the swipe. */
+  touch-action: pan-y;
+}
 .review-in {
   animation: review-in 220ms ease-out;
+}
+.review-swipe-hint {
+  position: sticky;
+  top: 50%;
+  z-index: 1;
+  height: 0;
+  margin: 0;
+  overflow: visible;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: right;
+  pointer-events: none;
 }
 .review-out {
   transform: translateX(-40px);
