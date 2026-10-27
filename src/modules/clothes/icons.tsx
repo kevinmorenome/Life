@@ -97,3 +97,22 @@ export const CloseIcon = () => (
     <path d="M6 6l12 12M18 6 6 18" />
   </Icon>
 );
+
+export const ChevronRightIcon = () => (
+  <Icon>
+    <path d="M9 5l7 7-7 7" />
+  </Icon>
+);
+
+export const ChevronLeftIcon = () => (
+  <Icon>
+    <path d="M15 5l-7 7 7 7" />
+  </Icon>
+);
+
+export const ClipboardCheckIcon = () => (
+  <Icon>
+    <rect x="5" y="4" width="14" height="17" rx="2" />
+    <path d="M9 4V3h6v1M9 13l2.5 2.5L16 11" />
+  </Icon>
+);

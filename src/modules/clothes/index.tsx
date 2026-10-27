@@ -1,4 +1,5 @@
 import { CalendarIcon, ChartIcon, CheckIcon, HangerIcon, PlusIcon, ShirtIcon } from '../../icons';
+import { ClipboardCheckIcon } from './icons';
 import type { LifeModule } from '../types';
 import { ClothesRoot } from './ClothesRoot';
 
@@ -16,7 +17,8 @@ export const clothesModule: LifeModule = {
       label: 'Closet',
       icon: <HangerIcon />,
       path: '/clothes',
-      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today'].includes(first),
+      longPress: [{ label: 'Review closet', icon: <ClipboardCheckIcon />, path: () => '/clothes/review' }],
+      matches: ([first]) => !first || !['outfits', 'calendar', 'stats', 'today', 'review'].includes(first),
     },
     {
       id: 'outfits',
@@ -42,6 +44,7 @@ export const clothesModule: LifeModule = {
   // Forms and pickers have their own sticky Save/Cancel at the bottom.
   hideNav: ([first, second, third]) =>
     first === 'new' ||
+    (first === 'review' && Boolean(second)) ||
     second === 'edit' ||
     (first === 'outfits' && (second === 'new' || third === 'edit')) ||
     (first === 'calendar' && DATE.test(second ?? '') && (third === 'outfit' || third === 'items' || third === 'new-outfit')),
