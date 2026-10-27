@@ -7,6 +7,13 @@ export function itemsToReview(items: ClothingItem[]): ClothingItem[] {
   return items.filter((i) => i.needsReview).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Items to step through in a review session: oldest first (the order they arrived in), without the ones put off for later. */
+export function reviewQueue(items: ClothingItem[], later: ReadonlySet<string>): ClothingItem[] {
+  return items
+    .filter((i) => i.needsReview && !later.has(i.id))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+}
+
 /** The same item with the review flag cleared. */
 export function markReviewed(item: ClothingItem, now: Date): ClothingItem {
   const { needsReview: _flag, ...rest } = item;

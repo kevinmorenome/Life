@@ -42,6 +42,7 @@ export const clothesModule: LifeModule = {
   // Forms and pickers have their own sticky Save/Cancel at the bottom.
   hideNav: ([first, second, third]) =>
     first === 'new' ||
+    first === 'review' ||
     second === 'edit' ||
     (first === 'outfits' && (second === 'new' || third === 'edit')) ||
     (first === 'calendar' && DATE.test(second ?? '') && (third === 'outfit' || third === 'items' || third === 'new-outfit')),

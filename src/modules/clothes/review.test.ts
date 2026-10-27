@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { itemsToReview, markReviewed, reviewSummary } from './review';
+import { itemsToReview, reviewQueue, markReviewed, reviewSummary } from './review';
 import type { ClothingItem } from './types';
 
 const item = (id: string, createdAt: string, extra: Partial<ClothingItem> = {}): ClothingItem => ({
@@ -10,6 +10,11 @@ describe('review', () => {
   it('lists only flagged items, newest first', () => {
     const all = [item('a', '2026-01-01', { needsReview: true }), item('b', '2026-01-02'), item('c', '2026-01-03', { needsReview: true })];
     expect(itemsToReview(all).map((i) => i.id)).toEqual(['c', 'a']);
+  });
+  it('queues flagged items oldest first, skipping the ones put off', () => {
+    const all = [item('c', '2026-01-03', { needsReview: true }), item('b', '2026-01-02', { needsReview: true }), item('a', '2026-01-01', { needsReview: true }), item('d', '2026-01-04')];
+    expect(reviewQueue(all, new Set()).map((i) => i.id)).toEqual(['a', 'b', 'c']);
+    expect(reviewQueue(all, new Set(['a'])).map((i) => i.id)).toEqual(['b', 'c']);
   });
   it('clears the flag and bumps updatedAt, keeping everything else', () => {
     const flagged = item('a', '2026-01-01', { needsReview: true, tags: ['x'] });
