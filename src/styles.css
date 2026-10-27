@@ -1376,6 +1376,14 @@ a:focus-visible {
 .icon-action:active {
   background: rgb(0 0 0 / 0.06);
 }
+.icon-action-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-action-sm svg {
+  width: 26px;
+  height: 26px;
+}
 .icon-action[aria-pressed='true'] {
   color: #e5395b;
 }
