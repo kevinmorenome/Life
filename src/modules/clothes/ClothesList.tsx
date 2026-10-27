@@ -10,8 +10,15 @@ import { ItemThumb } from './ItemThumb';
 import { wearCount } from './stats';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
+// Kept at module level so filters survive opening an item and coming back (the list unmounts).
+let savedFilters: ClosetFilters = DEFAULT_FILTERS;
+
 export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: (item: ClothingItem) => Promise<void> }) {
-  const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
+  const [filters, setFiltersState] = useState<ClosetFilters>(savedFilters);
+  const setFilters = (next: ClosetFilters) => {
+    savedFilters = next;
+    setFiltersState(next);
+  };
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
