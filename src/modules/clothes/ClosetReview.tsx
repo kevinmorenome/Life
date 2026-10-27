@@ -145,11 +145,11 @@ function ReviewStepView({ step, items, onSave }: { step: ReviewStep; items: Clot
             <li key={item.id} className="review-item">
               <ItemThumb item={item} />
               <div className="review-chips">
-                <p className="review-name">
-                  <strong>{item.name}</strong>
-                  {item.brand && <span className="muted">{item.brand}</span>}
-                </p>
-                <div className="chips">
+                <div className="review-name-row">
+                  <p className="review-name">
+                    <strong>{item.name}</strong>
+                    {item.brand && <span className="muted">{item.brand}</span>}
+                  </p>
                   {step === 'season' && (
                     <button
                       type="button"
@@ -160,6 +160,8 @@ function ReviewStepView({ step, items, onSave }: { step: ReviewStep; items: Clot
                       All
                     </button>
                   )}
+                </div>
+                <div className="chips">
                   {info.options.map((o) => (
                     <button
                       key={o}

@@ -2449,3 +2449,12 @@ progress {
   left: 0;
   white-space: nowrap;
 }
+.review-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.review-name {
+  min-width: 0;
+}
