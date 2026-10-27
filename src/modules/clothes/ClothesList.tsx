@@ -13,7 +13,16 @@ import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 // Kept at module level so filters survive opening an item and coming back (the list unmounts).
 let savedFilters: ClosetFilters = DEFAULT_FILTERS;
 
-export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: (item: ClothingItem) => Promise<void> }) {
+export function ClothesList({
+  items,
+  onSave,
+  receiptDrafts = 0,
+}: {
+  items: ClothingItem[];
+  onSave: (item: ClothingItem) => Promise<void>;
+  /** Forwarded receipts waiting to be confirmed. */
+  receiptDrafts?: number;
+}) {
   const [filters, setFiltersState] = useState<ClosetFilters>(savedFilters);
   const setFilters = (next: ClosetFilters) => {
     savedFilters = next;
@@ -50,6 +59,12 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
 
   return (
     <>
+      {receiptDrafts > 0 && (
+        <a className="card today-prompt" href={href('/clothes/receipts')}>
+          <span>{receiptDrafts === 1 ? '1 receipt to review' : `${receiptDrafts} receipts to review`}</span>
+          <strong>Review →</strong>
+        </a>
+      )}
       {items.length > 0 && !items.some((i) => i.wears.includes(today())) && (
         <a className="card today-prompt" href={href('/clothes/today')}>
           <span>Nothing logged today</span>

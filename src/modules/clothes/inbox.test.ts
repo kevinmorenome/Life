@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRecord, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { applyInbox, withTags } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
@@ -182,5 +182,14 @@ describe('applyInbox item edits', () => {
   it('is a no-op when nothing differs, and reports a missing item', () => {
     expect(applyInbox([edit({ brand: 'Zara', size: 'M' })], [base], [], NOW).items).toEqual([]);
     expect(applyInbox([edit({ name: 'x' }, 'ghost')], [base], [], NOW).requests[0].error).toContain('ghost');
+  });
+});
+
+describe('receipt drafts', () => {
+  it('are ignored and left untouched by applyInbox', () => {
+    const draft: InboxRecord = { id: 'd', type: 'receipt-draft', subject: 's', items: [], source: 'email', createdAt: '', updatedAt: '' };
+    const result = applyInbox([draft], [], [], new Date('2026-10-01T00:00:00Z'));
+    expect(result.requests).toEqual([]);
+    expect(result.expired).toEqual([]);
   });
 });

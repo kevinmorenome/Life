@@ -1,9 +1,10 @@
 import { authorize, type AuthEnv } from './auth';
+import { handleEmail, type EmailEnv } from './email';
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
 import { d1Store, upsertStatement } from './records';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
-interface Env extends AuthEnv, McpEnv {
+interface Env extends AuthEnv, McpEnv, EmailEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   /** Set on PR preview versions: they read real data but never write it. */
@@ -49,6 +50,11 @@ export default {
       return push(env.DB, request);
     }
     return json({ error: 'Not found' }, 404);
+  },
+
+  // Cloudflare Email Routing delivers forwarded receipts here.
+  async email(message: ForwardableEmailMessage, env: Env): Promise<void> {
+    await handleEmail(message, env, d1Store(env.DB));
   },
 } satisfies ExportedHandler<Env>;
 

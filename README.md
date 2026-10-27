@@ -54,6 +54,17 @@ One-time setup:
 
 Treat the URL like a password: anyone with it can read your closet and queue wears (not delete anything). To rotate, set a new `MCP_TOKEN` and update the connector. PR previews are read-only, so their write tools refuse.
 
+## Forwarding receipts
+
+Forward a purchase receipt to a Cloudflare Email Routing address and the clothes in it show up under **Closet → "receipts to review"**. Nothing joins the closet until you accept it.
+
+One-time setup (needs a domain on Cloudflare):
+
+1. **Secrets:** `npx wrangler secret put ANTHROPIC_API_KEY` (extraction calls the Claude API, roughly a cent per receipt on the default small model; override with the `RECEIPT_MODEL` variable) and `npx wrangler secret put RECEIPT_SENDERS`, a comma-separated list of the addresses (or `@domains`) allowed to send receipts, e.g. your own address. Mail from anyone else is dropped; with the secret unset nothing is accepted.
+2. **Route:** Cloudflare dashboard → your domain → **Email → Email Routing → Routing rules** → custom address (e.g. `receipts@yourdomain`) → action **Send to a Worker** → **life**.
+
+Limits: the sender check uses the envelope address, which a determined attacker could forge, so every extraction is a draft you confirm. Product image URLs are shown while reviewing but not downloaded, so accepted items have no photo yet.
+
 ## Development
 
 ```bash
