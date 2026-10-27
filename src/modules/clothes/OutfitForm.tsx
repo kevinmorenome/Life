@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { newId } from '../../lib/db';
 import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
@@ -27,6 +27,9 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [tagDraft, setTagDraft] = useState('');
   const [date, setDate] = useState('');
+  const [step, setStep] = useState<'canvas' | 'details'>('canvas');
+  const [sheetH, setSheetH] = useState(() => Math.round(window.innerHeight * 0.45));
+  const drag = useRef<{ y: number; h: number } | null>(null);
 
   const pieces = useMemo(
     () => selected.map((id) => items.find((i) => i.id === id)).filter((i): i is ClothingItem => !!i),
@@ -107,58 +110,110 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     else navigate(`/clothes/outfits/${outfit.id}`);
   }
 
-  return (
-    <form className="form" onSubmit={submit}>
-      <h1>{existing ? 'Edit outfit' : 'New outfit'}</h1>
-      <label className="field">
-        <span>Name (optional)</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
-      </label>
+  // Sheet snap points: peek, half, nearly full.
+  const snaps = () => [120, Math.round(window.innerHeight * 0.45), Math.round(window.innerHeight * 0.85)];
+  const onHandleDown = (e: PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { y: e.clientY, h: sheetH };
+  };
+  const onHandleMove = (e: PointerEvent) => {
+    if (!drag.current) return;
+    const [min, , max] = snaps();
+    setSheetH(Math.min(max, Math.max(min, drag.current.h + drag.current.y - e.clientY)));
+  };
+  const onHandleUp = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    setSheetH((h) => snaps().reduce((best, v) => (Math.abs(v - h) < Math.abs(best - h) ? v : best)));
+  };
 
-      <div className="outfit-preview" aria-label="Outfit preview">
-        {pieces.length ? <OutfitBoard pieces={pieces} large /> : <p className="muted small">Pick pieces below to see your outfit.</p>}
-      </div>
-
-      <div className="field">
-        <span>Tags</span>
-        <ul className="chips tag-list">
-          {tags.map((t) => (
-            <li key={t} className="chip chip-static chip-color">
-              {t}
-              <button type="button" className="chip-x" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-        <input
-          value={tagDraft}
-          onChange={(e) => setTagDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              addTag();
-            }
-          }}
-          onBlur={addTag}
-          placeholder="Add a tag (dinner, work…)"
-          aria-label="New tag"
-        />
-      </div>
-
-      {onApplyDate && !existing && (
+  if (step === 'details') {
+    return (
+      <form className="form" onSubmit={submit}>
+        <h1>{existing ? 'Edit outfit' : 'New outfit'}</h1>
+        <div className="outfit-preview" aria-label="Outfit preview">
+          <OutfitBoard pieces={pieces} large />
+        </div>
         <label className="field">
-          <span>Date (optional)</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          {date && <small className="muted">{date > today() ? 'Will be planned for this day.' : 'Will be logged as worn that day.'}</small>}
+          <span>Name (optional)</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
         </label>
-      )}
+        <div className="field">
+          <span>Tags</span>
+          <ul className="chips tag-list">
+            {tags.map((t) => (
+              <li key={t} className="chip chip-static chip-color">
+                {t}
+                <button type="button" className="chip-x" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+          <input
+            value={tagDraft}
+            onChange={(e) => setTagDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+            onBlur={addTag}
+            placeholder="Add a tag (dinner, work…)"
+            aria-label="New tag"
+          />
+        </div>
+        {onApplyDate && !existing && (
+          <label className="field">
+            <span>Date (optional)</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            {date && <small className="muted">{date > today() ? 'Will be planned for this day.' : 'Will be logged as worn that day.'}</small>}
+          </label>
+        )}
+        <div className="form-actions sticky-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => setStep('canvas')}>
+            Back
+          </button>
+          <button type="submit" className="btn btn-primary">
+            Save outfit
+          </button>
+        </div>
+      </form>
+    );
+  }
 
-      <section className="field" aria-label="Pieces">
+  return (
+    <div className="outfit-editor">
+      <header className="editor-bar">
+        <button type="button" className="icon-action" aria-label="Cancel" onClick={() => history.back()}>
+          ✕
+        </button>
+        <button type="button" className="btn btn-primary" disabled={selected.length === 0} onClick={() => setStep('details')}>
+          Next
+        </button>
+      </header>
+
+      <div className="editor-canvas" style={{ bottom: sheetH }} aria-label="Outfit canvas">
+        {pieces.length ? <OutfitBoard pieces={pieces} large /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
+      </div>
+
+      <section className="editor-sheet" style={{ height: sheetH }} aria-label="Pieces">
+        <div
+          className="sheet-handle"
+          role="slider"
+          aria-label="Resize piece picker"
+          aria-valuenow={sheetH}
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+        >
+          <span />
+        </div>
         <div className="filters">
           <input type="search" placeholder="Search name, brand, color…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-
         <nav className="category-tabs" aria-label="Categories">
           <button type="button" aria-pressed={category === 'all'} onClick={() => pickCategory('all')}>
             All <span className="count">{matching.length}</span>
@@ -172,52 +227,38 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
             </button>
           ))}
         </nav>
-
         {subs.size > 0 && (
           <nav className="category-tabs" aria-label="Sub-categories">
-            {[...subs].map(([s, n]) => (
-              <button key={s} type="button" aria-pressed={subcategory === s} onClick={() => setSubcategory(subcategory === s ? '' : s)}>
-                {s} <span className="count">{n}</span>
+            {[...subs].map(([sub, n]) => (
+              <button key={sub} type="button" aria-pressed={subcategory === sub} onClick={() => setSubcategory(subcategory === sub ? '' : sub)}>
+                {sub} <span className="count">{n}</span>
               </button>
             ))}
           </nav>
         )}
-
-        {visible.length === 0 ? (
-          <p className="muted empty">{category === 'selected' ? 'Nothing selected yet.' : 'No items match.'}</p>
-        ) : (
-          <ul className="closet-grid">
-            {visible.map((i) => (
-              <li key={i.id}>
-                <button
-                  type="button"
-                  className="closet-tile pick-tile"
-                  aria-pressed={selected.includes(i.id)}
-                  onClick={() => toggle(i.id)}
-                >
-                  <span className="pick-thumb">
-                    <ItemThumb item={i} />
-                    <span className="pick-check" aria-hidden>
-                      ✓
+        <div className="sheet-scroll">
+          {visible.length === 0 ? (
+            <p className="muted empty">{category === 'selected' ? 'Nothing selected yet.' : 'No items match.'}</p>
+          ) : (
+            <ul className="closet-grid">
+              {visible.map((i) => (
+                <li key={i.id}>
+                  <button type="button" className="closet-tile pick-tile" aria-pressed={selected.includes(i.id)} onClick={() => toggle(i.id)}>
+                    <span className="pick-thumb">
+                      <ItemThumb item={i} />
+                      <span className="pick-check" aria-hidden>
+                        ✓
+                      </span>
                     </span>
-                  </span>
-                  <span className="tile-name">{i.name}</span>
-                  <span className="tile-meta">{i.brand ?? label(i.category)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+                    <span className="tile-name">{i.name}</span>
+                    <span className="tile-meta">{i.brand ?? label(i.category)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
-
-      <div className="form-actions sticky-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => history.back()}>
-          Cancel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={selected.length === 0}>
-          Save outfit
-        </button>
-      </div>
-    </form>
+    </div>
   );
 }
