@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { swatchCss } from './colors';
-import { CloseIcon, HeartIcon, SparkleIcon } from './icons';
+import { ChevronDownIcon, CloseIcon, HeartIcon, SparkleIcon } from './icons';
 import {
   colorOptions,
   DEFAULT_FILTERS,
@@ -16,6 +16,20 @@ interface Props {
   value: ClosetFilters;
   onApply: (filters: ClosetFilters) => void;
   onClose: () => void;
+}
+
+/** A filter section whose heading toggles its content. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className={open ? undefined : 'collapsed'}>
+      <button type="button" className="section-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <h3>{title}</h3>
+        <ChevronDownIcon />
+      </button>
+      {open && children}
+    </section>
+  );
 }
 
 /** Full-screen filter page: edits a draft, and Apply (showing the result count) commits it. */
@@ -47,8 +61,7 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
 
       <div className="filter-body">
         {subs.size > 0 && (
-          <section>
-            <h3>Sub-category</h3>
+          <Section title="Sub-category">
             <div className="chips">
               {[...subs].map(([s, n]) => (
                 <button
@@ -62,12 +75,11 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
                 </button>
               ))}
             </div>
-          </section>
+          </Section>
         )}
 
         {colors.length > 0 && (
-          <section>
-            <h3>Colors</h3>
+          <Section title="Colors">
             <div className="chips color-grid">
               {colors.map((c) => {
                 const on = draft.colors.some((d) => d.toLowerCase() === c.toLowerCase());
@@ -85,11 +97,10 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
                 );
               })}
             </div>
-          </section>
+          </Section>
         )}
 
-        <section>
-          <h3>Sort by</h3>
+        <Section title="Sort by">
           <div className="chips">
             {SORTS.map((s) => (
               <button key={s.value} type="button" className="chip" aria-pressed={draft.sort === s.value} onClick={() => set({ sort: s.value })}>
@@ -97,10 +108,9 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
               </button>
             ))}
           </div>
-        </section>
+        </Section>
 
-        <section>
-          <h3>Status</h3>
+        <Section title="Status">
           <div className="chips">
             {(['all', ...STATUSES] as const).map((s) => (
               <button key={s} type="button" className="chip" aria-pressed={draft.status === s} onClick={() => set({ status: s })}>
@@ -108,10 +118,9 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
               </button>
             ))}
           </div>
-        </section>
+        </Section>
 
-        <section>
-          <h3>Favorites</h3>
+        <Section title="Favorites">
           <div className="chips">
             <button
               type="button"
@@ -125,7 +134,7 @@ export function FilterSheet({ items, value, onApply, onClose }: Props) {
               <SparkleIcon /> Needs review
             </button>
           </div>
-        </section>
+        </Section>
       </div>
 
       <div className="sticky-actions filter-apply">
