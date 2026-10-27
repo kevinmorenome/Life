@@ -2351,6 +2351,11 @@ progress {
 .review-sheet .sticky-actions {
   z-index: 2;
 }
+/* Check later and Save share the full width, side by side */
+.review-sheet .sticky-actions .btn {
+  flex: 1 1 0;
+  min-height: 48px;
+}
 @keyframes review-rise {
   from {
     transform: translateY(100%);
