@@ -1,16 +1,27 @@
 import { useMemo, useState } from 'react';
 import { today } from '../../lib/format';
+import { EyeIcon, EyeOffIcon } from '../../icons';
 import { href } from '../../lib/router';
 import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
 import { FilterSheet } from './FilterSheet';
-import { HeartIcon, SlidersIcon } from './icons';
+import { withStatusFor } from './bulk';
+import { CheckIcon, CloseIcon, HeartIcon, SlidersIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { wearCount } from './stats';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
-export function ClothesList({ items }: { items: ClothingItem[] }) {
-  const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
+// Kept at module level so filters survive opening an item and coming back (the list unmounts).
+let savedFilters: ClosetFilters = DEFAULT_FILTERS;
+
+export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: (item: ClothingItem) => Promise<void> }) {
+  const [filters, setFiltersState] = useState<ClosetFilters>(savedFilters);
+  const setFilters = (next: ClosetFilters) => {
+    savedFilters = next;
+    setFiltersState(next);
+  };
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   const visible = useMemo(() => filterItems(items, filters), [items, filters]);
   const active = activeFilterCount(filters);
@@ -18,6 +29,24 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   const tabs = CATEGORIES.filter((c) => counts.get(c) || c === filters.category);
   const pickCategory = (category: Category | 'all') => setFilters({ ...filters, category, subcategory: '' });
+
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const chosen = visible.filter((i) => selected.has(i.id));
+  const bringBack = chosen.length > 0 && chosen.every((i) => i.status === 'storage');
+  async function applyStatus() {
+    const changed = withStatusFor(chosen, selected, bringBack ? 'active' : 'storage', new Date().toISOString());
+    await Promise.all(changed.map(onSave));
+    stopSelecting();
+  }
 
   return (
     <>
@@ -54,6 +83,15 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
               <SlidersIcon />
               {active > 0 && <span className="filter-count">{active}</span>}
             </button>
+            <button
+              type="button"
+              className="filter-btn"
+              aria-label={selecting ? 'Cancel selecting' : 'Select items'}
+              aria-pressed={selecting}
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+            >
+              {selecting ? <CloseIcon /> : <CheckIcon />}
+            </button>
           </div>
 
           <nav className="category-tabs" aria-label="Categories">
@@ -73,17 +111,49 @@ export function ClothesList({ items }: { items: ClothingItem[] }) {
             <ul className="closet-grid">
               {visible.map((item) => (
                 <li key={item.id}>
-                  <a href={href(`/clothes/${item.id}`)} className="closet-tile">
-                    <ItemThumb item={item} />
-                    {item.favorite && <FavMark />}
-                    <span className="tile-name">{item.name}</span>
-                    <span className="tile-meta">{tileMeta(item)}</span>
-                  </a>
+                  {selecting ? (
+                    <button
+                      type="button"
+                      className="closet-tile tile-select"
+                      aria-pressed={selected.has(item.id)}
+                      aria-label={`Select ${item.name}`}
+                      onClick={() => toggle(item.id)}
+                    >
+                      <ItemThumb item={item} />
+                      <span className="select-mark" aria-hidden="true">
+                        {selected.has(item.id) && <CheckIcon />}
+                      </span>
+                      <span className="tile-name">{item.name}</span>
+                      <span className="tile-meta">{tileMeta(item)}</span>
+                    </button>
+                  ) : (
+                    <a href={href(`/clothes/${item.id}`)} className="closet-tile">
+                      <ItemThumb item={item} />
+                      {item.favorite && <FavMark />}
+                      <span className="tile-name">{item.name}</span>
+                      <span className="tile-meta">{tileMeta(item)}</span>
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
           )}
         </>
+      )}
+
+      {selecting && (
+        <div className="select-bar" role="toolbar" aria-label="Selection">
+          <span className="small">{chosen.length} selected</span>
+          <button
+            type="button"
+            className="btn btn-primary select-action"
+            disabled={chosen.length === 0}
+            aria-label={bringBack ? 'Bring back selected items' : 'Put away selected items'}
+            onClick={applyStatus}
+          >
+            {bringBack ? <EyeIcon /> : <EyeOffIcon />}
+          </button>
+        </div>
       )}
 
       {sheetOpen && (

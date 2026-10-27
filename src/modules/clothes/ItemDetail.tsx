@@ -7,6 +7,7 @@ import { valuesOf, withField, type FieldKey } from './fields';
 import { resizeImage } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
+import { EyeIcon, EyeOffIcon } from '../../icons';
 import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
@@ -82,7 +83,19 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
         <HeroActions
-          editPath={`/clothes/${item.id}/edit`}
+          leading={
+            item.status === 'active' || item.status === 'storage' ? (
+              <button
+                className={`icon-action icon-action-sm${item.status === 'storage' ? ' icon-action-on' : ''}`}
+                aria-label={item.status === 'storage' ? 'Bring back to closet' : 'Put away in storage'}
+                onClick={() =>
+                  onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() })
+                }
+              >
+                {item.status === 'storage' ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            ) : undefined
+          }
           favorite={!!item.favorite}
           onToggleFavorite={() => onSave({ ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() })}
           onDelete={del}
