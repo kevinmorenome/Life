@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
+import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
+import { OutfitBoard } from './OutfitBoard';
 import { CATEGORIES, label, type Category, type ClothingItem, type Outfit } from './types';
 
 interface Props {
@@ -12,14 +14,30 @@ interface Props {
   onSave: (o: Outfit) => Promise<void>;
   /** Runs after saving instead of opening the outfit's page, e.g. to plan it for a day. */
   afterSave?: (o: Outfit) => Promise<void>;
+  /** When given (new outfits only), the form offers a date: future days plan the outfit, today/past log it. */
+  onApplyDate?: (o: Outfit, date: string) => Promise<void>;
 }
 
-export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave }: Props) {
+export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave, onApplyDate }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category | 'all' | 'selected'>('all');
   const [subcategory, setSubcategory] = useState('');
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [tagDraft, setTagDraft] = useState('');
+  const [date, setDate] = useState('');
+
+  const pieces = useMemo(
+    () => selected.map((id) => items.find((i) => i.id === id)).filter((i): i is ClothingItem => !!i),
+    [selected, items],
+  );
+
+  function addTag() {
+    const t = tagDraft.trim();
+    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase())) setTags([...tags, t]);
+    setTagDraft('');
+  }
 
   // Everything except the category filter, so the tabs can show counts.
   const matching = useMemo(() => {
@@ -78,11 +96,13 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave 
       id: existing?.id ?? newId(),
       name: name.trim() || undefined,
       itemIds: selected,
+      tags: tags.length || existing?.tags ? tags : undefined,
       wears: existing?.wears ?? [],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
     await onSave(outfit);
+    if (date && onApplyDate && !existing) await onApplyDate(outfit, date);
     if (afterSave) await afterSave(outfit);
     else navigate(`/clothes/outfits/${outfit.id}`);
   }
@@ -94,6 +114,45 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave 
         <span>Name (optional)</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
       </label>
+
+      <div className="outfit-preview" aria-label="Outfit preview">
+        {pieces.length ? <OutfitBoard pieces={pieces} large /> : <p className="muted small">Pick pieces below to see your outfit.</p>}
+      </div>
+
+      <div className="field">
+        <span>Tags</span>
+        <ul className="chips tag-list">
+          {tags.map((t) => (
+            <li key={t} className="chip chip-static chip-color">
+              {t}
+              <button type="button" className="chip-x" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+        <input
+          value={tagDraft}
+          onChange={(e) => setTagDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag();
+            }
+          }}
+          onBlur={addTag}
+          placeholder="Add a tag (dinner, work…)"
+          aria-label="New tag"
+        />
+      </div>
+
+      {onApplyDate && !existing && (
+        <label className="field">
+          <span>Date (optional)</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          {date && <small className="muted">{date > today() ? 'Will be planned for this day.' : 'Will be logged as worn that day.'}</small>}
+        </label>
+      )}
 
       <section className="field" aria-label="Pieces">
         <div className="filters">

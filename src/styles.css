@@ -2268,3 +2268,14 @@ progress {
   width: 22px;
   height: 22px;
 }
+
+/* Outfit form: live flat-lay preview */
+.outfit-preview {
+  height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.outfit-preview .board {
+  width: 100%;
+}

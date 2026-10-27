@@ -9,7 +9,9 @@ import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPicke
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
-import { syncPieceWears } from './outfits';
+import { outfitPieces, syncPieceWears, wearOutfit } from './outfits';
+import { newPlan } from './plans';
+import { today } from '../../lib/format';
 import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
@@ -27,7 +29,18 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   if (first === 'outfits') {
     const outfitProps = { items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveOutfit: outfits.save, onSaveItem: save };
     if (!second) return <OutfitList outfits={outfits.items} items={items} />;
-    if (second === 'new') return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} />;
+    if (second === 'new') {
+      // Future dates become plans; today and past dates are real wears.
+      const applyDate = async (o: Outfit, date: string) => {
+        if (date > today()) await plans.save(newPlan(o.id, date));
+        else {
+          const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
+          if (outfit) await outfits.save(outfit);
+          for (const p of pieces) await save(p);
+        }
+      };
+      return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} onApplyDate={applyDate} />;
+    }
     const outfit = outfits.items.find((o) => o.id === second);
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;
     if (third === 'edit') {
