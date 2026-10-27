@@ -86,9 +86,8 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           leading={
             item.status === 'active' || item.status === 'storage' ? (
               <button
-                className="icon-action"
+                className="icon-action icon-action-sm"
                 aria-label={item.status === 'storage' ? 'Bring back to closet' : 'Put away in storage'}
-                aria-pressed={item.status === 'storage'}
                 onClick={() =>
                   onSave({ ...item, status: item.status === 'storage' ? 'active' : 'storage', updatedAt: new Date().toISOString() })
                 }
