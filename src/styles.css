@@ -2351,6 +2351,7 @@ progress {
   min-height: 0;
   overflow-y: auto;
   padding: 0.5rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
+}
 
 .section-toggle {
   display: flex;
