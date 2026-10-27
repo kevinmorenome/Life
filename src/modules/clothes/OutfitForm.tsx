@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { newId } from '../../lib/db';
 import { navigate } from '../../lib/router';
+import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
+import { FilterSheet } from './FilterSheet';
+import { SlidersIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
 import { OutfitDetailsStep } from './OutfitDetailsStep';
@@ -21,9 +24,10 @@ interface Props {
 export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave, onApplyDate }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category | 'all' | 'selected'>('all');
-  const [subcategory, setSubcategory] = useState('');
+  // Same filters as the closet; "Selected" is an extra tab that shows just the chosen pieces.
+  const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
+  const [showSelected, setShowSelected] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
   const [favorite, setFavorite] = useState(existing?.favorite ?? false);
@@ -37,51 +41,21 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     [selected, items],
   );
 
-  // Everything except the category filter, so the tabs can show counts.
-  const matching = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter(
-      (i) =>
-        (i.status === 'active' || selected.includes(i.id)) &&
-        (!q || [i.name, i.brand, i.color, i.subcategory, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
-    );
-  }, [items, query, selected]);
+  const counts = useMemo(() => categoryCounts(items, filters), [items, filters]);
+  const total = [...counts.values()].reduce((x, y) => x + y, 0);
+  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === filters.category);
+  const active = activeFilterCount(filters);
 
-  const counts = useMemo(() => {
-    const c = new Map<Category, number>();
-    for (const i of matching) c.set(i.category, (c.get(i.category) ?? 0) + 1);
-    return c;
-  }, [matching]);
+  const visible = useMemo(() => {
+    if (!showSelected) return filterItems(items, filters);
+    const q = filters.query.trim().toLowerCase();
+    return pieces.filter((i) => !q || [i.name, i.brand, i.color, i.subcategory, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q)));
+  }, [items, filters, showSelected, pieces]);
 
-  const inCategory = useMemo(
-    () =>
-      matching.filter((i) =>
-        category === 'all' ? true : category === 'selected' ? selected.includes(i.id) : i.category === category,
-      ),
-    [matching, category, selected],
-  );
-
-  const subs = useMemo(() => {
-    const c = new Map<string, number>();
-    if (category === 'all' || category === 'selected') return c;
-    for (const i of inCategory) if (i.subcategory) c.set(i.subcategory, (c.get(i.subcategory) ?? 0) + 1);
-    return new Map([...c].sort(([a], [b]) => a.localeCompare(b)));
-  }, [inCategory, category]);
-
-  const visible = useMemo(
-    () =>
-      inCategory
-        .filter((i) => !subcategory || i.subcategory === subcategory)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [inCategory, subcategory],
-  );
-
-  const pickCategory = (c: Category | 'all' | 'selected') => {
-    setCategory(c);
-    setSubcategory('');
+  const pickCategory = (c: Category | 'all') => {
+    setShowSelected(false);
+    setFilters({ ...filters, category: c, subcategory: '' });
   };
-
-  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === category);
 
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -177,34 +151,40 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
         >
           <span />
         </div>
-        <div className="filters">
-          <input type="search" placeholder="Search name, brand, color…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="search-row filters">
+          <input
+            type="search"
+            placeholder="Search name, brand, color…"
+            value={filters.query}
+            onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+          />
+          <button
+            type="button"
+            className="filter-btn"
+            aria-label={active ? `Filters, ${active} active` : 'Filters'}
+            aria-haspopup="dialog"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersIcon />
+            {active > 0 && <span className="filter-count">{active}</span>}
+          </button>
         </div>
         <nav className="category-tabs" aria-label="Categories">
-          <button type="button" aria-pressed={category === 'all'} onClick={() => pickCategory('all')}>
-            All <span className="count">{matching.length}</span>
+          <button type="button" aria-pressed={!showSelected && filters.category === 'all'} onClick={() => pickCategory('all')}>
+            All <span className="count">{total}</span>
           </button>
-          <button type="button" aria-pressed={category === 'selected'} onClick={() => pickCategory('selected')}>
+          <button type="button" aria-pressed={showSelected} onClick={() => setShowSelected(true)}>
             Selected <span className="count">{selected.length}</span>
           </button>
           {tabs.map((c) => (
-            <button key={c} type="button" aria-pressed={category === c} onClick={() => pickCategory(c)}>
+            <button key={c} type="button" aria-pressed={!showSelected && filters.category === c} onClick={() => pickCategory(c)}>
               {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
             </button>
           ))}
         </nav>
-        {subs.size > 0 && (
-          <nav className="category-tabs" aria-label="Sub-categories">
-            {[...subs].map(([sub, n]) => (
-              <button key={sub} type="button" aria-pressed={subcategory === sub} onClick={() => setSubcategory(subcategory === sub ? '' : sub)}>
-                {sub} <span className="count">{n}</span>
-              </button>
-            ))}
-          </nav>
-        )}
         <div className="sheet-scroll">
           {visible.length === 0 ? (
-            <p className="muted empty">{category === 'selected' ? 'Nothing selected yet.' : 'No items match.'}</p>
+            <p className="muted empty">{showSelected ? 'Nothing selected yet.' : 'No items match.'}</p>
           ) : (
             <ul className="closet-grid">
               {visible.map((i) => (
@@ -225,6 +205,19 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
           )}
         </div>
       </section>
+
+      {filtersOpen && (
+        <FilterSheet
+          items={items}
+          value={filters}
+          onApply={(f) => {
+            setFilters(f);
+            setShowSelected(false);
+            setFiltersOpen(false);
+          }}
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -2488,15 +2488,30 @@ button.detail-row {
   border-radius: 3px;
   background: var(--border);
 }
+.editor-sheet {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
 .editor-sheet .filters,
 .editor-sheet .category-tabs {
   flex: none;
   padding: 0 0.75rem;
 }
+/* The shared closet styles assume a 16px page gutter; the sheet has 12px, so don't overhang it. */
+.editor-sheet .category-tabs {
+  margin: 0.25rem 0 0;
+}
+.editor-sheet .closet-grid {
+  margin: 0 -0.75rem;
+}
 .sheet-scroll {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Scroll up and down only: no sideways panning. */
+  touch-action: pan-y;
   padding: 0.5rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
 }
 
