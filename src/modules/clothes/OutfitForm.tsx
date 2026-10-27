@@ -4,7 +4,7 @@ import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
-import { CATEGORIES, label, type Category, type ClothingItem, type Outfit } from './types';
+import { CATEGORIES, SEASONS, label, type Category, type ClothingItem, type Outfit, type Season } from './types';
 
 interface Props {
   existing?: Outfit;
@@ -26,6 +26,8 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   const [subcategory, setSubcategory] = useState('');
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [tagDraft, setTagDraft] = useState('');
+  const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
+  const [favorite, setFavorite] = useState(existing?.favorite ?? false);
   const [date, setDate] = useState('');
   const [step, setStep] = useState<'canvas' | 'details'>('canvas');
   const [sheetH, setSheetH] = useState(() => Math.round(window.innerHeight * 0.45));
@@ -99,6 +101,8 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
       id: existing?.id ?? newId(),
       name: name.trim() || undefined,
       itemIds: selected,
+      seasons: seasons.length || existing?.seasons ? seasons : undefined,
+      favorite: favorite || existing?.favorite ? favorite : undefined,
       tags: tags.length || existing?.tags ? tags : undefined,
       wears: existing?.wears ?? [],
       createdAt: existing?.createdAt ?? now,
@@ -139,6 +143,23 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
         </label>
         <div className="field">
+          <span>Season</span>
+          <ul className="chips">
+            {SEASONS.map((x) => (
+              <li key={x}>
+                <button
+                  type="button"
+                  className="chip"
+                  aria-pressed={seasons.includes(x)}
+                  onClick={() => setSeasons(seasons.includes(x) ? seasons.filter((y) => y !== x) : SEASONS.filter((y) => y === x || seasons.includes(y)))}
+                >
+                  {label(x)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="field">
           <span>Tags</span>
           <ul className="chips tag-list">
             {tags.map((t) => (
@@ -164,9 +185,13 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
             aria-label="New tag"
           />
         </div>
+        <label className="field">
+          <span>Favorite</span>
+          <input type="checkbox" checked={favorite} onChange={(e) => setFavorite(e.target.checked)} />
+        </label>
         {onApplyDate && !existing && (
           <label className="field">
-            <span>Date (optional)</span>
+            <span>Scheduled for a day? (optional)</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             {date && <small className="muted">{date > today() ? 'Will be planned for this day.' : 'Will be logged as worn that day.'}</small>}
           </label>
