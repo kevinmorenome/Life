@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { newId } from '../../lib/db';
-import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { ItemThumb } from './ItemThumb';
 import { OutfitBoard } from './OutfitBoard';
-import { CATEGORIES, SEASONS, label, type Category, type ClothingItem, type Outfit, type Season } from './types';
+import { OutfitDetailsStep } from './OutfitDetailsStep';
+import { CATEGORIES, label, type Category, type ClothingItem, type Outfit, type Season } from './types';
 
 interface Props {
   existing?: Outfit;
@@ -25,7 +25,6 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   const [category, setCategory] = useState<Category | 'all' | 'selected'>('all');
   const [subcategory, setSubcategory] = useState('');
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
-  const [tagDraft, setTagDraft] = useState('');
   const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
   const [favorite, setFavorite] = useState(existing?.favorite ?? false);
   const [date, setDate] = useState('');
@@ -37,12 +36,6 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     () => selected.map((id) => items.find((i) => i.id === id)).filter((i): i is ClothingItem => !!i),
     [selected, items],
   );
-
-  function addTag() {
-    const t = tagDraft.trim();
-    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase())) setTags([...tags, t]);
-    setTagDraft('');
-  }
 
   // Everything except the category filter, so the tabs can show counts.
   const matching = useMemo(() => {
@@ -133,77 +126,24 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
 
   if (step === 'details') {
     return (
-      <form className="form" onSubmit={submit}>
-        <h1>{existing ? 'Edit outfit' : 'New outfit'}</h1>
-        <div className="outfit-preview" aria-label="Outfit preview">
-          <OutfitBoard pieces={pieces} large />
-        </div>
-        <label className="field">
-          <span>Name (optional)</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
-        </label>
-        <div className="field">
-          <span>Season</span>
-          <ul className="chips">
-            {SEASONS.map((x) => (
-              <li key={x}>
-                <button
-                  type="button"
-                  className="chip"
-                  aria-pressed={seasons.includes(x)}
-                  onClick={() => setSeasons(seasons.includes(x) ? seasons.filter((y) => y !== x) : SEASONS.filter((y) => y === x || seasons.includes(y)))}
-                >
-                  {label(x)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="field">
-          <span>Tags</span>
-          <ul className="chips tag-list">
-            {tags.map((t) => (
-              <li key={t} className="chip chip-static chip-color">
-                {t}
-                <button type="button" className="chip-x" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-          <input
-            value={tagDraft}
-            onChange={(e) => setTagDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addTag();
-              }
-            }}
-            onBlur={addTag}
-            placeholder="Add a tag (dinner, work…)"
-            aria-label="New tag"
-          />
-        </div>
-        <label className="field">
-          <span>Favorite</span>
-          <input type="checkbox" checked={favorite} onChange={(e) => setFavorite(e.target.checked)} />
-        </label>
-        {onApplyDate && !existing && (
-          <label className="field">
-            <span>Scheduled for a day? (optional)</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            {date && <small className="muted">{date > today() ? 'Will be planned for this day.' : 'Will be logged as worn that day.'}</small>}
-          </label>
-        )}
-        <div className="form-actions sticky-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => setStep('canvas')}>
-            Back
-          </button>
-          <button type="submit" className="btn btn-primary">
-            Save outfit
-          </button>
-        </div>
+      <form onSubmit={submit}>
+        <OutfitDetailsStep
+          title={existing ? 'Edit outfit' : 'New outfit'}
+          submitLabel={existing ? 'Save outfit' : 'Create outfit'}
+          pieces={pieces}
+          name={name}
+          onName={setName}
+          tags={tags}
+          onTags={setTags}
+          seasons={seasons}
+          onSeasons={setSeasons}
+          favorite={favorite}
+          onFavorite={setFavorite}
+          date={onApplyDate && !existing ? date : undefined}
+          onDate={onApplyDate && !existing ? setDate : undefined}
+          onBack={() => setStep('canvas')}
+          onAddPieces={() => setStep('canvas')}
+        />
       </form>
     );
   }

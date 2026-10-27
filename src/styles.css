@@ -2280,6 +2280,153 @@ progress {
   width: 100%;
 }
 
+/* Outfit form, step 2: flat lay, hairline detail rows that open sheets, big pinned button */
+.outfit-details {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 140px);
+}
+.step-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+.step-bar h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.step-back {
+  position: absolute;
+  left: -10px;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.step-cards {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+.step-card {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(50% - 0.375rem);
+  max-width: 150px;
+  aspect-ratio: 3 / 4;
+  padding: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.step-card .board {
+  width: 100%;
+}
+.step-card-add {
+  border-style: dashed;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.step-card-add svg {
+  width: 32px;
+  height: 32px;
+}
+.step-intro {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.detail-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.detail-rows li {
+  border-top: 1px solid var(--border);
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.detail-row {
+  cursor: pointer;
+}
+.detail-title {
+  font-weight: 600;
+}
+.detail-value {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.detail-value.is-empty {
+  color: var(--muted);
+}
+.detail-row svg {
+  flex: none;
+  color: var(--muted);
+}
+.detail-value svg {
+  width: 22px;
+  height: 22px;
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+.switch[aria-checked='true'] span {
+  transform: translateX(20px);
+}
+.outfit-details .sticky-actions {
+  margin-top: auto;
+}
+.btn-cta {
+  min-height: 56px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+}
+
 /* Outfit editor: full-screen canvas with a draggable picker sheet */
 .outfit-editor {
   position: fixed;
