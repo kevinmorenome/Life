@@ -27,6 +27,7 @@ import {
   type Outfit,
   type Season,
 } from './types';
+import { markReviewed } from './review';
 import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
@@ -89,7 +90,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
               type="button"
               className="filter-btn"
               aria-label="Mark as reviewed"
-              onClick={() => onSave({ ...item, needsReview: undefined, updatedAt: new Date().toISOString() })}
+              onClick={() => onSave(markReviewed(item, new Date()))}
             >
               <CheckIcon />
             </button>

@@ -52,11 +52,11 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
 
   return (
     <>
-      {toReview > 0 && !filters.reviewOnly && (
-        <button type="button" className="card today-prompt" onClick={() => setFilters({ ...DEFAULT_FILTERS, reviewOnly: true })}>
+      {toReview > 0 && (
+        <a className="card today-prompt" href={href('/clothes/review')}>
           <span>{toReview === 1 ? '1 new item to review' : `${toReview} new items to review`}</span>
           <strong>Review →</strong>
-        </button>
+        </a>
       )}
       {items.length > 0 && !items.some((i) => i.wears.includes(today())) && (
         <a className="card today-prompt" href={href('/clothes/today')}>
