@@ -3,7 +3,6 @@ import { newId } from '../../lib/db';
 import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { PALETTE, itemColors, swatchCss } from './colors';
-import { markReviewed } from './review';
 import {
   CATEGORIES,
   SUBCATEGORIES,
@@ -21,11 +20,9 @@ import {
 interface Props {
   existing?: ClothingItem;
   onSave: (item: ClothingItem) => Promise<void>;
-  /** One step of the review flow: Save also marks the item reviewed and hands over instead of navigating; "Check later" leaves it flagged. */
-  review?: { onSaved: () => void; onLater: () => void };
 }
 
-export function ItemForm({ existing, onSave, review }: Props) {
+export function ItemForm({ existing, onSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [category, setCategory] = useState<Category>(existing?.category ?? 'tops');
   const [subcategory, setSubcategory] = useState(existing?.subcategory ?? '');
@@ -128,18 +125,13 @@ export function ItemForm({ existing, onSave, review }: Props) {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    if (review) {
-      await onSave(markReviewed(item, new Date(now)));
-      review.onSaved();
-      return;
-    }
     await onSave(item);
     navigate(`/clothes/${item.id}`);
   }
 
   return (
     <form className="form" onSubmit={submit}>
-      {!review && <h1>{existing ? 'Edit item' : 'New item'}</h1>}
+      <h1>{existing ? 'Edit item' : 'New item'}</h1>
 
       <div className="photo-field">
         {photo ? (
@@ -299,9 +291,9 @@ export function ItemForm({ existing, onSave, review }: Props) {
 
       {error && <p className="error">{error}</p>}
 
-      <div className={review ? 'form-actions sticky-actions' : 'form-actions'}>
-        <button type="button" className="btn btn-ghost" onClick={review ? review.onLater : () => history.back()}>
-          {review ? 'Check later' : 'Cancel'}
+      <div className="form-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => history.back()}>
+          Cancel
         </button>
         <button type="submit" className="btn btn-primary">
           Save

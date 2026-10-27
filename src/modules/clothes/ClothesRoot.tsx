@@ -57,14 +57,18 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
-  if (first === 'review') return <ReviewFlow items={items} onSave={save} onDelete={clothes.remove} />;
   if (first === 'new') return <ItemForm onSave={save} />;
   if (first === 'stats') return <ClothesStatsView items={items} />;
-  if (first) {
+  if (first && first !== 'review') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
     return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
-  return <ClothesList items={items} onSave={save} />;
+  return (
+    <>
+      <ClothesList items={items} onSave={save} />
+      {first === 'review' && <ReviewFlow items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />}
+    </>
+  );
 }

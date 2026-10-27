@@ -38,13 +38,15 @@ interface Props {
   outfits: Outfit[];
   onSave: (item: ClothingItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Shown as a step of the review drawer: Save / Check later at the bottom, and close/remove hand back to the flow. */
+  review?: { onSave: () => void; onLater: () => void; onClose: () => void; onRemoved: () => void };
 }
 
 const TABS = ['about', 'style', 'stats'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats: 'Stats' };
 
-export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
+export function ItemDetail({ item, items, outfits, onSave, onDelete, review }: Props) {
   const [tab, setTab] = useState<Tab>('about');
   const cpw = costPerWear(item);
   const total = wearCount(item);
@@ -54,7 +56,8 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   async function del() {
     if (confirm(`Delete “${item.name}”? This can’t be undone.`)) {
       await onDelete(item.id);
-      navigate('/clothes');
+      if (review) review.onRemoved();
+      else navigate('/clothes');
     }
   }
 
@@ -62,9 +65,15 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
     <article className="detail item-detail">
       <header className="hero">
         <div className="hero-top">
-          <a className="back" href={href('/clothes')} aria-label="Back to closet">
-            ←
-          </a>
+          {review ? (
+            <button type="button" className="back" aria-label="Close" onClick={review.onClose}>
+              ✕
+            </button>
+          ) : (
+            <a className="back" href={href('/clothes')} aria-label="Back to closet">
+              ←
+            </a>
+          )}
           <p className="hero-pill">
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
           </p>
@@ -83,7 +92,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
         </label>
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
-        {item.needsReview && (
+        {item.needsReview && !review && (
           <p className="review-note">
             <span>Added automatically. Check the details.</span>
             <button
@@ -122,9 +131,11 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
             },
           ]}
         >
-          <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
-            Create outfit
-          </a>
+          {!review && (
+            <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
+              Create outfit
+            </a>
+          )}
         </HeroActions>
       </header>
 
@@ -166,6 +177,17 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           <Stats item={item} outfits={inOutfits} onSave={onSave} />
         )}
       </div>
+
+      {review && (
+        <div className="form-actions sticky-actions">
+          <button type="button" className="btn btn-ghost" onClick={review.onLater}>
+            Check later
+          </button>
+          <button type="button" className="btn btn-primary" onClick={review.onSave}>
+            Save
+          </button>
+        </div>
+      )}
     </article>
   );
 }
