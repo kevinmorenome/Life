@@ -142,7 +142,7 @@ export const TOOLS = [
   {
     name: 'add_receipt_items',
     description:
-      'Add the clothes from a purchase receipt or order confirmation email to the closet, flagged "needs review" so the owner can check them in the app. They can be used in outfits and wears straight away. One call per email, with every wearable item actually bought (no shipping, tax or discounts). Fill in everything the email says: brand, colours, size, material, price per piece, order date, season, the product image URL and anything useful in notes (retailer, order number). Leave out what the email does not say. Pass the email\'s message id as sourceId so the same email is never added twice. If an active item with the same name and brand already exists, that line is skipped and reported (use set_item_photo to give it a photo, edit_item for fields): never create a new item to replace an existing one and never retire the old one, because that splits its wear history. Pass allowDuplicates=true only when the user confirms they really bought a second one.',
+      'Add the clothes from a purchase receipt or order confirmation email to the closet, flagged "needs review" so the owner can check them in the app. They can be used in outfits and wears straight away. One call per email, with every wearable item actually bought (no shipping, tax or discounts). Fill in everything the email says: brand, colours, size, material, price per piece, order date, season, the product image URL and anything useful in notes (retailer, order number). The order confirmation itself often has no product images: before adding, check the other emails about the same order (shipping, dispatch or delivery notifications from the same shop usually show the products) and take imageUrl from there; if you only find the image afterwards, use set_item_photo, never add the item again. Leave out what the email does not say. Pass the email\'s message id as sourceId so the same email is never added twice. If an active item with the same name and brand already exists, that line is skipped and reported (use set_item_photo to give it a photo, edit_item for fields): never create a new item to replace an existing one and never retire the old one, because that splits its wear history. Pass allowDuplicates=true only when the user confirms they really bought a second one.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -233,7 +233,7 @@ export const TOOLS = [
   {
     name: 'set_item_photo',
     description:
-      'Give an EXISTING wardrobe item a photo (or replace its photo) from an image URL, e.g. a product image from a receipt email. Use this, not add_item or add_receipt_items, whenever an item already exists and only its photo is missing or wrong, so it keeps its wear history. The image must be a public https URL (jpeg, png, webp or avif, under about 700 KB). The photo appears in the app the next time it syncs.',
+      'Give an EXISTING wardrobe item a photo (or replace its photo) from an image URL, e.g. a product image from a receipt email. Use this, not add_item or add_receipt_items, whenever an item already exists and only its photo is missing or wrong, so it keeps its wear history. Typical source: the shop’s shipping or delivery email for the same order, when the order confirmation had no product image. The image must be a public https URL (jpeg, png, webp or avif, under about 700 KB). The photo appears in the app the next time it syncs.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -280,6 +280,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
 
 const READ_ONLY = 'This deployment is read-only.';
 const RETIRED = ['donated', 'sold', 'discarded'];
+const NO_IMAGE =
+  'No image URL was given. Order confirmations often have none: search Gmail for the other emails about this same order (the shop\'s shipping, dispatch or delivery notification, matching order number or items), take the product image URL from there, and call set_item_photo with this item id. Don\'t create the item again.';
 const PHOTO_FAILED = 'Could not download that image. It must be a public https URL to a jpeg, png, webp or avif under about 700 KB; try another image URL from the email.';
 
 // ---- helpers ----
@@ -620,7 +622,7 @@ async function addReceiptItems(args: Args, { store, now, fetchPhoto: download = 
     const photo = line.imageUrl ? await download(line.imageUrl) : undefined;
     await store.put('clothes', id, receiptItem(line, id, photo, now));
     rows.push({ id, name: line.name, brand: line.brand, status: 'active' });
-    added.push({ id, name: line.name, photo: !!photo, ...(line.imageUrl && !photo ? { photoNote: PHOTO_FAILED } : {}) });
+    added.push({ id, name: line.name, photo: !!photo, ...(photo ? {} : { photoNote: line.imageUrl ? PHOTO_FAILED : NO_IMAGE }) });
   }
   if (!added.length && !duplicates.length) return ok({ alreadyAdded: true });
   return ok({

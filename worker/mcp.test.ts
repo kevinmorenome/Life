@@ -665,4 +665,15 @@ describe('guards against splitting an item\'s history', () => {
     expect((await call(ctx, 'edit_item', { itemId: 'tee', status: 'sold', confirmRetire: true })).isError).toBe(false);
     expect((await call(ctx, 'edit_item', { itemId: 'blazer', status: 'storage' })).isError).toBe(false);
   });
+
+  it('tells Claude to look in the other emails about the order when a receipt line has no image', async () => {
+    const { ctx } = setup(fetcher);
+    const r = await call(ctx, 'add_receipt_items', { sourceId: 'm11', items: [{ name: 'Linen shirt', category: 'tops' }, { name: 'Wool cap', category: 'accessories', imageUrl: 'https://x.com/good.jpg' }] });
+    const [shirt, cap] = r.json().added;
+    expect(shirt).toMatchObject({ id: 'receipt-m11-0', photo: false });
+    expect(shirt.photoNote).toMatch(/other emails about this same order/);
+    expect(shirt.photoNote).toMatch(/set_item_photo/);
+    expect(cap).toMatchObject({ photo: true });
+    expect(cap.photoNote).toBeUndefined();
+  });
 });
