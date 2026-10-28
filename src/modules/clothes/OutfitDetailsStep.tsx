@@ -23,6 +23,8 @@ interface Props {
   onBack: () => void;
   /** Back to the canvas to change the pieces. */
   onAddPieces: () => void;
+  /** Inside the editor's sheet under the live canvas: just the rows and the submit button. */
+  embedded?: boolean;
 }
 
 type Row = 'info' | 'tags' | 'season' | 'date';
@@ -46,7 +48,9 @@ export function OutfitDetailsStep(p: Props) {
   ];
 
   return (
-    <div className="outfit-details">
+    <div className={`outfit-details${p.embedded ? ' is-embedded' : ''}`}>
+      {!p.embedded && (
+      <>
       <header className="step-bar">
         <button type="button" className="icon-btn step-back" aria-label="Back to pieces" onClick={p.onBack}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -66,6 +70,8 @@ export function OutfitDetailsStep(p: Props) {
       </div>
 
       <p className="step-intro">What kind of outfit is it? Share some details with us.</p>
+      </>
+      )}
 
       <ul className="detail-rows">
         {rows.map((r) => (

@@ -75,6 +75,11 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     else navigate(`/clothes/outfits/${outfit.id}`);
   }
 
+  const next = () => {
+    setSheetH(snaps()[1]);
+    setStep('details');
+  };
+
   // Sheet snap points: peek, half, nearly full.
   const snaps = () => [120, Math.round(window.innerHeight * 0.45), Math.round(window.innerHeight * 0.85)];
   const onHandleDown = (e: PointerEvent) => {
@@ -139,44 +144,28 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
     };
   }, [step]);
 
-  if (step === 'details') {
-    return (
-      <form onSubmit={submit}>
-        <OutfitDetailsStep
-          title={existing ? 'Edit outfit' : 'New outfit'}
-          submitLabel={existing ? 'Save outfit' : 'Create outfit'}
-          pieces={pieces}
-          name={name}
-          onName={setName}
-          tags={tags}
-          onTags={setTags}
-          seasons={seasons}
-          onSeasons={setSeasons}
-          favorite={favorite}
-          onFavorite={setFavorite}
-          date={onApplyDate && !existing ? date : undefined}
-          onDate={onApplyDate && !existing ? setDate : undefined}
-          onBack={() => setStep('canvas')}
-          onAddPieces={() => setStep('canvas')}
-        />
-      </form>
-    );
-  }
-
   return (
     <div className="outfit-editor">
       <header className="editor-bar">
-        <button type="button" className="icon-action editor-close" aria-label="Cancel" onClick={() => history.back()}>
-          ✕
-        </button>
-        <button type="button" className="btn btn-primary editor-next" disabled={selected.length === 0} onClick={() => setStep('details')}>
-          Next
-        </button>
+        {step === 'canvas' ? (
+          <button type="button" className="icon-action editor-close" aria-label="Cancel" onClick={() => history.back()}>
+            ✕
+          </button>
+        ) : (
+          <button type="button" className="icon-action editor-close" aria-label="Back to pieces" onClick={() => setStep('canvas')}>
+            ‹
+          </button>
+        )}
+        {step === 'canvas' && (
+          <button type="button" className="btn btn-primary editor-next" disabled={selected.length === 0} onClick={next}>
+            Next
+          </button>
+        )}
       </header>
 
       {/* The canvas fills what the picker leaves free, so it grows as the grid collapses and shrinks as it expands. */}
       <div className="editor-canvas" style={{ bottom: sheetH }} aria-label="Outfit canvas">
-        {pieces.length ? <OutfitBoard pieces={pieces} large onRemove={toggle} /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
+        {pieces.length ? <OutfitBoard pieces={pieces} large onRemove={step === 'canvas' ? toggle : undefined} /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
       </div>
 
       <section className="editor-sheet" style={{ height: sheetH }} aria-label="Pieces">
@@ -192,6 +181,31 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
         >
           <span />
         </div>
+        {step === 'details' ? (
+          <div className="sheet-scroll" ref={scrollRef}>
+          <form onSubmit={submit}>
+            <OutfitDetailsStep
+              embedded
+              title={existing ? 'Edit outfit' : 'New outfit'}
+              submitLabel={existing ? 'Save outfit' : 'Create outfit'}
+              pieces={pieces}
+              name={name}
+              onName={setName}
+              tags={tags}
+              onTags={setTags}
+              seasons={seasons}
+              onSeasons={setSeasons}
+              favorite={favorite}
+              onFavorite={setFavorite}
+              date={onApplyDate && !existing ? date : undefined}
+              onDate={onApplyDate && !existing ? setDate : undefined}
+              onBack={() => setStep('canvas')}
+              onAddPieces={() => setStep('canvas')}
+            />
+          </form>
+          </div>
+        ) : (
+          <>
         <div className="search-row filters">
           <input
             type="search"
@@ -242,6 +256,8 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
             </ul>
           )}
         </div>
+          </>
+        )}
       </section>
 
       {filtersOpen && (
