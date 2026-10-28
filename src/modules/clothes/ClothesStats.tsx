@@ -14,7 +14,7 @@ import {
   valueByCategory,
   wornTogether,
 } from './insights';
-import { computeStats, lastWorn, wearCount } from './stats';
+import { computeStats, daysInCloset, lastWorn, wearCount } from './stats';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -44,7 +44,12 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
       <ItemListCard
         title="Best cost per wear"
         empty="Add prices and log wears to see this."
-        rows={s.bestCostPerWear.map(({ item, cpw }) => ({ item, value: money(cpw) }))}
+        rows={s.bestCostPerWear.map(({ item, cpw }) => ({
+          item,
+          sub: `${money(item.price ?? 0)} · worn ${wearCount(item)}×`,
+          value: money(cpw),
+          color: 'var(--accent)',
+        }))}
       />
       <ItemListCard
         title={`Never worn (${s.neverWorn.length})`}
@@ -52,8 +57,13 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
         rows={s.neverWorn
           .slice()
           .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-          .map((i) => ({ item: i, value: i.price != null ? money(i.price) : '' }))}
-        limit={10}
+          .map((item) => ({
+            item,
+            sub: `In your closet ${formatSpan(daysInCloset(item, now))}`,
+            value: item.price != null ? money(item.price) : '',
+            color: 'var(--tone-orange)',
+          }))}
+        limit={5}
       />
     </>
   );
@@ -260,7 +270,7 @@ function UsedCard({ items, now }: { items: ClothingItem[]; now: string }) {
   );
 }
 
-function ItemRow({ item, sub, value, fill, color }: { item: ClothingItem; sub?: string; value: string; fill?: number; color?: string }) {
+function ItemRow({ item, sub, value, fill, color, tint }: { item: ClothingItem; sub?: string; value: string; fill?: number; color?: string; tint?: string }) {
   return (
     <li>
       <a className="item-row" href={href(`/clothes/${item.id}`)}>
@@ -274,7 +284,9 @@ function ItemRow({ item, sub, value, fill, color }: { item: ClothingItem; sub?: 
             </span>
           )}
         </span>
-        <span className="item-row-value">{value}</span>
+        <span className="item-row-value" style={tint ? { color: tint } : undefined}>
+          {value}
+        </span>
       </a>
     </li>
   );
@@ -384,31 +396,27 @@ function ItemListCard({
 }: {
   title: string;
   empty: string;
-  rows: { item: ClothingItem; value: string }[];
+  rows: { item: ClothingItem; sub: string; value: string; color: string }[];
   limit?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const shown = limit && !expanded ? rows.slice(0, limit) : rows;
   return (
-    <section className="card">
-      <h2>{title}</h2>
+    <Section title={title}>
       {rows.length === 0 ? (
-        <p className="muted small">{empty}</p>
+        <Empty>{empty}</Empty>
       ) : (
-        <ul className="rank-list">
-          {shown.map(({ item, value }) => (
-            <li key={item.id}>
-              <a href={href(`/clothes/${item.id}`)}>{item.name}</a>
-              <span className="muted">{value}</span>
-            </li>
+        <ul className="item-rows">
+          {shown.map(({ item, sub, value, color }) => (
+            <ItemRow key={item.id} item={item} sub={sub} value={value} tint={color} />
           ))}
         </ul>
       )}
       {shown.length < rows.length && (
-        <button className="btn btn-ghost btn-small" onClick={() => setExpanded(true)}>
+        <button type="button" className="btn btn-ghost show-all" onClick={() => setExpanded(true)}>
           Show all {rows.length}
         </button>
       )}
-    </section>
+    </Section>
   );
 }
