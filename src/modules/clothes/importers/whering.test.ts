@@ -6,6 +6,7 @@ import {
   detailsToItem,
   mapSeasons,
   occasionLabels,
+  purchaseDateFrom,
   splitWears,
   exportCurrency,
   mapCategory,
@@ -160,6 +161,7 @@ describe('whering import', () => {
     );
     expect(item).toMatchObject({
       price: 9.99,
+      purchaseDate: '2024-02-18',
       seasons: ['summer'],
       occasions: ['casual'],
       material: 'Cotton, Elastane',
@@ -185,6 +187,17 @@ describe('whering import', () => {
       },
     });
     expect(item.createdAt).toBe('2026-01-15T23:47:04.436Z');
+    expect(item.purchaseDate).toBeUndefined();
+  });
+
+  it('turns date added into a local purchase date', () => {
+    const now = '2026-10-25T00:00:00.000Z';
+    expect(purchaseDateFrom('2024-02-18T20:05:46.894Z', now)).toBe('2024-02-18');
+    expect(purchaseDateFrom('2023-12-31T23:00:00.000Z', now)).toBe('2024-01-01');
+    expect(purchaseDateFrom('2026-11-17T23:00:00.000Z', now)).toBeUndefined();
+    expect(purchaseDateFrom('2025-08-10T22:25:26.949Z', now)).toBe('2025-08-11');
+    expect(purchaseDateFrom('2025-08-10T22:25:26.949Z', now, 'UTC')).toBe('2025-08-10');
+    expect(purchaseDateFrom(undefined, now)).toBeUndefined();
   });
 
   it('imports archived pieces from details alone, kept out of the active closet', () => {
