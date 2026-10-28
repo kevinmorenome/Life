@@ -174,8 +174,8 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
         </button>
       </header>
 
-      {/* Fixed size: the picker slides over the pieces instead of resizing them. */}
-      <div className="editor-canvas" style={{ bottom: snaps()[1] }} aria-label="Outfit canvas">
+      {/* The canvas fills what the picker leaves free, so it grows as the grid collapses and shrinks as it expands. */}
+      <div className="editor-canvas" style={{ bottom: sheetH }} aria-label="Outfit canvas">
         {pieces.length ? <OutfitBoard pieces={pieces} large onRemove={toggle} /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
       </div>
 
