@@ -64,6 +64,8 @@ export interface ClothingItem {
   /** YYYY-MM-DD */
   purchaseDate?: string;
   status: Status;
+  /** YYYY-MM-DD the item left the closet (sold, donated, discarded). Unset for older records. */
+  retiredDate?: string;
   condition?: Condition;
   /** JPEG data URL */
   photo?: string;
