@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { navigate } from '../../lib/router';
+import { CheckIcon } from './icons';
 import { ItemDetail } from './ItemDetail';
 import { markReviewed, reviewQueue } from './review';
 import type { ClothingItem, Outfit } from './types';
@@ -149,22 +150,18 @@ export function ReviewFlow({
           </div>
         ) : (
           <div className="review-end">
-            <p className="review-done">{flagged ? 'All caught up for now.' : 'Nothing to review.'}</p>
-            <p className="muted small">
+            <span className="review-end-icon" aria-hidden>
+              <CheckIcon />
+            </span>
+            <p className="review-done">{flagged ? 'All caught up for now' : 'Nothing to review'}</p>
+            <p className="muted review-end-note">
               {flagged
-                ? `${flagged} ${flagged === 1 ? 'item is' : 'items are'} saved for later.`
+                ? `${flagged} ${flagged === 1 ? 'item is' : 'items are'} saved for later. ${flagged === 1 ? 'It' : 'They'} will be here next time you open To review.`
                 : 'New items from receipts show up here.'}
             </p>
-            <div className="form-actions center">
-              {flagged > 0 && (
-                <button type="button" className="btn btn-primary" onClick={() => (setLater(new Set()), setCurrentId(undefined))}>
-                  Review them now
-                </button>
-              )}
-              <button type="button" className="btn" onClick={close}>
-                Back to closet
-              </button>
-            </div>
+            <button type="button" className="btn btn-primary review-end-btn" onClick={close}>
+              Back to closet
+            </button>
           </div>
         )}
       </div>

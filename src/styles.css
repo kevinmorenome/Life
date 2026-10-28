@@ -2408,14 +2408,42 @@ progress {
   }
 }
 .review-end {
-  padding: 1rem 0 calc(2rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1rem calc(4rem + env(safe-area-inset-bottom));
   text-align: center;
 }
+.review-end-icon {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--photo-bg);
+  color: var(--accent);
+}
+.review-end-icon svg {
+  width: 44px;
+  height: 44px;
+}
 .review-done {
-  margin: 3rem 0 0.5rem;
-  text-align: center;
-  font-size: 1.2rem;
+  margin: 0;
+  font-size: 1.3rem;
   font-weight: 600;
+}
+.review-end-note {
+  max-width: 280px;
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+.review-end-btn {
+  min-width: 200px;
+  min-height: 48px;
 }
 
 .section-toggle {
