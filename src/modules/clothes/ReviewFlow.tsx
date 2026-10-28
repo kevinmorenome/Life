@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { cutOutImage } from '../../lib/image';
+import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { CheckIcon } from './icons';
 import { ItemDetail } from './ItemDetail';
@@ -9,6 +9,8 @@ import type { ClothingItem, Outfit } from './types';
 const SLIDE_MS = 220;
 /** Items whose photo has already been through the cut-out this page session (it is slow, so only once). */
 const cutOutTried = new Set<string>();
+/** Photos longer than this (data URL characters) are downscaled even when the cut-out can't run; the Worker stores receipt images as downloaded. */
+const HEAVY_PHOTO = 250_000;
 /** How far left (px) a swipe must go to count as "check later". */
 const SWIPE_DISTANCE = 90;
 
@@ -65,8 +67,10 @@ export function ReviewFlow({
     setCutting(photoId);
     (async () => {
       try {
-        const cut = await cutOutImage(await (await fetch(original)).blob());
-        const next = withCutOutPhoto(itemsRef.current.find((i) => i.id === photoId), original, cut, new Date());
+        const blob = await (await fetch(original)).blob();
+        let better: string | null = await cutOutImage(blob).catch(() => null);
+        if (!better && original.length > HEAVY_PHOTO) better = await resizeImage(blob);
+        const next = withCutOutPhoto(itemsRef.current.find((i) => i.id === photoId), original, better, new Date());
         if (next) await onSaveRef.current(next);
       } catch {
         // Offline the first time, or nothing found: the original photo stays.

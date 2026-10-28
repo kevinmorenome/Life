@@ -646,6 +646,7 @@ describe('guards against splitting an item\'s history', () => {
     const { ctx, data } = setup(fetcher);
     const r = await call(ctx, 'set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/good.jpg' });
     expect(r.isError).toBe(false);
+    expect(r.text).toMatch(/queued, not already attached/);
     expect(data.inbox.get('id-1')).toMatchObject({ type: 'photo', itemIds: ['tee'], photo, source: 'claude' });
     expect(data.clothes.get('tee')!.photo).toBeUndefined();
     expect((await call(ctx, 'set_item_photo', { itemId: 'nope', imageUrl: 'https://x.com/good.jpg' })).isError).toBe(true);

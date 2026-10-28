@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from '../../../worker/protocol';
-import { applyInbox, withTags } from './inbox';
+import { applyInbox, preparePhotos, withTags } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
 const NOW = new Date('2026-10-25T20:00:00Z');
@@ -210,5 +210,22 @@ describe('photo requests', () => {
     const r = applyInbox([photoRequest({ itemIds: ['gone'] })], [item('a')], [], NOW);
     expect(r.items).toEqual([]);
     expect(r.requests[0].error).toMatch(/gone/);
+  });
+});
+
+describe('preparePhotos', () => {
+  const photo = (patch: Partial<PhotoRequest> = {}): PhotoRequest => ({
+    id: 'p', type: 'photo', itemIds: ['a'], outfitIds: [], photo: 'big', source: 'claude', createdAt: '2026-10-25T10:00:00Z', updatedAt: '2026-10-25T10:00:00Z', ...patch,
+  });
+  it('converts queued photos, keeps the original when conversion fails, and skips applied ones and other requests', async () => {
+    const wear = request({ id: 'w' });
+    const out = await preparePhotos(
+      [photo({ id: 'ok' }), photo({ id: 'bad', photo: 'broken' }), photo({ id: 'done', appliedAt: '2026-10-25T11:00:00Z', photo: undefined }), wear],
+      async (url) => {
+        if (url === 'broken') throw new Error('nope');
+        return `small(${url})`;
+      },
+    );
+    expect(out.map((r) => (r.type === 'photo' ? r.photo : r.type))).toEqual(['small(big)', 'broken', undefined, 'wear']);
   });
 });
