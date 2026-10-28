@@ -202,3 +202,21 @@ function applyWear(
     changedItems.add(id);
   }
 }
+
+/**
+ * Runs queued photos (from `set_item_photo`) through `convert` (downscale, background removal) before they are
+ * applied, because the Worker can only store the image as downloaded. A photo that fails to convert is applied
+ * as is rather than dropped. Requests already applied are left alone.
+ */
+export async function preparePhotos(requests: InboxRequest[], convert: (dataUrl: string) => Promise<string>): Promise<InboxRequest[]> {
+  return Promise.all(
+    requests.map(async (r) => {
+      if (r.type !== 'photo' || r.appliedAt || !r.photo) return r;
+      try {
+        return { ...r, photo: await convert(r.photo) };
+      } catch {
+        return r;
+      }
+    }),
+  );
+}
