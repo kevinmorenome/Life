@@ -2601,6 +2601,7 @@ progress {
 
 .donut {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 .donut-chart {
@@ -2638,7 +2639,7 @@ progress {
 }
 .legend {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 1rem;
 }
 .legend button {
@@ -2679,6 +2680,7 @@ progress {
 
 .hbars {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
 }
 .hbars li {
@@ -2703,6 +2705,7 @@ progress {
 
 .item-rows {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 .item-rows li + li {
   border-top: 1px solid var(--border);
@@ -2736,6 +2739,9 @@ progress {
   text-decoration: none;
 }
 .item-row-value {
+  flex: none;
+  max-width: 40%;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -2753,7 +2759,7 @@ progress {
 }
 .longevity-head {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
@@ -2769,4 +2775,21 @@ progress {
   width: 100%;
   min-height: 44px;
   margin-top: 0.5rem;
+}
+
+.item-rows li,
+.hbars li {
+  min-width: 0;
+}
+.hbar-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hbar-value {
+  flex: none;
+}
+.card {
+  min-width: 0;
 }
