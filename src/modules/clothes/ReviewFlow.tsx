@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { cutOutImage, resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { CheckIcon } from './icons';
 import { ItemDetail } from './ItemDetail';
-import { markReviewed, reviewQueue, withCutOutPhoto } from './review';
+import { markReviewed, reviewQueue } from './review';
+import { useCutOutOnOpen } from './useCutOut';
 import type { ClothingItem, Outfit } from './types';
 
 const SLIDE_MS = 220;
-/** Items whose photo has already been through the cut-out this page session (it is slow, so only once). */
-const cutOutTried = new Set<string>();
-/** Photos longer than this (data URL characters) are downscaled even when the cut-out can't run; the Worker stores receipt images as downloaded. */
-const HEAVY_PHOTO = 250_000;
 /** How far left (px) a swipe must go to count as "check later". */
 const SWIPE_DISTANCE = 90;
 
@@ -45,12 +41,8 @@ export function ReviewFlow({
   const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // Each item's photo gets its background removed when it comes up (it keeps the original if that can't run).
   const itemsRef = useRef(items);
   itemsRef.current = items;
-  const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
-  const [cutting, setCutting] = useState<string>();
 
   const queue = reviewQueue(items, later);
   const flagged = items.filter((i) => i.needsReview).length;
@@ -58,27 +50,8 @@ export function ReviewFlow({
   const current = items.find((i) => i.id === currentId && (i.needsReview || leaving)) ?? queue[0];
   const close = () => navigate('/clothes');
 
-  const photoId = current?.photo ? current.id : undefined;
-  useEffect(() => {
-    if (!photoId || cutOutTried.has(photoId)) return;
-    cutOutTried.add(photoId);
-    const original = itemsRef.current.find((i) => i.id === photoId)?.photo;
-    if (!original) return;
-    setCutting(photoId);
-    (async () => {
-      try {
-        const blob = await (await fetch(original)).blob();
-        let better: string | null = await cutOutImage(blob).catch(() => null);
-        if (!better && original.length > HEAVY_PHOTO) better = await resizeImage(blob);
-        const next = withCutOutPhoto(itemsRef.current.find((i) => i.id === photoId), original, better, new Date());
-        if (next) await onSaveRef.current(next);
-      } catch {
-        // Offline the first time, or nothing found: the original photo stays.
-      } finally {
-        setCutting((c) => (c === photoId ? undefined : c));
-      }
-    })();
-  }, [photoId]);
+  // Each item's photo gets its background removed when it comes up.
+  const cutting = useCutOutOnOpen(current, !!current, (id) => itemsRef.current.find((i) => i.id === id), onSave);
 
   /** Slides the current page out, then shows the next item (not counting `handled` or anything put off). */
   function advance(handled: ClothingItem, nowLater: ReadonlySet<string>) {
@@ -171,7 +144,7 @@ export function ReviewFlow({
               outfits={outfits}
               onSave={onSave}
               onDelete={onDelete}
-              photoBusy={cutting === current.id}
+              photoBusy={cutting}
               review={{
                 onSave: async () => {
                   await onSave(markReviewed(current, new Date()));

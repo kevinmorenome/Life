@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
@@ -28,6 +28,7 @@ import {
   type Season,
 } from './types';
 import { markReviewed } from './review';
+import { useCutOutOnOpen } from './useCutOut';
 import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
@@ -52,7 +53,11 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
   const [tab, setTab] = useState<Tab>('about');
   // Changing the photo also removes its background, which takes a few seconds.
   const [photoStatus, setPhotoStatus] = useState<'busy' | 'kept' | null>(null);
-  const photoWorking = photoStatus === 'busy' || !!photoBusy;
+  // An item still needing review gets its background removed here too, as it does in the review drawer (which does it itself).
+  const itemRef = useRef(item);
+  itemRef.current = item;
+  const cuttingHere = useCutOutOnOpen(item, !!item.needsReview && !review, (id) => (itemRef.current.id === id ? itemRef.current : undefined), onSave);
+  const photoWorking = photoStatus === 'busy' || !!photoBusy || cuttingHere;
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
