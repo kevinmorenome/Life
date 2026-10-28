@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_PHOTO_BYTES, fetchPhoto, parseReceiptLines } from './receipt';
+import { MAX_PHOTO_BYTES, fetchPhoto, findDuplicate, parseReceiptLines } from './receipt';
 
 describe('parseReceiptLines', () => {
   it('validates untrusted model output', () => {
@@ -34,5 +34,23 @@ describe('fetchPhoto', () => {
     expect(await fetchPhoto('https://x.com/a.jpg', image(3, 'image/svg+xml'))).toBeUndefined();
     expect(await fetchPhoto('https://x.com/a.jpg', image(3, 'image/jpeg', 404))).toBeUndefined();
     expect(await fetchPhoto('https://x.com/a.jpg', (async () => { throw new Error('boom'); }) as unknown as typeof fetch)).toBeUndefined();
+  });
+});
+
+describe('findDuplicate', () => {
+  const rows = [
+    { id: '1', name: 'Navy Blazer', brand: 'Zara', status: 'active' },
+    { id: '2', name: 'White tee', status: 'storage' },
+    { id: '3', name: 'Old tee', brand: 'H&M', status: 'donated' },
+  ];
+  it('matches names ignoring case and spacing, and brands unless either is missing', () => {
+    expect(findDuplicate(rows, '  navy   blazer ', 'zara')?.id).toBe('1');
+    expect(findDuplicate(rows, 'Navy blazer', undefined)?.id).toBe('1');
+    expect(findDuplicate(rows, 'White tee', 'Uniqlo')?.id).toBe('2');
+    expect(findDuplicate(rows, 'Navy blazer', 'H&M')).toBeUndefined();
+  });
+  it('ignores retired items and different names', () => {
+    expect(findDuplicate(rows, 'Old tee', 'H&M')).toBeUndefined();
+    expect(findDuplicate(rows, 'Navy coat', 'Zara')).toBeUndefined();
   });
 });

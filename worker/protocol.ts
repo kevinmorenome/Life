@@ -80,7 +80,14 @@ export interface ItemEditRequest extends RequestBase {
   changes: ItemChanges;
 }
 
-export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest;
+/** Replace an item's photo with an image the Worker downloaded (`itemIds` holds the one item). The app drops `photo` once applied. */
+export interface PhotoRequest extends RequestBase {
+  type: 'photo';
+  /** Image data URL. */
+  photo?: string;
+}
+
+export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest | PhotoRequest;
 
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;
