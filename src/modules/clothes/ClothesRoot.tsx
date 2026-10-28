@@ -10,6 +10,7 @@ import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
 import { syncPieceWears } from './outfits';
+import { ReviewFlow } from './ReviewFlow';
 import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
@@ -58,11 +59,16 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
 
   if (first === 'new') return <ItemForm onSave={save} />;
   if (first === 'stats') return <ClothesStatsView items={items} />;
-  if (first) {
+  if (first && first !== 'review') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
     return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
-  return <ClothesList items={items} onSave={save} />;
+  return (
+    <>
+      <ClothesList items={items} onSave={save} />
+      {first === 'review' && <ReviewFlow items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />}
+    </>
+  );
 }

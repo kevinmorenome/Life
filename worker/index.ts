@@ -1,5 +1,6 @@
 import { authorize, type AuthEnv } from './auth';
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
+import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
@@ -35,6 +36,7 @@ export default {
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
         newId: () => crypto.randomUUID(),
+        fetchPhoto,
       });
     }
 

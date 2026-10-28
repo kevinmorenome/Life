@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { SYNC_LABELS } from './SyncBadge';
 import { downloadBlob, exportBackup, importBackup, mergeBackup } from './lib/backup';
+import { notify, put } from './lib/db';
 import { today } from './lib/format';
+import { PREVIEW_LABEL } from './lib/preview';
+import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { useSettings } from './lib/settings';
 import { syncNow } from './lib/sync';
 import { useSyncStatus } from './lib/useSyncStatus';
@@ -10,6 +13,13 @@ export function Settings() {
   const [message, setMessage] = useState('');
   const sync = useSyncStatus();
   const { settings, update } = useSettings();
+
+  // PR previews never push, so these stay on this device and never reach your real closet.
+  async function addSamples() {
+    for (const item of sampleReviewItems(new Date())) await put('clothes', item);
+    notify('clothes');
+    setMessage('Added 4 sample items to review. Open the closet to see them.');
+  }
 
   async function onExport() {
     downloadBlob(await exportBackup(), `life-backup-${today()}.json`);
@@ -81,6 +91,17 @@ export function Settings() {
           )}
         </div>
       </section>
+      {PREVIEW_LABEL && (
+        <section className="card">
+          <h2>Preview tools</h2>
+          <p className="muted small">Adds made-up “needs review” items so you can try the review flow. They stay on this device only.</p>
+          <div className="form-actions start">
+            <button className="btn" onClick={addSamples}>
+              Add sample items to review
+            </button>
+          </div>
+        </section>
+      )}
       <section className="card">
         <h2>Backup & import</h2>
         <p className="muted small">

@@ -4,11 +4,11 @@ import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
 import { FieldSheet, type FieldSpec } from './FieldSheet';
 import { valuesOf, withField, type FieldKey } from './fields';
-import { resizeImage } from '../../lib/image';
+import { itemPhoto } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
 import { EyeIcon, EyeOffIcon } from '../../icons';
-import { CalendarCheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
+import { CalendarCheckIcon, CheckIcon, PriceTagIcon, SparkleIcon, WardrobeIcon } from './icons';
 import { HeroActions } from './HeroActions';
 import { Insights, type Insight } from './Insights';
 import { ItemThumb } from './ItemThumb';
@@ -27,6 +27,7 @@ import {
   type Outfit,
   type Season,
 } from './types';
+import { markReviewed } from './review';
 import { WearLog } from './WearLog';
 import { withPriorWears, withWear, withoutWear, withoutWearOn } from './wear';
 
@@ -37,14 +38,21 @@ interface Props {
   outfits: Outfit[];
   onSave: (item: ClothingItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Shown as a step of the review drawer: Save / Check later at the bottom, and close/remove hand back to the flow. */
+  /** The photo is being processed elsewhere (e.g. the review flow cutting out its background). */
+  photoBusy?: boolean;
+  review?: { onSave: () => void; onLater: () => void; onClose: () => void; onRemoved: () => void };
 }
 
 const TABS = ['about', 'style', 'stats'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats: 'Stats' };
 
-export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
+export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, review }: Props) {
   const [tab, setTab] = useState<Tab>('about');
+  // Changing the photo also removes its background, which takes a few seconds.
+  const [photoStatus, setPhotoStatus] = useState<'busy' | 'kept' | null>(null);
+  const photoWorking = photoStatus === 'busy' || !!photoBusy;
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
@@ -53,7 +61,8 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
   async function del() {
     if (confirm(`Delete “${item.name}”? This can’t be undone.`)) {
       await onDelete(item.id);
-      navigate('/clothes');
+      if (review) review.onRemoved();
+      else navigate('/clothes');
     }
   }
 
@@ -61,27 +70,62 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
     <article className="detail item-detail">
       <header className="hero">
         <div className="hero-top">
-          <a className="back" href={href('/clothes')} aria-label="Back to closet">
-            ←
-          </a>
+          {review ? (
+            <button type="button" className="back" aria-label="Close" onClick={review.onClose}>
+              ✕
+            </button>
+          ) : (
+            <a className="back" href={href('/clothes')} aria-label="Back to closet">
+              ←
+            </a>
+          )}
           <p className="hero-pill">
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
           </p>
         </div>
-        <label className="photo-edit" aria-label="Change photo">
+        <label className={`photo-edit${photoWorking ? ' is-busy' : ''}`} aria-label="Change photo">
           <ItemThumb item={item} large />
+          {photoWorking && <span className="photo-busy">Removing background…</span>}
           <input
             type="file"
             accept="image/*"
             hidden
+            disabled={photoWorking}
             onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) onSave({ ...item, photo: await resizeImage(file), updatedAt: new Date().toISOString() }).catch(() => {});
+              e.target.value = '';
+              if (!file) return;
+              setPhotoStatus('busy');
+              try {
+                const { photo, cutOut } = await itemPhoto(file);
+                await onSave({ ...item, photo, updatedAt: new Date().toISOString() });
+                setPhotoStatus(cutOut ? null : 'kept');
+              } catch {
+                setPhotoStatus(null);
+              }
             }}
           />
         </label>
+        {photoStatus === 'kept' && (
+          <p className="muted small" role="status">
+            Couldn’t remove the background (the first time needs a connection), so the photo was kept as is.
+          </p>
+        )}
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
+        {item.needsReview && !review && (
+          <p className="review-note">
+            <span>Added automatically. Check the details.</span>
+            <button
+              type="button"
+              className="filter-btn"
+              aria-label="Mark as reviewed"
+              onClick={() => onSave(markReviewed(item, new Date()))}
+            >
+              <CheckIcon />
+            </button>
+          </p>
+        )}
         <HeroActions
           leading={
             item.status === 'active' || item.status === 'storage' ? (
@@ -108,9 +152,11 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
             },
           ]}
         >
-          <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
-            Create outfit
-          </a>
+          {!review && (
+            <a className="btn btn-primary" href={href(`/clothes/outfits/new/${item.id}`)}>
+              Create outfit
+            </a>
+          )}
         </HeroActions>
       </header>
 
@@ -152,6 +198,17 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete }: Props) {
           <Stats item={item} outfits={inOutfits} onSave={onSave} />
         )}
       </div>
+
+      {review && (
+        <div className="form-actions sticky-actions">
+          <button type="button" className="btn btn-ghost" onClick={review.onLater}>
+            Check later
+          </button>
+          <button type="button" className="btn btn-primary" onClick={review.onSave}>
+            Save
+          </button>
+        </div>
+      )}
     </article>
   );
 }

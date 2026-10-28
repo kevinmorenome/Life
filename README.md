@@ -54,6 +54,12 @@ One-time setup:
 
 Treat the URL like a password: anyone with it can read your closet and queue wears (not delete anything). To rotate, set a new `MCP_TOKEN` and update the connector. PR previews are read-only, so their write tools refuse.
 
+## Receipts from Gmail
+
+Claude can read your order emails through the Gmail connector and add the clothes to your closet with the `add_receipt_items` MCP tool. Each item arrives with everything the email says (brand, colours, size, material, price, order date, notes) and its product photo, and is marked **needs review**: a sparkle on its tile, a "N new items to review" banner on the closet (and a **Needs review** filter), and a **To review** page (`#/clothes/review`) that opens as a drawer from the bottom and walks you through them one at a time: it shows how many are left, each item is the normal item page (everything editable in place), **Save** marks it reviewed and slides to the next, and **Check later** keeps it flagged so it comes back next time. Swiping the page left does the same as Check later. The item page has a ✓ too. Until then it works like any other item, so it can go into outfits and wears.
+
+Setup: connect Gmail in Claude (Settings → Connectors) and have the Life MCP connector set up (above). Then ask Claude to "check my email for clothing orders", or run it on a schedule. Each item's id comes from the email's message id, so the same receipt is never added twice (and never overwrites your edits); Claude should also label processed threads in Gmail so later runs skip them. The Worker downloads the product image as is (it can't resize), so images over about 700 KB are skipped and the item has no photo. When an item comes up in the review drawer its photo's background is removed on your device (the first time needs a connection to download the model; if it can't run, the original stays), and changing a photo from the item page removes the background too.
+
 ## Development
 
 ```bash

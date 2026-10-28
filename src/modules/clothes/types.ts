@@ -72,6 +72,8 @@ export interface ClothingItem {
   material?: string;
   tags?: string[];
   favorite?: boolean;
+  /** Added automatically (e.g. from a receipt email) and not yet checked by the owner. */
+  needsReview?: boolean;
   /** Situations it suits, e.g. "work", "date night". */
   occasions?: string[];
   /** One YYYY-MM-DD entry per time worn. */
