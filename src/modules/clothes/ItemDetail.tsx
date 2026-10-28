@@ -39,6 +39,8 @@ interface Props {
   onSave: (item: ClothingItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   /** Shown as a step of the review drawer: Save / Check later at the bottom, and close/remove hand back to the flow. */
+  /** The photo is being processed elsewhere (e.g. the review flow cutting out its background). */
+  photoBusy?: boolean;
   review?: { onSave: () => void; onLater: () => void; onClose: () => void; onRemoved: () => void };
 }
 
@@ -46,10 +48,11 @@ const TABS = ['about', 'style', 'stats'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats: 'Stats' };
 
-export function ItemDetail({ item, items, outfits, onSave, onDelete, review }: Props) {
+export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, review }: Props) {
   const [tab, setTab] = useState<Tab>('about');
   // Changing the photo also removes its background, which takes a few seconds.
   const [photoStatus, setPhotoStatus] = useState<'busy' | 'kept' | null>(null);
+  const photoWorking = photoStatus === 'busy' || !!photoBusy;
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
@@ -80,14 +83,14 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, review }: P
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
           </p>
         </div>
-        <label className={`photo-edit${photoStatus === 'busy' ? ' is-busy' : ''}`} aria-label="Change photo">
+        <label className={`photo-edit${photoWorking ? ' is-busy' : ''}`} aria-label="Change photo">
           <ItemThumb item={item} large />
-          {photoStatus === 'busy' && <span className="photo-busy">Removing background…</span>}
+          {photoWorking && <span className="photo-busy">Removing background…</span>}
           <input
             type="file"
             accept="image/*"
             hidden
-            disabled={photoStatus === 'busy'}
+            disabled={photoWorking}
             onChange={async (e) => {
               const file = e.target.files?.[0];
               e.target.value = '';

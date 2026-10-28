@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { itemsToReview, reviewQueue, markReviewed, reviewSummary } from './review';
+import { itemsToReview, reviewQueue, withCutOutPhoto, markReviewed, reviewSummary } from './review';
 import type { ClothingItem } from './types';
 
 const item = (id: string, createdAt: string, extra: Partial<ClothingItem> = {}): ClothingItem => ({
@@ -28,3 +28,17 @@ describe('review', () => {
     expect(s).toBe('Lacoste · Polo shirt · Navy · Size M · 2026-10-01');
   });
 });
+
+describe('withCutOutPhoto', () => {
+  const now = new Date('2026-02-01T00:00:00Z');
+  const base = item('a', '2026-01-01', { needsReview: true, photo: 'original', name: 'Edited since' });
+  it('swaps in the cut-out, keeping edits made meanwhile', () => {
+    expect(withCutOutPhoto(base, 'original', 'cut', now)).toMatchObject({ photo: 'cut', name: 'Edited since', needsReview: true, updatedAt: '2026-02-01T00:00:00.000Z' });
+  });
+  it('leaves the item alone when there is no cut-out, no item, or the photo changed', () => {
+    expect(withCutOutPhoto(base, 'original', null, now)).toBeNull();
+    expect(withCutOutPhoto(undefined, 'original', 'cut', now)).toBeNull();
+    expect(withCutOutPhoto({ ...base, photo: 'new one' }, 'original', 'cut', now)).toBeNull();
+  });
+});
+

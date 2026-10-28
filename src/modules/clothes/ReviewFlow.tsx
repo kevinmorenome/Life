@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { cutOutImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import { CheckIcon } from './icons';
 import { ItemDetail } from './ItemDetail';
-import { markReviewed, reviewQueue } from './review';
+import { markReviewed, reviewQueue, withCutOutPhoto } from './review';
 import type { ClothingItem, Outfit } from './types';
 
 const SLIDE_MS = 220;
+/** Items whose photo has already been through the cut-out this page session (it is slow, so only once). */
+const cutOutTried = new Set<string>();
 /** How far left (px) a swipe must go to count as "check later". */
 const SWIPE_DISTANCE = 90;
 
@@ -40,11 +43,38 @@ export function ReviewFlow({
   const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
+  // Each item's photo gets its background removed when it comes up (it keeps the original if that can't run).
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const [cutting, setCutting] = useState<string>();
+
   const queue = reviewQueue(items, later);
   const flagged = items.filter((i) => i.needsReview).length;
   // Keep showing the item being handled while it slides out, even though it already left the queue.
   const current = items.find((i) => i.id === currentId && (i.needsReview || leaving)) ?? queue[0];
   const close = () => navigate('/clothes');
+
+  const photoId = current?.photo ? current.id : undefined;
+  useEffect(() => {
+    if (!photoId || cutOutTried.has(photoId)) return;
+    cutOutTried.add(photoId);
+    const original = itemsRef.current.find((i) => i.id === photoId)?.photo;
+    if (!original) return;
+    setCutting(photoId);
+    (async () => {
+      try {
+        const cut = await cutOutImage(await (await fetch(original)).blob());
+        const next = withCutOutPhoto(itemsRef.current.find((i) => i.id === photoId), original, cut, new Date());
+        if (next) await onSaveRef.current(next);
+      } catch {
+        // Offline the first time, or nothing found: the original photo stays.
+      } finally {
+        setCutting((c) => (c === photoId ? undefined : c));
+      }
+    })();
+  }, [photoId]);
 
   /** Slides the current page out, then shows the next item (not counting `handled` or anything put off). */
   function advance(handled: ClothingItem, nowLater: ReadonlySet<string>) {
@@ -137,6 +167,7 @@ export function ReviewFlow({
               outfits={outfits}
               onSave={onSave}
               onDelete={onDelete}
+              photoBusy={cutting === current.id}
               review={{
                 onSave: async () => {
                   await onSave(markReviewed(current, new Date()));

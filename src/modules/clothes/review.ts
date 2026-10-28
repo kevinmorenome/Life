@@ -33,3 +33,12 @@ export function reviewSummary(item: ClothingItem): string {
     .filter(Boolean)
     .join(' · ');
 }
+
+/**
+ * The item with its photo swapped for the cut-out, if that photo is still the one the cut-out was made from
+ * (the owner may have changed it, or other fields, while it ran). Null means leave the item alone.
+ */
+export function withCutOutPhoto(latest: ClothingItem | undefined, original: string, cutOut: string | null, now: Date): ClothingItem | null {
+  if (!cutOut || !latest || latest.photo !== original) return null;
+  return { ...latest, photo: cutOut, updatedAt: now.toISOString() };
+}
