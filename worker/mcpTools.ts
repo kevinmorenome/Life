@@ -5,9 +5,9 @@
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
-import type { ItemChanges, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from './protocol';
+import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
-import { fetchPhoto, parseReceiptLines, receiptItem } from './receipt';
+import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
 
 export interface ToolContext {
@@ -116,7 +116,8 @@ export const TOOLS = [
   },
   {
     name: 'add_item',
-    description: 'Add a new item to the wardrobe. Check find_items first to avoid duplicates.',
+    description:
+      'Add a brand-new item to the wardrobe. Not for purchases found in emails or receipts (use add_receipt_items, which flags them for review), and never to change, re-photograph or replace an item that already exists: use edit_item for fields or set_item_photo for the photo, so its wear history stays with it. If an active item with the same name (and brand) already exists this is refused; pass allowDuplicate=true only when the user confirms it really is a second one.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -132,6 +133,8 @@ export const TOOLS = [
         seasons: { type: 'array', items: { type: 'string', enum: [...SEASONS] } },
         tags: { type: 'array', items: { type: 'string' } },
         notes: { type: 'string' },
+        imageUrl: { type: 'string', description: 'Optional https URL of a product photo to download and attach.' },
+        allowDuplicate: { type: 'boolean', description: 'Add even though a similar item exists. Only when the user confirms.' },
       },
       required: ['name', 'category'],
     },
@@ -139,11 +142,12 @@ export const TOOLS = [
   {
     name: 'add_receipt_items',
     description:
-      'Add the clothes from a purchase receipt or order confirmation email to the closet, flagged "needs review" so the owner can check them in the app. They can be used in outfits and wears straight away. One call per email, with every wearable item actually bought (no shipping, tax or discounts). Fill in everything the email says: brand, colours, size, material, price per piece, order date, season, the product image URL and anything useful in notes (retailer, order number). Leave out what the email does not say. Pass the email\'s message id as sourceId so the same email is never added twice. Check find_items first if the item may already exist.',
+      'Add the clothes from a purchase receipt or order confirmation email to the closet, flagged "needs review" so the owner can check them in the app. They can be used in outfits and wears straight away. One call per email, with every wearable item actually bought (no shipping, tax or discounts). Fill in everything the email says: brand, colours, size, material, price per piece, order date, season, the product image URL and anything useful in notes (retailer, order number). Leave out what the email does not say. Pass the email\'s message id as sourceId so the same email is never added twice. If an active item with the same name and brand already exists, that line is skipped and reported (use set_item_photo to give it a photo, edit_item for fields): never create a new item to replace an existing one and never retire the old one, because that splits its wear history. Pass allowDuplicates=true only when the user confirms they really bought a second one.',
     inputSchema: {
       type: 'object',
       properties: {
         sourceId: { type: 'string', description: 'Gmail message id of the receipt email' },
+        allowDuplicates: { type: 'boolean', description: 'Add lines even if a similar item exists. Only when the user confirms.' },
         items: {
           type: 'array',
           minItems: 1,
@@ -203,7 +207,7 @@ export const TOOLS = [
   {
     name: 'edit_item',
     description:
-      'Change fields of an existing wardrobe item (name, category, brand, colours, size, material, price, purchase date, seasons, status, condition, notes). Only edit when the user asks, and only the fields they mention. Pass null for an optional field to clear it. Wear history, photos and tags are never changed here (use add_tags for tags). To retire an item set status (donated / sold / discarded) rather than deleting. The change shows up in the app the next time it syncs.',
+      'Change fields of an existing wardrobe item (name, category, brand, colours, size, material, price, purchase date, seasons, status, condition, notes). Only edit when the user asks, and only the fields they mention. Pass null for an optional field to clear it. Wear history, photos and tags are never changed here (use add_tags for tags). To retire an item set status (donated / sold / discarded) rather than deleting, but ONLY when the user says they actually got rid of it, with confirmRetire=true: never retire an item to replace it with a new one (that would split its wear history; to add a photo use set_item_photo). The change shows up in the app the next time it syncs.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -219,10 +223,24 @@ export const TOOLS = [
         purchaseDate: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
         seasons: { type: 'array', items: { type: 'string', enum: [...SEASONS] } },
         status: { type: 'string', enum: [...STATUSES] },
+        confirmRetire: { type: 'boolean', description: 'Required when status is donated, sold or discarded: true only if the user said they got rid of the item.' },
         condition: { type: ['string', 'null'], enum: [...CONDITIONS, null] },
         notes: { type: ['string', 'null'] },
       },
       required: ['itemId'],
+    },
+  },
+  {
+    name: 'set_item_photo',
+    description:
+      'Give an EXISTING wardrobe item a photo (or replace its photo) from an image URL, e.g. a product image from a receipt email. Use this, not add_item or add_receipt_items, whenever an item already exists and only its photo is missing or wrong, so it keeps its wear history. The image must be a public https URL (jpeg, png, webp or avif, under about 700 KB). The photo appears in the app the next time it syncs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: { type: 'string' },
+        imageUrl: { type: 'string', description: 'https URL of the image' },
+      },
+      required: ['itemId', 'imageUrl'],
     },
   },
 ] as const;
@@ -251,6 +269,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : editOutfit(args, ctx);
+    case 'set_item_photo':
+      return ctx.readOnly ? fail(READ_ONLY) : setItemPhoto(args, ctx);
     case 'edit_item':
       return ctx.readOnly ? fail(READ_ONLY) : editItem(args, ctx);
     default:
@@ -259,6 +279,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
 }
 
 const READ_ONLY = 'This deployment is read-only.';
+const RETIRED = ['donated', 'sold', 'discarded'];
+const PHOTO_FAILED = 'Could not download that image. It must be a public https URL to a jpeg, png, webp or avif under about 700 KB; try another image URL from the email.';
 
 // ---- helpers ----
 
@@ -528,12 +550,23 @@ async function addTags(args: Args, { store, now, newId }: ToolContext): Promise<
   return ok(`Queued tags [${tags.join(', ')}] for: ${names.join(', ')}. They appear in the app the next time it syncs.`);
 }
 
-async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+async function addItem(args: Args, { store, now, newId, fetchPhoto: download = fetchPhoto }: ToolContext): Promise<ToolResult> {
   const name = text(args.name);
   if (!name) return fail('name is required.');
   if (!(CATEGORIES as readonly string[]).includes(args.category as string)) return fail(`category must be one of: ${CATEGORIES.join(', ')}.`);
   if (args.purchaseDate !== undefined && !isRealDate(args.purchaseDate)) return fail('purchaseDate must be YYYY-MM-DD.');
   if (args.price !== undefined && !(typeof args.price === 'number' && args.price >= 0)) return fail('price must be a non-negative number.');
+
+  if (args.allowDuplicate !== true) {
+    const same = findDuplicate(await store.list('clothes'), name, text(args.brand));
+    if (same) {
+      return fail(
+        `Not added: “${same.name}” (id ${same.id}) already exists. Use edit_item to change its fields or set_item_photo to give it a photo; never create a new item or retire the old one to replace it, because that splits its wear history. If the user confirms it is really a second one, call again with allowDuplicate=true.`,
+      );
+    }
+  }
+  const imageUrl = typeof args.imageUrl === 'string' && args.imageUrl.startsWith('https://') ? args.imageUrl : undefined;
+  const photo = imageUrl ? await download(imageUrl) : undefined;
 
   const stamp = now.toISOString();
   const colors = [...new Set(strings(args.colors))];
@@ -555,12 +588,13 @@ async function addItem(args: Args, { store, now, newId }: ToolContext): Promise<
     tags: tags.length ? tags : undefined,
     seasons: strings(args.seasons).filter((s) => (SEASONS as readonly string[]).includes(s)),
     status: 'active',
+    photo,
     wears: [],
     createdAt: stamp,
     updatedAt: stamp,
   };
   await store.put('clothes', item.id, item);
-  return ok({ added: { id: item.id, name } });
+  return ok({ added: { id: item.id, name, ...(imageUrl ? { photo: !!photo, ...(photo ? {} : { photoNote: PHOTO_FAILED }) } : {}) } });
 }
 
 async function addReceiptItems(args: Args, { store, now, fetchPhoto: download = fetchPhoto }: ToolContext): Promise<ToolResult> {
@@ -570,16 +604,53 @@ async function addReceiptItems(args: Args, { store, now, fetchPhoto: download = 
   if (lines.length === 0) return fail('No valid items. Each needs a name and a category.');
 
   // Ids come from the email, so adding the same receipt again changes nothing (and never overwrites edits).
-  const known = new Set((await store.list('clothes')).map((r) => r.id));
-  const added: { id: string; name: string; photo: boolean }[] = [];
+  const rows = await store.list('clothes');
+  const known = new Set(rows.map((r) => r.id));
+  const added: { id: string; name: string; photo: boolean; photoNote?: string }[] = [];
+  const duplicates: { line: string; existingItemId: string; existingName: string }[] = [];
   for (const [i, line] of lines.entries()) {
     const id = `receipt-${sourceId}-${i}`;
     if (known.has(id)) continue;
+    // An existing item that looks the same is the owner's, with its wear history: don't create a second one.
+    const same = args.allowDuplicates === true ? undefined : findDuplicate(rows, line.name, line.brand);
+    if (same) {
+      duplicates.push({ line: line.name, existingItemId: same.id, existingName: String(same.name) });
+      continue;
+    }
     const photo = line.imageUrl ? await download(line.imageUrl) : undefined;
     await store.put('clothes', id, receiptItem(line, id, photo, now));
-    added.push({ id, name: line.name, photo: !!photo });
+    rows.push({ id, name: line.name, brand: line.brand, status: 'active' });
+    added.push({ id, name: line.name, photo: !!photo, ...(line.imageUrl && !photo ? { photoNote: PHOTO_FAILED } : {}) });
   }
-  return ok(added.length ? { added, note: 'Flagged "needs review" in the app.' } : { alreadyAdded: true });
+  if (!added.length && !duplicates.length) return ok({ alreadyAdded: true });
+  return ok({
+    ...(added.length ? { added, note: 'Flagged "needs review" in the app.' } : {}),
+    ...(duplicates.length
+      ? {
+          skippedAsExisting: duplicates,
+          duplicatesNote:
+            'These already exist, so nothing was created for them. If one needs a photo use set_item_photo; to change fields use edit_item. Never retire the old item. Only call again with allowDuplicates=true if the user confirms they bought another one.',
+        }
+      : {}),
+  });
+}
+
+async function setItemPhoto(args: Args, { store, now, newId, fetchPhoto: download = fetchPhoto }: ToolContext): Promise<ToolResult> {
+  const itemId = text(args.itemId);
+  if (!itemId) return fail('itemId is required.');
+  const url = text(args.imageUrl, 2000);
+  if (!url || !url.startsWith('https://')) return fail('imageUrl must be an https URL.');
+  const item = (await store.list('clothes')).find((r) => r.id === itemId);
+  if (!item) return fail(`Unknown item id: ${itemId}. Look it up with find_items.`);
+
+  const photo = await download(url);
+  if (!photo) return fail(PHOTO_FAILED);
+
+  // Applied by the app like other edits, so the item itself is never overwritten from here.
+  const stamp = now.toISOString();
+  const request: PhotoRequest = { id: newId(), type: 'photo', itemIds: [itemId], outfitIds: [], photo, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  await store.put('inbox', request.id, request);
+  return ok(`Queued a new photo for “${item.name}”. It appears in the app the next time it syncs; nothing else about the item changes.`);
 }
 
 async function createOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
@@ -662,6 +733,11 @@ async function editItem(args: Args, { store, now, newId }: ToolContext): Promise
   if (args.status !== undefined) {
     if (!(STATUSES as readonly string[]).includes(args.status as string)) return fail(`status must be one of: ${STATUSES.join(', ')}.`);
     changes.status = args.status as string;
+    if (RETIRED.includes(changes.status) && args.confirmRetire !== true) {
+      return fail(
+        `Not retired. Only set status “${changes.status}” when the user said they actually got rid of this item, and then pass confirmRetire=true. Never retire an item to replace it with a new one: that splits its wear history (use set_item_photo or edit_item on the existing item).`,
+      );
+    }
   }
   if (args.condition !== undefined) {
     if (args.condition !== null && !(CONDITIONS as readonly string[]).includes(args.condition as string)) return fail(`condition must be null or one of: ${CONDITIONS.join(', ')}.`);

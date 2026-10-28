@@ -8,7 +8,7 @@ const MAX_ITEMS = 20;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** The Worker can't downscale, so larger product images are skipped (D1 caps a row at 2 MB). */
 export const MAX_PHOTO_BYTES = 700_000;
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 
 export interface ReceiptLine {
   name: string;
@@ -100,7 +100,11 @@ export function receiptItem(line: ReceiptLine, id: string, photo: string | undef
 /** Downloads a product image as a data URL; undefined when it isn't a small enough jpeg/png/webp or the fetch fails. */
 export async function fetchPhoto(url: string, doFetch: typeof fetch = fetch): Promise<string | undefined> {
   try {
-    const res = await doFetch(url, { signal: AbortSignal.timeout(8000) });
+    // Some shops' image servers refuse requests that don't look like a browser.
+    const res = await doFetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LifeApp/1.0)', Accept: 'image/avif,image/webp,image/jpeg,image/png,*/*;q=0.5' },
+    });
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     if (!res.ok || !PHOTO_TYPES.includes(type)) return undefined;
     const bytes = new Uint8Array(await res.arrayBuffer());
@@ -111,4 +115,23 @@ export async function fetchPhoto(url: string, doFetch: typeof fetch = fetch): Pr
   } catch {
     return undefined;
   }
+}
+
+const norm = (s: unknown) => (typeof s === 'string' ? s.toLowerCase().replace(/\s+/g, ' ').trim() : '');
+
+/**
+ * An item already in the closet (active or in storage) that looks like the one being added: the same name, and
+ * the same brand unless either has none. Used to stop a "new" item being created when the owner means an
+ * existing one, which would split its wear history.
+ */
+export function findDuplicate<T extends { id: string; name?: unknown; brand?: unknown; status?: unknown }>(
+  rows: T[],
+  name: string,
+  brand: string | undefined,
+): T | undefined {
+  const n = norm(name);
+  const b = norm(brand);
+  return rows.find(
+    (r) => (r.status === 'active' || r.status === 'storage') && norm(r.name) === n && (!b || !norm(r.brand) || norm(r.brand) === b),
+  );
 }
