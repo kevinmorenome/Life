@@ -220,17 +220,19 @@ export function convertItem(
 }
 
 /**
- * Whering's "date added" as a local purchase date. Dates picked in the app are
- * stored as local midnight (22:00/23:00Z for CET/CEST), so those roll forward a
- * day; ones in the future are dropped.
+ * Whering's "date added" as the purchase date in the given timezone (default
+ * Central Europe, where dates picked in the app land at 22:00/23:00Z). Dates in
+ * the future are dropped.
  */
-export function purchaseDateFrom(iso: string | null | undefined, now: string): string | undefined {
+export function purchaseDateFrom(
+  iso: string | null | undefined,
+  now: string,
+  timeZone = 'Europe/Madrid',
+): string | undefined {
   if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso) || iso > now) return undefined;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return undefined;
-  const atLocalMidnight = d.getUTCHours() >= 22 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
-  if (atLocalMidnight) d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
 
 function addedAt(d: WheringDetails, now: string): string | undefined {

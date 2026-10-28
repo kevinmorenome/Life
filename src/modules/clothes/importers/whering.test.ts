@@ -195,6 +195,8 @@ describe('whering import', () => {
     expect(purchaseDateFrom('2024-02-18T20:05:46.894Z', now)).toBe('2024-02-18');
     expect(purchaseDateFrom('2023-12-31T23:00:00.000Z', now)).toBe('2024-01-01');
     expect(purchaseDateFrom('2026-11-17T23:00:00.000Z', now)).toBeUndefined();
+    expect(purchaseDateFrom('2025-08-10T22:25:26.949Z', now)).toBe('2025-08-11');
+    expect(purchaseDateFrom('2025-08-10T22:25:26.949Z', now, 'UTC')).toBe('2025-08-10');
     expect(purchaseDateFrom(undefined, now)).toBeUndefined();
   });
 
