@@ -60,3 +60,19 @@ export async function cutOutImage(file: Blob, maxSize = 800): Promise<string | n
   const webp = small.toDataURL('image/webp', 0.9);
   return webp.startsWith('data:image/webp') ? webp : small.toDataURL('image/png');
 }
+
+/**
+ * A downscaled item photo with its background removed. Falls back to the plain
+ * resize (`cutOut: false`) when that isn't possible: the model couldn't load
+ * (needs a connection the first time), the photo is already transparent, or
+ * nothing was found.
+ */
+export async function itemPhoto(file: Blob): Promise<{ photo: string; cutOut: boolean }> {
+  try {
+    const cut = await cutOutImage(file);
+    if (cut) return { photo: cut, cutOut: true };
+  } catch {
+    // fall through to the plain resize
+  }
+  return { photo: await resizeImage(file), cutOut: false };
+}

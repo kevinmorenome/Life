@@ -2152,7 +2152,22 @@ progress {
   cursor: pointer;
 }
 .photo-edit {
+  position: relative;
   display: block;
+}
+.photo-edit.is-busy {
+  cursor: progress;
+}
+.photo-edit.is-busy .thumb {
+  opacity: 0.45;
+}
+.photo-busy {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  text-align: center;
 }
 
 /* More breathing room around buttons and chips on the item page */

@@ -4,7 +4,7 @@ import { href, navigate } from '../../lib/router';
 import { ChipEditor } from './ChipEditor';
 import { FieldSheet, type FieldSpec } from './FieldSheet';
 import { valuesOf, withField, type FieldKey } from './fields';
-import { resizeImage } from '../../lib/image';
+import { itemPhoto } from '../../lib/image';
 import { addChip, removeChip, withColors, withTags } from './chips';
 import { PALETTE, itemColors, swatchCss } from './colors';
 import { EyeIcon, EyeOffIcon } from '../../icons';
@@ -48,6 +48,8 @@ const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats:
 
 export function ItemDetail({ item, items, outfits, onSave, onDelete, review }: Props) {
   const [tab, setTab] = useState<Tab>('about');
+  // Changing the photo also removes its background, which takes a few seconds.
+  const [photoStatus, setPhotoStatus] = useState<'busy' | 'kept' | null>(null);
   const cpw = costPerWear(item);
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
@@ -78,18 +80,34 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, review }: P
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
           </p>
         </div>
-        <label className="photo-edit" aria-label="Change photo">
+        <label className={`photo-edit${photoStatus === 'busy' ? ' is-busy' : ''}`} aria-label="Change photo">
           <ItemThumb item={item} large />
+          {photoStatus === 'busy' && <span className="photo-busy">Removing background…</span>}
           <input
             type="file"
             accept="image/*"
             hidden
+            disabled={photoStatus === 'busy'}
             onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) onSave({ ...item, photo: await resizeImage(file), updatedAt: new Date().toISOString() }).catch(() => {});
+              e.target.value = '';
+              if (!file) return;
+              setPhotoStatus('busy');
+              try {
+                const { photo, cutOut } = await itemPhoto(file);
+                await onSave({ ...item, photo, updatedAt: new Date().toISOString() });
+                setPhotoStatus(cutOut ? null : 'kept');
+              } catch {
+                setPhotoStatus(null);
+              }
             }}
           />
         </label>
+        {photoStatus === 'kept' && (
+          <p className="muted small" role="status">
+            Couldn’t remove the background (the first time needs a connection), so the photo was kept as is.
+          </p>
+        )}
         <FieldTitle item={item} onSave={onSave} />
         <p className="muted small">{[item.brand, categoryLabel(item)].filter(Boolean).join(' · ')}</p>
         {item.needsReview && !review && (
