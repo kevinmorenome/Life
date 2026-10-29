@@ -1163,7 +1163,7 @@ a:focus-visible {
 }
 .seg {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--tabs, 3), 1fr);
   margin-bottom: 1rem;
   border-bottom: 1px solid var(--border);
 }

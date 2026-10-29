@@ -25,58 +25,103 @@ import { CATEGORIES, label, type Category, type ClothingItem, type Season } from
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'spending', label: 'Spending' },
+  { id: 'closet', label: 'Closet' },
+  { id: 'wear', label: 'Wear' },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
+export function ClothesStatsView({ items, tab: routeTab }: { items: ClothingItem[]; tab?: string }) {
   const now = today();
   const s = computeStats(items, now);
+  const tab: TabId = TABS.find((t) => t.id === routeTab)?.id ?? 'overview';
 
   return (
     <>
-      <div className="tiles">
-        <Tile value={String(s.activeCount)} label="items in closet" tone={0} />
-        <Tile value={money(s.activeValue)} label="closet value" tone={1} />
-        <Tile value={String(s.wearsLast30)} label="wears, last 30 days" tone={2} />
-        <Tile value={money(s.totalSpent)} label="spent all time" tone={3} />
+      <div className="seg" role="tablist" aria-label="Stats sections" style={{ ['--tabs' as string]: TABS.length }}>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            id={`stats-tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls="stats-panel"
+            // Replace, so going back from an item page lands on the same tab without a trail of tab switches.
+            onClick={() => window.location.replace(href(`/clothes/stats/${t.id}`))}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <UsageCard items={items} now={now} />
-      <StreakCard items={items} now={now} />
-      <TrendCard items={items} now={now} />
-      <CategoryCard items={items} s={s} />
-      <SpendWearCard items={items} />
-      <PriceCard items={items} />
-      <SeasonCard items={items} />
-      <ColorsCard items={items} />
-      <UsedCard items={items} now={now} />
-      <DormantCard items={items} now={now} />
-      <RepeatCard items={items} />
-      <TogetherCard items={items} />
-      <BrandsCard items={items} />
-      <LongevityCard items={items} now={now} />
+      <div id="stats-panel" role="tabpanel" aria-labelledby={`stats-tab-${tab}`}>
+        {tab === 'overview' && (
+          <>
+            <div className="tiles">
+              <Tile value={String(s.activeCount)} label="items in closet" tone={0} />
+              <Tile value={money(s.activeValue)} label="closet value" tone={1} />
+              <Tile value={String(s.wearsLast30)} label="wears, last 30 days" tone={2} />
+              <Tile value={money(s.totalSpent)} label="spent all time" tone={3} />
+            </div>
+            <UsageCard items={items} now={now} />
+            <StreakCard items={items} now={now} />
+          </>
+        )}
 
-      <ItemListCard
-        title="Best cost per wear"
-        empty="Add prices and log wears to see this."
-        rows={s.bestCostPerWear.map(({ item, cpw }) => ({
-          item,
-          sub: `${money(item.price ?? 0)} · worn ${wearCount(item)}×`,
-          value: money(cpw),
-          color: 'var(--accent)',
-        }))}
-      />
-      <ItemListCard
-        title={`Never worn (${s.neverWorn.length})`}
-        empty="Everything in your closet has been worn. Nice."
-        rows={s.neverWorn
-          .slice()
-          .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-          .map((item) => ({
-            item,
-            sub: `In your closet ${formatSpan(daysInCloset(item, now))}`,
-            value: item.price != null ? money(item.price) : '',
-            color: 'var(--tone-orange)',
-          }))}
-        limit={5}
-      />
+        {tab === 'spending' && (
+          <>
+            <TrendCard items={items} now={now} />
+            <SpendWearCard items={items} />
+            <PriceCard items={items} />
+            <ItemListCard
+              title="Best cost per wear"
+              empty="Add prices and log wears to see this."
+              rows={s.bestCostPerWear.map(({ item, cpw }) => ({
+                item,
+                sub: `${money(item.price ?? 0)} · worn ${wearCount(item)}×`,
+                value: money(cpw),
+                color: 'var(--accent)',
+              }))}
+            />
+          </>
+        )}
+
+        {tab === 'closet' && (
+          <>
+            <CategoryCard items={items} s={s} />
+            <ColorsCard items={items} />
+            <SeasonCard items={items} />
+            <BrandsCard items={items} />
+            <LongevityCard items={items} now={now} />
+          </>
+        )}
+
+        {tab === 'wear' && (
+          <>
+            <UsedCard items={items} now={now} />
+            <DormantCard items={items} now={now} />
+            <RepeatCard items={items} />
+            <TogetherCard items={items} />
+            <ItemListCard
+              title={`Never worn (${s.neverWorn.length})`}
+              empty="Everything in your closet has been worn. Nice."
+              rows={s.neverWorn
+                .slice()
+                .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+                .map((item) => ({
+                  item,
+                  sub: `In your closet ${formatSpan(daysInCloset(item, now))}`,
+                  value: item.price != null ? money(item.price) : '',
+                  color: 'var(--tone-orange)',
+                }))}
+              limit={5}
+            />
+          </>
+        )}
+      </div>
     </>
   );
 }
