@@ -9,13 +9,12 @@ import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
-import { useHideOnScroll } from './lib/useHideOnScroll';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Title next to the app name on the main pages of each tab. */
+/** Centred title in the header on the main pages of each tab. */
 function pageTitle(route: string[]): string | undefined {
   const [a, b] = route;
   if (!a || (a === 'calendar' && !DATE.test(b ?? ''))) return 'Calendar';
@@ -27,7 +26,6 @@ function pageTitle(route: string[]): string | undefined {
 }
 
 export function App() {
-  const topbarHidden = useHideOnScroll();
   const route = useRoute();
   const [section, ...rest] = route;
   const redirect = legacyRedirect(route);
@@ -58,14 +56,14 @@ export function App() {
           {PREVIEW_COMMIT && <> · {PREVIEW_COMMIT}</>}
         </div>
       )}
-      <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
+      <header className="topbar">
         <div className="brand-row">
           <a className="brand" href={href('/')}>
             Life
           </a>
           <SyncBadge />
-          {title && <h1 className="brand-page">{title}</h1>}
         </div>
+        <h1 className="brand-page">{title}</h1>
         <a
           className="icon-btn"
           href={href('/settings')}
