@@ -3294,3 +3294,324 @@ progress {
   width: 22px;
   height: 22px;
 }
+
+/* ───────────────────────── Liquid Glass ─────────────────────────
+   Controls are a translucent material floating above the content: blurred and
+   saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
+   shadow. Everything is driven by the --glass-* tokens so light and dark share
+   the rules. Content (photos, lists, text) stays flat and sits underneath. */
+:root {
+  --glass-bg: rgb(255 255 255 / 0.55);
+  --glass-bg-strong: rgb(255 255 255 / 0.72);
+  --glass-tint: rgb(255 255 255 / 0.35);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-edge: rgb(255 255 255 / 0.35);
+  --glass-line: rgb(60 60 67 / 0.12);
+  --glass-glow: rgb(255 255 255 / 0.5);
+  --glass-shadow: 0 8px 32px rgb(31 38 54 / 0.14), 0 1px 3px rgb(31 38 54 / 0.08);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-blur-heavy: blur(32px) saturate(190%);
+  --ambient-a: rgb(120 190 170 / 0.38);
+  --ambient-b: rgb(150 160 235 / 0.3);
+  --ambient-c: rgb(240 190 160 / 0.28);
+  --border: rgb(60 60 67 / 0.14);
+  --shadow: 0 4px 20px rgb(31 38 54 / 0.06);
+  --radius: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgb(44 46 54 / 0.5);
+    --glass-bg-strong: rgb(36 38 46 / 0.72);
+    --glass-tint: rgb(255 255 255 / 0.06);
+    --glass-rim: rgb(255 255 255 / 0.22);
+    --glass-edge: rgb(255 255 255 / 0.06);
+    --glass-line: rgb(255 255 255 / 0.1);
+    --glass-glow: rgb(255 255 255 / 0.08);
+    --glass-shadow: 0 10px 36px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+    --ambient-a: rgb(60 140 120 / 0.34);
+    --ambient-b: rgb(90 90 200 / 0.28);
+    --ambient-c: rgb(190 110 90 / 0.2);
+    --border: rgb(255 255 255 / 0.1);
+    --shadow: none;
+  }
+}
+
+/* Light that glass can bend: soft colour pools fixed behind everything. */
+body {
+  background:
+    radial-gradient(60vmax 50vmax at 8% -5%, var(--ambient-a), transparent 60%),
+    radial-gradient(55vmax 50vmax at 100% 25%, var(--ambient-b), transparent 60%),
+    radial-gradient(60vmax 50vmax at 20% 110%, var(--ambient-c), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* The glass material, shared by every floating control. */
+.topbar,
+.bottom-nav,
+.sheet,
+.menu,
+.select-bar,
+.filter-head,
+.review-sheet-head,
+.sticky-actions,
+.cal-head,
+.card,
+.btn,
+.chip,
+.tab-plus,
+.card-fab,
+input,
+select,
+textarea {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Bars: a floating pill-shaped dock instead of an edge-to-edge strip. */
+.topbar {
+  top: 8px;
+  margin: 8px 12px 0;
+  padding: 0.35rem 6px 0.35rem 16px;
+  padding-top: 0.35rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 26px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 18px var(--glass-glow);
+}
+.topbar-hidden {
+  transform: translateY(calc(-100% - 24px));
+}
+.preview-banner + .topbar {
+  padding-top: 0.35rem;
+}
+.bottom-nav {
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0.3rem 8px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 34px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 22px var(--glass-glow);
+}
+.container.with-nav {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+.select-bar {
+  right: 12px;
+  bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sticky-actions {
+  bottom: 8px;
+  margin-top: 0.5rem;
+  padding: 0.6rem 12px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.filter-head,
+.cal-head {
+  border-bottom: 1px solid var(--glass-line);
+  background: var(--glass-bg-strong);
+  box-shadow: inset 0 -1px 0 var(--glass-glow);
+}
+.review-sheet-head {
+  background: var(--glass-bg-strong);
+}
+
+/* The selected tab is a lens of glass that sits in the bar. */
+.tab {
+  position: relative;
+  margin: 2px 0;
+  border-radius: 26px;
+}
+.tab[aria-current='page'] {
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 0 0 1px var(--glass-edge), 0 2px 10px rgb(31 38 54 / 0.1);
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tab {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  }
+}
+.tab-plus {
+  border: 1px solid var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+  color: var(--accent-text);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 -6px 12px rgb(0 0 0 / 0.12);
+}
+
+/* Sheets and menus: panes of frosted glass. */
+.sheet-backdrop,
+.review-backdrop {
+  background: rgb(15 20 30 / 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  max-width: 520px;
+  margin: 0 auto calc(8px + env(safe-area-inset-bottom));
+  padding-bottom: 0.75rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 32px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-item:active,
+.menu-item:active {
+  background: var(--glass-tint);
+}
+.menu {
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.review-sheet {
+  border-radius: 32px 32px 0 0;
+  box-shadow: 0 -10px 40px rgb(0 0 0 / 0.18), inset 0 1px 0 var(--glass-rim);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet,
+  .menu {
+    animation: glass-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    transform-origin: bottom center;
+  }
+  .menu {
+    transform-origin: top left;
+  }
+  .menu-end {
+    transform-origin: top right;
+  }
+}
+@keyframes glass-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+}
+
+/* Surfaces and controls. */
+.card {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.btn {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.btn:active,
+.chip:active,
+.card-fab:active,
+.tab-plus:active {
+  transform: scale(0.96);
+}
+.btn-primary {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -6px 10px rgb(0 0 0 / 0.1);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chip {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+input,
+select,
+textarea {
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.08);
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab-done {
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--accent-text);
+}
+.icon-btn {
+  transition: background 0.2s ease;
+}
+.icon-btn:active {
+  background: var(--glass-tint);
+}
+.filter-count {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Browsers without backdrop-filter get a more opaque pane so text stays legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+/* Respect users who ask for less transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+
+/* Round icon buttons that carry their own border (calendar zoom, etc.) become small glass lenses. */
+.cal-tools .icon-btn {
+  margin-right: 0;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
