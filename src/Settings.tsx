@@ -3,6 +3,7 @@ import { SYNC_LABELS } from './SyncBadge';
 import { downloadBlob, exportBackup, importBackup, mergeBackup } from './lib/backup';
 import { notify, put } from './lib/db';
 import { today } from './lib/format';
+import { greeting } from './lib/greeting';
 import { PREVIEW_LABEL } from './lib/preview';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { useSettings } from './lib/settings';
@@ -51,6 +52,7 @@ export function Settings() {
   return (
     <>
       <h1>Settings</h1>
+      <p className="muted small">{greeting(new Date())}! (dummy feature)</p>
       <section className="card">
         <h2>Currency</h2>
         <label className="field">
