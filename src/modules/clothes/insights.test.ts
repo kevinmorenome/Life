@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { brandRanking, closetUsage, colorBreakdown, formatSpan, longevity, spendTrend, usageRanking, valueByCategory, wornTogether } from './insights';
+import {
+  brandRanking,
+  closetUsage,
+  colorBreakdown,
+  dormantItems,
+  formatSpan,
+  longevity,
+  priceBands,
+  repeatRate,
+  seasonBalance,
+  spendTrend,
+  spendVsWear,
+  usageRanking,
+  valueByCategory,
+  wearStreaks,
+  wornTogether,
+} from './insights';
 import { retiredDateFor, withStatus } from './lifecycle';
 import type { ClothingItem } from './types';
 
@@ -188,5 +204,119 @@ describe('formatSpan', () => {
     expect(formatSpan(150)).toBe('5 mo');
     expect(formatSpan(365)).toBe('1 yr');
     expect(formatSpan(365 * 3 + 60)).toBe('3 yr 2 mo');
+  });
+});
+
+describe('dormantItems', () => {
+  const a = item({ name: 'A', wears: ['2026-01-01', '2026-02-01'] });
+  const b = item({ name: 'B', wears: ['2026-06-10'] });
+  const c = item({ name: 'C', priorWears: 5 });
+  const d = item({ name: 'D', wears: ['2025-01-01'], status: 'sold' });
+  it('lists active items idle for at least N days, longest idle first', () => {
+    const r = dormantItems([a, b, c, d], 90, TODAY);
+    expect(r.map((x) => [x.item.name, x.since])).toEqual([['A', 134]]);
+    expect(dormantItems([a, b], 3, TODAY).map((x) => x.item.name)).toEqual(['A', 'B']);
+  });
+});
+
+describe('wearStreaks', () => {
+  // 2026-06-15 is a Monday.
+  const items = [
+    item({ wears: ['2026-06-15', '2026-06-14', '2026-06-13', '2026-06-01'] }),
+    item({ wears: ['2026-06-14', '2026-05-01', '2026-05-02', '2026-05-03', '2026-05-04', '2026-05-05'] }),
+    item({ priorWears: 9 }),
+  ];
+  it('counts the current and longest runs', () => {
+    const s = wearStreaks(items, TODAY);
+    expect(s.current).toBe(3);
+    expect(s.longest).toBe(5);
+  });
+  it('keeps the streak alive when today is not logged yet', () => {
+    expect(wearStreaks([item({ wears: ['2026-06-14', '2026-06-13'] })], TODAY).current).toBe(2);
+    expect(wearStreaks([item({ wears: ['2026-06-12'] })], TODAY).current).toBe(0);
+  });
+  it('counts days logged this year', () => {
+    const s = wearStreaks(items, TODAY);
+    expect(s.daysThisYear).toBe(9);
+    expect(s.daysElapsed).toBe(166);
+  });
+  it('builds Monday-first weeks ending in the current one', () => {
+    const s = wearStreaks(items, TODAY, 3);
+    expect(s.weeks).toHaveLength(3);
+    expect(s.weeks[2][0]).toEqual({ date: '2026-06-15', on: true, future: false });
+    expect(s.weeks[2][1].future).toBe(true);
+    expect(s.weeks[1][6].date).toBe('2026-06-14');
+    expect(s.weeks[0][0].date).toBe('2026-06-01');
+    expect(s.weeks[0][0].on).toBe(true);
+  });
+});
+
+describe('seasonBalance', () => {
+  it('counts active items per season and those with none', () => {
+    const r = seasonBalance([
+      item({ seasons: ['summer', 'spring'] }),
+      item({ seasons: ['summer'] }),
+      item({}),
+      item({ seasons: ['winter'], status: 'sold' }),
+    ]);
+    expect(r.seasons).toEqual([
+      { season: 'spring', count: 1 },
+      { season: 'summer', count: 2 },
+      { season: 'fall', count: 0 },
+      { season: 'winter', count: 0 },
+    ]);
+    expect(r.unset).toBe(1);
+  });
+});
+
+describe('spendVsWear', () => {
+  it('compares each category’s share of spend and wears', () => {
+    const r = spendVsWear([
+      item({ category: 'shoes', price: 150, wears: ['2026-01-01'] }),
+      item({ category: 'tops', price: 50, priorWears: 3, status: 'sold' }),
+      item({ category: 'bags' }),
+    ]);
+    expect(r).toEqual([
+      { category: 'shoes', spent: 150, wears: 1, spendShare: 0.75, wearShare: 0.25 },
+      { category: 'tops', spent: 50, wears: 3, spendShare: 0.25, wearShare: 0.75 },
+    ]);
+  });
+  it('is empty without data', () => {
+    expect(spendVsWear([])).toEqual([]);
+  });
+});
+
+describe('priceBands', () => {
+  it('buckets active priced items and finds the median', () => {
+    const r = priceBands([
+      item({ price: 10 }),
+      item({ price: 25 }),
+      item({ price: 49.99 }),
+      item({ price: 100 }),
+      item({ price: 250 }),
+      item({}),
+      item({ price: 5, status: 'sold' }),
+    ]);
+    expect(r.bands.map((b) => b.count)).toEqual([1, 2, 0, 1, 1]);
+    expect(r.median).toBe(49.99);
+    expect(r.unpriced).toBe(1);
+  });
+  it('has no median without prices', () => {
+    expect(priceBands([item({})]).median).toBeNull();
+  });
+});
+
+describe('repeatRate', () => {
+  it('measures the gap between wears of the same item', () => {
+    const r = repeatRate([
+      item({ wears: ['2026-01-01', '2026-01-03', '2026-01-10', '2026-03-01'] }), // gaps 2, 7, 50
+      item({ wears: ['2026-01-01', '2026-01-02', '2026-01-02'] }), // gap 1 (duplicate day ignored)
+    ]);
+    expect(r.total).toBe(4);
+    expect(r.buckets.map((b) => b.count)).toEqual([2, 1, 0, 0, 1]);
+    expect(r.medianGap).toBe(5);
+  });
+  it('has no median without re-wears', () => {
+    expect(repeatRate([item({ wears: ['2026-01-01'] })]).medianGap).toBeNull();
   });
 });

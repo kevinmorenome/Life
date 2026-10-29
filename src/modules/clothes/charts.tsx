@@ -167,6 +167,8 @@ export interface HBarRow {
   sub?: string;
   value: number;
   shown: string;
+  /** Overrides the chart colour for this row. */
+  color?: string;
 }
 
 /** Horizontal bars scaled to the largest value. */
@@ -181,11 +183,101 @@ export function HBars({ rows, color = 'var(--accent)' }: { rows: HBarRow[]; colo
             <span className="hbar-value">{r.shown}</span>
           </span>
           <span className="bar-track">
-            <span className="bar-fill" style={{ width: `${(r.value / max) * 100}%`, background: color }} />
+            <span className="bar-fill" style={{ width: `${(r.value / max) * 100}%`, background: r.color ?? color }} />
           </span>
           {r.sub && <span className="hbar-sub">{r.sub}</span>}
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Columns with their own tap-to-read readout (a big line and a small one) above them. */
+export function ReadoutColumns({
+  bars,
+  color,
+  big,
+  small,
+  initial,
+}: {
+  bars: Bar[];
+  color?: string;
+  big: (b: Bar) => string;
+  small: (b: Bar) => string;
+  initial?: string;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const selected = bars.find((b) => b.key === picked) ?? bars.find((b) => b.key === initial) ?? bars[0];
+  return (
+    <>
+      <div className="readout">
+        <strong>{big(selected)}</strong>
+        <span className="muted">{small(selected)}</span>
+      </div>
+      <Columns
+        bars={bars}
+        selected={selected.key}
+        onSelect={setPicked}
+        color={color}
+        describe={(b) => `${small(b)}: ${big(b)}`}
+      />
+    </>
+  );
+}
+
+/** Weeks of day squares (Monday first), filled where something was logged. */
+export function Heatmap({ weeks, color = 'var(--accent)' }: { weeks: { date: string; on: boolean; future: boolean }[][]; color?: string }) {
+  return (
+    <div className="heatmap" role="img" aria-label="Days with a logged outfit, last weeks" style={{ ['--bar' as string]: color }}>
+      {weeks.map((col, w) => (
+        <div key={w} className="heat-col">
+          {col.map((c) => (
+            <span key={c.date} className={`heat-cell${c.on ? ' on' : ''}${c.future ? ' future' : ''}`} title={c.date} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Two thin bars per row (e.g. share of spend vs share of wears), each 0–1. */
+export function PairBars({
+  rows,
+  names,
+  colors,
+}: {
+  rows: { key: string; label: string; a: number; b: number; aText: string; bText: string }[];
+  names: [string, string];
+  colors: [string, string];
+}) {
+  return (
+    <>
+      <div className="pair-legend">
+        {names.map((n, i) => (
+          <span key={n}>
+            <span className="legend-dot" style={{ background: colors[i] }} />
+            {n}
+          </span>
+        ))}
+      </div>
+      <ul className="hbars">
+        {rows.map((r) => (
+          <li key={r.key}>
+            <span className="hbar-head">
+              <span className="hbar-label">{r.label}</span>
+              <span className="hbar-value muted small">
+                {r.aText} · {r.bText}
+              </span>
+            </span>
+            <span className="bar-track pair-track">
+              <span className="bar-fill" style={{ width: `${r.a * 100}%`, background: colors[0] }} />
+            </span>
+            <span className="bar-track pair-track">
+              <span className="bar-fill" style={{ width: `${r.b * 100}%`, background: colors[1] }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

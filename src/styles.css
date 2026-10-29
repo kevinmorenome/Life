@@ -2793,3 +2793,57 @@ progress {
 .card {
   min-width: 0;
 }
+
+/* Streaks, pair bars */
+.chart-top {
+  margin: 0 0 0.75rem;
+}
+.strong {
+  color: var(--text);
+  font-weight: 650;
+}
+.streak-head {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.heatmap {
+  display: flex;
+  gap: 4px;
+}
+.heat-col {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--accent-soft);
+}
+.heat-cell.on {
+  background: var(--bar);
+}
+.heat-cell.future {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--border);
+  opacity: 0.5;
+}
+.pair-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.pair-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pair-track {
+  height: 8px;
+}
+.hbars li:has(.pair-track) {
+  gap: 0.25rem;
+}

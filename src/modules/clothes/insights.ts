@@ -1,7 +1,7 @@
 import { itemColors } from './colors';
 import { isRetired } from './lifecycle';
 import { daysInCloset, wearCount } from './stats';
-import type { Category, ClothingItem } from './types';
+import { SEASONS, type Category, type ClothingItem, type Season } from './types';
 
 // All functions are pure; `today` is YYYY-MM-DD and passed in for tests.
 
@@ -242,4 +242,177 @@ export function formatSpan(days: number): string {
   const years = Math.floor(months / 12);
   const rest = months % 12;
   return rest ? `${years} yr ${rest} mo` : `${years} yr`;
+}
+
+export interface Dormant {
+  item: ClothingItem;
+  /** Days since it was last worn. */
+  since: number;
+}
+
+/** Active items that have dated wears but none in the last `days` days, longest-idle first. */
+export function dormantItems(items: ClothingItem[], days: number, today: string): Dormant[] {
+  const out: Dormant[] = [];
+  for (const item of items) {
+    if (item.status !== 'active' || item.wears.length === 0) continue;
+    const last = item.wears.reduce((a, b) => (a > b ? a : b));
+    const since = dayNumber(today) - dayNumber(last);
+    if (since >= days) out.push({ item, since });
+  }
+  return out.sort((a, b) => b.since - a.since || a.item.name.localeCompare(b.item.name));
+}
+
+export interface HeatCell {
+  date: string;
+  /** Something was worn that day. */
+  on: boolean;
+  future: boolean;
+}
+
+export interface Streaks {
+  /** Consecutive days with a logged wear, counting back from today (or yesterday, if today isn't logged yet). */
+  current: number;
+  longest: number;
+  /** Days logged this calendar year, and days of the year so far. */
+  daysThisYear: number;
+  daysElapsed: number;
+  /** Columns of 7 cells (Monday first), oldest week first, ending with the current week. */
+  weeks: HeatCell[][];
+}
+
+/** Logging streaks from dated wears of any item; undated prior wears can't count. */
+export function wearStreaks(items: ClothingItem[], today: string, weeks = 15): Streaks {
+  const logged = new Set<string>();
+  for (const i of items) for (const d of i.wears) if (d <= today) logged.add(d);
+
+  const nums = [...logged].map(dayNumber).sort((a, b) => a - b);
+  let longest = 0;
+  let run = 0;
+  nums.forEach((n, idx) => {
+    run = idx > 0 && n === nums[idx - 1] + 1 ? run + 1 : 1;
+    longest = Math.max(longest, run);
+  });
+
+  const t = dayNumber(today);
+  const set = new Set(nums);
+  let cur = set.has(t) ? t : t - 1;
+  let current = 0;
+  while (set.has(cur)) {
+    current += 1;
+    cur -= 1;
+  }
+
+  const year = today.slice(0, 4);
+  const daysThisYear = [...logged].filter((d) => d.startsWith(year)).length;
+  const daysElapsed = t - dayNumber(`${year}-01-01`) + 1;
+
+  const mondayOffset = (new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7;
+  const start = t - mondayOffset - (weeks - 1) * 7;
+  const grid: HeatCell[][] = [];
+  for (let w = 0; w < weeks; w++) {
+    const col: HeatCell[] = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date((start + w * 7 + d) * DAY_MS).toISOString().slice(0, 10);
+      col.push({ date, on: logged.has(date), future: date > today });
+    }
+    grid.push(col);
+  }
+  return { current, longest, daysThisYear, daysElapsed, weeks: grid };
+}
+
+export interface SeasonCount {
+  season: Season;
+  count: number;
+}
+
+/** Active items per season (an item counts in each of its seasons) and how many have none set. */
+export function seasonBalance(items: ClothingItem[]): { seasons: SeasonCount[]; unset: number } {
+  const active = items.filter((i) => i.status === 'active');
+  return {
+    seasons: SEASONS.map((season) => ({ season, count: active.filter((i) => i.seasons.includes(season)).length })),
+    unset: active.filter((i) => i.seasons.length === 0).length,
+  };
+}
+
+export interface SpendWear {
+  category: Category;
+  spent: number;
+  wears: number;
+  /** 0–1 share of all spending and of all wears. */
+  spendShare: number;
+  wearShare: number;
+}
+
+/** Where the money went against where the wears went, per category, biggest spend first. */
+export function spendVsWear(items: ClothingItem[]): SpendWear[] {
+  const by = new Map<Category, { spent: number; wears: number }>();
+  for (const i of items) {
+    const cur = by.get(i.category) ?? { spent: 0, wears: 0 };
+    cur.spent += i.price ?? 0;
+    cur.wears += wearCount(i);
+    by.set(i.category, cur);
+  }
+  const totalSpent = [...by.values()].reduce((a, b) => a + b.spent, 0);
+  const totalWears = [...by.values()].reduce((a, b) => a + b.wears, 0);
+  return [...by]
+    .filter(([, v]) => v.spent > 0 || v.wears > 0)
+    .map(([category, v]) => ({
+      category,
+      ...v,
+      spendShare: totalSpent ? v.spent / totalSpent : 0,
+      wearShare: totalWears ? v.wears / totalWears : 0,
+    }))
+    .sort((a, b) => b.spent - a.spent || b.wears - a.wears);
+}
+
+export interface PriceBands {
+  /** Counts per band: under 25, 25–50, 50–100, 100–200, 200+. */
+  bands: { label: string; count: number }[];
+  median: number | null;
+  unpriced: number;
+}
+
+const BAND_EDGES = [25, 50, 100, 200];
+
+/** How active items spread across price bands. */
+export function priceBands(items: ClothingItem[]): PriceBands {
+  const active = items.filter((i) => i.status === 'active');
+  const prices = active.filter((i) => i.price != null).map((i) => i.price as number).sort((a, b) => a - b);
+  const labels = ['<25', '25–50', '50–100', '100–200', '200+'];
+  const counts = labels.map(() => 0);
+  for (const p of prices) counts[BAND_EDGES.filter((e) => p >= e).length] += 1;
+  const mid = Math.floor(prices.length / 2);
+  return {
+    bands: labels.map((label, i) => ({ label, count: counts[i] })),
+    median: prices.length ? (prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2) : null,
+    unpriced: active.length - prices.length,
+  };
+}
+
+export interface RepeatRate {
+  /** Typical days between two wears of the same item; `null` without any re-worn item. */
+  medianGap: number | null;
+  /** Re-wears bucketed by days since the previous wear of that item: 1–3, 4–7, 8–14, 15–30, 31+. */
+  buckets: { label: string; count: number }[];
+  total: number;
+}
+
+/** How soon a piece comes back after its last wear, from dated wears. */
+export function repeatRate(items: ClothingItem[]): RepeatRate {
+  const gaps: number[] = [];
+  for (const i of items) {
+    const days = [...new Set(i.wears)].map(dayNumber).sort((a, b) => a - b);
+    for (let k = 1; k < days.length; k++) gaps.push(days[k] - days[k - 1]);
+  }
+  gaps.sort((a, b) => a - b);
+  const labels = ['1–3 d', '4–7 d', '8–14 d', '15–30 d', '31+ d'];
+  const edges = [3, 7, 14, 30];
+  const counts = labels.map(() => 0);
+  for (const g of gaps) counts[edges.filter((e) => g > e).length] += 1;
+  const mid = Math.floor(gaps.length / 2);
+  return {
+    medianGap: gaps.length ? (gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid - 1] + gaps[mid]) / 2)) : null,
+    buckets: labels.map((label, i) => ({ label, count: counts[i] })),
+    total: gaps.length,
+  };
 }

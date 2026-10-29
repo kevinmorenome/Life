@@ -1,21 +1,27 @@
 import { useState, type ReactNode } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { Columns, Donut, HBars, Ring, TONES, Toggle } from './charts';
+import { Columns, Donut, HBars, Heatmap, PairBars, ReadoutColumns, Ring, TONES, Toggle } from './charts';
 import { ItemThumb } from './ItemThumb';
 import {
   brandRanking,
   closetUsage,
   colorBreakdown,
+  dormantItems,
   formatSpan,
   longevity,
+  priceBands,
+  repeatRate,
+  seasonBalance,
   spendTrend,
+  spendVsWear,
   usageRanking,
   valueByCategory,
+  wearStreaks,
   wornTogether,
 } from './insights';
 import { computeStats, daysInCloset, lastWorn, wearCount } from './stats';
-import { CATEGORIES, label, type Category, type ClothingItem } from './types';
+import { CATEGORIES, label, type Category, type ClothingItem, type Season } from './types';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
@@ -33,10 +39,16 @@ export function ClothesStatsView({ items }: { items: ClothingItem[] }) {
       </div>
 
       <UsageCard items={items} now={now} />
+      <StreakCard items={items} now={now} />
       <TrendCard items={items} now={now} />
       <CategoryCard items={items} s={s} />
+      <SpendWearCard items={items} />
+      <PriceCard items={items} />
+      <SeasonCard items={items} />
       <ColorsCard items={items} />
       <UsedCard items={items} now={now} />
+      <DormantCard items={items} now={now} />
+      <RepeatCard items={items} />
       <TogetherCard items={items} />
       <BrandsCard items={items} />
       <LongevityCard items={items} now={now} />
@@ -289,6 +301,212 @@ function ItemRow({ item, sub, value, fill, color, tint }: { item: ClothingItem; 
         </span>
       </a>
     </li>
+  );
+}
+
+/* Streaks ------------------------------------------------------------ */
+
+function StreakCard({ items, now }: { items: ClothingItem[]; now: string }) {
+  const st = wearStreaks(items, now);
+  const logged = st.weeks.some((w) => w.some((c) => c.on));
+  return (
+    <Section title="Streaks" note="Days with at least one wear logged.">
+      {!logged ? (
+        <Empty>Log what you wear and your streaks will build up here.</Empty>
+      ) : (
+        <>
+          <div className="longevity-head streak-head">
+            <span className="stat">
+              <span className="stat-value" style={{ color: 'var(--tone-orange)' }}>
+                {st.current} {st.current === 1 ? 'day' : 'days'}
+              </span>
+              <span className="stat-label">current streak</span>
+            </span>
+            <span className="stat">
+              <span className="stat-value" style={{ color: 'var(--tone-purple)' }}>
+                {st.longest} {st.longest === 1 ? 'day' : 'days'}
+              </span>
+              <span className="stat-label">longest streak</span>
+            </span>
+            <span className="stat">
+              <span className="stat-value" style={{ color: 'var(--accent)' }}>
+                {Math.round((st.daysThisYear / st.daysElapsed) * 100)}%
+              </span>
+              <span className="stat-label">
+                of {new Date(now + 'T00:00:00').getFullYear()} logged ({st.daysThisYear} days)
+              </span>
+            </span>
+          </div>
+          <Heatmap weeks={st.weeks} />
+        </>
+      )}
+    </Section>
+  );
+}
+
+/* Spend vs wear ------------------------------------------------------- */
+
+function SpendWearCard({ items }: { items: ClothingItem[] }) {
+  const rows = spendVsWear(items);
+  const hasMoney = rows.some((r) => r.spent > 0);
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  return (
+    <Section title="Spend vs wear" note="A category with a big spend share but a small wear share isn’t paying off.">
+      {!hasMoney ? (
+        <Empty>Add prices to compare what you spend with what you wear.</Empty>
+      ) : (
+        <PairBars
+          names={['Share of spend', 'Share of wears']}
+          colors={['var(--tone-blue)', 'var(--accent)']}
+          rows={rows.map((r) => ({
+            key: r.category,
+            label: label(r.category),
+            a: r.spendShare,
+            b: r.wearShare,
+            aText: pct(r.spendShare),
+            bText: pct(r.wearShare),
+          }))}
+        />
+      )}
+    </Section>
+  );
+}
+
+/* Price distribution ---------------------------------------------------- */
+
+function PriceCard({ items }: { items: ClothingItem[] }) {
+  const p = priceBands(items);
+  const total = p.bands.reduce((a, b) => a + b.count, 0);
+  return (
+    <Section
+      title="Price distribution"
+      note={p.unpriced > 0 ? `${p.unpriced} ${p.unpriced === 1 ? 'item has' : 'items have'} no price and ${p.unpriced === 1 ? 'isn’t' : 'aren’t'} shown.` : undefined}
+    >
+      {total === 0 ? (
+        <Empty>Add prices to see how your closet spreads across price ranges.</Empty>
+      ) : (
+        <>
+          <p className="muted small chart-note chart-top">
+            Typical item: <strong className="strong">{money(p.median ?? 0)}</strong>
+          </p>
+          <ReadoutColumns
+            color="var(--tone-orange)"
+            initial={p.bands.reduce((best, b) => (b.count > best.count ? b : best)).label}
+            bars={p.bands.map((b) => ({ key: b.label, tick: b.label, value: b.count }))}
+            big={(b) => `${b.value} ${b.value === 1 ? 'item' : 'items'}`}
+            small={(b) => `Priced ${b.key.replace('<', 'under ').replace('+', ' and up').replace('–', ' to ')}`}
+          />
+        </>
+      )}
+    </Section>
+  );
+}
+
+/* Season balance ------------------------------------------------------- */
+
+const SEASON_COLOR: Record<Season, string> = {
+  spring: 'var(--tone-lime)',
+  summer: 'var(--tone-orange)',
+  fall: 'var(--tone-purple)',
+  winter: 'var(--tone-blue)',
+};
+
+function SeasonCard({ items }: { items: ClothingItem[] }) {
+  const { seasons, unset } = seasonBalance(items);
+  const any = seasons.some((s) => s.count > 0);
+  return (
+    <Section
+      title="Season balance"
+      note={unset > 0 ? `${unset} ${unset === 1 ? 'item has' : 'items have'} no season set. Items for several seasons count in each.` : 'Items for several seasons count in each.'}
+    >
+      {!any ? (
+        <Empty>Set seasons on your items to see how balanced your closet is.</Empty>
+      ) : (
+        <HBars
+          rows={seasons.map((s) => ({
+            key: s.season,
+            label: label(s.season),
+            value: s.count,
+            shown: String(s.count),
+            color: SEASON_COLOR[s.season],
+          }))}
+        />
+      )}
+    </Section>
+  );
+}
+
+/* Dormant items --------------------------------------------------------- */
+
+const DORMANT = [
+  { value: '90', label: '90d' },
+  { value: '180', label: '180d' },
+  { value: '365', label: '1y' },
+];
+
+function DormantCard({ items, now }: { items: ClothingItem[]; now: string }) {
+  const [days, setDays] = useState('180');
+  const [expanded, setExpanded] = useState(false);
+  const list = dormantItems(items, Number(days), now);
+  const shown = expanded ? list : list.slice(0, 5);
+  return (
+    <Section title={`Dormant (${list.length})`} note="Pieces you used to wear but haven’t lately. Good candidates to wear again, sell or donate.">
+      <Toggle
+        label="Not worn for"
+        options={DORMANT}
+        value={days}
+        onChange={(v) => {
+          setDays(v);
+          setExpanded(false);
+        }}
+      />
+      {list.length === 0 ? (
+        <Empty>Nothing has been idle that long. Nice rotation.</Empty>
+      ) : (
+        <ul className="item-rows">
+          {shown.map(({ item, since }) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              sub={`Last worn ${shortDate(lastWorn(item)!)}`}
+              value={formatSpan(since)}
+              tint="var(--tone-orange)"
+            />
+          ))}
+        </ul>
+      )}
+      {shown.length < list.length && (
+        <button type="button" className="btn btn-ghost show-all" onClick={() => setExpanded(true)}>
+          Show all {list.length}
+        </button>
+      )}
+    </Section>
+  );
+}
+
+/* Repeat rate ----------------------------------------------------------- */
+
+function RepeatCard({ items }: { items: ClothingItem[] }) {
+  const r = repeatRate(items);
+  return (
+    <Section title="Repeat rate" note="How long until a piece comes back after you last wore it.">
+      {r.total === 0 ? (
+        <Empty>Wear a piece more than once on logged days to see how often it comes back.</Empty>
+      ) : (
+        <>
+          <p className="muted small chart-note chart-top">
+            Typical gap: <strong className="strong">{r.medianGap} {r.medianGap === 1 ? 'day' : 'days'}</strong>
+          </p>
+          <ReadoutColumns
+            color="var(--tone-purple)"
+            initial={r.buckets.reduce((best, b) => (b.count > best.count ? b : best)).label}
+            bars={r.buckets.map((b) => ({ key: b.label, tick: b.label.replace(' d', ''), value: b.count }))}
+            big={(b) => `${Math.round((b.value / r.total) * 100)}% of re-wears`}
+            small={(b) => `Back within ${b.key}`.replace('Back within 31+ d', 'Back after 31+ d')}
+          />
+        </>
+      )}
+    </Section>
   );
 }
 
