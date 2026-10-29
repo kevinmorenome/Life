@@ -43,13 +43,15 @@ interface Props {
   /** The photo is being processed elsewhere (e.g. the review flow cutting out its background). */
   photoBusy?: boolean;
   review?: { onSave: () => void; onLater: () => void; onClose: () => void; onRemoved: () => void };
+  /** A new item that isn't saved yet: edits stay in memory, with Cancel / Save at the bottom and no wear history. */
+  draft?: { onSave: () => void; onCancel: () => void; canSave: boolean };
 }
 
 const TABS = ['about', 'style', 'stats'] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { about: 'About', style: 'Style', stats: 'Stats' };
 
-export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, review }: Props) {
+export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, review, draft }: Props) {
   const [tab, setTab] = useState<Tab>('about');
   // Changing the photo also removes its background, which takes a few seconds.
   const [photoStatus, setPhotoStatus] = useState<'busy' | 'kept' | null>(null);
@@ -62,6 +64,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
   const total = wearCount(item);
   const inOutfits = outfitsWithItem(item.id, outfits);
   const wornToday = item.wears.includes(today());
+  const tabs = draft ? TABS.filter((t) => t !== 'stats') : TABS;
 
   async function del() {
     if (confirm(`Delete “${item.name}”? This can’t be undone.`)) {
@@ -80,9 +83,11 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
               ✕
             </button>
           )}
-          <p className="hero-pill">
-            {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
-          </p>
+          {!draft && (
+            <p className="hero-pill">
+              {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
+            </p>
+          )}
         </div>
         <label className={`photo-edit${photoWorking ? ' is-busy' : ''}`} aria-label="Change photo">
           <ItemThumb item={item} large />
@@ -127,6 +132,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
             </button>
           </p>
         )}
+        {!draft && (
         <HeroActions
           leading={
             item.status === 'active' || item.status === 'storage' ? (
@@ -159,6 +165,7 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
             </a>
           )}
         </HeroActions>
+        )}
       </header>
 
       {inOutfits.length > 0 && (
@@ -177,8 +184,8 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
         </section>
       )}
 
-      <div className="seg" role="tablist" aria-label="Item sections">
-        {TABS.map((t) => (
+      <div className="seg" role="tablist" aria-label="Item sections" style={{ ['--tabs' as string]: tabs.length }}>
+        {tabs.map((t) => (
           <button
             key={t}
             role="tab"
@@ -199,6 +206,17 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
           <Stats item={item} outfits={inOutfits} onSave={onSave} />
         )}
       </div>
+
+      {draft && (
+        <div className="form-actions sticky-actions">
+          <button type="button" className="btn btn-ghost" onClick={draft.onCancel}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn-primary" disabled={!draft.canSave} onClick={draft.onSave}>
+            Save
+          </button>
+        </div>
+      )}
 
       {review && (
         <div className="form-actions sticky-actions">
@@ -384,7 +402,7 @@ function FieldTitle({ item, onSave }: SaveProps) {
     <>
       <h1>
         <button className="title-edit" onClick={() => setOpen(true)} aria-label="Rename item">
-          {item.name}
+          {item.name || <span className="field-empty">Add a name</span>}
         </button>
       </h1>
       {open && (

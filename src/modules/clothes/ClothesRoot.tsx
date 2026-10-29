@@ -5,6 +5,7 @@ import { ClothesList } from './ClothesList';
 import { DayView } from './DayView';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
+import { NewItem } from './NewItem';
 import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
@@ -58,7 +59,7 @@ export function ClothesRoot({ subroute, dayExtras }: { subroute: string[]; dayEx
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
-  if (first === 'new') return <ItemForm onSave={save} />;
+  if (first === 'new') return <NewItem items={items} outfits={outfits.items} onSave={save} />;
   if (first && first !== 'review') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
