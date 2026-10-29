@@ -3311,9 +3311,6 @@ progress {
   --glass-shadow: 0 8px 32px rgb(31 38 54 / 0.14), 0 1px 3px rgb(31 38 54 / 0.08);
   --glass-blur: blur(22px) saturate(180%);
   --glass-blur-heavy: blur(32px) saturate(190%);
-  --ambient-a: rgb(120 190 170 / 0.38);
-  --ambient-b: rgb(150 160 235 / 0.3);
-  --ambient-c: rgb(240 190 160 / 0.28);
   --border: rgb(60 60 67 / 0.14);
   --shadow: 0 4px 20px rgb(31 38 54 / 0.06);
   --radius: 20px;
@@ -3328,22 +3325,9 @@ progress {
     --glass-line: rgb(255 255 255 / 0.1);
     --glass-glow: rgb(255 255 255 / 0.08);
     --glass-shadow: 0 10px 36px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
-    --ambient-a: rgb(60 140 120 / 0.34);
-    --ambient-b: rgb(90 90 200 / 0.28);
-    --ambient-c: rgb(190 110 90 / 0.2);
-    --border: rgb(255 255 255 / 0.1);
+          --border: rgb(255 255 255 / 0.1);
     --shadow: none;
   }
-}
-
-/* Light that glass can bend: soft colour pools fixed behind everything. */
-body {
-  background:
-    radial-gradient(60vmax 50vmax at 8% -5%, var(--ambient-a), transparent 60%),
-    radial-gradient(55vmax 50vmax at 100% 25%, var(--ambient-b), transparent 60%),
-    radial-gradient(60vmax 50vmax at 20% 110%, var(--ambient-c), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
 }
 
 /* The glass material, shared by every floating control. */
@@ -3617,21 +3601,12 @@ a:focus-visible {
 }
 
 /* ───────────── Liquid Glass: the closet ─────────────
-   Pieces rest on glass plates over the ambient light, controls float above
+   Pieces float on the page, controls float above
    them, and the item page shows its photo on a lit glass stage. */
 :root {
-  --ambient:
-    radial-gradient(60vmax 50vmax at 8% -5%, var(--ambient-a), transparent 60%),
-    radial-gradient(55vmax 50vmax at 100% 25%, var(--ambient-b), transparent 60%),
-    radial-gradient(60vmax 50vmax at 20% 110%, var(--ambient-c), transparent 60%);
   --plate: linear-gradient(160deg, var(--glass-bg-strong), var(--glass-bg));
   --plate-shadow: 0 6px 22px rgb(31 38 54 / 0.09), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
 }
-.filter-page,
-.review-sheet {
-  background: var(--ambient), var(--bg);
-}
-
 /* Closet / Outfits switch: a glass track with a raised lens on the active side. */
 .seg {
   position: relative;
