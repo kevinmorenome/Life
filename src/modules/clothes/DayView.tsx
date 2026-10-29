@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { tripsOnDate } from '../packing/packing';
@@ -20,9 +21,11 @@ interface Props {
   onRemovePlan?: (id: string) => Promise<void>;
   onSaveItem: (i: ClothingItem) => Promise<void>;
   onSaveOutfit: (o: Outfit) => Promise<void>;
+  /** Sections from other modules, shown under the date. */
+  children?: ReactNode;
 }
 
-export function DayView({ date, items, outfits, trips = [], plans = [], onRemovePlan, onSaveItem, onSaveOutfit }: Props) {
+export function DayView({ date, items, outfits, trips = [], plans = [], onRemovePlan, onSaveItem, onSaveOutfit, children }: Props) {
   const wear = wearsByDay(items, outfits).get(date) ?? { outfits: [], items: [] };
   const isFuture = date > today();
   const title = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
@@ -64,18 +67,20 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
 
   return (
     <article className="detail">
-      <a className="back" href={href(`/clothes/calendar/${date.slice(0, 7)}`)}>
+      <a className="back" href={href('/calendar')}>
         ← Calendar
       </a>
       <div className="day-head">
-        <a className="btn btn-ghost" href={href(`/clothes/calendar/${addDays(date, -1)}`)} aria-label="Previous day">
+        <a className="btn btn-ghost" href={href(`/calendar/${addDays(date, -1)}`)} aria-label="Previous day">
           ‹
         </a>
         <h1>{title}</h1>
-        <a className="btn btn-ghost" href={href(`/clothes/calendar/${addDays(date, 1)}`)} aria-label="Next day">
+        <a className="btn btn-ghost" href={href(`/calendar/${addDays(date, 1)}`)} aria-label="Next day">
           ›
         </a>
       </div>
+
+      {children}
 
       {dayTrips.length > 0 && (
         <section>

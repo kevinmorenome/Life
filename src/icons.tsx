@@ -111,3 +111,25 @@ export const PalmIcon = () => (
     <path d="M12 20.5V11M12 11C12 7 9 4.5 5 5.5c2.5.3 4.5 2 5 4.5M12 11c0-4 3-6.5 7-5.5-2.5.3-4.5 2-5 4.5M12 11c-2.5-1-5.500-.5-7.500 1.500 2.500-.5 4.500.5 6 2.500M12 11c2.500-1 5.500-.5 7.500 1.500-2.500-.5-4.500.5-6 2.500" />
   </Icon>
 );
+
+export const MoreIcon = () => (
+  <Icon>
+    <circle cx="5.5" cy="12" r="1.2" />
+    <circle cx="12" cy="12" r="1.2" />
+    <circle cx="18.5" cy="12" r="1.2" />
+  </Icon>
+);
+
+export const ZoomInIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
+  </Icon>
+);
+
+export const ZoomOutIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+  </Icon>
+);

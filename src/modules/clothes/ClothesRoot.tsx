@@ -1,7 +1,7 @@
+import type { ReactNode } from 'react';
 import { useCollection } from '../../lib/useCollection';
 import { CalendarView } from './CalendarView';
 import { ClothesList } from './ClothesList';
-import { ClothesStatsView } from './ClothesStats';
 import { DayView } from './DayView';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
@@ -15,7 +15,8 @@ import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
 
-export function ClothesRoot({ subroute }: { subroute: string[] }) {
+/** `dayExtras` is what other modules add to a day screen (see CalendarLayer). */
+export function ClothesRoot({ subroute, dayExtras }: { subroute: string[]; dayExtras?: ReactNode }) {
   const clothes = useCollection<ClothingItem>('clothes');
   const outfits = useCollection<Outfit>('outfits');
   const trips = useCollection<Trip>('trips');
@@ -47,7 +48,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
       if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
       if (third === 'new-outfit') return <NewOutfitForDay date={second} {...props} />;
       if (third === 'items') return <LogItemsPicker date={second} {...props} />;
-      return <DayView date={second} {...props} />;
+      return <DayView date={second} {...props}>{dayExtras}</DayView>;
     }
     const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
     return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} plans={plans.items} />;
@@ -58,7 +59,6 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   }
 
   if (first === 'new') return <ItemForm onSave={save} />;
-  if (first === 'stats') return <ClothesStatsView items={items} tab={second} />;
   if (first && first !== 'review') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;

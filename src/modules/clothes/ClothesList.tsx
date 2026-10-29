@@ -3,6 +3,7 @@ import { today } from '../../lib/format';
 import { EyeIcon, EyeOffIcon } from '../../icons';
 import { href } from '../../lib/router';
 import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
+import { ClosetTabs } from './ClosetTabs';
 import { FilterSheet } from './FilterSheet';
 import { withStatusFor } from './bulk';
 import { CheckIcon, CloseIcon, HeartIcon, SlidersIcon, SparkleIcon } from './icons';
@@ -52,6 +53,7 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
 
   return (
     <>
+      <ClosetTabs active="closet" />
       {toReview > 0 && (
         <a className="card today-prompt" href={href('/clothes/review')}>
           <span>{toReview === 1 ? '1 new item to review' : `${toReview} new items to review`}</span>

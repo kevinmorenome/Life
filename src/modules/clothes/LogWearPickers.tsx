@@ -20,7 +20,7 @@ interface Props {
   onSavePlan?: (p: Plan) => Promise<void>;
 }
 
-const back = (date: string) => navigate(`/clothes/calendar/${date}`);
+const back = (date: string) => navigate(`/calendar/${date}`);
 
 /** Pick one outfit to log on `date` (also logs its pieces). */
 export function LogOutfitPicker({ date, items, outfits, onSaveItem, onSaveOutfit, onSavePlan }: Props) {
