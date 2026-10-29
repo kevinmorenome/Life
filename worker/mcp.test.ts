@@ -10,7 +10,7 @@ function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
-    put: async (s, id, record) => void data[s].set(id, { id, ...record }),
+    put: async (s, id, record) => void data[s as StoreName].set(id, { id, ...record }),
     photos: async (ids) =>
       new Map(ids.flatMap((id) => (typeof data.clothes.get(id)?.photo === 'string' ? [[id, data.clothes.get(id)!.photo as string] as const] : []))),
   };

@@ -24,7 +24,7 @@ async function digest(s: string): Promise<Uint8Array> {
 }
 
 /** Constant-time comparison (hashing first so lengths don't leak). */
-async function tokenMatches(given: string, expected: string): Promise<boolean> {
+export async function tokenMatches(given: string, expected: string): Promise<boolean> {
   const [a, b] = await Promise.all([digest(given), digest(expected)]);
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
