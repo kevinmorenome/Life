@@ -3932,3 +3932,79 @@ a:focus-visible {
     transition: none;
   }
 }
+
+/* ───────────── Liquid Glass: the rule ─────────────
+   GLASS is the control layer that floats above the page: dock, ＋, buttons, search, pills and chips,
+   segmented switches, tappable field values, menus, sheets, badges on photos, sticky action bars.
+   CONTENT is flat on the page: the hero, photos, grids, sections, stat tiles, settings groups and
+   lists. They get no plate, border or blur; hairlines and spacing separate them. */
+.card:not(.today-prompt):not(.pack-progress) {
+  padding: 1rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  margin-bottom: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.card.tile,
+.card.insight,
+li.card {
+  border-bottom: 0;
+}
+.item-detail .card,
+.item-detail .total-use {
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  background: none;
+  box-shadow: none;
+}
+.module-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Item and outfit pages: the photo floats on the page. */
+.hero {
+  margin: 0 0 1rem;
+  padding: 0.25rem 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.hero-pill {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+.hero-pill .muted {
+  color: inherit;
+}
+.use-with-card .board {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.item-detail .chip-static {
+  box-shadow: none;
+}
+
+/* Values you can tap are controls, so they are glass capsules. */
+.field-pill {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.field-pill:active {
+  transform: scale(0.97);
+}
