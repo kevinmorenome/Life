@@ -119,3 +119,17 @@ export const MoreIcon = () => (
     <circle cx="18.5" cy="12" r="1.2" />
   </Icon>
 );
+
+export const ZoomInIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
+  </Icon>
+);
+
+export const ZoomOutIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+  </Icon>
+);

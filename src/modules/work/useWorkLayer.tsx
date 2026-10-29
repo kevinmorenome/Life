@@ -21,14 +21,15 @@ export function useWorkCalendarLayer(): CalendarLayer {
   };
 
   return {
-    badge(date) {
-      const status = infos.get(date)?.status;
-      if (!status) return null;
-      return (
-        <span className={`day-badge badge-${status}`} role="img" aria-label={STATUS_LABELS[status]}>
-          {STATUS_ICONS[status]}
-        </span>
-      );
+    mark(date) {
+      const info = infos.get(date);
+      if (!info?.status) return null;
+      return {
+        tone: info.status,
+        icon: STATUS_ICONS[info.status],
+        label: STATUS_LABELS[info.status],
+        detail: info.arrive || info.leave ? `${info.arrive ?? '?'} – ${info.leave ?? '?'}` : undefined,
+      };
     },
     header(month) {
       const now = today();

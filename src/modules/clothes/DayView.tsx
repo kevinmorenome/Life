@@ -67,7 +67,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
 
   return (
     <article className="detail">
-      <a className="back" href={href(`/calendar/${date.slice(0, 7)}`)}>
+      <a className="back" href={href('/calendar')}>
         ← Calendar
       </a>
       <div className="day-head">

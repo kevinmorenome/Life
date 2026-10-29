@@ -2849,31 +2849,6 @@ progress {
 }
 
 /* Work (office / home) */
-.work-cal .calendar-day.work-office {
-  background: var(--accent);
-}
-.work-cal .calendar-day.work-office .day-num {
-  color: var(--accent-text);
-}
-.work-cal .calendar-day.work-home {
-  background: var(--accent-soft);
-}
-.work-cal .calendar-day.work-off {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--border);
-  color: var(--muted);
-}
-/* Today gets a ring, since a fill would read as an office day. */
-.work-cal .calendar-day.today {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.work-cal .calendar-day.today:not(.work-office):not(.work-home) {
-  background: none;
-}
-.work-cal .calendar-day.today:not(.work-office) .day-num {
-  color: var(--text);
-}
 .work-legend {
   display: flex;
   justify-content: center;
@@ -3017,11 +2992,185 @@ progress {
   color: var(--danger);
 }
 
-/* Shared calendar: office/home badge on a day, and the work section of the day screen */
+/* Shared calendar: continuous, zoomable weeks */
+.container.cal-full {
+  max-width: none;
+  padding: 0;
+}
+.cal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cal-head {
+  flex: none;
+  padding: 0.25rem 12px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.cal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cal-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.cal-title small {
+  margin-left: 0.4rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.cal-tools {
+  display: flex;
+  gap: 0.25rem;
+}
+.cal-tools .icon-btn:disabled {
+  opacity: 0.35;
+}
+.cal-head .work-target {
+  margin: 0.1rem 0 0.35rem;
+}
+.cal-head .work-counts {
+  display: none;
+}
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0.2rem 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+}
+.cal-scroll {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 0 8px 4rem;
+}
+.cal-month {
+  padding-top: 0.9rem;
+  padding-bottom: 0.15rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.cal-month.current {
+  color: var(--accent);
+}
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid var(--border);
+}
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  min-height: 52px;
+  padding: 4px 1px;
+  color: var(--text);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.cal-day:active {
+  background: var(--accent-soft);
+}
+.cal-num {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.cal-day.today .cal-num {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.cal-compact .cal-day {
+  min-height: 44px;
+}
+.cal-dots {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.dot-outfit {
+  background: var(--text);
+}
+.dot-outfit.planned {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+.dot-trip {
+  border-radius: 2px;
+  background: var(--accent);
+}
+.dot.mark-office {
+  background: var(--accent);
+}
+.dot.mark-home {
+  background: var(--muted);
+}
+.dot.mark-off {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+/* Standard: a photo of what was worn, with the day number on it and small badges in the corners */
+.cal-standard .cal-day {
+  min-height: 62px;
+  justify-content: flex-end;
+}
+.cal-standard .cal-num {
+  position: relative;
+  min-width: 0;
+  height: 18px;
+  padding: 0 0.35rem;
+  background: var(--surface);
+  font-size: 0.72rem;
+  line-height: 18px;
+}
+.cal-standard .cal-day.today .cal-num {
+  background: var(--accent);
+}
+.cal-standard .cal-day .day-bubble {
+  inset: 3px 6px 14px;
+}
+.cal-standard .cal-day:not(:has(.day-bubble)) {
+  justify-content: center;
+}
+.cal-standard .cal-day:not(:has(.day-bubble)) .cal-num {
+  height: 26px;
+  min-width: 26px;
+  background: none;
+  font-size: 0.95rem;
+  line-height: 26px;
+}
+.cal-standard .cal-day.today:not(:has(.day-bubble)) .cal-num {
+  background: var(--accent);
+}
 .day-badge {
   position: absolute;
-  top: 1px;
-  left: 1px;
+  top: 2px;
+  left: 2px;
   display: grid;
   place-items: center;
   width: 18px;
@@ -3029,19 +3178,116 @@ progress {
   border-radius: 50%;
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--border);
-  color: var(--accent);
   pointer-events: none;
 }
 .day-badge svg {
   width: 12px;
   height: 12px;
 }
-.day-badge.badge-home {
+.day-badge.mark-office {
+  color: var(--accent);
+}
+.day-badge.mark-home,
+.day-badge.mark-off {
   color: var(--muted);
 }
-.day-badge.badge-off {
+.trip-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+/* Detail: labelled pills, like events */
+.cal-detail .cal-day {
+  align-items: stretch;
+  min-height: 118px;
+  padding: 4px 2px;
+}
+.cal-detail .cal-num {
+  align-self: center;
+  margin-bottom: 3px;
+}
+.cal-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 1px 4px;
+  border-radius: 5px;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  background: var(--photo-bg);
+  color: var(--text);
+}
+.pill-icon svg {
+  display: block;
+  width: 11px;
+  height: 11px;
+}
+.pill.mark-office {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.pill.mark-home {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.pill.mark-off {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--muted);
-  background: var(--bg);
+}
+.pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill-outfit .day-bubble {
+  position: static;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+.pill-outfit .day-bubble .thumb {
+  width: 100%;
+  height: 100%;
+  font-size: 0.6rem;
+}
+.pill-outfit .day-bubble.pieces-2 .thumb {
+  height: 50%;
+}
+.pill-outfit.planned {
+  opacity: 0.6;
+}
+.pill-trip {
+  background: var(--accent-soft);
+}
+.cal-today {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
+  cursor: pointer;
 }
 .work-day-section {
   margin: 0.5rem 0 1rem;

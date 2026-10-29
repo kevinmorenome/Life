@@ -12,9 +12,19 @@ export interface ModuleAction {
  * What a module adds to the shared calendar. The calendar is where modules meet:
  * each one can mark days, show a summary above the month, and add a section to the day screen.
  */
+export interface DayMark {
+  /** Colour family: `mark-<tone>` classes in styles.css. */
+  tone: string;
+  icon: ReactNode;
+  /** Short text, e.g. "Office". */
+  label: string;
+  /** Extra line when zoomed in, e.g. "09:10 – 18:05". */
+  detail?: string;
+}
+
 export interface CalendarLayer {
-  /** Small mark on a day of the month grid. */
-  badge?(date: string): ReactNode;
+  /** How the day is marked: a dot when zoomed out, an icon badge by default, a labelled pill when zoomed in. */
+  mark?(date: string): DayMark | null;
   /** Shown above the month grid; `month` is YYYY-MM. */
   header?(month: string): ReactNode;
   /** Section on the day screen. */

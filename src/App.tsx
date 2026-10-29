@@ -46,6 +46,8 @@ export function App() {
   else page = <p className="muted">Page not found.</p>;
 
   const showNav = !(mod && mod.hideNav?.(rest));
+  // The month calendar fills the screen and scrolls inside itself.
+  const fullCalendar = !redirect && (!section || section === 'calendar') && !DATE.test(rest[0] ?? '');
   const title = showNav ? pageTitle(route) : undefined;
 
   return (
@@ -73,7 +75,7 @@ export function App() {
           <GearIcon />
         </a>
       </header>
-      <main className={`container${showNav ? ' with-nav' : ''}`}>{page}</main>
+      <main className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
       {showNav && <BottomNav route={route} />}
     </SettingsProvider>
   );
