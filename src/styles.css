@@ -3849,3 +3849,45 @@ a:focus-visible {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* The dock shrinks while you scroll down and grows back when you scroll up. */
+.bottom-nav {
+  transition: max-width 0.35s cubic-bezier(0.3, 1.2, 0.4, 1), padding 0.35s ease, border-radius 0.35s ease, bottom 0.35s ease;
+}
+.bottom-nav .tab,
+.bottom-nav .tab svg,
+.bottom-nav .tab-plus,
+.bottom-nav .tab-plus svg {
+  transition: min-height 0.35s ease, width 0.35s ease, height 0.35s ease;
+}
+.bottom-nav-compact {
+  max-width: 270px;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+  bottom: calc(6px + env(safe-area-inset-bottom));
+  border-radius: 28px;
+}
+.bottom-nav-compact .tab {
+  min-height: 38px;
+}
+.bottom-nav-compact .tab svg {
+  width: 21px;
+  height: 21px;
+}
+.bottom-nav-compact .tab-plus {
+  width: 38px;
+  height: 38px;
+}
+.bottom-nav-compact .tab-plus svg {
+  width: 20px;
+  height: 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
+  .bottom-nav .tab,
+  .bottom-nav .tab svg,
+  .bottom-nav .tab-plus,
+  .bottom-nav .tab-plus svg {
+    transition: none;
+  }
+}
