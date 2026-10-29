@@ -3719,11 +3719,11 @@ a:focus-visible {
   opacity: 0.6;
 }
 
-/* Item grid: each piece sits on its own plate of glass. */
+/* Item grid: pieces float on the page, lifted by a soft contact shadow; glass stays on the controls. */
 .closet-grid,
 .outfit-cards {
-  gap: 10px;
-  margin: 0;
+  gap: 6px 4px;
+  margin: 0 -8px;
   border: 0;
   background: none;
   overflow: visible;
@@ -3732,13 +3732,10 @@ a:focus-visible {
 .outfit-cards li {
   position: relative;
   min-width: 0;
-  border: 1px solid var(--glass-edge);
+  border: 0;
   border-radius: 24px;
-  background: var(--plate);
-  box-shadow: var(--plate-shadow);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  overflow: hidden;
+  background: none;
+  box-shadow: none;
 }
 .outfit-cards li {
   padding: 0.75rem;
@@ -3748,7 +3745,7 @@ a:focus-visible {
 }
 .closet-tile .thumb {
   border-radius: 18px;
-  filter: drop-shadow(0 6px 8px rgb(31 38 54 / 0.18));
+  filter: drop-shadow(0 10px 10px rgb(31 38 54 / 0.2));
 }
 .tile-name,
 .tile-meta {
@@ -3758,13 +3755,13 @@ a:focus-visible {
   filter: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .closet-grid li,
-  .outfit-cards li {
-    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.2s ease;
+  .closet-tile,
+  .outfit-card {
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
-  .closet-grid li:active,
-  .outfit-cards li:active {
-    transform: scale(0.97);
+  .closet-tile:active,
+  .outfit-card:active {
+    transform: scale(0.96);
   }
 }
 .closet-tile:active .thumb {
@@ -3806,9 +3803,13 @@ a:focus-visible {
 .tile-select[aria-pressed='true'] .thumb {
   outline: 0;
 }
+/* A selected piece gets a glass lens around it. */
 .closet-grid li:has(.tile-select[aria-pressed='true']) {
-  border-color: var(--accent);
+  border: 1px solid var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 14%, var(--glass-bg));
   box-shadow: 0 0 0 2px var(--accent), var(--plate-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 .tile-select[aria-pressed='true'] .select-mark {
   border-color: var(--glass-rim);
@@ -3886,4 +3887,13 @@ a:focus-visible {
 .review-handle {
   background: var(--text);
   opacity: 0.25;
+}
+.tile-select {
+  min-width: 0;
+  overflow: hidden;
+}
+.tile-select .tile-name,
+.tile-select .tile-meta {
+  display: block;
+  max-width: 100%;
 }
