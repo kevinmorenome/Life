@@ -6,7 +6,7 @@ import type { CalendarLayer } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
-import { monthOfWeek, pinchStep, stepZoom, weekDays, weekStarts, ZOOMS, type Zoom } from './calendarZoom';
+import { MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
 import { plannedByDay } from './plans';
@@ -25,72 +25,104 @@ interface Props {
 
 // Kept at module level so opening a day and coming back lands where you were (the view unmounts).
 const ZOOM_KEY = 'life.calendarZoom';
-let savedZoom: Zoom | undefined;
+let savedLevel: number | undefined;
 let savedScroll: number | undefined;
 
-function loadZoom(): Zoom {
-  if (savedZoom) return savedZoom;
+function loadLevel(): number {
+  if (savedLevel !== undefined) return savedLevel;
   try {
-    const v = localStorage.getItem(ZOOM_KEY);
-    if (ZOOMS.some((z) => z === v)) return v as Zoom;
+    const i = ZOOMS.findIndex((z) => z === localStorage.getItem(ZOOM_KEY));
+    if (i >= 0) return i;
   } catch {
     // Storage can be blocked; the default is fine.
   }
-  return 'standard';
+  return 1;
 }
 
 export function CalendarView({ month, items, outfits, trips = [], plans = [], layers = [] }: Props) {
   const now = today();
   const nowMonth = now.slice(0, 7);
-  const [zoom, setZoomState] = useState<Zoom>(loadZoom);
+  const [level, setLevel] = useState(loadLevel);
   const [visibleMonth, setVisibleMonth] = useState(month ?? nowMonth);
   const wearDays = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
   const planned = useMemo(() => plannedByDay(plans, outfits), [plans, outfits]);
 
-  // From two years back (your history) to a year ahead, widened to include a month asked for.
+  // A year either side of today, widened to include a month asked for.
   const weeks = useMemo(
-    () => weekStarts(month && month < addMonths(nowMonth, -24) ? month : addMonths(nowMonth, -24), month && month > addMonths(nowMonth, 12) ? addMonths(month, 3) : addMonths(nowMonth, 12)),
+    () => weekStarts(month && month < addMonths(nowMonth, -12) ? month : addMonths(nowMonth, -12), month && month > addMonths(nowMonth, 12) ? addMonths(month, 3) : addMonths(nowMonth, 12)),
     [month, nowMonth],
   );
 
   const wrapRef = useRef<HTMLDivElement>(null);
-  const headRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const anchor = useRef<{ week: string; offset: number } | null>(null);
+  // The live zoom (0 compact … 2 detail). It only lives in the --z CSS variable and this ref while the
+  // fingers move: re-rendering every cell on each touch event would stutter.
+  const zRef = useRef(level);
+  const focus = useRef<{ week: string; frac: number; y: number } | null>(null);
+  const animation = useRef(0);
 
   const rowOf = (week: string) => scrollRef.current?.querySelector<HTMLElement>(`[data-week="${week}"]`) ?? null;
   const labelOf = (week: string) => scrollRef.current?.querySelector<HTMLElement>(`[data-label="${week}"]`) ?? null;
 
-  /** The first week row (and how far below the top it sits) that is at least partly in view. */
-  const firstVisible = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return null;
-    for (const week of weeks) {
-      const row = rowOf(week);
-      if (row && row.offsetTop + row.offsetHeight > el.scrollTop) return { week, offset: row.offsetTop - el.scrollTop };
-    }
-    return null;
+  /** Remembers which spot of which week is at `y` (pixels below the top of the scroll area), so zooming keeps it there. */
+  const pin = useCallback(
+    (y: number) => {
+      const el = scrollRef.current;
+      focus.current = null;
+      if (!el) return;
+      for (const week of weeks) {
+        const row = rowOf(week);
+        if (row && row.offsetTop + row.offsetHeight > el.scrollTop + y) {
+          focus.current = { week, frac: (el.scrollTop + y - row.offsetTop) / row.offsetHeight, y };
+          return;
+        }
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weeks]);
+    [weeks],
+  );
 
-  const setZoom = useCallback(
-    (dir: 1 | -1) => {
-      setZoomState((z) => {
-        const next = stepZoom(z, dir);
-        if (next !== z) {
-          anchor.current = firstVisible();
-          savedZoom = next;
+  const setZ = useCallback((z: number) => {
+    zRef.current = z;
+    wrapRef.current?.style.setProperty('--z', String(z));
+    const f = focus.current;
+    const el = scrollRef.current;
+    const row = f && rowOf(f.week);
+    if (f && row && el) el.scrollTop = row.offsetTop + f.frac * row.offsetHeight - f.y;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Eases to a level, like the system calendar does when you let go. */
+  const settle = useCallback(
+    (target: number) => {
+      cancelAnimationFrame(animation.current);
+      const from = zRef.current;
+      const began = performance.now();
+      const step = (t: number) => {
+        const k = Math.min(1, (t - began) / 240);
+        setZ(from + (target - from) * (1 - (1 - k) ** 3));
+        if (k < 1) animation.current = requestAnimationFrame(step);
+        else {
+          focus.current = null;
+          setLevel(target);
+          savedLevel = target;
           try {
-            localStorage.setItem(ZOOM_KEY, next);
+            localStorage.setItem(ZOOM_KEY, ZOOMS[target]);
           } catch {
             // Not remembered; fine.
           }
         }
-        return next;
-      });
+      };
+      animation.current = requestAnimationFrame(step);
     },
-    [firstVisible],
+    [setZ],
   );
+
+  const stepLevel = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    pin(el ? el.clientHeight / 3 : 0);
+    settle(nearestLevel(zRef.current + dir));
+  };
 
   // The calendar fills the space between the top bar and the bottom bar and scrolls inside it.
   useLayoutEffect(() => {
@@ -102,20 +134,10 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
       wrap.style.height = `${window.innerHeight - top - (nav?.offsetHeight ?? 0)}px`;
     };
     fit();
+    wrapRef.current?.style.setProperty('--z', String(zRef.current));
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
   }, []);
-
-  // Keep the same week in view when the rows change height.
-  useLayoutEffect(() => {
-    const a = anchor.current;
-    const el = scrollRef.current;
-    anchor.current = null;
-    if (!a || !el) return;
-    const row = rowOf(a.week);
-    if (row) el.scrollTop = row.offsetTop - a.offset;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
 
   const scrollToDate = useCallback((date: string, smooth = false) => {
     const el = scrollRef.current;
@@ -160,8 +182,13 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
     const update = () => {
       frame = 0;
       savedScroll = el.scrollTop;
-      const first = firstVisible();
-      if (first) setVisibleMonth(monthOfWeek(first.week));
+      for (const week of weeks) {
+        const row = rowOf(week);
+        if (row && row.offsetTop + row.offsetHeight > el.scrollTop) {
+          setVisibleMonth(monthOfWeek(week));
+          return;
+        }
+      }
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -172,38 +199,45 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
       el.removeEventListener('scroll', onScroll);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [firstVisible, zoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeks]);
 
-  // Pinch to zoom: two fingers (or ctrl + wheel / trackpad pinch) change how much each day shows.
+  // Pinch to zoom, tracking the fingers; the spot between them stays put. Ctrl + wheel (a trackpad pinch) does the same.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let start = 0;
+    let startDistance = 0;
+    let startZoom = 0;
     const distance = (e: TouchEvent) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     const onStart = (e: TouchEvent) => {
-      start = e.touches.length === 2 ? distance(e) : 0;
+      if (e.touches.length !== 2) return;
+      cancelAnimationFrame(animation.current);
+      startDistance = distance(e);
+      startZoom = zRef.current;
+      pin((e.touches[0].clientY + e.touches[1].clientY) / 2 - el.getBoundingClientRect().top);
     };
     const onMove = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !start) return;
+      if (e.touches.length !== 2 || !startDistance) return;
       e.preventDefault();
-      const dir = pinchStep(start, distance(e));
-      if (dir) {
-        setZoom(dir);
-        start = distance(e);
-      }
+      setZ(pinchZoom(startZoom, startDistance, distance(e)));
     };
-    const onEnd = () => {
-      start = 0;
+    const onEnd = (e: TouchEvent) => {
+      if (!startDistance || e.touches.length >= 2) return;
+      startDistance = 0;
+      settle(nearestLevel(zRef.current));
     };
-    let wheel = 0;
+    let wheelTimer = 0;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      wheel += e.deltaY;
-      if (Math.abs(wheel) > 40) {
-        setZoom(wheel < 0 ? 1 : -1);
-        wheel = 0;
-      }
+      cancelAnimationFrame(animation.current);
+      if (!wheelTimer) pin(e.clientY - el.getBoundingClientRect().top);
+      setZ(Math.min(MAX_ZOOM, Math.max(0, zRef.current - e.deltaY * 0.01)));
+      clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(() => {
+        wheelTimer = 0;
+        settle(nearestLevel(zRef.current));
+      }, 150);
     };
     const block = (e: Event) => e.preventDefault(); // Safari's own page pinch
     el.addEventListener('touchstart', onStart, { passive: true });
@@ -219,8 +253,10 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
       el.removeEventListener('touchcancel', onEnd);
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('gesturestart', block);
+      cancelAnimationFrame(animation.current);
+      clearTimeout(wheelTimer);
     };
-  }, [setZoom]);
+  }, [pin, setZ, settle]);
 
   // Days with nothing on them open a floating menu instead of a blank day screen.
   const [menu, setMenu] = useState<{ date: string; top: number; left: number } | null>(null);
@@ -257,18 +293,18 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   );
 
   return (
-    <div className={`cal cal-${zoom}`} ref={wrapRef}>
-      <div className="cal-head" ref={headRef}>
+    <div className="cal" ref={wrapRef}>
+      <div className="cal-head">
         <div className="cal-title-row">
           <h2 className="cal-title">
             {monthName}
             {String(year) !== now.slice(0, 4) && <small>{year}</small>}
           </h2>
           <div className="cal-tools">
-            <button className="icon-btn" aria-label="Zoom out" disabled={zoom === ZOOMS[0]} onClick={() => setZoom(-1)}>
+            <button className="icon-btn" aria-label="Zoom out" disabled={level === 0} onClick={() => stepLevel(-1)}>
               <ZoomOutIcon />
             </button>
-            <button className="icon-btn" aria-label="Zoom in" disabled={zoom === ZOOMS[ZOOMS.length - 1]} onClick={() => setZoom(1)}>
+            <button className="icon-btn" aria-label="Zoom in" disabled={level === MAX_ZOOM} onClick={() => stepLevel(1)}>
               <ZoomInIcon />
             </button>
           </div>
@@ -301,7 +337,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
                   <DayCell
                     key={date}
                     date={date}
-                    zoom={zoom}
                     isToday={date === now}
                     wear={wearDays.get(date)}
                     planned={planned.get(date)}
@@ -342,7 +377,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
 
 interface CellProps {
   date: string;
-  zoom: Zoom;
   isToday: boolean;
   wear?: DayWear;
   planned?: Outfit[];
@@ -352,76 +386,68 @@ interface CellProps {
   onClick: (e: MouseEvent<HTMLAnchorElement>) => void;
 }
 
-function DayCell({ date, zoom, isToday, wear, planned, trips, layers, items, onClick }: CellProps) {
+/**
+ * A day shows all three zoom levels at once, stacked: --z (set on the calendar) fades dots into a photo with
+ * badges and then into labelled pills, so zooming can run continuously.
+ */
+function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }: CellProps) {
   const marks = layers.flatMap((l) => {
     const mark = l.mark?.(date);
     return mark ? [mark] : [];
   });
-  const num = <span className="cal-num">{Number(date.slice(8))}</span>;
-  const cls = `cal-day${isToday ? ' today' : ''}${date.endsWith('-01') ? ' first' : ''}`;
-  const link = (children: React.ReactNode) => (
-    <a role="gridcell" className={cls} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
-      {children}
-    </a>
-  );
-
-  if (zoom === 'compact') {
-    return link(
-      <>
-        {num}
-        <span className="cal-dots">
-          {(wear || planned?.length) && <i className={`dot dot-outfit${wear ? '' : ' planned'}`} />}
-          {marks.map((m, i) => (
-            <i key={i} className={`dot mark-${m.tone}`} title={m.label} />
-          ))}
-          {trips.length > 0 && <i className="dot dot-trip" />}
-        </span>
-      </>,
-    );
-  }
-
-  if (zoom === 'standard') {
-    return link(
-      <>
-        <DayBubble wear={wear} planned={planned} items={items} />
-        {num}
-        {marks.map((m, i) => (
-          <span key={i} className={`day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
-            {m.icon}
-          </span>
-        ))}
-        {trips.length > 0 && <i className="trip-dot" />}
-      </>,
-    );
-  }
-
+  const hasOutfit = !!wear || !!planned?.length;
   const outfit = wear?.outfits[0];
   const lone = wear?.items[0];
   const extra = wear ? wear.outfits.length + wear.items.length - 1 : 0;
-  return link(
-    <>
-      {num}
-      <span className="cal-pills">
-        {marks.map((m, i) => (
-          <span key={i} className={`pill mark-${m.tone}`}>
-            <span className="pill-icon">{m.icon}</span>
-            {m.detail ?? m.label}
+  return (
+    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+      <span className="cal-num">{Number(date.slice(8))}</span>
+      {(hasOutfit || marks.length > 0 || trips.length > 0) && (
+        <>
+          <span className="cal-layer cal-dots">
+            {hasOutfit && <i className={`dot dot-outfit${wear ? '' : ' planned'}`} />}
+            {marks.map((m, i) => (
+              <i key={i} className={`dot mark-${m.tone}`} title={m.label} />
+            ))}
+            {trips.length > 0 && <i className="dot dot-trip" />}
           </span>
-        ))}
-        {wear && (
-          <span className="pill pill-outfit">
-            <DayBubble wear={wear} items={items} />
-            <span className="pill-text">{outfit ? outfitName(outfit) : lone?.name}{extra > 0 && ` +${extra}`}</span>
+          <span className="cal-layer cal-photo">
+            <DayBubble wear={wear} planned={planned} items={items} />
           </span>
-        )}
-        {!wear && planned && planned.length > 0 && <span className="pill pill-outfit planned">{outfitName(planned[0])}</span>}
-        {trips.map((t) => (
-          <span key={t.id} className="pill pill-trip">
-            🧳 {t.name}
+          <span className={`cal-layer cal-badges${hasOutfit ? ' with-photo' : ''}`}>
+            {marks.map((m, i) => (
+              <span key={i} className={`day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
+                {m.icon}
+              </span>
+            ))}
           </span>
-        ))}
-      </span>
-    </>,
+          {trips.length > 0 && <i className="cal-layer cal-trip" />}
+          <span className="cal-layer cal-pills">
+            {marks.map((m, i) => (
+              <span key={i} className={`pill mark-${m.tone}`}>
+                <span className="pill-icon">{m.icon}</span>
+                {m.detail ?? m.label}
+              </span>
+            ))}
+            {wear && (
+              <span className="pill pill-outfit">
+                <DayBubble wear={wear} items={items} />
+                <span className="pill-text">
+                  {outfit ? outfitName(outfit) : lone?.name}
+                  {extra > 0 && ` +${extra}`}
+                </span>
+              </span>
+            )}
+            {!wear && planned && planned.length > 0 && <span className="pill pill-outfit planned">{outfitName(planned[0])}</span>}
+            {trips.map((t) => (
+              <span key={t.id} className="pill pill-trip">
+                🧳 {t.name}
+              </span>
+            ))}
+          </span>
+        </>
+      )}
+    </a>
   );
 }
 

@@ -1,22 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { monthOfWeek, mondayOf, pinchStep, stepZoom, weekDays, weekStarts } from './calendarZoom';
+import { monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
 
-describe('stepZoom', () => {
-  it('moves one level and stops at the ends', () => {
-    expect(stepZoom('standard', 1)).toBe('detail');
-    expect(stepZoom('standard', -1)).toBe('compact');
-    expect(stepZoom('detail', 1)).toBe('detail');
-    expect(stepZoom('compact', -1)).toBe('compact');
+describe('pinchZoom', () => {
+  it('follows the fingers continuously and stays within the levels', () => {
+    expect(pinchZoom(1, 100, 100)).toBe(1);
+    expect(pinchZoom(1, 100, 190)).toBeCloseTo(2, 5);
+    expect(pinchZoom(1, 100, 100 / 1.9)).toBeCloseTo(0, 5);
+    expect(pinchZoom(1, 100, 140)).toBeGreaterThan(1);
+    expect(pinchZoom(1, 100, 140)).toBeLessThan(2);
+    expect(pinchZoom(1, 100, 1000)).toBe(2);
+    expect(pinchZoom(1, 100, 1)).toBe(0);
+  });
+
+  it('ignores a pinch with no start distance', () => {
+    expect(pinchZoom(1, 0, 90)).toBe(1);
   });
 });
 
-describe('pinchStep', () => {
-  it('needs a clear spread or pinch', () => {
-    expect(pinchStep(100, 130)).toBe(1);
-    expect(pinchStep(100, 70)).toBe(-1);
-    expect(pinchStep(100, 110)).toBe(0);
-    expect(pinchStep(100, 90)).toBe(0);
-    expect(pinchStep(0, 90)).toBe(0);
+describe('nearestLevel', () => {
+  it('settles on the closest level', () => {
+    expect(nearestLevel(0.4)).toBe(0);
+    expect(nearestLevel(0.6)).toBe(1);
+    expect(nearestLevel(1.4)).toBe(1);
+    expect(nearestLevel(1.6)).toBe(2);
+    expect(nearestLevel(5)).toBe(2);
+    expect(nearestLevel(-1)).toBe(0);
   });
 });
 

@@ -4,17 +4,22 @@ import { addDays, addMonths } from './calendar';
 export const ZOOMS = ['compact', 'standard', 'detail'] as const;
 export type Zoom = (typeof ZOOMS)[number];
 
-/** One level in (+1) or out (-1), stopping at the ends. */
-export function stepZoom(zoom: Zoom, dir: 1 | -1): Zoom {
-  const i = ZOOMS.indexOf(zoom) + dir;
-  return ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, i))];
+/** A continuous zoom runs from 0 (compact) to 2 (detail); the levels sit on the whole numbers. */
+export const MAX_ZOOM = ZOOMS.length - 1;
+
+/** How far the fingers must spread to move one level. */
+const SPREAD_PER_LEVEL = 1.9;
+
+/** Zoom while pinching: `start` is the zoom when the fingers went down, the distances are between the two fingers. */
+export function pinchZoom(start: number, startDistance: number, distance: number): number {
+  if (startDistance <= 0 || distance <= 0) return start;
+  const z = start + Math.log(distance / startDistance) / Math.log(SPREAD_PER_LEVEL);
+  return Math.min(MAX_ZOOM, Math.max(0, z));
 }
 
-/** Fingers spread past 1.25× their start distance zoom in, pinched under 0.8× zoom out. */
-export function pinchStep(startDistance: number, distance: number): 1 | -1 | 0 {
-  if (startDistance <= 0) return 0;
-  const ratio = distance / startDistance;
-  return ratio > 1.25 ? 1 : ratio < 0.8 ? -1 : 0;
+/** The level a zoom settles on when the fingers lift. */
+export function nearestLevel(z: number): number {
+  return Math.min(MAX_ZOOM, Math.max(0, Math.round(z)));
 }
 
 /** Monday on or before a YYYY-MM-DD. */

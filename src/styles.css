@@ -2992,12 +2992,14 @@ progress {
   color: var(--danger);
 }
 
-/* Shared calendar: continuous, zoomable weeks */
+/* Shared calendar: continuous, zoomable weeks. --z runs from 0 (compact) to 2 (detail) while you pinch. */
 .container.cal-full {
   max-width: none;
   padding: 0;
 }
 .cal {
+  --z: 1;
+  --row-h: calc(46px + 22px * min(var(--z), 1) + 52px * max(var(--z) - 1, 0));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -3076,8 +3078,9 @@ progress {
   flex-direction: column;
   align-items: center;
   min-width: 0;
-  min-height: 52px;
-  padding: 4px 1px;
+  height: var(--row-h);
+  padding-top: 3px;
+  overflow: hidden;
   color: var(--text);
   text-decoration: none;
   font-variant-numeric: tabular-nums;
@@ -3099,13 +3102,63 @@ progress {
   color: var(--accent-text);
   font-weight: 700;
 }
-.cal-compact .cal-day {
-  min-height: 44px;
+/* The three looks of a day sit on top of each other and fade as --z moves between the levels. */
+.cal-layer {
+  position: absolute;
+  pointer-events: none;
 }
 .cal-dots {
+  top: 31px;
+  left: 0;
+  right: 0;
   display: flex;
+  justify-content: center;
   gap: 3px;
-  margin-top: 3px;
+  opacity: clamp(0, calc(1 - var(--z)), 1);
+}
+.cal-photo,
+.cal-badges,
+.cal-trip {
+  opacity: clamp(0, calc(1 - max(var(--z) - 1, 1 - var(--z))), 1);
+}
+.cal-photo {
+  top: 29px;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+}
+/* Badges sit centred on a day without a photo, and on the photo's lower corner when there is one. */
+.cal-badges {
+  top: 34px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+.cal-badges.with-photo {
+  top: 48px;
+  left: 1px;
+  justify-content: flex-start;
+}
+.cal-trip {
+  top: 6px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.cal-pills {
+  top: 31px;
+  left: 1px;
+  right: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  opacity: clamp(0, calc(var(--z) - 1), 1);
 }
 .dot {
   width: 6px;
@@ -3134,43 +3187,7 @@ progress {
   background: none;
   box-shadow: inset 0 0 0 1px var(--muted);
 }
-/* Standard: a photo of what was worn, with the day number on it and small badges in the corners */
-.cal-standard .cal-day {
-  min-height: 62px;
-  justify-content: flex-end;
-}
-.cal-standard .cal-num {
-  position: relative;
-  min-width: 0;
-  height: 18px;
-  padding: 0 0.35rem;
-  background: var(--surface);
-  font-size: 0.72rem;
-  line-height: 18px;
-}
-.cal-standard .cal-day.today .cal-num {
-  background: var(--accent);
-}
-.cal-standard .cal-day .day-bubble {
-  inset: 3px 6px 14px;
-}
-.cal-standard .cal-day:not(:has(.day-bubble)) {
-  justify-content: center;
-}
-.cal-standard .cal-day:not(:has(.day-bubble)) .cal-num {
-  height: 26px;
-  min-width: 26px;
-  background: none;
-  font-size: 0.95rem;
-  line-height: 26px;
-}
-.cal-standard .cal-day.today:not(:has(.day-bubble)) .cal-num {
-  background: var(--accent);
-}
 .day-badge {
-  position: absolute;
-  top: 2px;
-  left: 2px;
   display: grid;
   place-items: center;
   width: 18px;
@@ -3178,7 +3195,6 @@ progress {
   border-radius: 50%;
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--border);
-  pointer-events: none;
 }
 .day-badge svg {
   width: 12px;
@@ -3190,32 +3206,6 @@ progress {
 .day-badge.mark-home,
 .day-badge.mark-off {
   color: var(--muted);
-}
-.trip-dot {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg);
-}
-/* Detail: labelled pills, like events */
-.cal-detail .cal-day {
-  align-items: stretch;
-  min-height: 118px;
-  padding: 4px 2px;
-}
-.cal-detail .cal-num {
-  align-self: center;
-  margin-bottom: 3px;
-}
-.cal-pills {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 .pill {
   display: flex;
