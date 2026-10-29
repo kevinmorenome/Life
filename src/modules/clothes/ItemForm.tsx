@@ -1,8 +1,10 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { cutOutImage, resizeImage } from '../../lib/image';
+import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { PALETTE, itemColors, swatchCss } from './colors';
+import { retiredDateFor } from './lifecycle';
 import {
   CATEGORIES,
   SUBCATEGORIES,
@@ -118,6 +120,7 @@ export function ItemForm({ existing, onSave }: Props) {
       price: parsedPrice,
       purchaseDate: purchaseDate || undefined,
       status,
+      retiredDate: retiredDateFor(existing, status, today()),
       condition: condition || undefined,
       photo,
       notes: notes.trim() || undefined,
