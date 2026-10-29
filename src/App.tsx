@@ -1,36 +1,52 @@
+import { useEffect } from 'react';
 import { BottomNav } from './BottomNav';
+import { CalendarPage } from './CalendarPage';
 import { Home } from './Home';
 import { Settings } from './Settings';
+import { StatsPage } from './StatsPage';
 import { SyncBadge } from './SyncBadge';
 import { GearIcon } from './icons';
+import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
 import { useHideOnScroll } from './lib/useHideOnScroll';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Title next to the app name on the main pages of each tab. */
+function pageTitle(route: string[]): string | undefined {
+  const [a, b] = route;
+  if (!a || (a === 'calendar' && !DATE.test(b ?? ''))) return 'Calendar';
+  if (a === 'stats') return 'Stats';
+  if (a === 'more') return 'More';
+  if (a === 'clothes' && !b) return 'Closet';
+  if (a === 'clothes' && b === 'outfits' && route.length === 2) return 'Outfits';
+  return undefined;
+}
+
 export function App() {
   const topbarHidden = useHideOnScroll();
-  const [section, ...rest] = useRoute();
-  // With a single module the app opens straight into it; Home returns once there are more.
-  const singleModule = MODULES.length === 1;
-  const mod = MODULES.find((m) => m.id === section) ?? (!section && singleModule ? MODULES[0] : undefined);
-  const subroute = mod && section === mod.id ? rest : mod ? [] : null;
+  const route = useRoute();
+  const [section, ...rest] = route;
+  const redirect = legacyRedirect(route);
+  useEffect(() => {
+    if (redirect) window.location.replace(href(redirect));
+  }, [redirect]);
 
+  const mod = MODULES.find((m) => m.id === section);
   let page;
-  if (!section && !singleModule) page = <Home />;
+  if (redirect) page = null;
+  else if (!section || section === 'calendar') page = <CalendarPage subroute={rest} />;
+  else if (section === 'stats') page = <StatsPage subroute={rest} />;
+  else if (section === 'more') page = <Home />;
   else if (section === 'settings') page = <Settings />;
-  else if (mod && subroute) page = mod.render(subroute);
+  else if (mod) page = mod.render(rest);
   else page = <p className="muted">Page not found.</p>;
 
-  // Settings and Home keep the bar of the default module so you can always get back.
-  const navModule = mod ?? MODULES[0];
-  const showNav = !(mod && subroute && mod.hideNav?.(subroute));
-  // The tab's name stands in for the page title: Closet only on its own landing page, since it also matches item pages.
-  const pageTab =
-    mod && subroute && showNav
-      ? mod.tabs.find((t) => t.matches(subroute) && (t.id !== 'closet' || subroute.length === 0))
-      : undefined;
+  const showNav = !(mod && mod.hideNav?.(rest));
+  const title = showNav ? pageTitle(route) : undefined;
 
   return (
     <SettingsProvider>
@@ -46,7 +62,7 @@ export function App() {
             Life
           </a>
           <SyncBadge />
-          {pageTab && <h1 className="brand-page">{pageTab.label}</h1>}
+          {title && <h1 className="brand-page">{title}</h1>}
         </div>
         <a
           className="icon-btn"
@@ -58,7 +74,7 @@ export function App() {
         </a>
       </header>
       <main className={`container${showNav ? ' with-nav' : ''}`}>{page}</main>
-      {showNav && <BottomNav module={navModule} subroute={mod ? subroute : null} />}
+      {showNav && <BottomNav route={route} />}
     </SettingsProvider>
   );
 }

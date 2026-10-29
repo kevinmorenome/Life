@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { Fragment, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { today } from '../../lib/format';
-import { PlusIcon, ShirtIcon } from '../../icons';
+import { CalendarIcon, PlusIcon, ShirtIcon } from '../../icons';
+import type { CalendarLayer } from '../types';
 import { href, navigate } from '../../lib/router';
 import { addMonths, monthGrid, wearsByDay, type DayWear } from './calendar';
 import { tripsOnDate } from '../packing/packing';
@@ -17,9 +18,11 @@ interface Props {
   outfits: Outfit[];
   trips?: Trip[];
   plans?: Plan[];
+  /** What other modules add: badges on days and a summary above the month. */
+  layers?: CalendarLayer[];
 }
 
-export function CalendarView({ month, items, outfits, trips = [], plans = [] }: Props) {
+export function CalendarView({ month, items, outfits, trips = [], plans = [], layers = [] }: Props) {
   const now = today();
   const ym = month ?? now.slice(0, 7);
   const [year, m] = ym.split('-').map(Number);
@@ -51,7 +54,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
   }, [menu]);
 
   function openDay(e: MouseEvent<HTMLAnchorElement>, date: string) {
-    const empty = !days.has(date) && !planned.has(date) && !tripsOnDate(trips, date).length;
+    const empty = !days.has(date) && !planned.has(date) && !tripsOnDate(trips, date).length && !layers.some((l) => l.badge?.(date));
     if (!empty) return;
     e.preventDefault();
     const r = e.currentTarget.getBoundingClientRect();
@@ -67,7 +70,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
   return (
     <>
       <div className="month-nav">
-        <a className="btn btn-ghost" href={href(`/clothes/calendar/${addMonths(ym, -1)}`)} aria-label="Previous month">
+        <a className="btn btn-ghost" href={href(`/calendar/${addMonths(ym, -1)}`)} aria-label="Previous month">
           ‹
         </a>
         <div className="month-title">
@@ -76,17 +79,21 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
             {wornThisMonth} {wornThisMonth === 1 ? 'day' : 'days'} logged
           </span>
         </div>
-        <a className="btn btn-ghost" href={href(`/clothes/calendar/${addMonths(ym, 1)}`)} aria-label="Next month">
+        <a className="btn btn-ghost" href={href(`/calendar/${addMonths(ym, 1)}`)} aria-label="Next month">
           ›
         </a>
       </div>
       {ym !== now.slice(0, 7) && (
         <p className="center">
-          <a href={href('/clothes/calendar')} className="small">
+          <a href={href('/calendar')} className="small">
             Back to this month
           </a>
         </p>
       )}
+
+      {layers.map((l, i) => (
+        <div key={i}>{l.header?.(ym)}</div>
+      ))}
 
       <div className="calendar" role="grid" aria-label={title}>
         <div className="calendar-row calendar-head" role="row">
@@ -102,13 +109,16 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
               <a
                 key={date}
                 role="gridcell"
-                href={href(`/clothes/calendar/${date}`)}
+                href={href(`/calendar/${date}`)}
                 className={`calendar-day${inMonth ? '' : ' out'}${date === now ? ' today' : ''}${tripsOnDate(trips, date).length ? ' trip' : ''}${days.has(date) || planned.has(date) ? ' has-bubble' : ''}`}
                 aria-label={date}
                 onClick={(e) => openDay(e, date)}
               >
                 <DayBubble wear={days.get(date)} planned={planned.get(date)} items={items} />
                 <span className="day-num">{Number(date.slice(8))}</span>
+                {layers.map((l, i) => (
+                  <Fragment key={i}>{l.badge?.(date)}</Fragment>
+                ))}
               </a>
             ))}
           </div>
@@ -119,6 +129,9 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [] }: 
         <div className="menu day-menu" role="menu" style={{ top: menu.top, left: menu.left }}>
           <button role="menuitem" className="menu-item" onClick={() => go(`/clothes/calendar/${menu.date}/outfit`)}>
             <ShirtIcon /> {menu.date > now ? 'Plan an outfit' : 'Log an outfit'}
+          </button>
+          <button role="menuitem" className="menu-item" onClick={() => go(`/calendar/${menu.date}`)}>
+            <CalendarIcon /> Open day
           </button>
           {menu.date <= now && (
             <button role="menuitem" className="menu-item" onClick={() => go(`/clothes/calendar/${menu.date}/items`)}>

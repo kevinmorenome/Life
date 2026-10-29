@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { PlusIcon } from './icons';
 import { href, navigate } from './lib/router';
-import type { LifeModule } from './modules/types';
+import { MODULES } from './modules';
+import { activeTab, APP_TABS, type AppTab } from './nav';
 
-/** Instagram-style tab bar: two tabs, a ＋ menu, two tabs. */
-export function BottomNav({ module, subroute }: { module: LifeModule; subroute: string[] | null }) {
+/** Instagram-style tab bar: two tabs, a ＋ menu with every module's quick actions, two tabs. */
+export function BottomNav({ route }: { route: string[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const half = Math.ceil(module.tabs.length / 2);
+  const active = activeTab(route);
+  const half = Math.ceil(APP_TABS.length / 2);
+  const actions = MODULES.flatMap((m) => m.actions);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -15,21 +18,18 @@ export function BottomNav({ module, subroute }: { module: LifeModule; subroute: 
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
-  const tab = (t: LifeModule['tabs'][number]) => {
-    const active = subroute !== null && t.matches(subroute);
-    return (
-      <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active ? 'page' : undefined}>
-        {t.icon}
-      </a>
-    );
-  };
+  const tab = (t: AppTab) => (
+    <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active === t.id ? 'page' : undefined}>
+      {t.icon}
+    </a>
+  );
 
   return (
     <>
       {menuOpen && (
         <div className="sheet-backdrop" onClick={() => setMenuOpen(false)}>
           <div className="sheet" role="menu" onClick={(e) => e.stopPropagation()}>
-            {module.actions.map((a) => (
+            {actions.map((a) => (
               <button
                 key={a.label}
                 role="menuitem"
@@ -49,8 +49,8 @@ export function BottomNav({ module, subroute }: { module: LifeModule; subroute: 
           </div>
         </div>
       )}
-      <nav className="bottom-nav" aria-label={module.title}>
-        {module.tabs.slice(0, half).map(tab)}
+      <nav className="bottom-nav" aria-label="Main">
+        {APP_TABS.slice(0, half).map(tab)}
         <button
           className="tab-plus"
           aria-label="Add"
@@ -60,7 +60,7 @@ export function BottomNav({ module, subroute }: { module: LifeModule; subroute: 
         >
           <PlusIcon />
         </button>
-        {module.tabs.slice(half).map(tab)}
+        {APP_TABS.slice(half).map(tab)}
       </nav>
     </>
   );

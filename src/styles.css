@@ -3016,3 +3016,45 @@ progress {
 .work-over {
   color: var(--danger);
 }
+
+/* Shared calendar: office/home badge on a day, and the work section of the day screen */
+.day-badge {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  color: var(--accent);
+  pointer-events: none;
+}
+.day-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.day-badge.badge-home {
+  color: var(--muted);
+}
+.day-badge.badge-off {
+  color: var(--muted);
+  background: var(--bg);
+}
+.work-day-section {
+  margin: 0.5rem 0 1rem;
+}
+.work-day-section .work-choices {
+  margin: 0.5rem 0;
+}
+.work-day-section .work-choice {
+  min-height: 64px;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+.work-day-section .work-choice svg {
+  width: 22px;
+  height: 22px;
+}

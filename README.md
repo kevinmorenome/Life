@@ -15,7 +15,7 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Import from Whering (see below)
 
 ### 🏢 Office
-- Month calendar of office, home and days off; tap a day to set it by hand
+- Office, home and days off show as a small badge on the shared calendar; open a day to set it by hand
 - Check-ins from an Apple Shortcut (arrive, leave, end of day) fill the days in automatically and give arrival, leaving and time-on-site stats (setup in `docs/work-checkin.md`)
 - Monthly target (default 7 days) with progress, history by month and by weekday
 
@@ -35,7 +35,7 @@ If you've already used the app since importing, don't re-run the full import (it
 Neither file is committed (see `.gitignore`); they contain your personal data.
 
 ### App shell
-- Bottom tab bar (Closet · Outfits · ＋ · Calendar · Stats); ＋ opens quick actions: log today, add an item, new outfit
+- Bottom tab bar (Calendar · Closet · ＋ · Stats · More); the calendar shows what you wore and whether you were at the office or home; ＋ opens quick actions from every module; Stats has a section per module
 - Installable: add it to your home screen for a full-screen app with its own icon
 
 ## Data and privacy

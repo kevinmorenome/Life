@@ -139,7 +139,7 @@ export function OutfitDetail({ outfit, items, plans, onSavePlan, onRemovePlan, o
             {upcoming.map((p) => (
               <li key={p.id}>
                 <span className="wear-dot" aria-hidden />
-                <a className="wear-main" href={href(`/clothes/calendar/${p.date}`)}>
+                <a className="wear-main" href={href(`/calendar/${p.date}`)}>
                   {dayLabel(p.date)}
                 </a>
                 <button className="wear-remove" aria-label={`Remove plan on ${dayLabel(p.date)}`} onClick={() => onRemovePlan(p.id)}>

@@ -50,7 +50,7 @@ export function ClothesStatsView({ items, tab: routeTab }: { items: ClothingItem
             aria-selected={tab === t.id}
             aria-controls="stats-panel"
             // Replace, so going back from an item page lands on the same tab without a trail of tab switches.
-            onClick={() => window.location.replace(href(`/clothes/stats/${t.id}`))}
+            onClick={() => window.location.replace(href(`/stats/clothes/${t.id}`))}
           >
             {t.label}
           </button>
