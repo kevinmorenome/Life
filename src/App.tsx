@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BottomNav } from './BottomNav';
 import { CalendarPage } from './CalendarPage';
 import { Home } from './Home';
@@ -8,7 +8,9 @@ import { SyncBadge } from './SyncBadge';
 import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
+import { parentRoute } from './lib/backRoute';
 import { href, useRoute } from './lib/router';
+import { useSwipeBack } from './lib/useSwipeBack';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
 import { activeTab } from './nav';
@@ -33,6 +35,9 @@ export function App() {
   useEffect(() => {
     if (redirect) window.location.replace(href(redirect));
   }, [redirect]);
+
+  const page$ = useCallback(() => document.querySelector<HTMLElement>('main.container'), []);
+  useSwipeBack(redirect ? undefined : parentRoute(route), page$);
 
   const mod = MODULES.find((m) => m.id === section);
   let page;

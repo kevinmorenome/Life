@@ -75,14 +75,10 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
     <article className="detail item-detail">
       <header className="hero">
         <div className="hero-top">
-          {review ? (
+          {review && (
             <button type="button" className="back" aria-label="Close" onClick={review.onClose}>
               ✕
             </button>
-          ) : (
-            <a className="back" href={href('/clothes')} aria-label="Back to closet">
-              ←
-            </a>
           )}
           <p className="hero-pill">
             {cpw != null ? money(cpw) : '—'} <span className="muted">/ {total} {total === 1 ? 'wear' : 'wears'}</span>
