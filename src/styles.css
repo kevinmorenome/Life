@@ -2847,3 +2847,165 @@ progress {
 .hbars li:has(.pair-track) {
   gap: 0.25rem;
 }
+
+/* Work (office / home) */
+.work-cal .calendar-day.work-office {
+  background: var(--accent);
+}
+.work-cal .calendar-day.work-office .day-num {
+  color: var(--accent-text);
+}
+.work-cal .calendar-day.work-home {
+  background: var(--accent-soft);
+}
+.work-cal .calendar-day.work-off {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--border);
+  color: var(--muted);
+}
+/* Today gets a ring, since a fill would read as an office day. */
+.work-cal .calendar-day.today {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.work-cal .calendar-day.today:not(.work-office):not(.work-home) {
+  background: none;
+}
+.work-cal .calendar-day.today:not(.work-office) .day-num {
+  color: var(--text);
+}
+.work-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+.work-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.work-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.work-dot.work-off {
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+.work-office {
+  background: var(--accent);
+}
+.work-home {
+  background: var(--accent-soft);
+}
+.work-off {
+  background: none;
+}
+.work-target {
+  margin: 0.5rem 0 1rem;
+}
+.work-target-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.work-bar {
+  height: 8px;
+  margin: 0.4rem 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.work-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.work-bar span.short {
+  background: var(--muted);
+}
+.work-counts {
+  margin: 0;
+}
+.work-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.work-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 88px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.work-choice svg {
+  width: 28px;
+  height: 28px;
+}
+.work-choice[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.work-source {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.work-history {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+.work-history li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.work-stack {
+  display: flex;
+  height: 14px;
+}
+.work-stack span {
+  height: 100%;
+}
+.work-stack span:first-child {
+  border-radius: 7px 0 0 7px;
+}
+.work-stack span:last-child {
+  border-radius: 0 7px 7px 0;
+}
+.work-times {
+  width: 100%;
+  border-collapse: collapse;
+}
+.work-times th,
+.work-times td {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-weight: 400;
+}
+.work-times th:first-child {
+  text-align: left;
+}
+.work-times thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+}

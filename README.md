@@ -14,6 +14,11 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Stats: closet value, total spent, wears in the last 30 days, items per category, most worn, best cost per wear, never worn
 - Import from Whering (see below)
 
+### 🏢 Office
+- Month calendar of office, home and days off; tap a day to set it by hand
+- Check-ins from an Apple Shortcut (arrive, leave, end of day) fill the days in automatically and give arrival, leaving and time-on-site stats (setup in `docs/work-checkin.md`)
+- Monthly target (default 7 days) with progress, history by month and by weekday
+
 ### Importing from Whering
 
 1. Export your wardrobe from Whering's website to a JSON file shaped like `{ "items": [...] }` (category, brand, colors, size, price, currency, tags, timesWorn, imageUrls).
