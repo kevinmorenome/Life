@@ -11,6 +11,7 @@ import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
 import { href, useRoute } from './lib/router';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
+import { activeTab } from './nav';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -73,7 +74,7 @@ export function App() {
           <GearIcon />
         </a>
       </header>
-      <main className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
+      <main key={activeTab(route)} className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
       {showNav && <BottomNav route={route} />}
     </SettingsProvider>
   );

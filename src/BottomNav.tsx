@@ -21,6 +21,10 @@ export function BottomNav({ route }: { route: string[] }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
+  // One glass lens slides to the active tab's column (the ＋ takes the middle one).
+  const activeIndex = APP_TABS.findIndex((t) => t.id === active);
+  const lensColumn = activeIndex < half ? activeIndex : activeIndex + 1;
+
   const tab = (t: AppTab) => (
     <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active === t.id ? 'page' : undefined}>
       {t.icon}
@@ -53,6 +57,7 @@ export function BottomNav({ route }: { route: string[] }) {
         </div>
       )}
       <nav className={`bottom-nav${compact ? ' bottom-nav-compact' : ''}`} aria-label="Main">
+        <span className="tab-lens" aria-hidden style={{ ['--col' as string]: lensColumn }} />
         {APP_TABS.slice(0, half).map(tab)}
         <button
           className="tab-plus"

@@ -10,7 +10,10 @@ export function useScrollingDown(resetKey: string, offset = 48) {
   useEffect(() => {
     setDown(false);
     const last = new Map<EventTarget, number>();
+    // A page that positions itself on open (the calendar jumping to today) isn't the user scrolling.
+    const since = performance.now();
     const onScroll = (e: Event) => {
+      if (performance.now() - since < 700) return;
       const t = e.target;
       const y = Math.max(t instanceof Element ? t.scrollTop : window.scrollY, 0);
       const prev = last.get(t!) ?? 0;
