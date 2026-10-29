@@ -82,15 +82,28 @@ export interface TargetProgress {
   met: boolean;
   /** Whether it can still be met this month. */
   reachable: boolean;
+  /** Over the cap, but within the extended one you can request. */
+  needsApproval: boolean;
+  /** Over even the extended cap. */
+  overExtended: boolean;
 }
 
-export function targetProgress(s: MonthSummary, target: number, kind: WorkTargetKind): TargetProgress {
+/** `extended` is the higher cap you can ask for (max-home only): going past `target` up to it needs approval. */
+export function targetProgress(s: MonthSummary, target: number, kind: WorkTargetKind, extended = target): TargetProgress {
   if (kind === 'max-home') {
     const left = target - s.home;
-    return { count: s.home, target, left, met: left >= 0, reachable: left >= 0 };
+    return {
+      count: s.home,
+      target,
+      left,
+      met: left >= 0,
+      reachable: left >= 0,
+      needsApproval: left < 0 && s.home <= extended,
+      overExtended: s.home > extended,
+    };
   }
   const left = Math.max(0, target - s.office);
-  return { count: s.office, target, left, met: left === 0, reachable: left <= s.open };
+  return { count: s.office, target, left, met: left === 0, reachable: left <= s.open, needsApproval: false, overExtended: false };
 }
 
 export interface TimeStats {

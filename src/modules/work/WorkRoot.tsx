@@ -4,7 +4,7 @@ import { useSettings } from '../../lib/settings';
 import { DayView } from './DayView';
 import { MonthView } from './MonthView';
 import { StatsView } from './StatsView';
-import { DEFAULT_TARGET, type WorkDay, type WorkEvent } from './types';
+import { DEFAULT_EXTENDED, DEFAULT_TARGET, type WorkDay, type WorkEvent } from './types';
 import { buildDays } from './work';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,7 +19,7 @@ export function WorkRoot({ subroute }: { subroute: string[] }) {
 
   if (days.loading || events.loading) return <p className="muted">Loading…</p>;
 
-  const target = { days: settings.workTarget ?? DEFAULT_TARGET, kind: settings.workTargetKind ?? 'min-office' };
+  const target = { days: settings.workTarget ?? DEFAULT_TARGET, kind: settings.workTargetKind ?? 'max-home', extended: settings.workExtended ?? DEFAULT_EXTENDED };
   if (first === 'day' && DATE.test(second ?? '')) {
     return <DayView date={second} info={infos.get(second)} onSave={days.save} onClear={days.remove} />;
   }

@@ -56,7 +56,7 @@ describe('targetProgress', () => {
   const s = { office: 4, home: 6, off: 0, workdays: 22, open: 10 };
 
   it('counts office days toward a minimum', () => {
-    expect(targetProgress(s, 7, 'min-office')).toEqual({ count: 4, target: 7, left: 3, met: false, reachable: true });
+    expect(targetProgress(s, 7, 'min-office')).toEqual({ count: 4, target: 7, left: 3, met: false, reachable: true, needsApproval: false, overExtended: false });
     expect(targetProgress({ ...s, open: 2 }, 7, 'min-office').reachable).toBe(false);
     expect(targetProgress({ ...s, office: 9 }, 7, 'min-office')).toMatchObject({ left: 0, met: true });
   });
@@ -64,6 +64,13 @@ describe('targetProgress', () => {
   it('counts home days against a cap', () => {
     expect(targetProgress(s, 7, 'max-home')).toMatchObject({ count: 6, left: 1, met: true });
     expect(targetProgress({ ...s, home: 9 }, 7, 'max-home')).toMatchObject({ left: -2, met: false, reachable: false });
+  });
+
+  it('flags home days past the cap that you can still request, and past that', () => {
+    expect(targetProgress({ ...s, home: 8 }, 7, 'max-home', 10)).toMatchObject({ met: false, needsApproval: true, overExtended: false });
+    expect(targetProgress({ ...s, home: 10 }, 7, 'max-home', 10)).toMatchObject({ needsApproval: true, overExtended: false });
+    expect(targetProgress({ ...s, home: 11 }, 7, 'max-home', 10)).toMatchObject({ needsApproval: false, overExtended: true });
+    expect(targetProgress({ ...s, home: 7 }, 7, 'max-home', 10)).toMatchObject({ met: true, needsApproval: false });
   });
 });
 

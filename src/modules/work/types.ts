@@ -28,3 +28,5 @@ export interface WorkEvent {
 export type WorkTargetKind = 'min-office' | 'max-home';
 
 export const DEFAULT_TARGET = 7;
+/** Home days allowed in a month when you request more. */
+export const DEFAULT_EXTENDED = 10;

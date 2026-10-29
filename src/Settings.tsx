@@ -80,13 +80,26 @@ export function Settings() {
         <label className="field">
           <span className="muted small">What it counts.</span>
           <select
-            value={settings.workTargetKind ?? 'min-office'}
+            value={settings.workTargetKind ?? 'max-home'}
             onChange={(e) => update({ workTargetKind: e.target.value as 'min-office' | 'max-home' })}
           >
-            <option value="min-office">At least this many office days</option>
             <option value="max-home">At most this many home days</option>
+            <option value="min-office">At least this many office days</option>
           </select>
         </label>
+        {(settings.workTargetKind ?? 'max-home') === 'max-home' && (
+          <label className="field">
+            <span className="muted small">Home days you can request on top, as a total (flagged as needing approval).</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={31}
+              value={settings.workExtended ?? 10}
+              onChange={(e) => update({ workExtended: Math.min(31, Math.max(0, Math.round(Number(e.target.value) || 0))) })}
+            />
+          </label>
+        )}
       </section>
       <section className="card">
         <h2>Sync</h2>

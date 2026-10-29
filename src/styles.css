@@ -3009,3 +3009,10 @@ progress {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+.work-bar span.over {
+  background: var(--danger);
+}
+.work-over {
+  color: var(--danger);
+}
