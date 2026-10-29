@@ -14,7 +14,7 @@ import { MODULES } from './modules';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Centred title in the header on the main pages of each tab. */
+/** Title next to the app name on the main pages of each tab. */
 function pageTitle(route: string[]): string | undefined {
   const [a, b] = route;
   if (!a || (a === 'calendar' && !DATE.test(b ?? ''))) return 'Calendar';
@@ -62,8 +62,8 @@ export function App() {
             Life
           </a>
           <SyncBadge />
+          {title && <h1 className="brand-page">{title}</h1>}
         </div>
-        <h1 className="brand-page">{title}</h1>
         <a
           className="icon-btn"
           href={href('/settings')}

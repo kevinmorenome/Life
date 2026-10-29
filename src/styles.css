@@ -81,22 +81,20 @@ ul {
 /* Layout */
 .topbar {
   /* Part of the page, not a bar: no background or border, it scrolls away with the content. */
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 0.35rem 8px 0.25rem 16px;
   padding-top: max(0.35rem, env(safe-area-inset-top));
 }
-.topbar > :last-child {
-  justify-self: end;
-}
 .brand-page {
   margin: 0;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--border);
   font-size: 1.15rem;
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
+  font-weight: 500;
+  color: var(--muted);
 }
 .brand {
   font-weight: 700;
