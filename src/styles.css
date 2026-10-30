@@ -2909,9 +2909,27 @@ progress {
 }
 .work-choices {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   margin: 1rem 0;
+}
+.work-times-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.work-time {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+.work-time label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.work-time input {
+  min-height: 44px;
 }
 .work-choice {
   display: flex;
@@ -3183,6 +3201,9 @@ progress {
 .dot.mark-home {
   background: var(--muted);
 }
+.dot.mark-trip {
+  background: var(--tone-blue);
+}
 .dot.mark-off {
   background: none;
   box-shadow: inset 0 0 0 1px var(--muted);
@@ -3202,6 +3223,9 @@ progress {
 }
 .day-badge.mark-office {
   color: var(--accent);
+}
+.day-badge.mark-trip {
+  color: var(--tone-blue);
 }
 .day-badge.mark-home,
 .day-badge.mark-off {
@@ -3229,6 +3253,10 @@ progress {
 .pill.mark-office {
   background: var(--accent);
   color: var(--accent-text);
+}
+.pill.mark-trip {
+  background: var(--tone-blue);
+  color: #fff;
 }
 .pill.mark-home {
   background: var(--accent-soft);

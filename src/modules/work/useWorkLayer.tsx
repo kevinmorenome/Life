@@ -5,7 +5,7 @@ import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
 import { TargetCard, type Target } from './TargetCard';
 import { DEFAULT_EXTENDED, DEFAULT_TARGET, type WorkDay, type WorkEvent } from './types';
-import { STATUS_ICONS, STATUS_LABELS, WorkDaySection } from './WorkDaySection';
+import { REASON_LABELS, STATUS_ICONS, STATUS_LABELS, WorkDaySection } from './WorkDaySection';
 import { buildDays, monthSummary } from './work';
 
 /** Office, home and days off on the shared calendar. A hook: it loads its own data. */
@@ -27,7 +27,7 @@ export function useWorkCalendarLayer(): CalendarLayer {
       return {
         tone: info.status,
         icon: STATUS_ICONS[info.status],
-        label: STATUS_LABELS[info.status],
+        label: info.status === 'off' && info.reason ? REASON_LABELS[info.reason] : STATUS_LABELS[info.status],
         detail: info.arrive || info.leave ? `${info.arrive ?? '?'} – ${info.leave ?? '?'}` : undefined,
       };
     },
@@ -36,7 +36,7 @@ export function useWorkCalendarLayer(): CalendarLayer {
       return <TargetCard summary={monthSummary(month, infos, now)} target={target} past={month < now.slice(0, 7)} />;
     },
     daySection(date) {
-      return <WorkDaySection date={date} info={infos.get(date)} onSave={days.save} onClear={days.remove} />;
+      return <WorkDaySection date={date} info={infos.get(date)} day={days.items.find((d) => d.id === date)} onSave={days.save} onClear={days.remove} />;
     },
   };
 }

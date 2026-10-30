@@ -31,6 +31,19 @@ describe('buildDays', () => {
     expect(d.get('2026-10-05')).toEqual({ status: 'off', manual: true, arrive: '09:00' });
   });
 
+  it('uses times entered by hand over check-in times, on any kind of day', () => {
+    const d = buildDays(
+      [{ ...day('2026-10-05', 'home'), arrive: '08:30', leave: '17:00' }, { ...day('2026-10-06', 'office'), arrive: '09:15' }],
+      [ev('arrive', '2026-10-05', '07:00'), ev('arrive', '2026-10-06', '08:00'), ev('leave', '2026-10-06', '18:00')],
+    );
+    expect(d.get('2026-10-05')).toMatchObject({ status: 'home', arrive: '08:30', leave: '17:00' });
+    expect(d.get('2026-10-06')).toMatchObject({ arrive: '09:15', leave: '18:00' });
+  });
+
+  it('keeps the reason a day is off', () => {
+    expect(buildDays([{ ...day('2026-10-05', 'off'), reason: 'holiday' }], []).get('2026-10-05')?.reason).toBe('holiday');
+  });
+
   it('leaves days with no data out', () => {
     expect(buildDays([], []).size).toBe(0);
   });
@@ -44,7 +57,7 @@ describe('monthSummary', () => {
 
   it('counts statuses and the weekdays that could still become office days', () => {
     // October 2026 has 22 weekdays; one is off. From the 8th on, 17 weekdays are still open.
-    expect(monthSummary('2026-10', infos, '2026-10-08')).toEqual({ office: 2, home: 2, off: 1, workdays: 21, open: 17 });
+    expect(monthSummary('2026-10', infos, '2026-10-08')).toEqual({ office: 2, home: 2, off: 1, trip: 0, workdays: 21, open: 17 });
   });
 
   it('treats today as still open when it has no status yet', () => {
@@ -53,7 +66,7 @@ describe('monthSummary', () => {
 });
 
 describe('targetProgress', () => {
-  const s = { office: 4, home: 6, off: 0, workdays: 22, open: 10 };
+  const s = { office: 4, home: 6, off: 0, trip: 0, workdays: 22, open: 10 };
 
   it('counts office days toward a minimum', () => {
     expect(targetProgress(s, 7, 'min-office')).toEqual({ count: 4, target: 7, left: 3, met: false, reachable: true, needsApproval: false, overExtended: false });
@@ -87,10 +100,30 @@ describe('timeStats', () => {
     expect(formatDuration(t.duration!)).toBe('9h 00m');
   });
 
+  it('averages home days separately, from the times you entered', () => {
+    const infos = buildDays(
+      [{ ...day('2026-10-05', 'home'), arrive: '08:00', leave: '16:00' }, { ...day('2026-10-06', 'home'), arrive: '09:00', leave: '18:00' }, day('2026-10-07', 'home')],
+      [ev('arrive', '2026-10-08', '10:00')],
+    );
+    const t = timeStats(infos, '2026-10', 'home');
+    expect(t.days).toBe(3);
+    expect(formatMinutes(t.arrive!)).toBe('08:30');
+    expect(formatDuration(t.duration!)).toBe('8h 30m');
+  });
+
   it('ignores home days and a leave that is not after the arrival', () => {
     const infos = buildDays([day('2026-10-05', 'home')], [ev('arrive', '2026-10-05', '09:00'), ev('arrive', '2026-10-06', '12:00'), ev('leave', '2026-10-06', '08:00')]);
     expect(timeStats(infos).days).toBe(1);
     expect(timeStats(infos).duration).toBeUndefined();
+  });
+});
+
+describe('trips', () => {
+  it('count on their own, not as office or home', () => {
+    const infos = buildDays([day('2026-10-05', 'trip'), day('2026-10-06', 'trip'), day('2026-10-07', 'home')], []);
+    expect(monthSummary('2026-10', infos, '2026-10-30')).toMatchObject({ trip: 2, home: 1, office: 0 });
+    expect(monthHistory('2026-10', infos, 1)[0]).toMatchObject({ trip: 2, home: 1 });
+    expect(weekdaySplit(infos, '2026-10').flatMap((w) => [w.office, w.home])).toEqual([0, 0, 0, 0, 0, 1, 0, 0, 0, 0]);
   });
 });
 
@@ -99,9 +132,9 @@ describe('monthHistory and weekdaySplit', () => {
 
   it('lists the last months oldest first, including empty ones', () => {
     expect(monthHistory('2026-10', infos, 3)).toEqual([
-      { month: '2026-08', office: 0, home: 0, off: 0 },
-      { month: '2026-09', office: 0, home: 1, off: 0 },
-      { month: '2026-10', office: 1, home: 2, off: 0 },
+      { month: '2026-08', office: 0, home: 0, off: 0, trip: 0 },
+      { month: '2026-09', office: 0, home: 1, off: 0, trip: 0 },
+      { month: '2026-10', office: 1, home: 2, off: 0, trip: 0 },
     ]);
   });
 
