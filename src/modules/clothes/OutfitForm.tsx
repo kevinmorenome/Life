@@ -104,7 +104,7 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
 
   // The editor is full-screen: stop the page behind it from scrolling or bouncing.
   useEffect(() => {
-    const { overflow } = document.body;
+    const { overflow } = document.body.style;
     const { overscrollBehavior } = document.documentElement.style;
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overscrollBehavior = 'none';
