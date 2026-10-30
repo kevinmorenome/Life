@@ -44,8 +44,11 @@ export function useSwipeBack(parent: string | undefined, page: () => HTMLElement
       const dx = e.touches[0].clientX - start.x;
       const dy = e.touches[0].clientY - start.y;
       if (!dragging) {
-        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) start = undefined; // vertical scroll
-        else if (dx > 12 && dx > Math.abs(dy) * 1.5) dragging = true;
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+          start = undefined; // vertical scroll: leave the page alone (a stray transform breaks position: fixed children)
+          return;
+        }
+        if (dx > 12 && dx > Math.abs(dy) * 1.5) dragging = true;
         else return;
       }
       const node = el();
