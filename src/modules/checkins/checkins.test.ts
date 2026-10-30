@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isDue, REFRESH_AFTER_MS } from './swarmClient';
 import { byDate, dayLabel, place } from './checkins';
 import type { Checkin } from './types';
 
@@ -34,5 +35,15 @@ describe('place', () => {
     expect(place(at('x', 'd', 't', 1, { category: 'Café', city: 'London' }))).toBe('Café · London');
     expect(place(at('x', 'd', 't', 1, { city: 'London' }))).toBe('London');
     expect(place(at('x', 'd', 't', 1))).toBe('');
+  });
+});
+
+describe('isDue', () => {
+  it('is due when never fetched or when the last fetch is old enough', () => {
+    expect(isDue(null, 1_000_000)).toBe(true);
+    expect(isDue(1_000_000, 1_000_000 + REFRESH_AFTER_MS)).toBe(true);
+  });
+  it('is not due right after a fetch', () => {
+    expect(isDue(1_000_000, 1_000_000 + REFRESH_AFTER_MS - 1)).toBe(false);
   });
 });
