@@ -159,10 +159,14 @@ export async function handleSwarm(request: Request, pathname: string, ctx: Swarm
       redirect_uri: redirectUri,
       code,
     }).toString();
-    const res = await ctx.fetch(url.toString());
-    const body = res.ok ? ((await res.json()) as { access_token?: string }) : null;
-    if (!body?.access_token) return back(origin, 'token');
-    await ctx.store.connect(body.access_token);
+    try {
+      const res = await ctx.fetch(url.toString());
+      const body = res.ok ? ((await res.json()) as { access_token?: string }) : null;
+      if (!body?.access_token) return back(origin, 'token');
+      await ctx.store.connect(body.access_token);
+    } catch {
+      return back(origin, 'error');
+    }
     return back(origin, 'ok');
   }
 

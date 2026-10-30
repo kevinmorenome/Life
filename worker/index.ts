@@ -64,7 +64,8 @@ export default {
         store: d1SwarmStore(env.DB),
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
-        fetch,
+        // Not the bare global: Workers throw "Illegal invocation" when it's called as a method of another object.
+        fetch: (input, init) => fetch(input, init),
       });
     }
 

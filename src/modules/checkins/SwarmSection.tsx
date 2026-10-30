@@ -6,6 +6,7 @@ const RESULTS: Record<string, string> = {
   ok: 'Connected to Swarm. Fetching your check-ins…',
   state: 'The sign-in link expired or was opened elsewhere. Try again.',
   denied: 'Swarm sign-in was cancelled.',
+  error: 'Something went wrong while connecting to Swarm. Try again.',
   token: 'Swarm didn’t give a token. Check the redirect URL in the Foursquare app settings.',
 };
 
