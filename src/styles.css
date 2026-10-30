@@ -3224,6 +3224,9 @@ progress {
 .dot.mark-trip {
   background: var(--tone-blue);
 }
+.dot.mark-place {
+  background: var(--tone-blue);
+}
 .dot.mark-off {
   background: none;
   box-shadow: inset 0 0 0 1px var(--muted);
@@ -3243,6 +3246,9 @@ progress {
 }
 .day-badge.mark-office {
   color: var(--accent);
+}
+.day-badge.mark-place {
+  color: var(--tone-blue);
 }
 .day-badge.mark-trip {
   color: var(--tone-blue);
@@ -3277,6 +3283,10 @@ progress {
 .pill.mark-trip {
   background: var(--tone-blue);
   color: #fff;
+}
+.pill.mark-place {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .pill.mark-home {
   background: var(--accent-soft);
@@ -3341,4 +3351,17 @@ progress {
 .work-day-section .work-choice svg {
   width: 22px;
   height: 22px;
+}
+
+.checkins-day {
+  margin: 0.5rem 0 1rem;
+}
+.checkins-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.checkins-day li {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
 }
