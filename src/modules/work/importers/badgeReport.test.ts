@@ -83,6 +83,16 @@ describe('planImport', () => {
     expect(plan.write.find((d) => d.id === '2025-10-01')).toBeUndefined();
   });
 
+  it('lets a business trip in the report win over a day already set by hand', () => {
+    const wrong: WorkDay = { id: '2026-07-01', status: 'home', arrive: '09:00', updatedAt: '2026-10-01T00:00:00Z' };
+    const plan = planImport(parsed, [wrong]);
+    expect(plan.write.find((d) => d.id === '2026-07-01')).toMatchObject({ status: 'trip', source: 'report' });
+    expect(plan.overridden).toBe(1);
+    // A trip you already have, by hand, is left alone.
+    const trip: WorkDay = { id: '2026-07-01', status: 'trip', updatedAt: '2026-10-01T00:00:00Z' };
+    expect(planImport(parsed, [trip]).write.find((d) => d.id === '2026-07-01')).toBeUndefined();
+  });
+
   it('refreshes imported days only when the report changed them', () => {
     const imported = parsed.map((d) => ({ ...d }));
     imported[0] = { ...imported[0], leave: '17:00' };
