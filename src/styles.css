@@ -4494,4 +4494,14 @@ button.detail-row {
 .checkins-day li {
   padding: 0.5rem 0;
   border-top: 1px solid var(--border);
+
+.outfit-editor {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.outfit-editor .sheet-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
