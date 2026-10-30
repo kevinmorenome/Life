@@ -140,3 +140,10 @@ export const ZoomOutIcon = () => (
     <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
   </Icon>
 );
+
+export const PinIcon = () => (
+  <Icon>
+    <path d="M12 21s6.5-5.800 6.500-11a6.500 6.500 0 0 0-13 0c0 5.200 6.500 11 6.500 11Z" />
+    <circle cx="12" cy="10" r="2.300" />
+  </Icon>
+);

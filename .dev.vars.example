@@ -1,3 +1,6 @@
 DEV_ALLOW_UNAUTHENTICATED=true
 # Guards /mcp locally (24+ characters): http://localhost:8787/mcp/<this value>
 MCP_TOKEN=local-dev-token-0123456789abcdef
+# Swarm check-ins (optional): from your Foursquare app; its redirect URL must be http://localhost:8787/api/swarm/callback
+# FOURSQUARE_CLIENT_ID=
+# FOURSQUARE_CLIENT_SECRET=
