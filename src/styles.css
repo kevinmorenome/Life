@@ -4426,3 +4426,44 @@ button.detail-row {
   position: static;
   padding: 0.75rem 0 0;
 }
+
+/* Outfit editor, the glass way: the canvas is the page (pieces float, no panel); the sheet, close
+   buttons and remove beads are the control layer. */
+.editor-canvas {
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.editor-sheet {
+  border: 1px solid var(--glass-edge);
+  border-bottom: 0;
+  border-radius: 32px 32px 0 0;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: 0 -10px 36px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-handle span {
+  background: var(--text);
+  opacity: 0.25;
+}
+.editor-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.12), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.piece-x {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.18), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
