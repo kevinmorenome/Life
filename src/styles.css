@@ -4467,3 +4467,28 @@ button.detail-row {
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
 }
+
+/* Swarm check-ins (from main) */
+.dot.mark-place {
+  background: var(--tone-blue);
+}
+.day-badge.mark-place {
+  color: var(--tone-blue);
+}
+.pill.mark-place {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.checkins-day {
+  margin: 0.5rem 0 1rem;
+}
+.checkins-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.checkins-day li {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}

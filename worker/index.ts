@@ -3,9 +3,10 @@ import { checkinAuthorized, handleCheckin, isCheckinPath, type CheckinEnv } from
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
+import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
-interface Env extends AuthEnv, McpEnv, CheckinEnv {
+interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   /** Set on PR preview versions: they read real data but never write it. */
@@ -56,6 +57,17 @@ export default {
 
     const auth = await authorize(request, env);
     if (!auth.ok) return json({ error: auth.error }, auth.status);
+
+    if (isSwarmPath(url.pathname)) {
+      return handleSwarm(request, url.pathname, {
+        env,
+        store: d1SwarmStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        // Not the bare global: Workers throw "Illegal invocation" when it's called as a method of another object.
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
 
     if (url.pathname === '/api/sync/pull' && request.method === 'GET') {
       return pull(env.DB, Number(url.searchParams.get('since') ?? 0) || 0);
