@@ -20,6 +20,11 @@ export interface DayMark {
   label: string;
   /** Extra line when zoomed in, e.g. "09:10 – 18:05". */
   detail?: string;
+  /**
+   * One labelled pill per entry when fully zoomed in, instead of `detail`/`label`: the ones that fit
+   * are shown and a "more" pill counts the rest. The dot and badge look are unchanged.
+   */
+  tiles?: string[];
 }
 
 export interface CalendarLayer {

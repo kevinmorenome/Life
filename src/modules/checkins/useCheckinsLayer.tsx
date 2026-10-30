@@ -14,7 +14,7 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
     mark(date) {
       const list = days.get(date);
       if (!list) return null;
-      return { tone: 'place', icon: <PinIcon />, label: dayLabel(list) };
+      return { tone: 'place', icon: <PinIcon />, label: dayLabel(list), tiles: list.map((c) => c.venue) };
     },
     daySection(date) {
       const list = days.get(date);
