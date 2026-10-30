@@ -50,6 +50,7 @@ export function Settings() {
       for (const day of plan.write) await put('workdays', day);
       notify('workdays');
       const parts = [`Imported ${plan.write.length} days`];
+      if (plan.overridden) parts.push(`${plan.overridden} business ${plan.overridden === 1 ? 'trip replaced' : 'trips replaced'} days already set`);
       if (plan.kept) parts.push(`${plan.kept} you set by hand were kept`);
       if (plan.unchanged) parts.push(`${plan.unchanged} were already up to date`);
       const other = Object.entries(skipped).filter(([label]) => label !== 'Weekend');

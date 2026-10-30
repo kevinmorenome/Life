@@ -87,20 +87,29 @@ const same = (a: WorkDay, b: WorkDay) =>
   a.status === b.status && a.reason === b.reason && a.arrive === b.arrive && a.leave === b.leave;
 
 /**
- * Which parsed days to write. A day you set or edited by hand (no `source`)
- * is never replaced; days from an earlier report are refreshed only if they changed.
+ * Which parsed days to write. A day you set or edited by hand (no `source`) is
+ * never replaced, with one exception: a business trip in the report always wins
+ * over what's already there, since trips are easy to lose to a placeholder day.
+ * Days from an earlier report are refreshed only if they changed.
  */
-export function planImport(parsed: WorkDay[], existing: WorkDay[]): { write: WorkDay[]; kept: number; unchanged: number } {
+export function planImport(
+  parsed: WorkDay[],
+  existing: WorkDay[],
+): { write: WorkDay[]; kept: number; unchanged: number; overridden: number } {
   const byId = new Map(existing.map((d) => [d.id, d]));
   const write: WorkDay[] = [];
   let kept = 0;
   let unchanged = 0;
+  let overridden = 0;
   for (const day of parsed) {
     const old = byId.get(day.id);
     if (!old) write.push(day);
-    else if (old.source !== 'report') kept++;
     else if (same(old, day)) unchanged++;
-    else write.push(day);
+    else if (old.source === 'report') write.push(day);
+    else if (day.status === 'trip') {
+      write.push(day);
+      overridden++;
+    } else kept++;
   }
-  return { write, kept, unchanged };
+  return { write, kept, unchanged, overridden };
 }
