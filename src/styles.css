@@ -3319,6 +3319,9 @@ progress {
 .pill-outfit.planned {
   opacity: 0.6;
 }
+.pill-more {
+  font-weight: 600;
+}
 .pill-trip {
   background: var(--accent-soft);
 }

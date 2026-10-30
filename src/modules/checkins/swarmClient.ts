@@ -36,12 +36,35 @@ export async function disconnectSwarm(): Promise<void> {
   await fetch('/api/swarm/disconnect', { method: 'POST', credentials: 'same-origin' });
 }
 
-const HOUR = 3600_000;
+/** How long after a fetch before the next quiet one. Foursquare allows ~500 requests an hour; a fetch with nothing new is one. */
+export const REFRESH_AFTER_MS = 10 * 60_000;
 
-/** On app start: if Swarm is connected and hasn't been fetched for an hour, fetch quietly. */
+/** Whether a quiet fetch is due: connected, and the last fetch is old enough (or there never was one). */
+export function isDue(lastSync: number | null, now: number): boolean {
+  return lastSync === null || now - lastSync >= REFRESH_AFTER_MS;
+}
+
+let fetching = false;
+
+/** Fetches quietly if Swarm is connected and a fetch is due. Safe to call often. */
 export async function autoSyncSwarm(): Promise<void> {
-  const status = await swarmStatus();
-  if (!status?.connected) return;
-  if (status.lastSync && Date.now() - status.lastSync < HOUR) return;
-  await syncSwarm();
+  if (fetching) return;
+  fetching = true;
+  try {
+    const status = await swarmStatus();
+    if (status?.connected && isDue(status.lastSync, Date.now())) await syncSwarm();
+  } finally {
+    fetching = false;
+  }
+}
+
+/** On start, whenever the app comes back to the foreground (a home-screen app isn't reloaded), and every few minutes while open. */
+export function startSwarmAutoSync(): void {
+  void autoSyncSwarm();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void autoSyncSwarm();
+  });
+  setInterval(() => {
+    if (document.visibilityState === 'visible') void autoSyncSwarm();
+  }, 5 * 60_000);
 }
