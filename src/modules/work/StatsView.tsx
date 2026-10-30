@@ -32,7 +32,7 @@ export function StatsView({ infos, target, tab: routeTab }: { infos: Map<string,
 
   return (
     <>
-      <div className="seg" role="tablist" aria-label="Work stats sections" style={{ ['--tabs' as string]: TABS.length }}>
+      <div className="seg seg-sub" role="tablist" aria-label="Work stats sections" style={{ ['--tabs' as string]: TABS.length }}>
         {TABS.map((t) => (
           <button
             key={t.id}
