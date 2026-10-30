@@ -2959,6 +2959,31 @@ progress {
   align-items: center;
   gap: 0.25rem;
 }
+.work-range {
+  margin-bottom: 0.9rem;
+}
+.work-range-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.work-range-row label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.work-range-row input {
+  min-height: 44px;
+}
+.work-range-row .icon-btn {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.work-range-row strong {
+  align-self: center;
+}
 .work-times-title {
   margin: 0.75rem 0 0.25rem;
   font-size: 0.95rem;

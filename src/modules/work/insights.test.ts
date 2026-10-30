@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrivalBins, attendanceStreaks, dayGrid, mondayOf, officePerWeek, officeShare, statusCounts, timeExtremes, weeklyCounts } from './insights';
+import { arrivalBins, attendanceStreaks, dayGrid, filterRange, mondayOf, officeShare, statusCounts, timeExtremes, weeklyCounts } from './insights';
 import type { DayInfo } from './work';
 
 type Spec = [string, DayInfo['status'], Partial<DayInfo>?];
@@ -18,11 +18,13 @@ describe('statusCounts and officeShare', () => {
   });
 });
 
-describe('officePerWeek', () => {
-  it('averages over weeks that have office or home days', () => {
-    const m = infos(['2026-10-05', 'office'], ['2026-10-06', 'office'], ['2026-10-07', 'home'], ['2026-10-12', 'office'], ['2026-10-19', 'off']);
-    expect(officePerWeek(m, '2026-10')).toBe(1.5);
-    expect(officePerWeek(new Map())).toBeUndefined();
+describe('filterRange', () => {
+  const m = infos(['2026-09-30', 'office'], ['2026-10-05', 'home'], ['2026-10-20', 'office']);
+  it('keeps the days within an inclusive range, open at either end', () => {
+    expect([...filterRange(m, '2026-10-01', '2026-10-31').keys()]).toEqual(['2026-10-05', '2026-10-20']);
+    expect([...filterRange(m, '2026-10-05', '2026-10-05').keys()]).toEqual(['2026-10-05']);
+    expect([...filterRange(m, '2026-10-06').keys()]).toEqual(['2026-10-20']);
+    expect(filterRange(m)).toBe(m);
   });
   it('finds the Monday of a week', () => {
     expect(mondayOf('2026-10-11')).toBe('2026-10-05');

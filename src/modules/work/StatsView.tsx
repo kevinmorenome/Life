@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { addMonths } from '../clothes/calendar';
 import { Donut, Empty, HBars, Heatmap, ReadoutColumns, Section, Tile, Toggle, type Bar } from '../clothes/charts';
-import { arrivalBins, attendanceStreaks, dayGrid, officePerWeek, officeShare, statusCounts, timeExtremes, weeklyCounts } from './insights';
+import { arrivalBins, attendanceStreaks, dayGrid, filterRange, officeShare, statusCounts, timeExtremes, weeklyCounts } from './insights';
 import { TargetCard, type Target } from './TargetCard';
 import type { WorkStatus } from './types';
 import { formatDuration, formatMinutes, monthHistory, monthSummary, targetProgress, timeStats, weekdaySplit, type DayInfo } from './work';
@@ -62,7 +63,7 @@ function Overview({ infos, target, now }: { infos: Map<string, DayInfo>; target:
   const year = now.slice(0, 4);
   const c = statusCounts(infos, year);
   const share = officeShare(c.office, c.home);
-  const perWeek = officePerWeek(infos, year);
+  const arrival = timeStats(infos, year).arrive;
   const empty = infos.size === 0;
 
   return (
@@ -80,7 +81,7 @@ function Overview({ infos, target, now }: { infos: Map<string, DayInfo>; target:
             <Tile value={String(c.office)} label={`office days in ${year}`} tone={0} />
             <Tile value={String(c.home)} label={`home days in ${year}`} tone={1} />
             <Tile value={share === undefined ? '–' : `${share}%`} label="of your days in the office" tone={2} />
-            <Tile value={perWeek === undefined ? '–' : String(perWeek)} label="office days a week" tone={3} />
+            <Tile value={arrival === undefined ? '–' : formatMinutes(arrival)} label="usual arrival at the office" tone={3} />
           </div>
           <SplitCard infos={infos} now={now} />
           <StreakCard infos={infos} now={now} />
@@ -258,7 +259,30 @@ const DURATION_KINDS = [
   { value: 'home', label: 'Home' },
 ];
 
+const RANGES = [
+  { value: 'all', label: 'All time' },
+  { value: 'month', label: 'Month' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const prettyDay = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 function Times({ infos, now }: { infos: Map<string, DayInfo>; now: string }) {
+  const [mode, setMode] = useState('all');
+  const [month, setMonth] = useState(now.slice(0, 7));
+  const [from, setFrom] = useState(`${now.slice(0, 7)}-01`);
+  const [to, setTo] = useState(now);
+
+  const lo = from <= to ? from : to;
+  const hi = from <= to ? to : from;
+  const range =
+    mode === 'month'
+      ? { from: `${month}-01`, to: `${month}-31`, label: `${monthName(month, 'long')} ${month.slice(0, 4)}` }
+      : mode === 'custom'
+        ? { from: lo, to: hi, label: `${prettyDay(lo)} – ${prettyDay(hi)}` }
+        : { from: undefined, to: undefined, label: 'All time' };
+  const inRange = filterRange(infos, range.from, range.to);
+
   const all = timeStats(infos);
   const homeAll = timeStats(infos, '', 'home');
   const hasTimes = all.arrive !== undefined || all.leave !== undefined || homeAll.arrive !== undefined || homeAll.leave !== undefined;
@@ -271,26 +295,61 @@ function Times({ infos, now }: { infos: Map<string, DayInfo>; now: string }) {
       </Section>
     );
   }
+
+  const step = (n: number) => setMonth((m) => addMonths(m, n));
   return (
     <>
-      <ArrivalCard infos={infos} />
+      <div className="work-range">
+        <Toggle label="Range" options={RANGES} value={mode} onChange={setMode} />
+        {mode === 'month' && (
+          <div className="work-range-row">
+            <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => step(-1)}>
+              ‹
+            </button>
+            <strong>{range.label}</strong>
+            <button type="button" className="icon-btn" aria-label="Next month" disabled={month >= now.slice(0, 7)} onClick={() => step(1)}>
+              ›
+            </button>
+          </div>
+        )}
+        {mode === 'custom' && (
+          <div className="work-range-row">
+            <label>
+              <span className="muted small">From</span>
+              <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+            </label>
+            <label>
+              <span className="muted small">To</span>
+              <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+            </label>
+          </div>
+        )}
+      </div>
+      <ArrivalCard infos={inRange} rangeLabel={range.label} />
+      <AveragesCard infos={infos} inRange={inRange} rangeLabel={range.label} showAll={mode !== 'all'} />
+      <ExtremesCard infos={inRange} rangeLabel={range.label} />
       <OnSiteCard infos={infos} now={now} />
-      <AveragesCard infos={infos} now={now} />
-      <ExtremesCard infos={infos} />
     </>
   );
 }
 
-function ArrivalCard({ infos }: { infos: Map<string, DayInfo> }) {
+function ArrivalCard({ infos, rangeLabel }: { infos: Map<string, DayInfo>; rangeLabel: string }) {
   const bins = arrivalBins(infos);
-  if (bins.length === 0) return null;
+  if (bins.length === 0) {
+    return (
+      <Section title="When you arrive">
+        <Empty>No office arrivals in {rangeLabel}.</Empty>
+      </Section>
+    );
+  }
   const bars: Bar[] = bins.map((b) => ({ key: b.start, tick: b.start.endsWith(':00') ? String(Number(b.start.slice(0, 2))) : '', value: b.count }));
   const end = (start: string) => formatMinutes(Number(start.slice(0, 2)) * 60 + Number(start.slice(3)) + 30);
   const total = bins.reduce((a, b) => a + b.count, 0);
   const top = bins.reduce((a, b) => (b.count > a.count ? b : a));
   return (
-    <Section title="When you arrive" note={`Office arrivals by half hour. Most often ${top.start}–${end(top.start)}.`}>
+    <Section title="When you arrive" note={`Office arrivals by half hour, ${rangeLabel}. Most often ${top.start}–${end(top.start)}.`}>
       <ReadoutColumns
+        key={rangeLabel}
         bars={bars}
         big={(b) => `${b.value} ${b.value === 1 ? 'day' : 'days'}`}
         small={(b) => `${b.key}–${end(b.key)} · ${Math.round((b.value / total) * 100)}%`}
@@ -307,7 +366,7 @@ function OnSiteCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   const bars: Bar[] = months.map((m, i) => ({ key: m, tick: monthName(m, 'narrow'), value: Math.round(stats[i].duration ?? 0) }));
   const any = bars.some((b) => b.value > 0);
   return (
-    <Section title="Length of the day" note="Average time between start and end, per month.">
+    <Section title="Length of the day" note="Average time between start and end, for each of the last 12 months.">
       <Toggle label="Where" options={DURATION_KINDS} value={kind} onChange={(v) => setKind(v as 'office' | 'home')} />
       {!any ? (
         <Empty>{kind === 'home' ? 'Enter start and end times on your home days to see this.' : 'No office days with both times yet.'}</Empty>
@@ -325,44 +384,55 @@ function OnSiteCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   );
 }
 
-function AveragesCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }) {
-  const ym = now.slice(0, 7);
-  const rows = (status: WorkStatus) => ({ month: timeStats(infos, ym, status), all: timeStats(infos, '', status) });
-  const office = rows('office');
-  const home = rows('home');
+function AveragesCard({
+  infos,
+  inRange,
+  rangeLabel,
+  showAll,
+}: {
+  infos: Map<string, DayInfo>;
+  inRange: Map<string, DayInfo>;
+  rangeLabel: string;
+  /** Add an all-time column next to the selected range. */
+  showAll: boolean;
+}) {
+  const rows = (status: WorkStatus) => ({ range: timeStats(inRange, '', status), all: timeStats(infos, '', status) });
   const table = (label: string, r: ReturnType<typeof rows>) =>
-    (r.all.arrive !== undefined || r.all.leave !== undefined) && (
+    (r.range.arrive !== undefined || r.range.leave !== undefined) && (
       <>
         <h3 className="work-times-title">{label}</h3>
         <table className="work-times">
           <thead>
             <tr>
               <th />
-              <th>This month</th>
-              <th>All time</th>
+              <th>{rangeLabel}</th>
+              {showAll && <th>All time</th>}
             </tr>
           </thead>
           <tbody>
-            <TimeRow label="Start" a={r.month.arrive} b={r.all.arrive} format={formatMinutes} />
-            <TimeRow label="End" a={r.month.leave} b={r.all.leave} format={formatMinutes} />
-            <TimeRow label="Length" a={r.month.duration} b={r.all.duration} format={formatDuration} />
+            <TimeRow label="Start" a={r.range.arrive} b={showAll ? r.all.arrive : null} format={formatMinutes} />
+            <TimeRow label="End" a={r.range.leave} b={showAll ? r.all.leave : null} format={formatMinutes} />
+            <TimeRow label="Length" a={r.range.duration} b={showAll ? r.all.duration : null} format={formatDuration} />
           </tbody>
         </table>
       </>
     );
+  const office = table('At the office', rows('office'));
+  const home = table('Working from home', rows('home'));
   return (
     <Section title="Averages">
-      {table('At the office', office)}
-      {table('Working from home', home)}
+      {office}
+      {home}
+      {!office && !home && <Empty>No times in {rangeLabel}.</Empty>}
     </Section>
   );
 }
 
-function ExtremesCard({ infos }: { infos: Map<string, DayInfo> }) {
+function ExtremesCard({ infos, rangeLabel }: { infos: Map<string, DayInfo>; rangeLabel: string }) {
   const x = timeExtremes(infos);
   if (!x.earliest && !x.latest && !x.longest) return null;
   return (
-    <Section title="Records">
+    <Section title="Records" note={rangeLabel}>
       <ul className="work-records">
         {x.earliest && <Record label="Earliest start" value={x.earliest.time} date={x.earliest.date} />}
         {x.latest && <Record label="Latest finish" value={x.latest.time} date={x.latest.date} />}
@@ -384,12 +454,13 @@ function Record({ label, value, date }: { label: string; value: string; date: st
   );
 }
 
-function TimeRow({ label, a, b, format }: { label: string; a?: number; b?: number; format: (n: number) => string }) {
+/** `b` is null when there's no second column. */
+function TimeRow({ label, a, b, format }: { label: string; a?: number; b?: number | null; format: (n: number) => string }) {
   return (
     <tr>
       <th scope="row">{label}</th>
       <td>{a === undefined ? '–' : format(a)}</td>
-      <td>{b === undefined ? '–' : format(b)}</td>
+      {b !== null && <td>{b === undefined ? '–' : format(b)}</td>}
     </tr>
   );
 }

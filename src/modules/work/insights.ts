@@ -19,20 +19,16 @@ export function officeShare(office: number, home: number): number | undefined {
   return total ? Math.round((office / total) * 100) : undefined;
 }
 
-export function mondayOf(date: string): string {
-  return addDays(date, -((new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7));
+/** The days within `from`–`to` (inclusive, either may be left open). */
+export function filterRange(infos: Map<string, DayInfo>, from?: string, to?: string): Map<string, DayInfo> {
+  if (!from && !to) return infos;
+  const out = new Map<string, DayInfo>();
+  for (const [date, d] of infos) if ((!from || date >= from) && (!to || date <= to)) out.set(date, d);
+  return out;
 }
 
-/** Office days per week, averaged over the weeks that have at least one office or home day. */
-export function officePerWeek(infos: Map<string, DayInfo>, prefix = ''): number | undefined {
-  const weeks = new Set<string>();
-  let office = 0;
-  for (const [date, d] of infos) {
-    if (!date.startsWith(prefix) || (d.status !== 'office' && d.status !== 'home')) continue;
-    weeks.add(mondayOf(date));
-    if (d.status === 'office') office++;
-  }
-  return weeks.size ? Math.round((office / weeks.size) * 10) / 10 : undefined;
+export function mondayOf(date: string): string {
+  return addDays(date, -((new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7));
 }
 
 export interface RunStreak {
