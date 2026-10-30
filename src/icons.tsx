@@ -112,6 +112,13 @@ export const PalmIcon = () => (
   </Icon>
 );
 
+export const ClockIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Icon>
+);
+
 export const MoreIcon = () => (
   <Icon>
     <circle cx="5.5" cy="12" r="1.2" />

@@ -15,6 +15,9 @@ export function StatsView({ infos, target }: { infos: Map<string, DayInfo>; targ
   );
   const month = timeStats(infos, ym);
   const all = timeStats(infos);
+  const homeMonth = timeStats(infos, ym, 'home');
+  const homeAll = timeStats(infos, '', 'home');
+  const hasHomeTimes = homeAll.arrive !== undefined || homeAll.leave !== undefined;
 
   return (
     <div className="work-stats">
@@ -71,6 +74,27 @@ export function StatsView({ infos, target }: { infos: Map<string, DayInfo>; targ
             <TimeRow label="On site" a={month.duration} b={all.duration} format={formatDuration} />
           </tbody>
         </table>
+      )}
+
+      {hasHomeTimes && (
+        <>
+          <h2>Working from home</h2>
+          <table className="work-times">
+            <thead>
+              <tr>
+                <th />
+                <th>This month</th>
+                <th>All time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TimeRow label="Start" a={homeMonth.arrive} b={homeAll.arrive} format={formatMinutes} />
+              <TimeRow label="End" a={homeMonth.leave} b={homeAll.leave} format={formatMinutes} />
+              <TimeRow label="Worked" a={homeMonth.duration} b={homeAll.duration} format={formatDuration} />
+            </tbody>
+          </table>
+          <p className="small muted">From the days where you entered start and end times.</p>
+        </>
       )}
     </div>
   );
