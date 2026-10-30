@@ -43,8 +43,8 @@ interface Props {
   /** The photo is being processed elsewhere (e.g. the review flow cutting out its background). */
   photoBusy?: boolean;
   review?: { onSave: () => void; onLater: () => void; onClose: () => void; onRemoved: () => void };
-  /** A new item that isn't saved yet: edits stay in memory, with Cancel / Save at the bottom and no wear history. */
-  draft?: { onSave: () => void; onCancel: () => void; canSave: boolean };
+  /** A new item that isn't saved yet: edits stay in memory, with a single Save at the bottom and no wear history. */
+  draft?: { onSave: () => void; canSave: boolean };
 }
 
 const TABS = ['about', 'style', 'stats'] as const;
@@ -209,9 +209,6 @@ export function ItemDetail({ item, items, outfits, onSave, onDelete, photoBusy, 
 
       {draft && (
         <div className="form-actions sticky-actions">
-          <button type="button" className="btn btn-ghost" onClick={draft.onCancel}>
-            Cancel
-          </button>
           <button type="button" className="btn btn-primary" disabled={!draft.canSave} onClick={draft.onSave}>
             Save
           </button>

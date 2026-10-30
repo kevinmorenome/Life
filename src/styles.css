@@ -4095,3 +4095,15 @@ li.card {
 .seg-sub button[aria-selected='true'] {
   box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
 }
+
+/* Add-item drawer: the line at the top is the grip; drag it down to close. */
+.drawer-grab {
+  padding: 0.75rem 0 0.6rem;
+  cursor: grab;
+  touch-action: none;
+}
+.drawer-grab .review-handle {
+  width: 44px;
+  height: 5px;
+  margin: 0 auto;
+}

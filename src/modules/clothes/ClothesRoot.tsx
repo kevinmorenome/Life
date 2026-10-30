@@ -59,8 +59,7 @@ export function ClothesRoot({ subroute, dayExtras }: { subroute: string[]; dayEx
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
-  if (first === 'new') return <NewItem items={items} outfits={outfits.items} onSave={save} />;
-  if (first && first !== 'review') {
+  if (first && first !== 'review' && first !== 'new') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
@@ -69,6 +68,7 @@ export function ClothesRoot({ subroute, dayExtras }: { subroute: string[]; dayEx
   return (
     <>
       <ClothesList items={items} onSave={save} />
+      {first === 'new' && <NewItem items={items} outfits={outfits.items} onSave={save} />}
       {first === 'review' && <ReviewFlow items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />}
     </>
   );
