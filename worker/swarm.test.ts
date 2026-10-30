@@ -91,6 +91,19 @@ describe('handleSwarm', () => {
     expect(connected()).toBe('new-token');
   });
 
+  it('goes back to Settings with an error instead of crashing when the token exchange throws', async () => {
+    const { ctx, connected } = setup({
+      fetch: (async () => {
+        throw new TypeError('Illegal invocation');
+      }) as typeof fetch,
+    });
+    const res = await call(ctx, '/api/swarm/connect');
+    const state = new URL(res.headers.get('Location')!).searchParams.get('state')!;
+    const back = await call(ctx, `/api/swarm/callback?code=c&state=${state}`, 'GET', { Cookie: `swarm_state=${state}` });
+    expect(back.headers.get('Location')).toBe('https://life.example/?swarm=error#/settings');
+    expect(connected()).toBeUndefined();
+  });
+
   it('refuses to write on a preview', async () => {
     const { ctx } = setup({ readOnly: true });
     expect((await call(ctx, '/api/swarm/sync', 'POST')).status).toBe(409);
