@@ -1,12 +1,13 @@
-import type { WorkDay, WorkEvent, WorkStatus, WorkTargetKind } from './types';
+import type { OffReason, WorkDay, WorkEvent, WorkStatus, WorkTargetKind } from './types';
 
 export interface DayInfo {
   status?: WorkStatus;
   /** True when the status was set by hand rather than derived from check-ins. */
   manual: boolean;
-  /** Earliest arrival and latest departure, HH:MM. */
+  /** Earliest arrival and latest departure, HH:MM. Times entered by hand win over check-ins. */
   arrive?: string;
   leave?: string;
+  reason?: OffReason;
 }
 
 /**
@@ -38,6 +39,9 @@ export function buildDays(days: WorkDay[], events: WorkEvent[]): Map<string, Day
     const v = get(d.id);
     v.status = d.status;
     v.manual = true;
+    v.reason = d.reason;
+    if (d.arrive) v.arrive = d.arrive;
+    if (d.leave) v.leave = d.leave;
   }
   return out;
 }
@@ -51,6 +55,8 @@ export interface MonthSummary {
   office: number;
   home: number;
   off: number;
+  /** Business trips: neither office nor home. */
+  trip: number;
   /** Weekdays of the month that aren't a day off. */
   workdays: number;
   /** Weekdays from today on (or the whole month ahead) without a status yet: days that could still become office days. */
@@ -59,7 +65,7 @@ export interface MonthSummary {
 
 /** `ym` is YYYY-MM; `now` is today's YYYY-MM-DD. */
 export function monthSummary(ym: string, infos: Map<string, DayInfo>, now: string): MonthSummary {
-  const s: MonthSummary = { office: 0, home: 0, off: 0, workdays: 0, open: 0 };
+  const s: MonthSummary = { office: 0, home: 0, off: 0, trip: 0, workdays: 0, open: 0 };
   const [y, m] = ym.split('-').map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   for (let day = 1; day <= last; day++) {
@@ -112,7 +118,7 @@ export interface TimeStats {
   leave?: number;
   /** Average minutes between arriving and leaving, over days with both. */
   duration?: number;
-  /** Office days the averages come from. */
+  /** Days of that kind the averages come from. */
   days: number;
 }
 
@@ -134,14 +140,14 @@ export function formatDuration(min: number): string {
 
 const mean = (xs: number[]): number | undefined => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined);
 
-/** Arrival/leave averages over office days whose date starts with `prefix` ('' = all time). */
-export function timeStats(infos: Map<string, DayInfo>, prefix = ''): TimeStats {
+/** Arrival/leave averages over days of one kind (office by default) whose date starts with `prefix` ('' = all time). */
+export function timeStats(infos: Map<string, DayInfo>, prefix = '', status: WorkStatus = 'office'): TimeStats {
   const arrive: number[] = [];
   const leave: number[] = [];
   const duration: number[] = [];
   let days = 0;
   for (const [date, d] of infos) {
-    if (d.status !== 'office' || !date.startsWith(prefix)) continue;
+    if (d.status !== status || !date.startsWith(prefix)) continue;
     days++;
     if (d.arrive) arrive.push(toMinutes(d.arrive));
     if (d.leave) leave.push(toMinutes(d.leave));
@@ -155,6 +161,7 @@ export interface MonthRow {
   office: number;
   home: number;
   off: number;
+  trip: number;
 }
 
 /** The last `count` months ending at `ym`, oldest first. */
@@ -163,7 +170,7 @@ export function monthHistory(ym: string, infos: Map<string, DayInfo>, count: num
   const rows: MonthRow[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const month = new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7);
-    const row: MonthRow = { month, office: 0, home: 0, off: 0 };
+    const row: MonthRow = { month, office: 0, home: 0, off: 0, trip: 0 };
     for (const [date, d] of infos) if (d.status && date.startsWith(month)) row[d.status]++;
     rows.push(row);
   }

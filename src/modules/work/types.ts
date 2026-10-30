@@ -1,9 +1,21 @@
-export type WorkStatus = 'office' | 'home' | 'off';
+export type WorkStatus = 'office' | 'home' | 'off' | 'trip';
 
-/** A day set by hand. Wins over anything the check-in Shortcut reported. id = YYYY-MM-DD. */
+/** Why a day is off, when known (set by the badge-report import). */
+export type OffReason = 'holiday' | 'leave' | 'absence';
+
+/**
+ * A day set by hand, or imported from a badge report. Wins over anything the
+ * check-in Shortcut reported. id = YYYY-MM-DD.
+ */
 export interface WorkDay {
   id: string;
   status: WorkStatus;
+  /** Start and end of work, HH:MM. On home days you enter them yourself. Win over check-in times. */
+  arrive?: string;
+  leave?: string;
+  reason?: OffReason;
+  /** Set on days that came from a badge report, which a re-import may replace. Editing a day by hand clears it. */
+  source?: 'report';
   updatedAt: string;
 }
 

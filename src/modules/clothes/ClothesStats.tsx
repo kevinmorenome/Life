@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { Columns, Donut, HBars, Heatmap, PairBars, ReadoutColumns, Ring, TONES, Toggle } from './charts';
+import { Columns, Donut, Empty, HBars, Heatmap, PairBars, ReadoutColumns, Ring, Section, Tile, Toggle } from './charts';
 import { ItemThumb } from './ItemThumb';
 import {
   brandRanking,
@@ -125,29 +125,6 @@ export function ClothesStatsView({ items, tab: routeTab }: { items: ClothingItem
     </>
   );
 }
-
-function Tile({ value, label, tone }: { value: string; label: string; tone: number }) {
-  return (
-    <div className="card tile">
-      <span className="stat-value" style={{ color: TONES[tone % TONES.length] }}>
-        {value}
-      </span>
-      <span className="stat-label">{label}</span>
-    </div>
-  );
-}
-
-function Section({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
-  return (
-    <section className="card">
-      <h2>{title}</h2>
-      {children}
-      {note && <p className="muted small chart-note">{note}</p>}
-    </section>
-  );
-}
-
-const Empty = ({ children }: { children: ReactNode }) => <p className="muted small">{children}</p>;
 
 /* Closet usage ------------------------------------------------------- */
 

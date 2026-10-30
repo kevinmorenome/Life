@@ -35,6 +35,7 @@ export function TargetCard({ summary, target, past }: { summary: MonthSummary; t
       </div>
       <p className="small muted work-counts">
         Office {summary.office} · Home {summary.home}
+        {summary.trip > 0 && ` · Trip ${summary.trip}`}
         {summary.off > 0 && ` · Off ${summary.off}`}
       </p>
     </section>

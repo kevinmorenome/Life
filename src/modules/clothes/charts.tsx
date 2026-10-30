@@ -4,6 +4,31 @@ import { swatchCss } from './colors';
 /** Series colours: the app's accent and tones, so charts follow light/dark mode. */
 export const TONES = ['var(--accent)', 'var(--tone-blue)', 'var(--tone-purple)', 'var(--tone-orange)', 'var(--tone-lime)'];
 
+/** A stats card with a heading and an optional footnote. */
+export function Section({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
+  return (
+    <section className="card">
+      <h2>{title}</h2>
+      {children}
+      {note && <p className="muted small chart-note">{note}</p>}
+    </section>
+  );
+}
+
+export const Empty = ({ children }: { children: ReactNode }) => <p className="muted small">{children}</p>;
+
+/** A big number with a caption, tinted with one of the chart tones. */
+export function Tile({ value, label, tone }: { value: string; label: string; tone: number }) {
+  return (
+    <div className="card tile">
+      <span className="stat-value" style={{ color: TONES[tone % TONES.length] }}>
+        {value}
+      </span>
+      <span className="stat-label">{label}</span>
+    </div>
+  );
+}
+
 export function Toggle<T extends string | number>({
   options,
   value,
@@ -62,7 +87,18 @@ function sliceColor(name: string, i: number): string {
 }
 
 /** Donut with a legend; tap a legend row to highlight its slice. Slices use the clothing's own colours. */
-export function Donut({ slices }: { slices: Slice[] }) {
+export function Donut({
+  slices,
+  unit = 'colours',
+  label = 'Colour breakdown',
+  colorFor = sliceColor,
+}: {
+  slices: Slice[];
+  /** Word under the total in the middle. */
+  unit?: string;
+  label?: string;
+  colorFor?: (name: string, i: number) => string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const total = slices.reduce((a, s) => a + s.value, 0);
   const r = 44;
@@ -73,7 +109,7 @@ export function Donut({ slices }: { slices: Slice[] }) {
   return (
     <div className="donut">
       <div className="donut-chart">
-        <svg viewBox="0 0 120 120" role="img" aria-label="Colour breakdown">
+        <svg viewBox="0 0 120 120" role="img" aria-label={label}>
           <circle cx="60" cy="60" r={r} className="ring-track donut-track" />
           {slices.map((s, i) => {
             const len = (s.value / total) * c;
@@ -86,7 +122,7 @@ export function Donut({ slices }: { slices: Slice[] }) {
                 r={r}
                 className="donut-slice"
                 style={{
-                  stroke: sliceColor(s.name, i),
+                  stroke: colorFor(s.name, i),
                   strokeDasharray: `${len - gap} ${c - len + gap}`,
                   strokeDashoffset: -offset,
                   opacity: active == null || active === i ? 1 : 0.25,
@@ -100,14 +136,14 @@ export function Donut({ slices }: { slices: Slice[] }) {
         </svg>
         <span className="donut-center">
           <strong>{shown ? Math.round((shown.value / total) * 100) + '%' : total}</strong>
-          <span>{shown ? shown.name : 'colours'}</span>
+          <span>{shown ? shown.name : unit}</span>
         </span>
       </div>
       <ul className="legend">
         {slices.map((s, i) => (
           <li key={s.name}>
             <button type="button" aria-pressed={active === i} onClick={() => setActive(active === i ? null : i)}>
-              <span className="legend-dot" style={{ background: sliceColor(s.name, i) }} />
+              <span className="legend-dot" style={{ background: colorFor(s.name, i) }} />
               <span className="legend-name">{s.name}</span>
               <span className="legend-value">{s.value}</span>
             </button>
@@ -226,13 +262,26 @@ export function ReadoutColumns({
 }
 
 /** Weeks of day squares (Monday first), filled where something was logged. */
-export function Heatmap({ weeks, color = 'var(--accent)' }: { weeks: { date: string; on: boolean; future: boolean }[][]; color?: string }) {
+export function Heatmap({
+  weeks,
+  color = 'var(--accent)',
+  label = 'Days with a logged outfit, last weeks',
+}: {
+  weeks: { date: string; on: boolean; future: boolean; /** Overrides the fill of this day. */ color?: string }[][];
+  color?: string;
+  label?: string;
+}) {
   return (
-    <div className="heatmap" role="img" aria-label="Days with a logged outfit, last weeks" style={{ ['--bar' as string]: color }}>
+    <div className="heatmap" role="img" aria-label={label} style={{ ['--bar' as string]: color }}>
       {weeks.map((col, w) => (
         <div key={w} className="heat-col">
           {col.map((c) => (
-            <span key={c.date} className={`heat-cell${c.on ? ' on' : ''}${c.future ? ' future' : ''}`} title={c.date} />
+            <span
+              key={c.date}
+              className={`heat-cell${c.on ? ' on' : ''}${c.future ? ' future' : ''}`}
+              style={c.color ? { background: c.color } : undefined}
+              title={c.date}
+            />
           ))}
         </div>
       ))}

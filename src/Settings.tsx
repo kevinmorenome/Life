@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { SYNC_LABELS } from './SyncBadge';
 import { downloadBlob, exportBackup, importBackup, mergeBackup } from './lib/backup';
-import { notify, put } from './lib/db';
+import { getAll, notify, put } from './lib/db';
 import { today } from './lib/format';
 import { PREVIEW_LABEL } from './lib/preview';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
+import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
+import type { WorkDay } from './modules/work/types';
 import { useSettings } from './lib/settings';
 import { syncNow } from './lib/sync';
 import { useSyncStatus } from './lib/useSyncStatus';
 
 export function Settings() {
   const [message, setMessage] = useState('');
+  const [workMessage, setWorkMessage] = useState('');
   const sync = useSyncStatus();
   const { settings, update } = useSettings();
 
@@ -35,6 +38,26 @@ export function Settings() {
       location.reload();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Import failed');
+    }
+  }
+
+  async function onBadgeReport(file: File | undefined) {
+    if (!file) return;
+    try {
+      const { days, skipped } = parseBadgeReport(await file.text(), new Date().toISOString());
+      if (days.length === 0) throw new Error('No days found. Is this the badge report CSV?');
+      const plan = planImport(days, await getAll<WorkDay>('workdays'));
+      for (const day of plan.write) await put('workdays', day);
+      notify('workdays');
+      const parts = [`Imported ${plan.write.length} days`];
+      if (plan.overridden) parts.push(`${plan.overridden} business ${plan.overridden === 1 ? 'trip replaced' : 'trips replaced'} days already set`);
+      if (plan.kept) parts.push(`${plan.kept} you set by hand were kept`);
+      if (plan.unchanged) parts.push(`${plan.unchanged} were already up to date`);
+      const other = Object.entries(skipped).filter(([label]) => label !== 'Weekend');
+      if (other.length) parts.push(`skipped ${other.map(([label, n]) => `${n} “${label}”`).join(', ')}`);
+      setWorkMessage(parts.join('; ') + '.');
+    } catch (e) {
+      setWorkMessage(e instanceof Error ? e.message : 'Import failed');
     }
   }
 
@@ -65,7 +88,7 @@ export function Settings() {
         </label>
       </section>
       <section className="card">
-        <h2>Office days</h2>
+        <h2>Work</h2>
         <label className="field">
           <span className="muted small">Your monthly number of days.</span>
           <input
@@ -100,6 +123,17 @@ export function Settings() {
             />
           </label>
         )}
+        <p className="muted small">
+          Import your badge report (CSV) to fill in past office, home, trip and off days. Days you set by hand are never replaced, and home
+          days get no times, since the report only has placeholders for them.
+        </p>
+        <div className="form-actions start">
+          <label className="btn">
+            Import badge report
+            <input type="file" accept=".csv,text/csv" hidden onChange={(e) => onBadgeReport(e.target.files?.[0])} />
+          </label>
+        </div>
+        {workMessage && <p className="small">{workMessage}</p>}
       </section>
       <section className="card">
         <h2>Sync</h2>
