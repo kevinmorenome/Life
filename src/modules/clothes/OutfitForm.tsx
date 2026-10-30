@@ -1,8 +1,13 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { newId } from '../../lib/db';
 import { navigate } from '../../lib/router';
+import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
+import { FilterSheet } from './FilterSheet';
+import { SlidersIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
-import { CATEGORIES, label, type Category, type ClothingItem, type Outfit } from './types';
+import { OutfitBoard } from './OutfitBoard';
+import { OutfitDetailsStep } from './OutfitDetailsStep';
+import { CATEGORIES, label, type Category, type ClothingItem, type Outfit, type Season } from './types';
 
 interface Props {
   existing?: Outfit;
@@ -12,60 +17,39 @@ interface Props {
   onSave: (o: Outfit) => Promise<void>;
   /** Runs after saving instead of opening the outfit's page, e.g. to plan it for a day. */
   afterSave?: (o: Outfit) => Promise<void>;
+  /** When given (new outfits only), the form offers a date: future days plan the outfit, today/past log it. */
+  onApplyDate?: (o: Outfit, date: string) => Promise<void>;
 }
 
-export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave }: Props) {
+export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave, onApplyDate }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [selected, setSelected] = useState<string[]>(existing?.itemIds ?? initialItemIds ?? []);
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category | 'all' | 'selected'>('all');
-  const [subcategory, setSubcategory] = useState('');
+  // Same filters as the closet; "Selected" is an extra tab that shows just the chosen pieces.
+  const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [seasons, setSeasons] = useState<Season[]>(existing?.seasons ?? []);
+  const [favorite, setFavorite] = useState(existing?.favorite ?? false);
+  const [date, setDate] = useState('');
+  const [step, setStep] = useState<'canvas' | 'details'>('canvas');
+  const [sheetH, setSheetH] = useState(() => Math.round(window.innerHeight * 0.45));
+  const drag = useRef<{ y: number; h: number } | null>(null);
 
-  // Everything except the category filter, so the tabs can show counts.
-  const matching = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter(
-      (i) =>
-        (i.status === 'active' || selected.includes(i.id)) &&
-        (!q || [i.name, i.brand, i.color, i.subcategory, i.notes, ...(i.tags ?? [])].some((f) => f?.toLowerCase().includes(q))),
-    );
-  }, [items, query, selected]);
-
-  const counts = useMemo(() => {
-    const c = new Map<Category, number>();
-    for (const i of matching) c.set(i.category, (c.get(i.category) ?? 0) + 1);
-    return c;
-  }, [matching]);
-
-  const inCategory = useMemo(
-    () =>
-      matching.filter((i) =>
-        category === 'all' ? true : category === 'selected' ? selected.includes(i.id) : i.category === category,
-      ),
-    [matching, category, selected],
+  const pieces = useMemo(
+    () => selected.map((id) => items.find((i) => i.id === id)).filter((i): i is ClothingItem => !!i),
+    [selected, items],
   );
 
-  const subs = useMemo(() => {
-    const c = new Map<string, number>();
-    if (category === 'all' || category === 'selected') return c;
-    for (const i of inCategory) if (i.subcategory) c.set(i.subcategory, (c.get(i.subcategory) ?? 0) + 1);
-    return new Map([...c].sort(([a], [b]) => a.localeCompare(b)));
-  }, [inCategory, category]);
+  const counts = useMemo(() => categoryCounts(items, filters), [items, filters]);
+  const total = [...counts.values()].reduce((x, y) => x + y, 0);
+  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === filters.category);
+  const active = activeFilterCount(filters);
 
-  const visible = useMemo(
-    () =>
-      inCategory
-        .filter((i) => !subcategory || i.subcategory === subcategory)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [inCategory, subcategory],
-  );
+  const visible = useMemo(() => filterItems(items, filters), [items, filters]);
 
-  const pickCategory = (c: Category | 'all' | 'selected') => {
-    setCategory(c);
-    setSubcategory('');
+  const pickCategory = (c: Category | 'all') => {
+    setFilters({ ...filters, category: c, subcategory: '' });
   };
-
-  const tabs = CATEGORIES.filter((c) => counts.get(c) || c === category);
 
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -78,87 +62,215 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave 
       id: existing?.id ?? newId(),
       name: name.trim() || undefined,
       itemIds: selected,
+      seasons: seasons.length || existing?.seasons ? seasons : undefined,
+      favorite: favorite || existing?.favorite ? favorite : undefined,
+      tags: tags.length || existing?.tags ? tags : undefined,
       wears: existing?.wears ?? [],
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
     await onSave(outfit);
+    if (date && onApplyDate && !existing) await onApplyDate(outfit, date);
     if (afterSave) await afterSave(outfit);
     else navigate(`/clothes/outfits/${outfit.id}`);
   }
 
+  const next = () => {
+    setSheetH(snaps()[1]);
+    setStep('details');
+  };
+
+  // Sheet snap points: peek, half, nearly full.
+  const snaps = () => [120, Math.round(window.innerHeight * 0.45), Math.round(window.innerHeight * 0.85)];
+  const onHandleDown = (e: PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { y: e.clientY, h: sheetH };
+  };
+  const onHandleMove = (e: PointerEvent) => {
+    if (!drag.current) return;
+    const [min, , max] = snaps();
+    setSheetH(Math.min(max, Math.max(min, drag.current.h + drag.current.y - e.clientY)));
+  };
+  const settle = () => setSheetH((h) => snaps().reduce((best, v) => (Math.abs(v - h) < Math.abs(best - h) ? v : best)));
+  const onHandleUp = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    settle();
+  };
+
+  // Swiping the grid up grows the sheet over the canvas before the grid scrolls;
+  // swiping down at the top of the grid shrinks it so the canvas gets bigger.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef(sheetH);
+  sheetRef.current = sheetH;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let lastY = 0;
+    const clamp = (h: number) => Math.min(Math.round(window.innerHeight * 0.85), Math.max(120, h));
+    const start = (e: TouchEvent) => {
+      lastY = e.touches[0].clientY;
+    };
+    const move = (e: TouchEvent) => {
+      const y = e.touches[0].clientY;
+      const dy = lastY - y; // > 0: finger moving up
+      lastY = y;
+      const h = sheetRef.current;
+      const max = Math.round(window.innerHeight * 0.85);
+      if ((dy > 0 && h < max) || (dy < 0 && el.scrollTop <= 0 && h > 120)) {
+        e.preventDefault();
+        setSheetH(clamp(h + dy));
+      }
+    };
+    const wheel = (e: WheelEvent) => {
+      const h = sheetRef.current;
+      const max = Math.round(window.innerHeight * 0.85);
+      if ((e.deltaY > 0 && h < max) || (e.deltaY < 0 && el.scrollTop <= 0 && h > 120)) {
+        e.preventDefault();
+        setSheetH(clamp(h + e.deltaY));
+      }
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', settle);
+    el.addEventListener('touchcancel', settle);
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', settle);
+      el.removeEventListener('touchcancel', settle);
+      el.removeEventListener('wheel', wheel);
+    };
+  }, [step]);
+
   return (
-    <form className="form" onSubmit={submit}>
-      <h1>{existing ? 'Edit outfit' : 'New outfit'}</h1>
-      <label className="field">
-        <span>Name (optional)</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday dinner" />
-      </label>
-
-      <section className="field" aria-label="Pieces">
-        <div className="filters">
-          <input type="search" placeholder="Search name, brand, color…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-
-        <nav className="category-tabs" aria-label="Categories">
-          <button type="button" aria-pressed={category === 'all'} onClick={() => pickCategory('all')}>
-            All <span className="count">{matching.length}</span>
+    <div className="outfit-editor">
+      <header className="editor-bar">
+        {step === 'canvas' ? (
+          <button type="button" className="icon-action editor-close" aria-label="Cancel" onClick={() => history.back()}>
+            ✕
           </button>
-          <button type="button" aria-pressed={category === 'selected'} onClick={() => pickCategory('selected')}>
-            Selected <span className="count">{selected.length}</span>
+        ) : (
+          <button type="button" className="icon-action editor-close" aria-label="Back to pieces" onClick={() => setStep('canvas')}>
+            ‹
+          </button>
+        )}
+        {step === 'canvas' && (
+          <button type="button" className="btn btn-primary editor-next" disabled={selected.length === 0} onClick={next}>
+            Next
+          </button>
+        )}
+      </header>
+
+      {/* The canvas fills what the picker leaves free, so it grows as the grid collapses and shrinks as it expands. */}
+      <div className="editor-canvas" style={{ bottom: sheetH }} aria-label="Outfit canvas">
+        {pieces.length ? <OutfitBoard pieces={pieces} large onRemove={step === 'canvas' ? toggle : undefined} /> : <p className="muted small">Tap pieces below to add them to the canvas.</p>}
+      </div>
+
+      <section className="editor-sheet" style={{ height: sheetH }} aria-label="Pieces">
+        <div
+          className="sheet-handle"
+          role="slider"
+          aria-label="Resize piece picker"
+          aria-valuenow={sheetH}
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+        >
+          <span />
+        </div>
+        {step === 'details' ? (
+          <div className="sheet-scroll" ref={scrollRef}>
+          <form onSubmit={submit}>
+            <OutfitDetailsStep
+              embedded
+              title={existing ? 'Edit outfit' : 'New outfit'}
+              submitLabel={existing ? 'Save outfit' : 'Create outfit'}
+              pieces={pieces}
+              name={name}
+              onName={setName}
+              tags={tags}
+              onTags={setTags}
+              seasons={seasons}
+              onSeasons={setSeasons}
+              favorite={favorite}
+              onFavorite={setFavorite}
+              date={onApplyDate && !existing ? date : undefined}
+              onDate={onApplyDate && !existing ? setDate : undefined}
+              onBack={() => setStep('canvas')}
+              onAddPieces={() => setStep('canvas')}
+            />
+          </form>
+          </div>
+        ) : (
+          <>
+        <div className="search-row filters">
+          <input
+            type="search"
+            placeholder="Search name, brand, color…"
+            value={filters.query}
+            onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+          />
+          <button
+            type="button"
+            className="filter-btn"
+            aria-label={active ? `Filters, ${active} active` : 'Filters'}
+            aria-haspopup="dialog"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersIcon />
+            {active > 0 && <span className="filter-count">{active}</span>}
+          </button>
+        </div>
+        <nav className="category-tabs" aria-label="Categories">
+          <button type="button" aria-pressed={filters.category === 'all'} onClick={() => pickCategory('all')}>
+            All <span className="count">{total}</span>
           </button>
           {tabs.map((c) => (
-            <button key={c} type="button" aria-pressed={category === c} onClick={() => pickCategory(c)}>
+            <button key={c} type="button" aria-pressed={filters.category === c} onClick={() => pickCategory(c)}>
               {label(c)} <span className="count">{counts.get(c) ?? 0}</span>
             </button>
           ))}
         </nav>
-
-        {subs.size > 0 && (
-          <nav className="category-tabs" aria-label="Sub-categories">
-            {[...subs].map(([s, n]) => (
-              <button key={s} type="button" aria-pressed={subcategory === s} onClick={() => setSubcategory(subcategory === s ? '' : s)}>
-                {s} <span className="count">{n}</span>
-              </button>
-            ))}
-          </nav>
-        )}
-
-        {visible.length === 0 ? (
-          <p className="muted empty">{category === 'selected' ? 'Nothing selected yet.' : 'No items match.'}</p>
-        ) : (
-          <ul className="closet-grid">
-            {visible.map((i) => (
-              <li key={i.id}>
-                <button
-                  type="button"
-                  className="closet-tile pick-tile"
-                  aria-pressed={selected.includes(i.id)}
-                  onClick={() => toggle(i.id)}
-                >
-                  <span className="pick-thumb">
-                    <ItemThumb item={i} />
-                    <span className="pick-check" aria-hidden>
-                      ✓
+        <div className="sheet-scroll" ref={scrollRef}>
+          {visible.length === 0 ? (
+            <p className="muted empty">No items match.</p>
+          ) : (
+            <ul className="closet-grid">
+              {visible.map((i) => (
+                <li key={i.id}>
+                  <button type="button" className="closet-tile pick-tile" aria-pressed={selected.includes(i.id)} onClick={() => toggle(i.id)}>
+                    <span className="pick-thumb">
+                      <ItemThumb item={i} />
+                      <span className="pick-check" aria-hidden>
+                        ✓
+                      </span>
                     </span>
-                  </span>
-                  <span className="tile-name">{i.name}</span>
-                  <span className="tile-meta">{i.brand ?? label(i.category)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                    <span className="tile-name">{i.name}</span>
+                    <span className="tile-meta">{i.brand ?? label(i.category)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+          </>
         )}
       </section>
 
-      <div className="form-actions sticky-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => history.back()}>
-          Cancel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={selected.length === 0}>
-          Save outfit
-        </button>
-      </div>
-    </form>
+      {filtersOpen && (
+        <FilterSheet
+          items={items}
+          value={filters}
+          onApply={(f) => {
+            setFilters(f);
+                    setFiltersOpen(false);
+          }}
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
+    </div>
   );
 }
