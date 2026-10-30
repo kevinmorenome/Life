@@ -93,6 +93,7 @@ export interface Outfit {
   name?: string;
   itemIds: string[];
   tags?: string[];
+  seasons?: Season[];
   favorite?: boolean;
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];

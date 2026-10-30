@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BottomNav } from './BottomNav';
 import { CalendarPage } from './CalendarPage';
 import { Home } from './Home';
@@ -8,10 +8,12 @@ import { SyncBadge } from './SyncBadge';
 import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
+import { parentRoute } from './lib/backRoute';
 import { href, useRoute } from './lib/router';
-import { useHideOnScroll } from './lib/useHideOnScroll';
+import { useSwipeBack } from './lib/useSwipeBack';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
+import { activeTab } from './nav';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -27,13 +29,15 @@ function pageTitle(route: string[]): string | undefined {
 }
 
 export function App() {
-  const topbarHidden = useHideOnScroll();
   const route = useRoute();
   const [section, ...rest] = route;
   const redirect = legacyRedirect(route);
   useEffect(() => {
     if (redirect) window.location.replace(href(redirect));
   }, [redirect]);
+
+  const page$ = useCallback(() => document.querySelector<HTMLElement>('main.container'), []);
+  useSwipeBack(redirect ? undefined : parentRoute(route), page$);
 
   const mod = MODULES.find((m) => m.id === section);
   let page;
@@ -58,7 +62,7 @@ export function App() {
           {PREVIEW_COMMIT && <> · {PREVIEW_COMMIT}</>}
         </div>
       )}
-      <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
+      <header className="topbar">
         <div className="brand-row">
           <a className="brand" href={href('/')}>
             Life
@@ -75,7 +79,7 @@ export function App() {
           <GearIcon />
         </a>
       </header>
-      <main className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
+      <main key={activeTab(route)} className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
       {showNav && <BottomNav route={route} />}
     </SettingsProvider>
   );

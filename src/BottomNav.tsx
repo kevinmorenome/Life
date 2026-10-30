@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { PlusIcon } from './icons';
 import { href, navigate } from './lib/router';
 import { MODULES } from './modules';
+import { useScrollingDown } from './lib/useScrollDirection';
 import { activeTab, APP_TABS, type AppTab } from './nav';
 
 /** Instagram-style tab bar: two tabs, a ＋ menu with every module's quick actions, two tabs. */
 export function BottomNav({ route }: { route: string[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Shrinks while scrolling down, grows back when scrolling up.
+  const compact = useScrollingDown(route.join('/')) && !menuOpen;
   const active = activeTab(route);
   const half = Math.ceil(APP_TABS.length / 2);
   const actions = MODULES.flatMap((m) => m.actions);
@@ -17,6 +20,10 @@ export function BottomNav({ route }: { route: string[] }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
+
+  // One glass lens slides to the active tab's column (the ＋ takes the middle one).
+  const activeIndex = APP_TABS.findIndex((t) => t.id === active);
+  const lensColumn = activeIndex < half ? activeIndex : activeIndex + 1;
 
   const tab = (t: AppTab) => (
     <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active === t.id ? 'page' : undefined}>
@@ -49,7 +56,8 @@ export function BottomNav({ route }: { route: string[] }) {
           </div>
         </div>
       )}
-      <nav className="bottom-nav" aria-label="Main">
+      <nav className={`bottom-nav${compact ? ' bottom-nav-compact' : ''}`} aria-label="Main">
+        <span className="tab-lens" aria-hidden style={{ ['--col' as string]: lensColumn }} />
         {APP_TABS.slice(0, half).map(tab)}
         <button
           className="tab-plus"

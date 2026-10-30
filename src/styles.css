@@ -80,25 +80,13 @@ ul {
 
 /* Layout */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  /* Part of the page, not a bar: no background or border, it scrolls away with the content. */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 16px;
-  padding-top: max(0.6rem, env(safe-area-inset-top));
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.topbar-hidden {
-  transform: translateY(-100%);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .topbar {
-    transition: transform 0.2s ease;
-  }
+  padding: 0.35rem 8px 0.25rem 16px;
+  padding-top: max(0.35rem, env(safe-area-inset-top));
 }
 .brand-page {
   margin: 0;
@@ -561,9 +549,6 @@ a:focus-visible {
   color: #1c1d20;
   font-size: 0.85rem;
   text-align: center;
-}
-.preview-banner + .topbar {
-  padding-top: 0.6rem;
 }
 
 /* Closet grid */
@@ -3224,9 +3209,6 @@ progress {
 .dot.mark-trip {
   background: var(--tone-blue);
 }
-.dot.mark-place {
-  background: var(--tone-blue);
-}
 .dot.mark-off {
   background: none;
   box-shadow: inset 0 0 0 1px var(--muted);
@@ -3246,9 +3228,6 @@ progress {
 }
 .day-badge.mark-office {
   color: var(--accent);
-}
-.day-badge.mark-place {
-  color: var(--tone-blue);
 }
 .day-badge.mark-trip {
   color: var(--tone-blue);
@@ -3283,10 +3262,6 @@ progress {
 .pill.mark-trip {
   background: var(--tone-blue);
   color: #fff;
-}
-.pill.mark-place {
-  background: var(--accent-soft);
-  color: var(--text);
 }
 .pill.mark-home {
   background: var(--accent-soft);
@@ -3354,6 +3329,1158 @@ progress {
 .work-day-section .work-choice svg {
   width: 22px;
   height: 22px;
+}
+
+/* ───────────────────────── Liquid Glass ─────────────────────────
+   Controls are a translucent material floating above the content: blurred and
+   saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
+   shadow. Everything is driven by the --glass-* tokens so light and dark share
+   the rules. Content (photos, lists, text) stays flat and sits underneath. */
+:root {
+  --glass-bg: rgb(255 255 255 / 0.55);
+  --glass-bg-strong: rgb(255 255 255 / 0.72);
+  --glass-tint: rgb(255 255 255 / 0.35);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-edge: rgb(255 255 255 / 0.35);
+  --glass-line: rgb(60 60 67 / 0.12);
+  --glass-glow: rgb(255 255 255 / 0.5);
+  --glass-shadow: 0 8px 32px rgb(31 38 54 / 0.14), 0 1px 3px rgb(31 38 54 / 0.08);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-blur-heavy: blur(32px) saturate(190%);
+  --border: rgb(60 60 67 / 0.14);
+  --shadow: 0 4px 20px rgb(31 38 54 / 0.06);
+  --radius: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgb(44 46 54 / 0.5);
+    --glass-bg-strong: rgb(36 38 46 / 0.72);
+    --glass-tint: rgb(255 255 255 / 0.06);
+    --glass-rim: rgb(255 255 255 / 0.22);
+    --glass-edge: rgb(255 255 255 / 0.06);
+    --glass-line: rgb(255 255 255 / 0.1);
+    --glass-glow: rgb(255 255 255 / 0.08);
+    --glass-shadow: 0 10px 36px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+          --border: rgb(255 255 255 / 0.1);
+    --shadow: none;
+  }
+}
+
+/* The glass material, shared by every floating control. */
+.bottom-nav,
+.sheet,
+.menu,
+.select-bar,
+.filter-head,
+.review-sheet-head,
+.sticky-actions,
+.cal-head,
+.card,
+.btn,
+.chip,
+.tab-plus,
+.card-fab,
+input,
+select,
+textarea {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* The bottom dock floats as a glass pill; the top of the page is plain. */
+.bottom-nav {
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0.3rem 8px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 34px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 22px var(--glass-glow);
+}
+.container.with-nav {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+.select-bar {
+  right: 12px;
+  bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sticky-actions {
+  bottom: 8px;
+  margin-top: 0.5rem;
+  padding: 0.6rem 12px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.filter-head,
+.cal-head {
+  border-bottom: 1px solid var(--glass-line);
+  background: var(--glass-bg-strong);
+  box-shadow: inset 0 -1px 0 var(--glass-glow);
+}
+.review-sheet-head {
+  background: var(--glass-bg-strong);
+}
+
+/* The selected tab is a lens of glass that sits in the bar. */
+.tab {
+  position: relative;
+  margin: 2px 0;
+  border-radius: 26px;
+}
+.tab[aria-current='page'] {
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 0 0 1px var(--glass-edge), 0 2px 10px rgb(31 38 54 / 0.1);
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tab {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  }
+}
+.tab-plus {
+  border: 1px solid var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+  color: var(--accent-text);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 -6px 12px rgb(0 0 0 / 0.12);
+}
+
+/* Sheets and menus: panes of frosted glass. */
+.sheet-backdrop,
+.review-backdrop {
+  background: rgb(15 20 30 / 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  max-width: 520px;
+  margin: 0 auto calc(8px + env(safe-area-inset-bottom));
+  padding-bottom: 0.75rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 32px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-item:active,
+.menu-item:active {
+  background: var(--glass-tint);
+}
+.menu {
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.review-sheet {
+  border-radius: 32px 32px 0 0;
+  box-shadow: 0 -10px 40px rgb(0 0 0 / 0.18), inset 0 1px 0 var(--glass-rim);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet,
+  .menu {
+    animation: glass-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    transform-origin: bottom center;
+  }
+  .menu {
+    transform-origin: top left;
+  }
+  .menu-end {
+    transform-origin: top right;
+  }
+}
+@keyframes glass-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+}
+
+/* Surfaces and controls. */
+.card {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.btn {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.btn:active,
+.chip:active,
+.card-fab:active,
+.tab-plus:active {
+  transform: scale(0.96);
+}
+.btn-primary {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -6px 10px rgb(0 0 0 / 0.1);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chip {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+input,
+select,
+textarea {
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.08);
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab-done {
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--accent-text);
+}
+.icon-btn {
+  transition: background 0.2s ease;
+}
+.icon-btn:active {
+  background: var(--glass-tint);
+}
+.filter-count {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Browsers without backdrop-filter get a more opaque pane so text stays legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+/* Respect users who ask for less transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+
+/* Round icon buttons that carry their own border (calendar zoom, etc.) become small glass lenses. */
+.cal-tools .icon-btn {
+  margin-right: 0;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* ───────────── Liquid Glass: the closet ─────────────
+   Pieces float on the page, controls float above
+   them, and the item page shows its photo on a lit glass stage. */
+:root {
+  --plate: linear-gradient(160deg, var(--glass-bg-strong), var(--glass-bg));
+  --plate-shadow: 0 6px 22px rgb(31 38 54 / 0.09), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+}
+/* Closet / Outfits switch: a glass track with a raised lens on the active side. */
+.seg {
+  position: relative;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 4px rgb(31 38 54 / 0.1), 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.seg button {
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+.seg button[aria-selected='true'] {
+  border-color: var(--glass-edge);
+  background: var(--plate);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+}
+
+/* Search is a glass capsule; filter and select are glass lenses beside it. */
+.search-row {
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+.search-row input {
+  min-height: 48px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 4px rgb(31 38 54 / 0.08), 0 1px 0 var(--glass-rim);
+}
+.filter-btn {
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.filter-btn:active {
+  transform: scale(0.94);
+}
+.filter-btn[aria-pressed='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--glass-bg-strong));
+}
+.filter-count {
+  top: -3px;
+  right: -3px;
+}
+
+/* Category tabs become a row of glass pills. */
+.category-tabs {
+  gap: 0.45rem;
+  margin: 0.75rem -16px 0.25rem;
+  padding: 6px 16px 10px;
+  border-bottom: 0;
+}
+.category-tabs button {
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  margin: 0;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.category-tabs button[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 20%, var(--glass-bg-strong));
+  color: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+.category-tabs .count {
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* Item grid: pieces float on the page, lifted by a soft contact shadow; glass stays on the controls. */
+.closet-grid,
+.outfit-cards {
+  gap: 6px 4px;
+  margin: 0 -8px;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+.closet-grid li,
+.outfit-cards li {
+  position: relative;
+  min-width: 0;
+  border: 0;
+  border-radius: 24px;
+  background: none;
+  box-shadow: none;
+}
+.outfit-cards li {
+  padding: 0.75rem;
+}
+.closet-tile {
+  padding: 0.4rem 0.45rem 0.65rem;
+}
+.closet-tile .thumb {
+  border-radius: 18px;
+  filter: drop-shadow(0 10px 10px rgb(31 38 54 / 0.2));
+}
+.tile-name,
+.tile-meta {
+  padding: 0 0.25rem;
+}
+.closet-tile .thumb-empty {
+  filter: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .closet-tile,
+  .outfit-card {
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  .closet-tile:active,
+  .outfit-card:active {
+    transform: scale(0.96);
+  }
+}
+.closet-tile:active .thumb {
+  opacity: 1;
+}
+
+/* Tile badges: small glass beads. */
+.fav-mark,
+.review-mark,
+.select-mark {
+  top: 0.55rem;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.fav-mark {
+  right: 0.55rem;
+  color: #e5395b;
+}
+.review-mark {
+  left: 0.55rem;
+}
+.select-mark {
+  right: 0.55rem;
+  width: 28px;
+  height: 28px;
+}
+.fav-mark svg,
+.review-mark svg {
+  width: 16px;
+  height: 16px;
+}
+.tile-select[aria-pressed='true'] .thumb {
+  outline: 0;
+}
+/* A selected piece gets a glass lens around it. */
+.closet-grid li:has(.tile-select[aria-pressed='true']) {
+  border: 1px solid var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 14%, var(--glass-bg));
+  box-shadow: 0 0 0 2px var(--accent), var(--plate-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.tile-select[aria-pressed='true'] .select-mark {
+  border-color: var(--glass-rim);
+  background: var(--accent);
+}
+.outfit-card-name {
+  bottom: 0.35rem;
+}
+
+/* Nudges at the top of the closet. */
+.today-prompt {
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+}
+
+/* Item page: the photo stands on a lit glass stage; sections are glass panes. */
+.hero {
+  position: relative;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 36px;
+  background:
+    radial-gradient(80% 60% at 50% 38%, var(--glass-bg-strong), transparent 72%),
+    var(--plate);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 30px var(--glass-glow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.hero .thumb-large {
+  filter: drop-shadow(0 14px 18px rgb(31 38 54 / 0.22));
+}
+.hero-top .back {
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 3px 10px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+}
+.hero-pill {
+  justify-self: center;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  font-size: 0.9rem;
+}
+.item-detail .card {
+  border: 1px solid var(--glass-edge);
+  background: var(--plate);
+  box-shadow: var(--plate-shadow);
+}
+.item-detail .rows > div,
+.flat-list li,
+.filter-body section {
+  border-color: var(--glass-line);
+}
+.item-detail .chip-static {
+  border: 1px solid var(--glass-edge);
+  background: color-mix(in srgb, var(--tag-bg) 70%, var(--glass-bg));
+}
+.use-with-card .board {
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: var(--plate);
+  box-shadow: var(--plate-shadow);
+}
+
+/* Filter page, review drawer: same glass, lighter on the content. */
+.filter-head {
+  border-radius: 0 0 28px 28px;
+  box-shadow: var(--glass-shadow), inset 0 -1px 0 var(--glass-glow);
+}
+.review-sheet-head {
+  box-shadow: inset 0 -1px 0 var(--glass-line);
+}
+.review-handle {
+  background: var(--text);
+  opacity: 0.25;
+}
+.tile-select {
+  min-width: 0;
+  overflow: hidden;
+}
+.tile-select .tile-name,
+.tile-select .tile-meta {
+  display: block;
+  max-width: 100%;
+}
+
+/* Calendar header: same plain page colour as the top of the screen. */
+.cal-head {
+  background: var(--bg);
+  border-bottom-color: var(--glass-line);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The dock shrinks while you scroll down and grows back when you scroll up. */
+.bottom-nav {
+  transition: max-width 0.35s cubic-bezier(0.3, 1.2, 0.4, 1), padding 0.35s ease, border-radius 0.35s ease, bottom 0.35s ease;
+}
+.bottom-nav .tab,
+.bottom-nav .tab svg,
+.bottom-nav .tab-plus,
+.bottom-nav .tab-plus svg {
+  transition: min-height 0.35s ease, width 0.35s ease, height 0.35s ease;
+}
+.bottom-nav-compact {
+  max-width: 270px;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+  bottom: calc(6px + env(safe-area-inset-bottom));
+  border-radius: 28px;
+}
+.bottom-nav-compact .tab {
+  min-height: 38px;
+}
+.bottom-nav-compact .tab svg {
+  width: 21px;
+  height: 21px;
+}
+.bottom-nav-compact .tab-plus {
+  width: 38px;
+  height: 38px;
+}
+.bottom-nav-compact .tab-plus svg {
+  width: 20px;
+  height: 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
+  .bottom-nav .tab,
+  .bottom-nav .tab svg,
+  .bottom-nav .tab-plus,
+  .bottom-nav .tab-plus svg {
+    transition: none;
+  }
+}
+
+/* Smooth tab changes: the lens glides to the new tab, the page fades in. */
+.tab-lens {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: calc(8px + var(--col, 0) * (100% - 16px) / 5 + 4px);
+  width: calc((100% - 16px) / 5 - 8px);
+  border: 1px solid var(--glass-edge);
+  border-radius: 26px;
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 10px rgb(31 38 54 / 0.1);
+  pointer-events: none;
+  transition: left 0.42s cubic-bezier(0.3, 1.25, 0.4, 1), top 0.35s ease, bottom 0.35s ease;
+}
+.bottom-nav-compact .tab-lens {
+  top: 0.15rem;
+  bottom: 0.15rem;
+}
+.bottom-nav .tab {
+  z-index: 1;
+}
+.bottom-nav .tab[aria-current='page'] {
+  background: none;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  main.container {
+    animation: page-in 0.28s ease-out;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-lens {
+    transition: none;
+  }
+}
+
+/* ───────────── Liquid Glass: the rule ─────────────
+   GLASS is the control layer that floats above the page: dock, ＋, buttons, search, pills and chips,
+   segmented switches, tappable field values, menus, sheets, badges on photos, sticky action bars.
+   CONTENT is flat on the page: the hero, photos, grids, sections, stat tiles, settings groups and
+   lists. They get no plate, border or blur; hairlines and spacing separate them. */
+.card:not(.today-prompt):not(.pack-progress) {
+  padding: 1rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  margin-bottom: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.card.tile,
+.card.insight,
+li.card {
+  border-bottom: 0;
+}
+.item-detail .card,
+.item-detail .total-use {
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  background: none;
+  box-shadow: none;
+}
+.module-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Item and outfit pages: the photo floats on the page. */
+.hero {
+  margin: 0 0 1rem;
+  padding: 0.25rem 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.hero-pill {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+.hero-pill .muted {
+  color: inherit;
+}
+.use-with-card .board {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.item-detail .chip-static {
+  box-shadow: none;
+}
+
+/* Values you can tap are controls, so they are glass capsules. */
+.field-pill {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.field-pill:active {
+  transform: scale(0.97);
+}
+
+/* Office / Home / Trip / Day off: tappable choices are glass controls. */
+.work-choice {
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.work-choice:active {
+  transform: scale(0.96);
+}
+.work-choice[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 20%, var(--glass-bg-strong));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+
+/* A second switch under another one is a sub-section: tucked under it, narrower, shorter and lighter,
+   so the two read as one group (Clothes | Work → Overview | Spending | …). */
+.seg-sub {
+  margin: -0.5rem 14px 1rem;
+  padding: 3px;
+  gap: 2px;
+  border-color: transparent;
+  border-radius: 0 0 22px 22px;
+  background: color-mix(in srgb, var(--glass-tint) 55%, transparent);
+  box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.08);
+}
+.seg-sub button {
+  min-height: 34px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+}
+.seg-sub button[aria-selected='true'] {
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+}
+
+/* Add-item drawer: the line at the top is the grip; drag it down to close. */
+.drawer-grab {
+  padding: 0.75rem 0 0.6rem;
+  cursor: grab;
+  touch-action: none;
+}
+.drawer-grab .review-handle {
+  width: 44px;
+  height: 5px;
+  margin: 0 auto;
+}
+
+/* ───────────── Outfit form (PR #64): preview, steps, details ───────────── */
+/* Outfit form: live flat-lay preview */
+.outfit-preview {
+  height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.outfit-preview .board {
+  width: 100%;
+}
+
+/* Outfit form, step 2: flat lay, hairline detail rows that open sheets, big pinned button */
+.outfit-details {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 140px);
+}
+.step-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+.step-bar h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.step-back {
+  position: absolute;
+  left: -10px;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.step-cards {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+.step-card {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(50% - 0.375rem);
+  max-width: 150px;
+  aspect-ratio: 3 / 4;
+  padding: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.step-card .board {
+  width: 100%;
+}
+.step-card-add {
+  border-style: dashed;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.step-card-add svg {
+  width: 32px;
+  height: 32px;
+}
+.step-intro {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.detail-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.detail-rows li {
+  border-top: 1px solid var(--border);
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.detail-row {
+  cursor: pointer;
+}
+.detail-title {
+  font-weight: 600;
+}
+.detail-value {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.detail-value.is-empty {
+  color: var(--muted);
+}
+.detail-row svg {
+  flex: none;
+  color: var(--muted);
+}
+.detail-value svg {
+  width: 22px;
+  height: 22px;
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+.switch[aria-checked='true'] span {
+  transform: translateX(20px);
+}
+.outfit-details .sticky-actions {
+  margin-top: auto;
+}
+.btn-cta {
+  min-height: 56px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+}
+
+/* Outfit editor: full-screen canvas with a draggable picker sheet */
+.outfit-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg);
+}
+.editor-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+.editor-canvas {
+  position: absolute;
+  top: 56px;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: var(--surface);
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+.editor-canvas .board {
+  width: 100%;
+}
+.editor-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 3;
+}
+.sheet-handle {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  flex: none;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-handle span {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.editor-sheet {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.editor-sheet .filters,
+.editor-sheet .category-tabs {
+  flex: none;
+  padding: 0 0.75rem;
+}
+/* The shared closet styles assume a 16px page gutter; the sheet has 12px, so don't overhang it. */
+.editor-sheet .category-tabs {
+  margin: 0.25rem 0 0;
+}
+.editor-sheet .closet-grid {
+  margin: 0 -0.75rem;
+}
+.sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Scroll up and down only: no sideways panning. */
+  touch-action: pan-y;
+  padding: 0.5rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+
+.editor-close {
+  font-size: 1.6rem;
+  width: 48px;
+  height: 48px;
+}
+.editor-next {
+  min-height: 44px;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+.sheet-scroll {
+  overscroll-behavior: contain;
+}
+.editor-sheet {
+  transition: none;
+}
+
+/* Editor canvas: pieces wrapped so each can carry a ✕ */
+.board-piece {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  max-width: 70%;
+}
+.board-row.n-2 .board-piece {
+  max-width: 52%;
+}
+.board-row.n-3 .board-piece {
+  max-width: 38%;
+}
+.board-feet .board-piece {
+  max-width: 34%;
+}
+.board-piece img {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+}
+.board-piece + .board-piece {
+  margin-left: -6%;
+}
+.board-extra .board-piece {
+  max-width: none;
+  height: auto;
+}
+.piece-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Details inside the editor sheet */
+.outfit-details.is-embedded {
+  padding: 0;
+}
+.outfit-details.is-embedded .sticky-actions {
+  position: static;
+  padding: 0.75rem 0 0;
+}
+
+/* Outfit editor, the glass way: the canvas is the page (pieces float, no panel); the sheet, close
+   buttons and remove beads are the control layer. */
+.editor-canvas {
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.editor-sheet {
+  border: 1px solid var(--glass-edge);
+  border-bottom: 0;
+  border-radius: 32px 32px 0 0;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: 0 -10px 36px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-handle span {
+  background: var(--text);
+  opacity: 0.25;
+}
+.editor-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.12), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.piece-x {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.18), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Swarm check-ins (from main) */
+.dot.mark-place {
+  background: var(--tone-blue);
+}
+.day-badge.mark-place {
+  color: var(--tone-blue);
+}
+.pill.mark-place {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .checkins-day {

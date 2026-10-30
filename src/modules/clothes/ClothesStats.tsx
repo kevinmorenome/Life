@@ -40,7 +40,7 @@ export function ClothesStatsView({ items, tab: routeTab }: { items: ClothingItem
 
   return (
     <>
-      <div className="seg" role="tablist" aria-label="Stats sections" style={{ ['--tabs' as string]: TABS.length }}>
+      <div className="seg seg-sub" role="tablist" aria-label="Stats sections" style={{ ['--tabs' as string]: TABS.length }}>
         {TABS.map((t) => (
           <button
             key={t.id}
