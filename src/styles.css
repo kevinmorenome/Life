@@ -4056,3 +4056,22 @@ li.card {
 .field-pill:active {
   transform: scale(0.97);
 }
+
+/* Office / Home / Trip / Day off: tappable choices are glass controls. */
+.work-choice {
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.work-choice:active {
+  transform: scale(0.96);
+}
+.work-choice[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 20%, var(--glass-bg-strong));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
