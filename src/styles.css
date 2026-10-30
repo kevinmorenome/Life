@@ -2612,3 +2612,14 @@ button.detail-row {
   position: static;
   padding: 0.75rem 0 0;
 }
+
+.outfit-editor {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.outfit-editor .sheet-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
