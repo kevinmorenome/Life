@@ -2959,30 +2959,25 @@ progress {
   align-items: center;
   gap: 0.25rem;
 }
-.work-history {
+.work-times-title {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+.work-records {
   display: grid;
-  gap: 0.4rem;
   padding: 0;
-  margin: 0 0 0.5rem;
+  margin: 0;
 }
-.work-history li {
-  display: grid;
-  grid-template-columns: 2.5rem 1fr 3.5rem;
-  align-items: center;
-  gap: 0.5rem;
-}
-.work-stack {
+.work-records li {
   display: flex;
-  height: 14px;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
 }
-.work-stack span {
-  height: 100%;
-}
-.work-stack span:first-child {
-  border-radius: 7px 0 0 7px;
-}
-.work-stack span:last-child {
-  border-radius: 0 7px 7px 0;
+.work-records li:last-child {
+  border-bottom: 0;
 }
 .work-times {
   width: 100%;

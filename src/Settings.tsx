@@ -87,7 +87,7 @@ export function Settings() {
         </label>
       </section>
       <section className="card">
-        <h2>Office days</h2>
+        <h2>Work</h2>
         <label className="field">
           <span className="muted small">Your monthly number of days.</span>
           <input
