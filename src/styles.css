@@ -2959,30 +2959,50 @@ progress {
   align-items: center;
   gap: 0.25rem;
 }
-.work-history {
-  display: grid;
-  gap: 0.4rem;
-  padding: 0;
-  margin: 0 0 0.5rem;
+.work-range {
+  margin-bottom: 0.9rem;
 }
-.work-history li {
-  display: grid;
-  grid-template-columns: 2.5rem 1fr 3.5rem;
-  align-items: center;
-  gap: 0.5rem;
-}
-.work-stack {
+.work-range-row {
   display: flex;
-  height: 14px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
-.work-stack span {
-  height: 100%;
+.work-range-row label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
 }
-.work-stack span:first-child {
-  border-radius: 7px 0 0 7px;
+.work-range-row input {
+  min-height: 44px;
 }
-.work-stack span:last-child {
-  border-radius: 0 7px 7px 0;
+.work-range-row .icon-btn {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.work-range-row strong {
+  align-self: center;
+}
+.work-times-title {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+.work-records {
+  display: grid;
+  padding: 0;
+  margin: 0;
+}
+.work-records li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.work-records li:last-child {
+  border-bottom: 0;
 }
 .work-times {
   width: 100%;
