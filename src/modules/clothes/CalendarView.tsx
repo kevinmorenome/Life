@@ -6,7 +6,7 @@ import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
-import { MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
+import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
 import { fitTiles, OUTFIT_PILL_HEIGHT, PILL_GAP, PILL_HEIGHT, slotsLeft } from './dayTiles';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
@@ -48,10 +48,12 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   const wearDays = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
   const planned = useMemo(() => plannedByDay(plans, outfits), [plans, outfits]);
 
-  // A year either side of today, widened to include a month asked for.
+  // A year either side of today, widened to include a month asked for and to reach back to the oldest data.
+  const oldest = wearDays.size ? [...wearDays.keys()].sort()[0] : undefined;
+  const layerOldest = layers.map((l) => l.earliest).sort()[0];
   const weeks = useMemo(
-    () => weekStarts(month && month < addMonths(nowMonth, -12) ? month : addMonths(nowMonth, -12), month && month > addMonths(nowMonth, 12) ? addMonths(month, 3) : addMonths(nowMonth, 12)),
-    [month, nowMonth],
+    () => weekStarts(calendarStart(nowMonth, month, [oldest, layerOldest]), month && month > addMonths(nowMonth, 12) ? addMonths(month, 3) : addMonths(nowMonth, 12)),
+    [month, nowMonth, oldest, layerOldest],
   );
 
   const wrapRef = useRef<HTMLDivElement>(null);

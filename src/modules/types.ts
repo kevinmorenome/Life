@@ -28,6 +28,8 @@ export interface DayMark {
 }
 
 export interface CalendarLayer {
+  /** Oldest date (YYYY-MM-DD) the module has something for, so the month list can scroll back that far. */
+  earliest?: string;
   /** How the day is marked: a dot when zoomed out, an icon badge by default, a labelled pill when zoomed in. */
   mark?(date: string): DayMark | null;
   /** Shown above the month grid; `month` is YYYY-MM. */

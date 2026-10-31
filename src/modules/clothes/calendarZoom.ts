@@ -44,3 +44,12 @@ export function weekDays(start: string): string[] {
 export function monthOfWeek(start: string): string {
   return addDays(start, 3).slice(0, 7);
 }
+
+/**
+ * First month of the calendar list: a year before `nowMonth`, or the month asked for, or earlier when
+ * there is data further back (`dates`: the oldest date of each source; missing ones are ignored).
+ */
+export function calendarStart(nowMonth: string, month: string | undefined, dates: (string | undefined)[]): string {
+  const oldest = dates.reduce<string>((min, d) => (d && d.slice(0, 7) < min ? d.slice(0, 7) : min), addMonths(nowMonth, -12));
+  return month && month < oldest ? month : oldest;
+}
