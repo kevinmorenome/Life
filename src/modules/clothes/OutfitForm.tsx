@@ -101,6 +101,19 @@ export function OutfitForm({ existing, initialItemIds, items, onSave, afterSave,
   // Swiping the grid up grows the sheet over the canvas before the grid scrolls;
   // swiping down at the top of the grid shrinks it so the canvas gets bigger.
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The editor is full-screen: stop the page behind it from scrolling or bouncing.
+  useEffect(() => {
+    const { overflow } = document.body.style;
+    const { overscrollBehavior } = document.documentElement.style;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+    window.scrollTo(0, 0);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.documentElement.style.overscrollBehavior = overscrollBehavior;
+    };
+  }, []);
   const sheetRef = useRef(sheetH);
   sheetRef.current = sheetH;
   useEffect(() => {

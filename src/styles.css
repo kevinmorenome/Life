@@ -3303,7 +3303,7 @@ progress {
 .cal-today {
   position: absolute;
   left: 12px;
-  bottom: 12px;
+  bottom: calc(var(--dock-clear, 0px) + 12px);
   min-height: 44px;
   padding: 0 1.1rem;
   border: 1px solid var(--border);
@@ -4494,4 +4494,14 @@ button.detail-row {
 .checkins-day li {
   padding: 0.5rem 0;
   border-top: 1px solid var(--border);
+
+.outfit-editor {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.outfit-editor .sheet-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
