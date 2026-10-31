@@ -118,14 +118,15 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
             </span>
             <span className="score-who">
               <strong>{name(s.id)}</strong>
-              <span className="muted small">
-                {!started ? 'No rounds yet' : !s.above ? 'Leading' : s.above.gap === 0 ? `Level with ${name(s.above.id)}` : `Behind ${name(s.above.id)}`}
-                {s.trail.length > 1 && ` · ${s.trail.slice(-6).map(fmt).join(' · ')}`}
-              </span>
+              <span className="muted small">{!started ? 'No rounds yet' : s.trail.slice(-6).map(fmt).join(' · ')}</span>
             </span>
             <span className="score-total">
               {fmt(s.total)}
-              {started && s.above && s.above.gap > 0 && <small className="score-gap" aria-label={`${fmt(s.above.gap)} behind ${name(s.above.id)}`}>−{fmt(s.above.gap)}</small>}
+              {started && (
+                <small className="score-gap">
+                  {!s.above ? 'Leading' : s.above.gap === 0 ? `Level with ${name(s.above.id)}` : `${fmt(s.above.gap)} behind ${name(s.above.id)}`}
+                </small>
+              )}
             </span>
           </li>
         ))}
