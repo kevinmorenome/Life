@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, titleStats, winnersFromScores } from './games';
+import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, titleStats, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match } from './types';
 
 const stamp = '2026-10-01T00:00:00Z';
@@ -88,5 +88,17 @@ describe('misc', () => {
   it('names a night champion only when one player has the most wins', () => {
     expect(nightChampion(nights[1])).toEqual({ playerId: 'a', wins: 2 });
     expect(nightChampion(night('t', '2026-10-01', [match('catan', ['a', 'b'], ['a']), match('catan', ['a', 'b'], ['b'])]))).toBeUndefined();
+  });
+});
+
+describe('live games and rounds', () => {
+  it('adds up rounds per player, treating blanks as 0', () => {
+    expect(roundTotals([{ a: 5, b: 3 }, { a: -2 }, { b: 4 }], ['a', 'b', 'c'])).toEqual({ a: 3, b: 7, c: 0 });
+  });
+  it('leaves games still being played out of the stats', () => {
+    const live = { ...match('catan', ['a', 'b'], ['a']), live: true };
+    const n = [night('x', '2026-10-01', [live])];
+    expect(allMatches(n)).toEqual([]);
+    expect(playsPerMonth(n, '2026-10-05', 1)).toEqual([{ month: '2026-10', plays: 0 }]);
   });
 });

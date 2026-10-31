@@ -17,7 +17,7 @@ export interface PlayedMatch extends Match {
 export function allMatches(nights: GameNight[]): PlayedMatch[] {
   return [...nights]
     .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
-    .flatMap((n) => n.matches.map((m) => ({ ...m, date: n.date, nightId: n.id })));
+    .flatMap((n) => n.matches.filter((m) => !m.live).map((m) => ({ ...m, date: n.date, nightId: n.id })));
 }
 
 export interface PlayerRecord {
@@ -115,7 +115,7 @@ export function playsPerMonth(nights: GameNight[], now: string, count = 6): { mo
     }
   }
   const counts = new Map<string, number>();
-  for (const n of nights) counts.set(n.date.slice(0, 7), (counts.get(n.date.slice(0, 7)) ?? 0) + n.matches.length);
+  for (const n of nights) counts.set(n.date.slice(0, 7), (counts.get(n.date.slice(0, 7)) ?? 0) + n.matches.filter((m) => !m.live).length);
   return months.map((month) => ({ month, plays: counts.get(month) ?? 0 }));
 }
 
@@ -126,4 +126,9 @@ export function nightChampion(night: GameNight): { playerId: string; wins: numbe
   const sorted = [...w.entries()].sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0 || (sorted[1] && sorted[1][1] === sorted[0][1])) return undefined;
   return { playerId: sorted[0][0], wins: sorted[0][1] };
+}
+
+/** Total points per player over the rounds so far (blank cells count as 0). */
+export function roundTotals(rounds: Record<string, number>[], playerIds: string[]): Record<string, number> {
+  return Object.fromEntries(playerIds.map((id) => [id, rounds.reduce((sum, r) => sum + (Number.isFinite(r[id]) ? r[id] : 0), 0)]));
 }

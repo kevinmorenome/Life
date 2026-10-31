@@ -34,6 +34,10 @@ export interface Match {
   /** Everyone who won (more than one on a tie). Stored, so it can override what the scores say. */
   winnerIds: string[];
   note?: string;
+  /** Points per round (one entry per round, by player id), when the game was scored round by round. `scores` is their sum. */
+  rounds?: Record<string, number>[];
+  /** Being played right now: shown as the active game, and left out of the stats until it is finished. */
+  live?: boolean;
 }
 
 /** An evening of games: where, who, and the games played in order. */

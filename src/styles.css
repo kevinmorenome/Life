@@ -4671,3 +4671,45 @@ button.detail-row {
   min-height: 44px;
   padding: 0;
 }
+
+/* Round-by-round score sheet */
+.score-wrap {
+  overflow-x: auto;
+  margin: 0 -16px 0.75rem;
+  padding: 0 16px;
+}
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+.score-table th,
+.score-table td {
+  padding: 0.25rem;
+  font-weight: 600;
+}
+.score-table thead th {
+  min-width: 4.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.score-table tbody th {
+  width: 2rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.score-table td input {
+  width: 100%;
+  min-height: 44px;
+  text-align: center;
+  font-size: 1.05rem;
+}
+.score-table tfoot th,
+.score-table tfoot td {
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--text);
+  font-size: 1.2rem;
+}
+.score-lead {
+  color: var(--accent);
+}

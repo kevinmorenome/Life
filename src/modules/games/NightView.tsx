@@ -22,11 +22,11 @@ export function NightView({ night, players, titles }: { night: GameNight; player
       <ul className="game-list">
         {night.matches.map((m) => (
           <li key={m.id}>
-            <a className="game-row" href={href(`/games/night/${night.id}/match/${m.id}`)}>
+            <a className="game-row" href={href(`/games/night/${night.id}/${m.live ? 'play' : 'match'}/${m.id}`)}>
               <strong>{titles.find((t) => t.id === m.titleId)?.name ?? 'Game'}</strong>
-              <span className="game-champ">{m.winnerIds.length ? `🏆 ${m.winnerIds.map(name).join(' & ')}` : 'No winner set'}</span>
+              <span className="game-champ">{m.live ? '🎲 In progress' : m.winnerIds.length ? `🏆 ${m.winnerIds.map(name).join(' & ')}` : 'No winner set'}</span>
               <span className="muted small">
-                {m.playerIds.map((id) => (m.scores[id] !== undefined ? `${name(id)} ${m.scores[id]}` : name(id))).join(' · ')}
+                {m.rounds?.length ? `${m.rounds.length} rounds · ` : ''}{m.playerIds.map((id) => (m.scores[id] !== undefined ? `${name(id)} ${m.scores[id]}` : name(id))).join(' · ')}
               </span>
               {m.note && <span className="muted small">{m.note}</span>}
             </a>

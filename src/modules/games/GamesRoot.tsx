@@ -1,5 +1,6 @@
 import { useCollection } from '../../lib/useCollection';
 import { MatchForm } from './MatchForm';
+import { PlayGame } from './PlayGame';
 import { NightForm } from './NightForm';
 import { NightList } from './NightList';
 import { NightView } from './NightView';
@@ -22,6 +23,11 @@ export function GamesRoot({ subroute }: { subroute: string[] }) {
     const night = nights.items.find((n) => n.id === second);
     if (!night) return <p className="muted">That game night doesn’t exist anymore.</p>;
     if (third === 'edit') return <NightForm existing={night} players={players.items} onSave={nights.save} onSavePlayer={players.save} onDelete={nights.remove} />;
+    if (third === 'play') {
+      const match = night.matches.find((m) => m.id === fourth);
+      if (!match) return <p className="muted">That game doesn’t exist anymore.</p>;
+      return <PlayGame night={night} match={match} players={players.items} title={titles.items.find((t) => t.id === match.titleId)} onSave={nights.save} />;
+    }
     if (third === 'add' || third === 'match') {
       const existing = third === 'match' ? night.matches.find((m) => m.id === fourth) : undefined;
       if (third === 'match' && !existing) return <p className="muted">That game doesn’t exist anymore.</p>;

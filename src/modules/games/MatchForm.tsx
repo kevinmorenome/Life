@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
-import { navigate } from '../../lib/router';
+import { href, navigate } from '../../lib/router';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -41,7 +41,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const togglePlayer = (id: string) => setPlayerIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const toggleWinner = (id: string) => setPicked(winners.includes(id) ? winners.filter((x) => x !== id) : [...winners, id]);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: FormEvent, live = false) {
     e.preventDefault();
     let id = titleId;
     if (!id) {
@@ -55,13 +55,14 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       id: existing?.id ?? newId(),
       titleId: id,
       playerIds,
-      scores: numeric,
-      winnerIds: winners,
+      scores: live ? {} : numeric,
+      winnerIds: live ? [] : winners,
       note: note.trim() || undefined,
+      ...(live ? { live: true, rounds: [] } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
     await onSave({ ...night, matches, updatedAt: new Date().toISOString() });
-    navigate(back);
+    navigate(live ? `${back}/play/${match.id}` : back);
   }
 
   const ready = (titleId || newName.trim()) && playerIds.length >= 2;
@@ -153,6 +154,16 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
         <button type="button" className="btn btn-ghost" onClick={() => navigate(back)}>
           Cancel
         </button>
+        {!existing && (
+          <button type="button" className="btn" disabled={!ready} onClick={(e) => submit(e, true)}>
+            Score by rounds
+          </button>
+        )}
+        {existing?.rounds && (
+          <a className="btn" href={href(`${back}/play/${existing.id}`)}>
+            Edit rounds
+          </a>
+        )}
         <button className="btn btn-primary" disabled={!ready}>
           Save
         </button>
