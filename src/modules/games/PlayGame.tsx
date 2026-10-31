@@ -149,7 +149,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                 <h2>Round {i + 1}</h2>
                 <span className="muted small">{isNew ? 'Next round' : dirty(i) ? 'Unsaved changes' : 'Saved'}</span>
                 {!isNew && (
-                  <button type="button" className="icon-btn" onClick={() => removeRound(i)} aria-label={`Delete round ${i + 1}`}>
+                  <button type="button" className="round-del" onClick={() => removeRound(i)} aria-label={`Delete round ${i + 1}`}>
                     <TrashIcon />
                   </button>
                 )}

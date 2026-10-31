@@ -4804,9 +4804,26 @@ button.detail-row {
   margin: 0;
   font-size: 1.05rem;
 }
-.round-card header .icon-btn {
-  margin-left: auto;
-  align-self: center;
+.round-card header {
+  align-items: center;
+}
+.round-del {
+  display: grid;
+  place-items: center;
+  /* 44px touch target, but it takes little room and has no plate. */
+  width: 44px;
+  height: 44px;
+  margin: -8px 0 -8px -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.round-del svg {
+  width: 17px;
+  height: 17px;
 }
 .round-card ul {
   display: grid;
