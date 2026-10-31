@@ -76,7 +76,8 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       scores: live ? {} : numeric,
       winnerIds: live ? [] : winners,
       note: note.trim() || undefined,
-      catan: cleanCatan({ ...catan, seats: hasOrder ? catan.seats : undefined, colors: hasColors ? catan.colors : undefined, variant: catanGame ? catan.variant : undefined, winRoute: catanGame ? catan.winRoute : undefined }, playerIds),
+      // Keep everything stored (seats, colors, variant, route) even when a setting is off; with turn order on, save the order shown.
+      catan: cleanCatan(hasOrder ? { ...catan, seats: Object.fromEntries(seatOrder(playerIds, catan.seats).map((p, i) => [p, i + 1])) } : catan, playerIds),
       ...(live ? { live: true, rounds: [] } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
