@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { GripIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
@@ -29,6 +29,16 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [picked, setPicked] = useState<string[] | null>(existing ? existing.winnerIds : null);
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
+  // Seat drag: the row being dragged floats under the pointer.
+  const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
+  const rows = useRef<Record<string, HTMLLIElement | null>>({});
+  useLayoutEffect(() => {
+    for (const [id, el] of Object.entries(rows.current)) {
+      if (!el) continue;
+      el.style.transform = '';
+      if (drag?.id === id) el.style.transform = `translateY(${drag.y - drag.grab - el.getBoundingClientRect().top}px)`;
+    }
+  });
   const back = `/games/night/${night.id}`;
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const title = titles.find((t) => t.id === titleId);
@@ -141,20 +151,38 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           <span>Catan details</span>
           <ul className="game-scores">
             {seatOrder(playerIds, catan.seats).map((id, idx, order) => (
-              <li key={id} data-seat-id={id}>
+              <li
+                key={id}
+                ref={(el) => {
+                  rows.current[id] = el;
+                }}
+                style={
+                  drag?.id === id
+                    ? { position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
+                    : { transition: 'scale .15s, box-shadow .15s' }
+                }
+              >
                 <span
                   role="button"
                   tabIndex={0}
                   aria-label={`${name(id)}, seat ${idx + 1}. Drag to change turn order`}
                   style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8 }}
-                  onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
-                  onPointerMove={(e) => {
-                    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-                    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-seat-id]');
-                    const overId = over?.dataset.seatId;
-                    if (!overId || overId === id) return;
-                    setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(overId)) }));
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    const top = rows.current[id]?.getBoundingClientRect().top ?? e.clientY;
+                    setDrag({ id, y: e.clientY, grab: e.clientY - top });
                   }}
+                  onPointerMove={(e) => {
+                    if (!drag || drag.id !== id) return;
+                    setDrag({ ...drag, y: e.clientY });
+                    const over = order.find((o) => {
+                      const r = o !== id && rows.current[o]?.getBoundingClientRect();
+                      return r && e.clientY >= r.top && e.clientY <= r.bottom;
+                    });
+                    if (over) setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(over)) }));
+                  }}
+                  onPointerUp={() => setDrag(null)}
+                  onPointerCancel={() => setDrag(null)}
                   onKeyDown={(e) => {
                     const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
                     if (!d || idx + d < 0 || idx + d >= order.length) return;
