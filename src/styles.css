@@ -4892,3 +4892,67 @@ button.detail-row {
   margin: 0;
   -webkit-appearance: none;
 }
+
+/* Domino calculator */
+.round-card li.has-calc {
+  grid-template-columns: 1fr 6rem 44px;
+}
+.domino-pad {
+  display: grid;
+  gap: 0.75rem;
+}
+.domino-head {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+}
+.domino-total {
+  font-size: 2.6rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.domino-tape {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.domino-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.domino-key {
+  aspect-ratio: 1;
+  min-height: 64px;
+  padding: 6px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.domino-key:active {
+  transform: scale(0.95);
+}
+.domino-key svg {
+  width: 100%;
+  height: 100%;
+}
+.domino-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.domino-done {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 52px;
+}
+.domino-done svg {
+  width: 20px;
+  height: 20px;
+}

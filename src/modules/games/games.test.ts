@@ -125,3 +125,18 @@ describe('standings', () => {
     expect(standings([], ['a', 'b'], 'high').map((x) => [x.position, x.total])).toEqual([[1, 0], [1, 0]]);
   });
 });
+
+describe('domino calculator', () => {
+  it('has a key for 1 to 12, each drawn with that many pips', async () => {
+    const { DOMINO_KEYS, PIPS } = await import('./domino');
+    expect([...DOMINO_KEYS]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    for (const k of DOMINO_KEYS) expect(PIPS[k]).toHaveLength(k);
+  });
+  it('is switched on by the game name', async () => {
+    const { isDomino } = await import('./domino');
+    expect(isDomino({ name: 'Domino cubano' })).toBe(true);
+    expect(isDomino({ name: 'Dominoes' })).toBe(true);
+    expect(isDomino({ name: 'Catan' })).toBe(false);
+    expect(isDomino(undefined)).toBe(false);
+  });
+});

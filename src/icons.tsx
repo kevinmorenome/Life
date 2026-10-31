@@ -158,3 +158,10 @@ export const DiceIcon = () => (
     <circle cx="15.5" cy="15.5" r="1" fill="currentColor" />
   </Icon>
 );
+
+export const CalculatorIcon = () => (
+  <Icon>
+    <rect x="5" y="3" width="14" height="18" rx="2.5" />
+    <path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+  </Icon>
+);

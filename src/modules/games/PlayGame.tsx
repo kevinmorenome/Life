@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { CheckIcon, TrashIcon } from '../../icons';
+import { CalculatorIcon, CheckIcon, TrashIcon } from '../../icons';
+import { DominoPad } from './DominoPad';
+import { isDomino } from './domino';
 import { navigate } from '../../lib/router';
 import { roundTotals, standings, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match, Player } from './types';
@@ -25,6 +27,8 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
   const [rounds, setRounds] = useState<Record<string, number>[]>(match.rounds ?? []);
   // Unsaved text per round card (index = rounds.length is the next, blank round).
   const [drafts, setDrafts] = useState<Record<number, Record<string, string>>>({});
+  const [pad, setPad] = useState<{ i: number; id: string } | null>(null);
+  const domino = isDomino(title);
   const [cur, setCur] = useState(match.rounds?.length ?? 0);
   const track = useRef<HTMLDivElement>(null);
   const pills = useRef<HTMLDivElement>(null);
@@ -163,7 +167,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
               </header>
               <ul>
                 {ids.map((id, k) => (
-                  <li key={id}>
+                  <li key={id} className={domino ? 'has-calc' : undefined}>
                     <label htmlFor={`pts-${i}-${id}`}>{name(id)}</label>
                     <input
                       id={`pts-${i}-${id}`}
@@ -183,6 +187,11 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                         }
                       }}
                     />
+                    {domino && (
+                      <button type="button" className="icon-btn" aria-label={`Add up ${name(id)}'s tiles`} onClick={() => setPad({ i, id })}>
+                        <CalculatorIcon />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -231,6 +240,17 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
           </button>
         )}
       </div>
+      {pad && (
+        <DominoPad
+          player={name(pad.id)}
+          start={Number(cell(pad.i, pad.id)) || 0}
+          onClose={() => setPad(null)}
+          onDone={(total) => {
+            setCell(pad.i, pad.id, String(total));
+            setPad(null);
+          }}
+        />
+      )}
     </>
   );
 }
