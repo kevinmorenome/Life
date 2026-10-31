@@ -21,12 +21,14 @@ export async function swarmStatus(): Promise<SwarmStatus | null> {
 /** Fetches new check-ins (the Worker works in batches, so keep asking while there's more), then pulls them in. */
 export async function syncSwarm(): Promise<{ added: number } | { error: string }> {
   let added = 0;
+  let offset = 0;
   for (let i = 0; i < 50; i++) {
-    const res = await fetch('/api/swarm/sync', { method: 'POST', credentials: 'same-origin' });
-    const body = (await res.json().catch(() => ({}))) as { added?: number; more?: boolean; error?: string };
+    const res = await fetch(`/api/swarm/sync?offset=${offset}`, { method: 'POST', credentials: 'same-origin' });
+    const body = (await res.json().catch(() => ({}))) as { added?: number; more?: boolean; offset?: number; error?: string };
     if (!res.ok) return { error: body.error ?? `Server error ${res.status}` };
     added += body.added ?? 0;
     if (!body.more) break;
+    offset = body.offset ?? offset;
   }
   await syncNow();
   return { added };
