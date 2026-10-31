@@ -33,11 +33,19 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   // Seat drag: the row being dragged floats under the pointer.
   const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
+  const list = useRef<HTMLUListElement>(null);
   useLayoutEffect(() => {
     for (const [id, el] of Object.entries(rows.current)) {
       if (!el) continue;
       el.style.transform = '';
-      if (drag?.id === id) el.style.transform = `translateY(${drag.y - drag.grab - el.getBoundingClientRect().top}px)`;
+      if (drag?.id === id) {
+        // Stay inside the list: not above its first row or below its last.
+        const box = list.current?.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        let top = drag.y - drag.grab;
+        if (box) top = Math.min(Math.max(top, box.top), box.bottom - r.height);
+        el.style.transform = `translateY(${top - r.top}px)`;
+      }
     }
   });
   const back = `/games/night/${night.id}`;
@@ -125,7 +133,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
-          <ul className="game-scores">
+          <ul className="game-scores" ref={list}>
             {playerIds.map((id) => {
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
               const idx = order.indexOf(id);
