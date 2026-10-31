@@ -112,6 +112,8 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
     nextPicks[i] = nextPicks[i] === id ? null : id;
     setPicks(nextPicks);
     persist(rounds, false, nextPicks);
+    // Picking a winner (not clearing the pick) moves on to the next round.
+    if (nextPicks[i]) setTimeout(() => goTo(i + 1), 250);
   };
 
   const finish = async () => {
