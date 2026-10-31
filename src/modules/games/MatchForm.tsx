@@ -126,7 +126,10 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
             </span>
           )}
           <ul className="game-scores">
-            {(hasOrder ? seatOrder(playerIds, catan.seats) : playerIds).map((id, idx, order) => (
+            {playerIds.map((id) => {
+              const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
+              const idx = order.indexOf(id);
+              return (
               <li
                 key={id}
                 ref={(el) => {
@@ -134,8 +137,8 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                 }}
                 style={
                   drag?.id === id
-                    ? { position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
-                    : { transition: 'scale .15s, box-shadow .15s' }
+                    ? { order: idx, position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
+                    : { order: idx, transition: 'scale .15s, box-shadow .15s' }
                 }
               >
                 <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
@@ -197,7 +200,8 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   🏆
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}
