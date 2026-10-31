@@ -4956,3 +4956,12 @@ button.detail-row {
   width: 20px;
   height: 20px;
 }
+
+/* A round won: a yellow shade over the points */
+.won {
+  padding: 0 0.3em;
+  border-radius: 6px;
+  background: color-mix(in srgb, #f6c90e 70%, transparent);
+  color: #1b1b1b;
+  font-weight: 700;
+}

@@ -165,3 +165,12 @@ export function standings(rounds: Record<string, number>[], playerIds: string[],
     trail: rounds.map((r) => (Number.isFinite(r[id]) ? r[id] : 0)),
   }));
 }
+
+/** Who won one round: the best points by the game's rule (ties share it). Nobody when nobody scored, everyone is level, or the game has no rule. */
+export function roundWinners(rule: ScoreRule, round: Record<string, number>, playerIds: string[]): string[] {
+  if (rule === 'manual') return [];
+  const pts = playerIds.map((id) => (Number.isFinite(round[id]) ? round[id] : 0));
+  if (pts.length < 2 || pts.every((p) => p === pts[0])) return [];
+  const best = rule === 'high' ? Math.max(...pts) : Math.min(...pts);
+  return playerIds.filter((_, i) => pts[i] === best);
+}

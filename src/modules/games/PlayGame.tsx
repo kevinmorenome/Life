@@ -3,7 +3,7 @@ import { CalculatorIcon, CheckIcon, TrashIcon } from '../../icons';
 import { DominoPad } from './DominoPad';
 import { isDomino } from './domino';
 import { navigate } from '../../lib/router';
-import { roundTotals, standings, winnersFromScores } from './games';
+import { roundTotals, roundWinners, standings, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match, Player } from './types';
 
 interface Props {
@@ -36,6 +36,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
 
   const board = standings(rounds, ids, rule);
   const started = rounds.length > 0;
+  const wonBy = rounds.map((r) => roundWinners(rule, r, ids));
   const totals = roundTotals(rounds, ids);
   const winners = picked ?? winnersFromScores(rule, totals, ids);
   const persist = (next: Record<string, number>[], done = false) => {
@@ -129,7 +130,18 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
             </span>
             <span className="score-who">
               <strong>{name(s.id)}</strong>
-              <span className="muted small">{!started ? 'No rounds yet' : s.trail.slice(-6).map(fmt).join(' · ')}</span>
+              <span className="muted small score-trail">
+                {!started
+                  ? 'No rounds yet'
+                  : s.trail.map((pts, r) => ({ pts, r, won: wonBy[r]?.includes(s.id) })).slice(-6).map(({ pts, r, won }, k) => (
+                      <span key={r}>
+                        {k > 0 && ' · '}
+                        <span className={won ? 'won' : undefined} title={won ? `Won round ${r + 1}` : undefined}>
+                          {fmt(pts)}
+                        </span>
+                      </span>
+                    ))}
+              </span>
             </span>
             <span className="score-total">
               {fmt(s.total)}
@@ -158,7 +170,9 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
             <section key={i} className="round-card" aria-label={isNew ? `Round ${i + 1}, new` : `Round ${i + 1}`}>
               <header>
                 <h2>Round {i + 1}</h2>
-                <span className="muted small">{isNew ? 'Next round' : dirty(i) ? 'Unsaved changes' : 'Saved'}</span>
+                <span className="muted small">
+                  {isNew ? 'Next round' : dirty(i) ? 'Unsaved changes' : wonBy[i]?.length ? <>Won by <span className="won">{wonBy[i].map(name).join(' & ')}</span></> : 'Saved'}
+                </span>
                 {!isNew && (
                   <button type="button" className="round-del" onClick={() => removeRound(i)} aria-label={`Delete round ${i + 1}`}>
                     <TrashIcon />

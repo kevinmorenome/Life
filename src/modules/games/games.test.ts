@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, standings, titleStats, winnersFromScores } from './games';
+import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, roundWinners, standings, titleStats, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match } from './types';
 
 const stamp = '2026-10-01T00:00:00Z';
@@ -138,5 +138,18 @@ describe('domino calculator', () => {
     expect(isDomino({ name: 'Dominoes' })).toBe(true);
     expect(isDomino({ name: 'Catan' })).toBe(false);
     expect(isDomino(undefined)).toBe(false);
+  });
+});
+
+describe('roundWinners', () => {
+  it('picks the best points of the round by the rule, sharing ties', () => {
+    expect(roundWinners('high', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual(['a']);
+    expect(roundWinners('low', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual(['c']);
+    expect(roundWinners('high', { a: 20, b: 20, c: 0 }, ['a', 'b', 'c'])).toEqual(['a', 'b']);
+  });
+  it('has no winner when everyone is level, nobody scored, or the winner is picked by hand', () => {
+    expect(roundWinners('high', {}, ['a', 'b'])).toEqual([]);
+    expect(roundWinners('high', { a: 5, b: 5 }, ['a', 'b'])).toEqual([]);
+    expect(roundWinners('manual', { a: 9, b: 1 }, ['a', 'b'])).toEqual([]);
   });
 });
