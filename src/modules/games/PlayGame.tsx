@@ -179,6 +179,20 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
               <button type="button" className="btn btn-primary round-save" disabled={!dirty(i)} onClick={() => save(i)}>
                 {isNew ? 'Add round' : 'Save changes'}
               </button>
+              <div className="round-hop">
+                {i > 0 ? (
+                  <button type="button" onClick={() => goTo(i - 1)}>
+                    ‹ Round {i}
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {i < rounds.length && (
+                  <button type="button" onClick={() => goTo(i + 1)}>
+                    {i + 1 === rounds.length ? 'New round' : `Round ${i + 2}`} ›
+                  </button>
+                )}
+              </div>
             </section>
           );
         })}

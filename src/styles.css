@@ -4778,24 +4778,22 @@ button.detail-row {
 .round-track {
   position: relative;
   display: flex;
-  gap: 12px;
-  margin: 0 -16px;
-  padding: 0 16px 0.25rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-padding: 0 16px;
   scrollbar-width: none;
 }
 .round-track::-webkit-scrollbar {
   display: none;
 }
 .round-card {
-  flex: 0 0 86%;
+  flex: 0 0 100%;
+  box-sizing: border-box;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
   display: grid;
   gap: 0.5rem;
   align-content: start;
-  padding: 0.25rem 0;
+  padding: 0.25rem 4px;
 }
 .round-card header {
   display: flex;
@@ -4850,4 +4848,19 @@ button.detail-row {
 .play-finish svg {
   width: 20px;
   height: 20px;
+}
+
+.round-hop {
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+}
+.round-hop button {
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
 }
