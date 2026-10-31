@@ -28,6 +28,10 @@ export interface CatanInfo {
   variant?: string;
   /** How the winner got to 10 points. */
   winRoute?: string;
+  /** Player id who held Longest Road at the end. */
+  longestRoad?: string;
+  /** Player id who held Largest Army at the end. */
+  largestArmy?: string;
 }
 
 /** Drop empty entries; undefined when nothing is left. */
@@ -42,6 +46,8 @@ export function cleanCatan(info: CatanInfo, playerIds: string[]): CatanInfo | un
     colors: pick(info.colors),
     variant: info.variant || undefined,
     winRoute: info.winRoute || undefined,
+    longestRoad: info.longestRoad && playerIds.includes(info.longestRoad) ? info.longestRoad : undefined,
+    largestArmy: info.largestArmy && playerIds.includes(info.largestArmy) ? info.largestArmy : undefined,
   };
   return Object.values(clean).some((v) => v !== undefined) ? clean : undefined;
 }

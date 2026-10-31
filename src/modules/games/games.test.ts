@@ -184,3 +184,11 @@ describe('catan seat order', () => {
     expect(moveSeat(['a', 'b', 'c'], 'a', 2)).toEqual({ b: 1, c: 2, a: 3 });
   });
 });
+
+describe('catan road and army', () => {
+  it('keeps them only for players in the game', async () => {
+    const { cleanCatan } = await import('./catan');
+    expect(cleanCatan({ longestRoad: 'a', largestArmy: 'z' }, ['a', 'b'])).toEqual({ longestRoad: 'a' });
+    expect(cleanCatan({ largestArmy: 'z' }, ['a'])).toBeUndefined();
+  });
+});

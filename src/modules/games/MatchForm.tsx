@@ -224,6 +224,18 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
+          {([['longestRoad', 'Longest road'], ['largestArmy', 'Largest army']] as const).map(([key, label]) => (
+            <div key={key}>
+              <span className="muted small">{label}</span>
+              <div className="chips">
+                {playerIds.map((id) => (
+                  <button key={id} type="button" className="chip" aria-pressed={catan[key] === id} onClick={() => setCatan({ ...catan, [key]: catan[key] === id ? undefined : id })}>
+                    {name(id)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
           <span className="muted small">How the winner got there</span>
           <div className="chips">
             {CATAN_ROUTES.map((r) => (
