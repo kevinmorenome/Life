@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, titleStats, winnersFromScores } from './games';
+import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, standings, titleStats, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match } from './types';
 
 const stamp = '2026-10-01T00:00:00Z';
@@ -100,5 +100,23 @@ describe('live games and rounds', () => {
     const n = [night('x', '2026-10-01', [live])];
     expect(allMatches(n)).toEqual([]);
     expect(playsPerMonth(n, '2026-10-05', 1)).toEqual([{ month: '2026-10', plays: 0 }]);
+  });
+});
+
+describe('standings', () => {
+  const rounds = [{ a: 10, b: 20, c: 20 }, { a: 5, b: 0, c: 1 }];
+  it('ranks by total, sharing positions on ties, and shows the gap to the leader', () => {
+    const s = standings([{ a: 10, b: 20, c: 20 }], ['a', 'b', 'c'], 'high');
+    expect(s.map((x) => [x.id, x.position, x.behind])).toEqual([['b', 1, 0], ['c', 1, 0], ['a', 3, 10]]);
+  });
+  it('ranks the lowest total first for low games and reports the last round and trail', () => {
+    const s = standings(rounds, ['a', 'b', 'c'], 'low');
+    expect(s.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    expect(s[0]).toMatchObject({ total: 15, last: 5, trail: [10, 5], behind: 0 });
+    expect(s[1].behind).toBe(5);
+    expect(s[2].behind).toBe(6);
+  });
+  it('handles a game with no rounds yet', () => {
+    expect(standings([], ['a', 'b'], 'high').map((x) => [x.position, x.total])).toEqual([[1, 0], [1, 0]]);
   });
 });

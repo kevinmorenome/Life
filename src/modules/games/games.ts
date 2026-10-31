@@ -132,3 +132,33 @@ export function nightChampion(night: GameNight): { playerId: string; wins: numbe
 export function roundTotals(rounds: Record<string, number>[], playerIds: string[]): Record<string, number> {
   return Object.fromEntries(playerIds.map((id) => [id, rounds.reduce((sum, r) => sum + (Number.isFinite(r[id]) ? r[id] : 0), 0)]));
 }
+
+export interface Standing {
+  id: string;
+  total: number;
+  /** 1-based; players on the same total share a position (1, 1, 3). */
+  position: number;
+  /** Points scored in the latest round, if it has any for this player. */
+  last?: number;
+  /** Points behind the leader (always >= 0, by the game's rule). */
+  behind: number;
+  /** Points per round so far (blank = 0). */
+  trail: number[];
+}
+
+/** The scoreboard: players ordered by total (lowest first for "low" games), with their position and recent points. */
+export function standings(rounds: Record<string, number>[], playerIds: string[], rule: ScoreRule): Standing[] {
+  const totals = roundTotals(rounds, playerIds);
+  const sign = rule === 'low' ? 1 : -1;
+  const order = [...playerIds].sort((a, b) => sign * (totals[a] - totals[b]) || playerIds.indexOf(a) - playerIds.indexOf(b));
+  const leader = order.length ? totals[order[0]] : 0;
+  const lastRound = rounds[rounds.length - 1];
+  return order.map((id) => ({
+    id,
+    total: totals[id],
+    position: order.findIndex((o) => totals[o] === totals[id]) + 1,
+    last: lastRound && Number.isFinite(lastRound[id]) ? lastRound[id] : undefined,
+    behind: Math.abs(leader - totals[id]),
+    trail: rounds.map((r) => (Number.isFinite(r[id]) ? r[id] : 0)),
+  }));
+}
