@@ -22,6 +22,10 @@ export interface WaterdeepInfo {
   lords?: Record<string, string>;
   /** Points per player id just before the Lord's bonus was added. */
   before?: Record<string, number>;
+  /** Played with the Skullport expansion: corruption is tracked. */
+  skullport?: boolean;
+  /** Corruption per player id: the value of each corruption they ended with (as entered, e.g. -5), so the count is the length. */
+  corruption?: Record<string, number[]>;
 }
 
 /** Drop empty entries and players who are not in the game; undefined when nothing is left. */
@@ -34,11 +38,18 @@ export function cleanWaterdeep(info: WaterdeepInfo, playerIds: string[]): Waterd
     const b = info.before?.[id];
     if (typeof b === 'number' && Number.isFinite(b)) before[id] = b;
   }
+  const corruption: Record<string, number[]> = {};
+  for (const id of playerIds) {
+    const c = (info.corruption?.[id] ?? []).filter((n) => typeof n === 'number' && Number.isFinite(n));
+    if (c.length) corruption[id] = c;
+  }
   const out: WaterdeepInfo = {
     lords: Object.keys(lords).length ? lords : undefined,
     before: Object.keys(before).length ? before : undefined,
+    skullport: info.skullport || undefined,
+    corruption: Object.keys(corruption).length ? corruption : undefined,
   };
-  return out.lords || out.before ? out : undefined;
+  return Object.values(out).some((v) => v !== undefined) ? out : undefined;
 }
 
 /** Points the Lord added: final score minus the score before it. Undefined unless both are known. */
@@ -86,4 +97,33 @@ export function lordStats(matches: Pick<Match, 'waterdeep' | 'winnerIds' | 'live
   return [...out.values()]
     .map(({ sum, ...s }) => ({ ...s, avgBonus: s.bonusGames ? sum / s.bonusGames : undefined }))
     .sort((a, b) => b.games - a.games || b.wins - a.wins || a.lord.localeCompare(b.lord));
+}
+
+export interface CorruptionStat {
+  id: string;
+  /** Finished expansion games they played. */
+  games: number;
+  wins: number;
+  /** Corruptions across those games. */
+  count: number;
+  /** Sum of their values across those games. */
+  points: number;
+}
+
+/** Corruption per player, over finished games played with the Skullport expansion. */
+export function corruptionStats(matches: Pick<Match, 'waterdeep' | 'winnerIds' | 'live' | 'playerIds'>[]): CorruptionStat[] {
+  const out = new Map<string, CorruptionStat>();
+  for (const m of matches) {
+    if (m.live || !m.waterdeep?.skullport) continue;
+    for (const id of m.playerIds) {
+      const s = out.get(id) ?? { id, games: 0, wins: 0, count: 0, points: 0 };
+      out.set(id, s);
+      const c = m.waterdeep.corruption?.[id] ?? [];
+      s.games++;
+      if (m.winnerIds.includes(id)) s.wins++;
+      s.count += c.length;
+      s.points += c.reduce((a, b) => a + b, 0);
+    }
+  }
+  return [...out.values()].sort((a, b) => b.count / b.games - a.count / a.games || a.id.localeCompare(b.id));
 }

@@ -32,6 +32,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
   const [waterdeep, setWaterdeep] = useState<WaterdeepInfo>(existing?.waterdeep ?? {});
+  const [corruptionDraft, setCorruptionDraft] = useState<Record<string, string>>({});
   // Seat drag: the row being dragged floats under the pointer.
   const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
@@ -288,6 +289,66 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               );
             })}
           </ul>
+        </div>
+      )}
+      {waterdeepGame && (
+        <div className="field">
+          <span>Skullport expansion</span>
+          <div className="chips">
+            <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
+              Played with corruption
+            </button>
+          </div>
+          {waterdeep.skullport && playerIds.length > 0 && (
+            <>
+              <span className="muted small">Add the value of each corruption a player ended with (for example -5). Tap one to remove it.</span>
+              <ul className="game-scores">
+                {playerIds.map((id) => {
+                  const list = waterdeep.corruption?.[id] ?? [];
+                  const set = (next: number[]) => setWaterdeep({ ...waterdeep, corruption: { ...waterdeep.corruption, [id]: next } });
+                  const draft = corruptionDraft[id] ?? '';
+                  const add = () => {
+                    const n = draft.trim();
+                    if (!n || !Number.isFinite(Number(n))) return;
+                    set([...list, Number(n)]);
+                    setCorruptionDraft({ ...corruptionDraft, [id]: '' });
+                  };
+                  return (
+                    <li key={id}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                        {name(id)} <span className="muted small">{list.length} · {list.reduce((a, b) => a + b, 0)}</span>
+                      </span>
+                      <div className="chips">
+                        {list.map((v, i) => (
+                          <button key={i} type="button" className="chip" aria-label={`Remove corruption ${v} from ${name(id)}`} onClick={() => set(list.filter((_, j) => j !== i))}>
+                            {v} ×
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="any"
+                        value={draft}
+                        onChange={(e) => setCorruptionDraft({ ...corruptionDraft, [id]: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            add();
+                          }
+                        }}
+                        placeholder="Value"
+                        aria-label={`${name(id)} corruption value`}
+                      />
+                      <button type="button" className="chip" onClick={add} aria-label={`Add corruption for ${name(id)}`}>
+                        ＋
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
       )}
       <label className="field">

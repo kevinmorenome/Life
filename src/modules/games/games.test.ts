@@ -233,3 +233,19 @@ describe('Lords of Waterdeep', () => {
     expect(out.find((s) => s.lord === 'Durnan')).toMatchObject({ games: 2, wins: 1, avgBonus: 20, turnarounds: 0 });
   });
 });
+
+describe('Skullport corruption', () => {
+  it('cleans corruption and counts it only for expansion games', async () => {
+    const { cleanWaterdeep, corruptionStats } = await import('./waterdeep');
+    expect(cleanWaterdeep({ skullport: true, corruption: { a: [-5, -10], b: [], z: [-1] } }, ['a', 'b'])).toEqual({ skullport: true, corruption: { a: [-5, -10] } });
+    expect(cleanWaterdeep({ skullport: false }, ['a'])).toBeUndefined();
+    const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof corruptionStats>[0][number];
+    const out = corruptionStats([
+      m({ waterdeep: { skullport: true, corruption: { a: [-5, -10] } }, winnerIds: ['b'] }),
+      m({ waterdeep: { skullport: true, corruption: { a: [-5], b: [-2] } }, winnerIds: ['a'] }),
+      m({ waterdeep: { corruption: { a: [-99] } }, winnerIds: ['a'] }),
+    ]);
+    expect(out.find((s) => s.id === 'a')).toEqual({ id: 'a', games: 2, wins: 1, count: 3, points: -20 });
+    expect(out.find((s) => s.id === 'b')).toEqual({ id: 'b', games: 2, wins: 1, count: 1, points: -2 });
+  });
+});

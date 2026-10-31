@@ -4,7 +4,7 @@ import { useCollection } from '../../lib/useCollection';
 import { Columns, Empty, HBars, Section, Tile, TONES } from '../clothes/charts';
 import { bonusStats, isCatan } from './catan';
 import { allMatches, headToHead, playerRecords, playsPerMonth, titleStats } from './games';
-import { isWaterdeep, lordStats } from './waterdeep';
+import { corruptionStats, isWaterdeep, lordStats } from './waterdeep';
 import type { GameNight, GameTitle, Player } from './types';
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -34,6 +34,7 @@ export function GamesStatsRoute() {
   const bonus = bonusStats(allMatches(nights.items).filter((m) => catanIds.has(m.titleId)));
   const wdIds = new Set(titles.items.filter((t) => isWaterdeep(t)).map((t) => t.id));
   const lords = lordStats(allMatches(nights.items).filter((m) => wdIds.has(m.titleId)));
+  const corruption = corruptionStats(allMatches(nights.items).filter((m) => wdIds.has(m.titleId)));
   const h2h = pa && pb && pa !== pb ? headToHead(nights.items, pa, pb) : undefined;
 
   return (
@@ -133,6 +134,21 @@ export function GamesStatsRoute() {
                   {l.games} {l.games === 1 ? 'game' : 'games'} · {l.wins} won
                   {l.avgBonus !== undefined ? ` · avg +${Math.round(l.avgBonus * 10) / 10}` : ''}
                   {l.turnarounds ? ` · ${l.turnarounds} comeback${l.turnarounds === 1 ? '' : 's'}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {corruption.length > 0 && (
+        <Section title="Lords of Waterdeep: corruption" note="Games played with the Skullport expansion: corruptions per game and points they cost.">
+          <ul className="game-list">
+            {corruption.map((c) => (
+              <li key={c.id} className="game-line">
+                <strong>{name(c.id)}</strong>
+                <span className="muted small">
+                  {c.games} {c.games === 1 ? 'game' : 'games'} · {c.wins} won · avg {Math.round((c.count / c.games) * 10) / 10} corruptions · avg {Math.round((c.points / c.games) * 10) / 10} points
                 </span>
               </li>
             ))}
