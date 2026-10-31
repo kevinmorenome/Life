@@ -3,6 +3,19 @@ import type { GameTitle, Match } from './types';
 export const isCatan = (title?: Pick<GameTitle, 'name'>): boolean => !!title && /catan/i.test(title.name);
 
 export const CATAN_COLORS = ['Red', 'Blue', 'Orange', 'White', 'Green', 'Brown'] as const;
+export const PLAYER_COLOR_HEX: Record<string, string> = {
+  Red: '#d64545',
+  Blue: '#3f7be0',
+  Orange: '#f0922b',
+  White: '#f4f4f4',
+  Green: '#3fa35b',
+  Brown: '#8a5a3b',
+};
+
+/** Whether a game tracks player colors / turn order; Catan does unless its settings say otherwise. */
+export const titleHasColors = (t?: Pick<GameTitle, 'name' | 'colors'>): boolean => !!t && (t.colors ?? isCatan(t));
+export const titleHasOrder = (t?: Pick<GameTitle, 'name' | 'orderMatters'>): boolean => !!t && (t.orderMatters ?? isCatan(t));
+
 export const CATAN_VARIANTS = ['Base', 'Seafarers', 'Cities & Knights', '5–6 players'] as const;
 export const CATAN_ROUTES = ['Longest road', 'Largest army', 'Dev cards', 'Cities', 'Settlements', 'Mixed'] as const;
 

@@ -2,7 +2,8 @@ import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { GripIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
-import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, type CatanInfo } from './catan';
+import { CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
+import { ColorDot } from './ColorDot';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -42,6 +43,10 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const back = `/games/night/${night.id}`;
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const title = titles.find((t) => t.id === titleId);
+  const settings = title ?? { name: newName };
+  const hasColors = titleHasColors(settings);
+  const hasOrder = titleHasOrder(settings);
+  const catanGame = isCatan(settings);
 
   const numeric: Record<string, number> = {};
   for (const id of playerIds) {
@@ -71,7 +76,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       scores: live ? {} : numeric,
       winnerIds: live ? [] : winners,
       note: note.trim() || undefined,
-      catan: isCatan(titles.find((t) => t.id === id) ?? { name: newName }) ? cleanCatan(catan, playerIds) : existing?.catan,
+      catan: cleanCatan({ ...catan, seats: hasOrder ? catan.seats : undefined, colors: hasColors ? catan.colors : undefined, variant: catanGame ? catan.variant : undefined, winRoute: catanGame ? catan.winRoute : undefined }, playerIds),
       ...(live ? { live: true, rounds: [] } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
@@ -114,10 +119,66 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
+          {hasOrder && <span className="muted small">Drag the dots to set the turn order.</span>}
           <ul className="game-scores">
-            {playerIds.map((id) => (
-              <li key={id}>
-                <span>{name(id)}</span>
+            {(hasOrder ? seatOrder(playerIds, catan.seats) : playerIds).map((id, idx, order) => (
+              <li
+                key={id}
+                ref={(el) => {
+                  rows.current[id] = el;
+                }}
+                style={
+                  drag?.id === id
+                    ? { position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
+                    : { transition: 'scale .15s, box-shadow .15s' }
+                }
+              >
+                <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                  {hasOrder && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${name(id)}, seat ${idx + 1}. Drag to change turn order`}
+                      style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', minHeight: 44, display: 'flex', alignItems: 'center', gap: 6, paddingRight: 6 }}
+                      onPointerDown={(e) => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        const top = rows.current[id]?.getBoundingClientRect().top ?? e.clientY;
+                        setDrag({ id, y: e.clientY, grab: e.clientY - top });
+                      }}
+                      onPointerMove={(e) => {
+                        if (!drag || drag.id !== id) return;
+                        setDrag({ ...drag, y: e.clientY });
+                        const over = order.find((o) => {
+                          const r = o !== id && rows.current[o]?.getBoundingClientRect();
+                          return r && e.clientY >= r.top && e.clientY <= r.bottom;
+                        });
+                        if (over) setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(over)) }));
+                      }}
+                      onPointerUp={() => setDrag(null)}
+                      onPointerCancel={() => setDrag(null)}
+                      onKeyDown={(e) => {
+                        const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+                        if (!d || idx + d < 0 || idx + d >= order.length) return;
+                        e.preventDefault();
+                        setCatan((c) => ({ ...c, seats: moveSeat(order, id, idx + d) }));
+                      }}
+                    >
+                      <b>{idx + 1}</b>
+                      <span style={{ width: 20, height: 20, opacity: 0.55, flex: 'none', display: 'inline-flex' }}>
+                        <GripIcon />
+                      </span>
+                    </span>
+                  )}
+                  {hasColors && (
+                    <ColorDot
+                      value={catan.colors?.[id]}
+                      label={name(id)}
+                      takenByOthers={playerIds.filter((p) => p !== id).map((p) => catan.colors?.[p] ?? '')}
+                      onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
+                    />
+                  )}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name(id)}</span>
+                </div>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -127,13 +188,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   placeholder="Score"
                   aria-label={`${name(id)} score`}
                 />
-                <button
-                  type="button"
-                  className="chip"
-                  aria-pressed={winners.includes(id)}
-                  onClick={() => toggleWinner(id)}
-                  aria-label={`${name(id)} won`}
-                >
+                <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
                   🏆
                 </button>
               </li>
@@ -146,71 +201,9 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           )}
         </div>
       )}
-      {isCatan(title ?? { name: newName }) && (
+      {catanGame && (
         <div className="field">
           <span>Catan details</span>
-          <ul className="game-scores">
-            {seatOrder(playerIds, catan.seats).map((id, idx, order) => (
-              <li
-                key={id}
-                ref={(el) => {
-                  rows.current[id] = el;
-                }}
-                style={
-                  drag?.id === id
-                    ? { position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
-                    : { transition: 'scale .15s, box-shadow .15s' }
-                }
-              >
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${name(id)}, seat ${idx + 1}. Drag to change turn order`}
-                  style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8 }}
-                  onPointerDown={(e) => {
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    const top = rows.current[id]?.getBoundingClientRect().top ?? e.clientY;
-                    setDrag({ id, y: e.clientY, grab: e.clientY - top });
-                  }}
-                  onPointerMove={(e) => {
-                    if (!drag || drag.id !== id) return;
-                    setDrag({ ...drag, y: e.clientY });
-                    const over = order.find((o) => {
-                      const r = o !== id && rows.current[o]?.getBoundingClientRect();
-                      return r && e.clientY >= r.top && e.clientY <= r.bottom;
-                    });
-                    if (over) setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(over)) }));
-                  }}
-                  onPointerUp={() => setDrag(null)}
-                  onPointerCancel={() => setDrag(null)}
-                  onKeyDown={(e) => {
-                    const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
-                    if (!d || idx + d < 0 || idx + d >= order.length) return;
-                    e.preventDefault();
-                    setCatan((c) => ({ ...c, seats: moveSeat(order, id, idx + d) }));
-                  }}
-                >
-                  <b>{idx + 1}</b>
-                  <span style={{ width: 20, height: 20, opacity: 0.55, flex: 'none', display: 'inline-flex' }}>
-                    <GripIcon />
-                  </span>
-                  <span>{name(id)}</span>
-                </span>
-                <select
-                  value={catan.colors?.[id] ?? ''}
-                  onChange={(e) => setCatan({ ...catan, colors: { ...catan.colors, [id]: e.target.value } })}
-                  aria-label={`${name(id)} color`}
-                >
-                  <option value="">Color</option>
-                  {CATAN_COLORS.filter(
-                    (c) => c === catan.colors?.[id] || !playerIds.some((p) => p !== id && catan.colors?.[p] === c),
-                  ).map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </li>
-            ))}
-          </ul>
           <span className="muted small">Variant</span>
           <div className="chips">
             {CATAN_VARIANTS.map((v) => (
