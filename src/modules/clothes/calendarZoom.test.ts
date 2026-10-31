@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
+import { calendarStart, monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
 
 describe('pinchZoom', () => {
   it('follows the fingers continuously and stays within the levels', () => {
@@ -47,5 +47,18 @@ describe('weeks', () => {
     expect(monthOfWeek('2026-09-28')).toBe('2026-10');
     expect(monthOfWeek('2026-10-26')).toBe('2026-10');
     expect(monthOfWeek('2026-08-31')).toBe('2026-09');
+  });
+});
+
+describe('calendarStart', () => {
+  it('defaults to a year back', () => {
+    expect(calendarStart('2026-10', undefined, [])).toBe('2025-10');
+    expect(calendarStart('2026-10', undefined, [undefined, '2026-03-04'])).toBe('2025-10');
+  });
+  it('reaches back to the oldest data', () => {
+    expect(calendarStart('2026-10', undefined, ['2019-05-20', '2024-01-01', undefined])).toBe('2019-05');
+  });
+  it('still includes a month asked for further back', () => {
+    expect(calendarStart('2026-10', '2015-01', ['2019-05-20'])).toBe('2015-01');
   });
 });

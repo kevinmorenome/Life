@@ -11,6 +11,7 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
   const days = useMemo(() => byDate(items), [items]);
 
   return {
+    earliest: days.size ? [...days.keys()].sort()[0] : undefined,
     mark(date) {
       const list = days.get(date);
       if (!list) return null;
