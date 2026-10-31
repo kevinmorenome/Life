@@ -13,7 +13,6 @@ interface Props {
 }
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
-const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmt(Math.abs(n))}`;
 
 /**
  * A game in progress: the scoreboard on top (positions, totals, last round), the next round's points
@@ -101,13 +100,13 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
             <span className="score-who">
               <strong>{name(s.id)}</strong>
               <span className="muted small">
-                {!started ? 'No rounds yet' : !s.above ? 'Leading' : s.above.gap === 0 ? `Level with ${name(s.above.id)}` : `${fmt(s.above.gap)} behind ${name(s.above.id)}`}
+                {!started ? 'No rounds yet' : !s.above ? 'Leading' : s.above.gap === 0 ? `Level with ${name(s.above.id)}` : `Behind ${name(s.above.id)}`}
                 {s.trail.length > 1 && ` · ${s.trail.slice(-6).map(fmt).join(' · ')}`}
               </span>
             </span>
             <span className="score-total">
               {fmt(s.total)}
-              {s.last !== undefined && started && <small className={s.last < 0 === (rule !== 'low') ? 'score-down' : 'score-up'}>{signed(s.last)}</small>}
+              {started && s.above && s.above.gap > 0 && <small className="score-gap" aria-label={`${fmt(s.above.gap)} behind ${name(s.above.id)}`}>−{fmt(s.above.gap)}</small>}
             </span>
           </li>
         ))}

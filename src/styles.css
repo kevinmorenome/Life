@@ -4726,10 +4726,7 @@ button.detail-row {
   font-size: 0.8rem;
   font-weight: 600;
 }
-.score-up {
-  color: var(--accent);
-}
-.score-down {
+.score-gap {
   color: var(--muted);
 }
 .score-first .score-total,
