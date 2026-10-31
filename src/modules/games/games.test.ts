@@ -1,0 +1,92 @@
+import { describe, expect, it } from 'vitest';
+import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, titleStats, winnersFromScores } from './games';
+import type { GameNight, GameTitle, Match } from './types';
+
+const stamp = '2026-10-01T00:00:00Z';
+const match = (titleId: string, playerIds: string[], winnerIds: string[], scores: Record<string, number> = {}): Match => ({
+  id: `${titleId}-${winnerIds.join('')}-${Math.random()}`,
+  titleId,
+  playerIds,
+  scores,
+  winnerIds,
+});
+const night = (id: string, date: string, matches: Match[]): GameNight => ({
+  id,
+  date,
+  playerIds: [],
+  matches,
+  createdAt: `${date}T20:00:00Z`,
+  updatedAt: stamp,
+});
+const titles: GameTitle[] = [
+  { id: 'catan', name: 'Catan', rule: 'high', createdAt: stamp, updatedAt: stamp },
+  { id: 'golf', name: 'Golf', rule: 'low', createdAt: stamp, updatedAt: stamp },
+];
+
+describe('winnersFromScores', () => {
+  it('picks the highest, the lowest, and every tied player', () => {
+    expect(winnersFromScores('high', { a: 10, b: 7 }, ['a', 'b'])).toEqual(['a']);
+    expect(winnersFromScores('low', { a: 10, b: 7 }, ['a', 'b'])).toEqual(['b']);
+    expect(winnersFromScores('high', { a: 5, b: 5, c: 1 }, ['a', 'b', 'c'])).toEqual(['a', 'b']);
+  });
+  it('picks nobody without scores or for manual games, and ignores scores of players not in the game', () => {
+    expect(winnersFromScores('high', {}, ['a'])).toEqual([]);
+    expect(winnersFromScores('manual', { a: 3 }, ['a'])).toEqual([]);
+    expect(winnersFromScores('high', { a: 3, z: 99 }, ['a'])).toEqual(['a']);
+  });
+});
+
+const nights = [
+  night('n2', '2026-10-10', [match('catan', ['a', 'b'], ['b'], { a: 6, b: 10 })]),
+  night('n1', '2026-10-03', [match('catan', ['a', 'b', 'c'], ['a'], { a: 10, b: 8, c: 4 }), match('golf', ['a', 'b'], ['a', 'b'], { a: 40, b: 40 })]),
+];
+
+describe('playerRecords', () => {
+  it('counts wins over the games each played, in date order, with streaks', () => {
+    const r = Object.fromEntries(playerRecords(nights).map((x) => [x.id, x]));
+    expect(r.a).toMatchObject({ played: 3, wins: 2, streak: 0, bestStreak: 2 });
+    expect(r.b).toMatchObject({ played: 3, wins: 2, streak: 2, bestStreak: 2 });
+    expect(r.c).toMatchObject({ played: 1, wins: 0, winRate: 0 });
+    expect(r.a.winRate).toBeCloseTo(2 / 3);
+  });
+  it('can be limited to one game', () => {
+    expect(playerRecords(nights, 'golf').map((x) => x.id).sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('headToHead', () => {
+  it('only counts games both played', () => {
+    expect(headToHead(nights, 'a', 'c')).toEqual({ games: 1, aWins: 1, bWins: 0 });
+    expect(headToHead(nights, 'a', 'b')).toEqual({ games: 3, aWins: 2, bWins: 2 });
+  });
+});
+
+describe('titleStats', () => {
+  it('finds plays, last played, top winner and the best score by the rule', () => {
+    const s = Object.fromEntries(titleStats(nights, titles).map((x) => [x.id, x]));
+    expect(s.catan).toMatchObject({ plays: 2, lastPlayed: '2026-10-10', bestScore: { value: 10, playerId: 'a', date: '2026-10-03' } });
+    expect(s.golf.bestScore!.value).toBe(40);
+  });
+  it('treats lower as better for low games', () => {
+    const n = [night('x', '2026-10-01', [match('golf', ['a', 'b'], ['b'], { a: 50, b: 38 })])];
+    expect(titleStats(n, titles)[0].bestScore).toMatchObject({ value: 38, playerId: 'b' });
+  });
+});
+
+describe('misc', () => {
+  it('orders matches by night date then play order', () => {
+    expect(allMatches(nights).map((m) => m.date)).toEqual(['2026-10-03', '2026-10-03', '2026-10-10']);
+  });
+  it('counts plays per month, filling empty months', () => {
+    const r = playsPerMonth(nights, '2026-11-15', 3);
+    expect(r).toEqual([
+      { month: '2026-09', plays: 0 },
+      { month: '2026-10', plays: 3 },
+      { month: '2026-11', plays: 0 },
+    ]);
+  });
+  it('names a night champion only when one player has the most wins', () => {
+    expect(nightChampion(nights[1])).toEqual({ playerId: 'a', wins: 2 });
+    expect(nightChampion(night('t', '2026-10-01', [match('catan', ['a', 'b'], ['a']), match('catan', ['a', 'b'], ['b'])]))).toBeUndefined();
+  });
+});

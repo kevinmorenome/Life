@@ -147,3 +147,14 @@ export const PinIcon = () => (
     <circle cx="12" cy="10" r="2.300" />
   </Icon>
 );
+
+export const DiceIcon = () => (
+  <Icon>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+    <circle cx="8.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+    <circle cx="8.5" cy="15.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="15.5" r="1" fill="currentColor" />
+  </Icon>
+);

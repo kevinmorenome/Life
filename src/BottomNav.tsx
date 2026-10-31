@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from './icons';
 import { href, navigate } from './lib/router';
 import { MODULES } from './modules';
 import { useScrollingDown } from './lib/useScrollDirection';
 import { activeTab, APP_TABS, type AppTab } from './nav';
 
-/** Instagram-style tab bar: two tabs, a ＋ menu with every module's quick actions, two tabs. */
+/** Instagram-style tab bar: a row of tabs that scrolls sideways, and a ＋ menu with every module's quick actions that stays put. */
 export function BottomNav({ route }: { route: string[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Shrinks while scrolling down, grows back when scrolling up.
   const compact = useScrollingDown(route.join('/')) && !menuOpen;
   const active = activeTab(route);
-  const half = Math.ceil(APP_TABS.length / 2);
   const actions = MODULES.flatMap((m) => m.actions);
 
   useEffect(() => {
@@ -21,9 +20,16 @@ export function BottomNav({ route }: { route: string[] }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
-  // One glass lens slides to the active tab's column (the ＋ takes the middle one).
+  // The tabs scroll sideways; the ＋ stays put. One glass lens slides to the active tab.
   const activeIndex = APP_TABS.findIndex((t) => t.id === active);
-  const lensColumn = activeIndex < half ? activeIndex : activeIndex + 1;
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    const tabEl = el?.children[0]?.children[activeIndex + 1] as HTMLElement | undefined;
+    if (!el || !tabEl) return;
+    const left = tabEl.offsetLeft - (el.clientWidth - tabEl.offsetWidth) / 2;
+    el.scrollTo({ left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [activeIndex]);
 
   const tab = (t: AppTab) => (
     <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active === t.id ? 'page' : undefined}>
@@ -57,8 +63,12 @@ export function BottomNav({ route }: { route: string[] }) {
         </div>
       )}
       <nav className={`bottom-nav${compact ? ' bottom-nav-compact' : ''}`} aria-label="Main">
-        <span className="tab-lens" aria-hidden style={{ ['--col' as string]: lensColumn }} />
-        {APP_TABS.slice(0, half).map(tab)}
+        <div className="tabs-scroll" ref={scroller}>
+          <div className="tabs-track" style={{ ['--col' as string]: activeIndex }}>
+            <span className="tab-lens" aria-hidden />
+            {APP_TABS.map(tab)}
+          </div>
+        </div>
         <button
           className="tab-plus"
           aria-label="Add"
@@ -68,7 +78,6 @@ export function BottomNav({ route }: { route: string[] }) {
         >
           <PlusIcon />
         </button>
-        {APP_TABS.slice(half).map(tab)}
       </nav>
     </>
   );

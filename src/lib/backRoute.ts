@@ -8,6 +8,10 @@ export function parentRoute(route: string[]): string | undefined {
   const [a, b, c, d] = route;
   if (a === 'settings') return '/more';
   if (a === 'calendar') return b && DATE.test(b) ? '/calendar' : undefined;
+  if (a === 'games') {
+    if (b === 'night' && c) return d ? `/games/night/${c}` : '/games';
+    return b === 'new' ? '/games' : undefined;
+  }
   if (a === 'packing') {
     if (!b) return '/more';
     if (b === 'new') return '/packing';

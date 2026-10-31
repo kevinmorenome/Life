@@ -22,6 +22,7 @@ function pageTitle(route: string[]): string | undefined {
   const [a, b] = route;
   if (!a || (a === 'calendar' && !DATE.test(b ?? ''))) return 'Calendar';
   if (a === 'stats') return 'Stats';
+  if (a === 'games' && (!b || b === 'players' || b === 'titles')) return 'Games';
   if (a === 'more') return 'More';
   if (a === 'clothes' && !b) return 'Closet';
   if (a === 'clothes' && b === 'outfits' && route.length === 2) return 'Outfits';
