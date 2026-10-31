@@ -4881,3 +4881,14 @@ button.detail-row {
   font: inherit;
   cursor: pointer;
 }
+
+/* No up/down spinners on the score fields. */
+.round-card input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.round-card input[type='number']::-webkit-outer-spin-button,
+.round-card input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}

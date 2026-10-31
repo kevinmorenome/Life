@@ -167,13 +167,11 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                     <label htmlFor={`pts-${i}-${id}`}>{name(id)}</label>
                     <input
                       id={`pts-${i}-${id}`}
-                      type="text"
-                      // The normal keyboard, not the number pad: it has a return key (next/done) and a minus on its 123 page.
-                      inputMode="text"
+                      // type=number makes iOS open the keyboard on its numbers-and-punctuation page, which has a minus and a return key
+                      // (inputMode="decimal" would give the bare number pad instead, with neither).
+                      type="number"
+                      step="any"
                       autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
                       enterKeyHint={k === ids.length - 1 ? 'done' : 'next'}
                       placeholder="0"
                       value={cell(i, id)}
