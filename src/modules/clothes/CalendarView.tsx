@@ -125,14 +125,20 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
     settle(nearestLevel(zRef.current + dir));
   };
 
-  // The calendar fills the space between the top bar and the bottom bar and scrolls inside it.
+  // The calendar fills the screen below the top bar and scrolls inside it; the dock floats over its
+  // bottom, so the scroll area gets enough bottom padding for the last week to clear the dock.
   useLayoutEffect(() => {
     const fit = () => {
       const wrap = wrapRef.current;
       if (!wrap) return;
       const nav = document.querySelector<HTMLElement>('.bottom-nav');
       const top = wrap.getBoundingClientRect().top + window.scrollY;
-      wrap.style.height = `${window.innerHeight - top - (nav?.offsetHeight ?? 0)}px`;
+      wrap.style.height = `${window.innerHeight - top}px`;
+      if (scrollRef.current) {
+        const covered = nav ? window.innerHeight - nav.getBoundingClientRect().top : 0;
+        scrollRef.current.style.paddingBottom = `${covered + 16}px`;
+        wrap.style.setProperty('--dock-clear', `${covered}px`);
+      }
     };
     fit();
     wrapRef.current?.style.setProperty('--z', String(zRef.current));
