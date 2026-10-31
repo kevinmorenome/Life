@@ -158,7 +158,9 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   aria-label={`${name(id)} color`}
                 >
                   <option value="">Color</option>
-                  {CATAN_COLORS.map((c) => (
+                  {CATAN_COLORS.filter(
+                    (c) => c === catan.colors?.[id] || !playerIds.some((p) => p !== id && catan.colors?.[p] === c),
+                  ).map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </select>
