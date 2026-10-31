@@ -209,3 +209,43 @@ describe('catan bonus stats', () => {
     ]);
   });
 });
+
+describe('Lords of Waterdeep', () => {
+  it('cleans the info and works out the bonus', async () => {
+    const { cleanWaterdeep, lordBonus, isWaterdeep } = await import('./waterdeep');
+    expect(isWaterdeep({ name: 'Lords of Waterdeep' })).toBe(true);
+    expect(cleanWaterdeep({ lords: { a: ' Mirt ', b: '', z: 'Gone' }, before: { a: 120, z: 5 } }, ['a', 'b'])).toEqual({ lords: { a: 'Mirt' }, before: { a: 120 } });
+    expect(cleanWaterdeep({ lords: { a: '' } }, ['a'])).toBeUndefined();
+    expect(lordBonus(120, 160)).toBe(40);
+    expect(lordBonus(undefined, 160)).toBeUndefined();
+  });
+
+  it('counts games, wins, average bonus and comebacks per Lord', async () => {
+    const { lordStats } = await import('./waterdeep');
+    const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof lordStats>[0][number];
+    const out = lordStats([
+      m({ waterdeep: { lords: { a: 'Mirt', b: 'Durnan' }, before: { a: 100, b: 110 } }, scores: { a: 150, b: 130 }, winnerIds: ['a'] }),
+      m({ waterdeep: { lords: { a: 'Mirt', b: 'Durnan' } }, scores: { a: 90, b: 95 }, winnerIds: ['b'] }),
+      m({ waterdeep: { lords: { a: 'Mirt' } }, scores: {}, winnerIds: [], live: true }),
+    ]);
+    const mirt = out.find((s) => s.lord === 'Mirt')!;
+    expect(mirt).toMatchObject({ games: 2, wins: 1, bonusGames: 1, avgBonus: 50, turnarounds: 1 });
+    expect(out.find((s) => s.lord === 'Durnan')).toMatchObject({ games: 2, wins: 1, avgBonus: 20, turnarounds: 0 });
+  });
+});
+
+describe('Skullport corruption', () => {
+  it('cleans corruption and counts it only for expansion games', async () => {
+    const { cleanWaterdeep, corruptionStats } = await import('./waterdeep');
+    expect(cleanWaterdeep({ skullport: true, corruption: { a: [-5, -10], b: [], z: [-1] } }, ['a', 'b'])).toEqual({ skullport: true, corruption: { a: [-5, -10] } });
+    expect(cleanWaterdeep({ skullport: false }, ['a'])).toBeUndefined();
+    const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof corruptionStats>[0][number];
+    const out = corruptionStats([
+      m({ waterdeep: { skullport: true, corruption: { a: [-5, -10] } }, winnerIds: ['b'] }),
+      m({ waterdeep: { skullport: true, corruption: { a: [-5], b: [-2] } }, winnerIds: ['a'] }),
+      m({ waterdeep: { corruption: { a: [-99] } }, winnerIds: ['a'] }),
+    ]);
+    expect(out.find((s) => s.id === 'a')).toEqual({ id: 'a', games: 2, wins: 1, count: 3, points: -20 });
+    expect(out.find((s) => s.id === 'b')).toEqual({ id: 'b', games: 2, wins: 1, count: 1, points: -2 });
+  });
+});
