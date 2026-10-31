@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { GripIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, type CatanInfo } from './catan';
@@ -162,7 +163,10 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   }}
                 >
                   <b>{idx + 1}</b>
-                  <span>≡ {name(id)}</span>
+                  <span style={{ width: 20, height: 20, opacity: 0.55, flex: 'none', display: 'inline-flex' }}>
+                    <GripIcon />
+                  </span>
+                  <span>{name(id)}</span>
                 </span>
                 <select
                   value={catan.colors?.[id] ?? ''}
