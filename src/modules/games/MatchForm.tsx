@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
-import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, type CatanInfo } from './catan';
+import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, type CatanInfo } from './catan';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -139,19 +139,31 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
         <div className="field">
           <span>Catan details</span>
           <ul className="game-scores">
-            {playerIds.map((id) => (
-              <li key={id}>
-                <span>{name(id)}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={6}
-                  value={catan.seats?.[id] ?? ''}
-                  onChange={(e) => setCatan({ ...catan, seats: { ...catan.seats, [id]: Number(e.target.value) } })}
-                  placeholder="Seat"
-                  aria-label={`${name(id)} turn order`}
-                />
+            {seatOrder(playerIds, catan.seats).map((id, idx, order) => (
+              <li key={id} data-seat-id={id}>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${name(id)}, seat ${idx + 1}. Drag to change turn order`}
+                  style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8 }}
+                  onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
+                  onPointerMove={(e) => {
+                    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+                    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-seat-id]');
+                    const overId = over?.dataset.seatId;
+                    if (!overId || overId === id) return;
+                    setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(overId)) }));
+                  }}
+                  onKeyDown={(e) => {
+                    const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+                    if (!d || idx + d < 0 || idx + d >= order.length) return;
+                    e.preventDefault();
+                    setCatan((c) => ({ ...c, seats: moveSeat(order, id, idx + d) }));
+                  }}
+                >
+                  <b>{idx + 1}</b>
+                  <span>≡ {name(id)}</span>
+                </span>
                 <select
                   value={catan.colors?.[id] ?? ''}
                   onChange={(e) => setCatan({ ...catan, colors: { ...catan.colors, [id]: e.target.value } })}

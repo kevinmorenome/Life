@@ -33,6 +33,21 @@ export function cleanCatan(info: CatanInfo, playerIds: string[]): CatanInfo | un
   return Object.values(clean).some((v) => v !== undefined) ? clean : undefined;
 }
 
+/** Players in turn order: by seat, players without one after, ties keep their order. */
+export function seatOrder(playerIds: string[], seats: Record<string, number> = {}): string[] {
+  return playerIds
+    .map((id, i) => ({ id, i }))
+    .sort((a, b) => (seats[a.id] ?? Infinity) - (seats[b.id] ?? Infinity) || a.i - b.i)
+    .map((x) => x.id);
+}
+
+/** Move a player to another position in the order; seats become 1..n. */
+export function moveSeat(order: string[], id: string, to: number): Record<string, number> {
+  const next = order.filter((x) => x !== id);
+  next.splice(Math.max(0, Math.min(to, next.length)), 0, id);
+  return Object.fromEntries(next.map((x, i) => [x, i + 1]));
+}
+
 /** Wins and games by turn-order seat, over finished matches that recorded seats. */
 export function seatStats(matches: Pick<Match, 'catan' | 'winnerIds' | 'live'>[]): Record<number, { games: number; wins: number }> {
   const out: Record<number, { games: number; wins: number }> = {};

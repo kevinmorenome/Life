@@ -174,3 +174,13 @@ describe('catan details', () => {
     });
   });
 });
+
+describe('catan seat order', () => {
+  it('orders by seat and moves a player', async () => {
+    const { seatOrder, moveSeat } = await import('./catan');
+    expect(seatOrder(['a', 'b', 'c'])).toEqual(['a', 'b', 'c']);
+    expect(seatOrder(['a', 'b', 'c'], { c: 1, a: 2 })).toEqual(['c', 'a', 'b']);
+    expect(moveSeat(['a', 'b', 'c'], 'c', 0)).toEqual({ c: 1, a: 2, b: 3 });
+    expect(moveSeat(['a', 'b', 'c'], 'a', 2)).toEqual({ b: 1, c: 2, a: 3 });
+  });
+});
