@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { ArmyIcon, GripIcon, RoadIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
-import { CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
+import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
 import { ColorDot } from './ColorDot';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
@@ -234,14 +234,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
             {CATAN_VARIANTS.map((v) => (
               <button key={v} type="button" className="chip" aria-pressed={catan.variant === v} onClick={() => setCatan({ ...catan, variant: catan.variant === v ? undefined : v })}>
                 {v}
-              </button>
-            ))}
-          </div>
-          <span className="muted small">How the winner got there</span>
-          <div className="chips">
-            {CATAN_ROUTES.map((r) => (
-              <button key={r} type="button" className="chip" aria-pressed={catan.winRoute === r} onClick={() => setCatan({ ...catan, winRoute: catan.winRoute === r ? undefined : r })}>
-                {r}
               </button>
             ))}
           </div>
