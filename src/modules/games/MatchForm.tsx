@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { GripIcon } from '../../icons';
+import { ArmyIcon, GripIcon, RoadIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
@@ -128,9 +128,9 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
-          {(hasOrder || hasColors) && (
+          {(hasOrder || hasColors || catanGame) && (
             <span className="muted small">
-              {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+              {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
           <ul className="game-scores" ref={list}>
@@ -193,7 +193,20 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
                     />
                   )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name(id)}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  {catanGame &&
+                    ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-pressed={catan[key] === id}
+                        aria-label={`${name(id)} ${label}`}
+                        onClick={() => setCatan({ ...catan, [key]: catan[key] === id ? undefined : id })}
+                        style={{ width: 36, height: 44, padding: 0, border: 0, background: 'none', color: 'inherit', display: 'grid', placeItems: 'center', cursor: 'pointer', opacity: catan[key] === id ? 1 : 0.25 }}
+                      >
+                        <span style={{ width: 24, height: 24, display: 'inline-flex' }}>{icon}</span>
+                      </button>
+                    ))}
                 </div>
                 <input
                   type="number"
@@ -224,18 +237,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
-          {([['longestRoad', 'Longest road'], ['largestArmy', 'Largest army']] as const).map(([key, label]) => (
-            <div key={key}>
-              <span className="muted small">{label}</span>
-              <div className="chips">
-                {playerIds.map((id) => (
-                  <button key={id} type="button" className="chip" aria-pressed={catan[key] === id} onClick={() => setCatan({ ...catan, [key]: catan[key] === id ? undefined : id })}>
-                    {name(id)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
           <span className="muted small">How the winner got there</span>
           <div className="chips">
             {CATAN_ROUTES.map((r) => (
