@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { GripIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
-import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, type CatanInfo } from './catan';
+import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, type CatanInfo } from './catan';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -28,6 +29,16 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [picked, setPicked] = useState<string[] | null>(existing ? existing.winnerIds : null);
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
+  // Seat drag: the row being dragged floats under the pointer.
+  const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
+  const rows = useRef<Record<string, HTMLLIElement | null>>({});
+  useLayoutEffect(() => {
+    for (const [id, el] of Object.entries(rows.current)) {
+      if (!el) continue;
+      el.style.transform = '';
+      if (drag?.id === id) el.style.transform = `translateY(${drag.y - drag.grab - el.getBoundingClientRect().top}px)`;
+    }
+  });
   const back = `/games/night/${night.id}`;
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const title = titles.find((t) => t.id === titleId);
@@ -139,26 +150,61 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
         <div className="field">
           <span>Catan details</span>
           <ul className="game-scores">
-            {playerIds.map((id) => (
-              <li key={id}>
-                <span>{name(id)}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={6}
-                  value={catan.seats?.[id] ?? ''}
-                  onChange={(e) => setCatan({ ...catan, seats: { ...catan.seats, [id]: Number(e.target.value) } })}
-                  placeholder="Seat"
-                  aria-label={`${name(id)} turn order`}
-                />
+            {seatOrder(playerIds, catan.seats).map((id, idx, order) => (
+              <li
+                key={id}
+                ref={(el) => {
+                  rows.current[id] = el;
+                }}
+                style={
+                  drag?.id === id
+                    ? { position: 'relative', zIndex: 5, scale: '1.03', background: 'var(--bg)', borderRadius: 14, boxShadow: '0 10px 28px rgba(0,0,0,.25)', transition: 'scale .15s, box-shadow .15s' }
+                    : { transition: 'scale .15s, box-shadow .15s' }
+                }
+              >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${name(id)}, seat ${idx + 1}. Drag to change turn order`}
+                  style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8 }}
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    const top = rows.current[id]?.getBoundingClientRect().top ?? e.clientY;
+                    setDrag({ id, y: e.clientY, grab: e.clientY - top });
+                  }}
+                  onPointerMove={(e) => {
+                    if (!drag || drag.id !== id) return;
+                    setDrag({ ...drag, y: e.clientY });
+                    const over = order.find((o) => {
+                      const r = o !== id && rows.current[o]?.getBoundingClientRect();
+                      return r && e.clientY >= r.top && e.clientY <= r.bottom;
+                    });
+                    if (over) setCatan((c) => ({ ...c, seats: moveSeat(order, id, order.indexOf(over)) }));
+                  }}
+                  onPointerUp={() => setDrag(null)}
+                  onPointerCancel={() => setDrag(null)}
+                  onKeyDown={(e) => {
+                    const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+                    if (!d || idx + d < 0 || idx + d >= order.length) return;
+                    e.preventDefault();
+                    setCatan((c) => ({ ...c, seats: moveSeat(order, id, idx + d) }));
+                  }}
+                >
+                  <b>{idx + 1}</b>
+                  <span style={{ width: 20, height: 20, opacity: 0.55, flex: 'none', display: 'inline-flex' }}>
+                    <GripIcon />
+                  </span>
+                  <span>{name(id)}</span>
+                </span>
                 <select
                   value={catan.colors?.[id] ?? ''}
                   onChange={(e) => setCatan({ ...catan, colors: { ...catan.colors, [id]: e.target.value } })}
                   aria-label={`${name(id)} color`}
                 >
                   <option value="">Color</option>
-                  {CATAN_COLORS.map((c) => (
+                  {CATAN_COLORS.filter(
+                    (c) => c === catan.colors?.[id] || !playerIds.some((p) => p !== id && catan.colors?.[p] === c),
+                  ).map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </select>
