@@ -266,24 +266,29 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
         <div className="field">
           <span>Lords</span>
           <span className="muted small">Each player’s Lord, revealed at the end. Enter points before the Lord above and the final total in the score field.</span>
-          <datalist id="waterdeep-lords">
-            {WATERDEEP_LORDS.map((l) => (
-              <option key={l} value={l} />
-            ))}
-          </datalist>
           <ul className="game-scores">
             {playerIds.map((id) => {
               const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
+              // Every player has a different Lord: leave out the ones the others already picked.
+              const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
+              const dup = !!waterdeep.lords?.[id]?.trim() && taken.includes(waterdeep.lords[id].trim().toLowerCase());
               return (
                 <li key={id}>
+                  <datalist id={`waterdeep-lords-${id}`}>
+                    {WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase())).map((l) => (
+                      <option key={l} value={l} />
+                    ))}
+                  </datalist>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{name(id)}</span>
                   <input
-                    list="waterdeep-lords"
+                    list={`waterdeep-lords-${id}`}
+                    aria-invalid={dup || undefined}
                     value={waterdeep.lords?.[id] ?? ''}
                     onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
                     placeholder="Lord"
                     aria-label={`${name(id)} Lord`}
                   />
+                  {dup && <span className="muted small">Already taken</span>}
                   {bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                 </li>
               );
