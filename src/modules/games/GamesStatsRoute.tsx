@@ -40,7 +40,11 @@ export function GamesStatsRoute() {
 
       <Section title="Leaderboard" note="Wins over games each person played in.">
         <HBars
-          rows={records.map((r) => ({ key: r.id, label: name(r.id), value: r.wins, shown: `${r.wins} / ${r.played}`, sub: `${pct(r.winRate)} win rate` }))}
+          rows={records.map((r, i) => {
+            const gap = i > 0 ? records[i - 1].wins - r.wins : 0;
+            const catchUp = i === 0 ? '' : gap === 0 ? ` · level with ${name(records[i - 1].id)}` : ` · ${gap} ${gap === 1 ? 'win' : 'wins'} behind ${name(records[i - 1].id)}`;
+            return { key: r.id, label: name(r.id), value: r.wins, shown: `${r.wins} / ${r.played}`, sub: `${pct(r.winRate)} win rate${catchUp}` };
+          })}
         />
       </Section>
 

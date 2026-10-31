@@ -101,7 +101,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
             <span className="score-who">
               <strong>{name(s.id)}</strong>
               <span className="muted small">
-                {!started ? 'No rounds yet' : s.behind === 0 ? (s.position === 1 ? 'Leading' : 'Level') : `${fmt(s.behind)} behind`}
+                {!started ? 'No rounds yet' : !s.above ? 'Leading' : s.above.gap === 0 ? `Level with ${name(s.above.id)}` : `${fmt(s.above.gap)} behind ${name(s.above.id)}`}
                 {s.trail.length > 1 && ` · ${s.trail.slice(-6).map(fmt).join(' · ')}`}
               </span>
             </span>

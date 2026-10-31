@@ -142,6 +142,8 @@ export interface Standing {
   last?: number;
   /** Points behind the leader (always >= 0, by the game's rule). */
   behind: number;
+  /** The player right above on the board, and the points to catch up to them (0 when level). */
+  above?: { id: string; gap: number };
   /** Points per round so far (blank = 0). */
   trail: number[];
 }
@@ -153,8 +155,9 @@ export function standings(rounds: Record<string, number>[], playerIds: string[],
   const order = [...playerIds].sort((a, b) => sign * (totals[a] - totals[b]) || playerIds.indexOf(a) - playerIds.indexOf(b));
   const leader = order.length ? totals[order[0]] : 0;
   const lastRound = rounds[rounds.length - 1];
-  return order.map((id) => ({
+  return order.map((id, i) => ({
     id,
+    above: i > 0 ? { id: order[i - 1], gap: Math.abs(totals[order[i - 1]] - totals[id]) } : undefined,
     total: totals[id],
     position: order.findIndex((o) => totals[o] === totals[id]) + 1,
     last: lastRound && Number.isFinite(lastRound[id]) ? lastRound[id] : undefined,

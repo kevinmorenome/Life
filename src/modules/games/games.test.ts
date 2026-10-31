@@ -116,6 +116,11 @@ describe('standings', () => {
     expect(s[1].behind).toBe(5);
     expect(s[2].behind).toBe(6);
   });
+  it('gives the gap to the player directly above, not to the leader', () => {
+    const s = standings([{ a: 30, b: 20, c: 5 }], ['a', 'b', 'c'], 'high');
+    expect(s.map((x) => x.above)).toEqual([undefined, { id: 'a', gap: 10 }, { id: 'b', gap: 15 }]);
+    expect(standings([{ a: 3, b: 1 }], ['a', 'b'], 'low')[1].above).toEqual({ id: 'b', gap: 2 });
+  });
   it('handles a game with no rounds yet', () => {
     expect(standings([], ['a', 'b'], 'high').map((x) => [x.position, x.total])).toEqual([[1, 0], [1, 0]]);
   });
