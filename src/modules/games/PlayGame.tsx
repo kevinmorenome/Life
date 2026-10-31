@@ -168,7 +168,12 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                     <input
                       id={`pts-${i}-${id}`}
                       type="text"
-                      inputMode="decimal"
+                      // The normal keyboard, not the number pad: it has a return key (next/done) and a minus on its 123 page.
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       enterKeyHint={k === ids.length - 1 ? 'done' : 'next'}
                       placeholder="0"
                       value={cell(i, id)}
