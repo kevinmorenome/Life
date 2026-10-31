@@ -4505,3 +4505,32 @@ button.detail-row {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Stats → Places: flat, hairline-separated list of venues (content, no plate). */
+.place-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.place-list li + li {
+  border-top: 1px solid var(--border);
+}
+.place-head {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.place-worn {
+  padding: 0 0 0.6rem;
+}
+.place-worn p {
+  margin: 0.25rem 0;
+}
