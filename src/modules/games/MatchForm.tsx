@@ -199,11 +199,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </li>
             ))}
           </ul>
-          {picked && (
-            <button type="button" className="btn btn-ghost" onClick={() => setPicked(null)}>
-              Use the scores
-            </button>
-          )}
         </div>
       )}
       {catanGame && (
