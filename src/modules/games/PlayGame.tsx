@@ -53,6 +53,13 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
     }
     return out;
   };
+  const setCell = (i: number, id: string, value: string) =>
+    setDrafts((d) => ({ ...d, [i]: { ...(d[i] ?? Object.fromEntries(ids.map((x) => [x, committed(i, x)]))), [id]: value } }));
+  // Moves on to the next player's field, or saves the round after the last one.
+  const next = (i: number, k: number) => {
+    if (k < ids.length - 1) document.getElementById(`pts-${i}-${ids[k + 1]}`)?.focus();
+    else save(i);
+  };
   const dropDraft = (i: number) =>
     setDrafts((d) => {
       const { [i]: _gone, ...rest } = d;
@@ -165,14 +172,21 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                       enterKeyHint={k === ids.length - 1 ? 'done' : 'next'}
                       placeholder="0"
                       value={cell(i, id)}
-                      onChange={(e) => setDrafts((d) => ({ ...d, [i]: { ...(d[i] ?? Object.fromEntries(ids.map((x) => [x, committed(i, x)]))), [id]: e.target.value } }))}
+                      onChange={(e) => setCell(i, id, e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return;
-                        e.preventDefault();
-                        if (k < ids.length - 1) document.getElementById(`pts-${i}-${ids[k + 1]}`)?.focus();
-                        else save(i);
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          next(i, k);
+                        }
                       }}
                     />
+                    {/* The phone's number pad has no minus and no return key, so they live here. */}
+                    <button type="button" className="pts-btn" onPointerDown={(e) => e.preventDefault()} aria-label={`Make ${name(id)}'s score negative or positive`} onClick={() => setCell(i, id, cell(i, id).startsWith('-') ? cell(i, id).slice(1) : `-${cell(i, id)}`)}>
+                      ±
+                    </button>
+                    <button type="button" className="pts-btn" onPointerDown={(e) => e.preventDefault()} aria-label={k === ids.length - 1 ? 'Save round' : `Next: ${name(ids[k + 1])}`} onClick={() => next(i, k)}>
+                      {k === ids.length - 1 ? <CheckIcon /> : '›'}
+                    </button>
                   </li>
                 ))}
               </ul>
