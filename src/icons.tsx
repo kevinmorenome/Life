@@ -147,3 +147,21 @@ export const PinIcon = () => (
     <circle cx="12" cy="10" r="2.300" />
   </Icon>
 );
+
+export const DiceIcon = () => (
+  <Icon>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+    <circle cx="8.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+    <circle cx="8.5" cy="15.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="15.5" r="1" fill="currentColor" />
+  </Icon>
+);
+
+export const CalculatorIcon = () => (
+  <Icon>
+    <rect x="5" y="3" width="14" height="18" rx="2.5" />
+    <path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+  </Icon>
+);

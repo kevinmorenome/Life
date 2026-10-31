@@ -4494,6 +4494,7 @@ button.detail-row {
 .checkins-day li {
   padding: 0.5rem 0;
   border-top: 1px solid var(--border);
+}
 
 .outfit-editor {
   height: 100dvh;
@@ -4533,4 +4534,444 @@ button.detail-row {
 }
 .place-worn p {
   margin: 0.25rem 0;
+}
+
+/* ───────────── Scrollable bottom bar: the tabs slide sideways, the ＋ stays put ───────────── */
+.bottom-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tabs-scroll {
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* A soft fade at both edges hints that there is more to scroll to. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+}
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+.tabs-track {
+  --tabw: calc(100cqw / 4.3);
+  position: relative;
+  display: flex;
+  width: max-content;
+}
+.tabs-track .tab {
+  flex: 0 0 var(--tabw);
+  width: var(--tabw);
+}
+.tabs-track .tab-lens {
+  top: 2px;
+  bottom: 2px;
+  left: calc(var(--col, 0) * var(--tabw) + 4px);
+  width: calc(var(--tabw) - 8px);
+}
+.bottom-nav .tab-plus {
+  flex: none;
+  margin-right: 4px;
+}
+.bottom-nav-compact .tabs-track .tab-lens {
+  top: 2px;
+  bottom: 2px;
+}
+
+/* ───────────── Games ───────────── */
+.dot.mark-games {
+  background: var(--tone-purple);
+}
+.day-badge.mark-games {
+  color: var(--tone-purple);
+}
+.pill.mark-games {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.game-list {
+  display: grid;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.game-row,
+.game-line {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.7rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.game-line {
+  cursor: default;
+}
+.game-champ {
+  font-weight: 600;
+}
+.game-add {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+.game-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+.game-add select {
+  min-height: 44px;
+  max-width: 45%;
+}
+.game-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 48px;
+  text-decoration: none;
+}
+.game-new svg {
+  width: 20px;
+  height: 20px;
+}
+.game-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.game-scores {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.game-scores li {
+  display: grid;
+  grid-template-columns: 1fr 6rem auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.game-scores .chip {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+/* Live game: scoreboard on top, next round below */
+.play-head {
+  display: grid;
+  gap: 0.1rem;
+  margin-bottom: 0.5rem;
+}
+.play-head .page-title {
+  margin: 0;
+}
+.scoreboard {
+  display: grid;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.score-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.score-pos {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.score-who {
+  display: grid;
+  min-width: 0;
+}
+.score-who strong {
+  font-size: 1.1rem;
+}
+.score-who .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.score-total {
+  display: grid;
+  justify-items: end;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.score-total small {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.score-gap {
+  color: var(--muted);
+}
+.score-first .score-total,
+.score-first .score-who strong {
+  color: var(--accent);
+}
+.round-nav {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -16px 0.6rem;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.round-nav::-webkit-scrollbar {
+  display: none;
+}
+.round-pill {
+  position: relative;
+  flex: none;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--glass-edge, var(--border));
+  border-radius: 999px;
+  background: var(--glass-bg, var(--surface));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.round-pill[aria-current='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.round-pill i {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone-orange);
+}
+.round-track {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.round-track::-webkit-scrollbar {
+  display: none;
+}
+.round-card {
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 0.25rem 4px;
+}
+.round-card header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.round-card header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.round-card header {
+  align-items: center;
+}
+.round-del {
+  display: grid;
+  place-items: center;
+  /* 44px touch target, but it takes little room and has no plate. */
+  width: 44px;
+  height: 44px;
+  margin: -8px 0 -8px -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.round-del svg {
+  width: 17px;
+  height: 17px;
+}
+.round-card ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.round-card li {
+  display: grid;
+  grid-template-columns: 1fr 7rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0;
+}
+.round-card label {
+  font-size: 1.05rem;
+}
+.round-card input {
+  min-height: 52px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+.round-save {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+.play-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.play-finish {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.play-finish svg {
+  width: 20px;
+  height: 20px;
+}
+
+.round-hop {
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+}
+.round-hop button {
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* No up/down spinners on the score fields. */
+.round-card input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.round-card input[type='number']::-webkit-outer-spin-button,
+.round-card input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* Domino calculator */
+.round-card li.has-calc {
+  grid-template-columns: 1fr 6rem 44px;
+}
+.domino-pad {
+  display: grid;
+  gap: 0.75rem;
+}
+.domino-head {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+}
+.domino-total {
+  font-size: 2.6rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.domino-tape {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.domino-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.domino-key {
+  aspect-ratio: 1;
+  min-height: 64px;
+  padding: 6px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.domino-key:active {
+  transform: scale(0.95);
+}
+.domino-key svg {
+  width: 100%;
+  height: 100%;
+}
+.domino-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.domino-done {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 52px;
+}
+.domino-done svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* A round won: a yellow shade over the points */
+.won {
+  padding: 0 0.3em;
+  border-radius: 6px;
+  background: color-mix(in srgb, #f6c90e 70%, transparent);
+  color: #1b1b1b;
+  font-weight: 700;
+}
+
+.tie-note {
+  color: var(--tone-orange);
+  font-weight: 600;
+}
+.round-tie {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.25rem 0 0.4rem;
 }
