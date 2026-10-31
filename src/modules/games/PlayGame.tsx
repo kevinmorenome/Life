@@ -180,10 +180,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                         }
                       }}
                     />
-                    {/* The phone's number pad has no minus and no return key, so they live here. */}
-                    <button type="button" className="pts-btn" onPointerDown={(e) => e.preventDefault()} aria-label={`Make ${name(id)}'s score negative or positive`} onClick={() => setCell(i, id, cell(i, id).startsWith('-') ? cell(i, id).slice(1) : `-${cell(i, id)}`)}>
-                      ±
-                    </button>
+                    {/* The phone's number pad has no return key, so this moves on to the next player. */}
                     <button type="button" className="pts-btn" onPointerDown={(e) => e.preventDefault()} aria-label={k === ids.length - 1 ? 'Save round' : `Next: ${name(ids[k + 1])}`} onClick={() => next(i, k)}>
                       {k === ids.length - 1 ? <CheckIcon /> : '›'}
                     </button>

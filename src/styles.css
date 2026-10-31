@@ -4833,7 +4833,7 @@ button.detail-row {
 }
 .round-card li {
   display: grid;
-  grid-template-columns: 1fr 5.5rem 44px 44px;
+  grid-template-columns: 1fr 6rem 44px;
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0;
