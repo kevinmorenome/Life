@@ -5,6 +5,7 @@ import { getAll, notify, put } from './lib/db';
 import { today } from './lib/format';
 import { PREVIEW_LABEL } from './lib/preview';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
+import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { SwarmSection } from './modules/checkins/SwarmSection';
 import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
 import type { WorkDay } from './modules/work/types';
@@ -164,6 +165,7 @@ export function Settings() {
         </div>
       </section>
       <SwarmSection />
+      <OfficeFromSwarm />
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>

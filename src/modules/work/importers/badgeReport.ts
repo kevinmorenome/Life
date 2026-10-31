@@ -90,7 +90,7 @@ const same = (a: WorkDay, b: WorkDay) =>
  * Which parsed days to write. A day you set or edited by hand (no `source`) is
  * never replaced, with one exception: a business trip in the report always wins
  * over what's already there, since trips are easy to lose to a placeholder day.
- * Days from an earlier report are refreshed only if they changed.
+ * Days from an earlier report, or inferred from Swarm check-ins, are refreshed only if they changed.
  */
 export function planImport(
   parsed: WorkDay[],
@@ -105,7 +105,7 @@ export function planImport(
     const old = byId.get(day.id);
     if (!old) write.push(day);
     else if (same(old, day)) unchanged++;
-    else if (old.source === 'report') write.push(day);
+    else if (old.source) write.push(day);
     else if (day.status === 'trip') {
       write.push(day);
       overridden++;

@@ -87,7 +87,7 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
         </div>
       )}
       <p className="muted small work-source">
-        {info?.manual ? (day?.source === 'report' ? 'From your badge report.' : 'Set by hand.') : status ? 'From your check-ins.' : 'Nothing recorded for this day.'}
+        {info?.manual ? (day?.source === 'report' ? 'From your badge report.' : day?.source === 'swarm' ? 'From your Swarm check-ins.' : 'Set by hand.') : status ? 'From your check-ins.' : 'Nothing recorded for this day.'}
         {!status && ' Choose where you worked to add times.'}
         {info?.manual && (
           <button className="icon-btn" onClick={() => onClear(date)} aria-label="Clear and go back to check-ins">

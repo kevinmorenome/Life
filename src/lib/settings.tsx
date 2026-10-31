@@ -12,6 +12,8 @@ export interface AppSettings {
   workTargetKind?: 'min-office' | 'max-home';
   /** With 'max-home': the higher number of home days you can request (default 10). */
   workExtended?: number;
+  /** Checkins module: the venue (`venueKey`) of your office, used to mark office days from Swarm. */
+  officeVenue?: string;
   updatedAt: string;
 }
 
