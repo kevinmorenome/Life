@@ -26,6 +26,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   // null: follow the scores; an array: the user picked.
   const [picked, setPicked] = useState<string[] | null>(existing ? existing.winnerIds : null);
   const [note, setNote] = useState(existing?.note ?? '');
+  const [target, setTarget] = useState('');
   const back = `/games/night/${night.id}`;
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const title = titles.find((t) => t.id === titleId);
@@ -58,7 +59,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       scores: live ? {} : numeric,
       winnerIds: live ? [] : winners,
       note: note.trim() || undefined,
-      ...(live ? { live: true, rounds: [] } : {}),
+      ...(live ? { live: true, rounds: [], ...(Number(target) > 0 ? { targetScore: Number(target) } : {}) } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
     await onSave({ ...night, matches, updatedAt: new Date().toISOString() });
@@ -131,6 +132,13 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
             </button>
           )}
         </div>
+      )}
+      {!existing && (
+        <label className="field">
+          <span>Ends at (points, optional)</span>
+          <input type="number" inputMode="decimal" min="1" step="any" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g. 100" aria-label="Target score" />
+          <span className="muted small">Used with "Score by rounds": you're asked to finish once a player reaches it.</span>
+        </label>
       )}
       <label className="field">
         <span>Note (optional)</span>

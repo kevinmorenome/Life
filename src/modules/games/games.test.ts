@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, roundWinners, standings, titleStats, winnersFromScores } from './games';
+import { allMatches, headToHead, nightChampion, playerRecords, playsPerMonth, roundTotals, reachedTarget, roundWinners, standings, titleStats, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match } from './types';
 
 const stamp = '2026-10-01T00:00:00Z';
@@ -158,5 +158,15 @@ describe('roundWinners', () => {
     expect(roundWinners('high', {}, ['a', 'b'])).toEqual({ winners: [], tied: [] });
     expect(roundWinners('high', { a: 0, b: 0 }, ['a', 'b'])).toEqual({ winners: [], tied: [] });
     expect(roundWinners('manual', { a: 9, b: 1 }, ['a', 'b'])).toEqual({ winners: [], tied: [] });
+  });
+});
+
+describe('reachedTarget', () => {
+  it('lists players at or over the target', () => {
+    expect(reachedTarget({ a: 100, b: 120, c: 40 }, ['a', 'b', 'c'], 100)).toEqual(['a', 'b']);
+  });
+  it('is empty without a valid target', () => {
+    expect(reachedTarget({ a: 100 }, ['a'], undefined)).toEqual([]);
+    expect(reachedTarget({ a: 100 }, ['a'], 0)).toEqual([]);
   });
 });

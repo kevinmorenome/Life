@@ -40,6 +40,8 @@ export interface Match {
   roundPicks?: (string | null)[];
   /** Being played right now: shown as the active game, and left out of the stats until it is finished. */
   live?: boolean;
+  /** Points that end the game when a player reaches them (round-by-round games). Only prompts to finish; the user decides. */
+  targetScore?: number;
 }
 
 /** An evening of games: where, who, and the games played in order. */

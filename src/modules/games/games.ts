@@ -133,6 +133,12 @@ export function roundTotals(rounds: Record<string, number>[], playerIds: string[
   return Object.fromEntries(playerIds.map((id) => [id, rounds.reduce((sum, r) => sum + (Number.isFinite(r[id]) ? r[id] : 0), 0)]));
 }
 
+/** Players whose total has reached the target (empty when there's no valid target). */
+export function reachedTarget(totals: Record<string, number>, playerIds: string[], target?: number): string[] {
+  if (target === undefined || !Number.isFinite(target) || target <= 0) return [];
+  return playerIds.filter((id) => (totals[id] ?? 0) >= target);
+}
+
 export interface Standing {
   id: string;
   total: number;
