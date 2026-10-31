@@ -81,3 +81,40 @@ export function seatStats(matches: Pick<Match, 'catan' | 'winnerIds' | 'live'>[]
   }
   return out;
 }
+
+export interface BonusStat {
+  id: string;
+  /** Finished games they played where road or army was recorded. */
+  games: number;
+  road: number;
+  army: number;
+  /** Games won while holding it. */
+  roadWins: number;
+  armyWins: number;
+}
+
+/** Longest Road and Largest Army per player, over finished games that recorded either. */
+export function bonusStats(matches: Pick<Match, 'catan' | 'winnerIds' | 'live' | 'playerIds'>[]): BonusStat[] {
+  const out = new Map<string, BonusStat>();
+  const get = (id: string) => {
+    let s = out.get(id);
+    if (!s) out.set(id, (s = { id, games: 0, road: 0, army: 0, roadWins: 0, armyWins: 0 }));
+    return s;
+  };
+  for (const m of matches) {
+    const road = m.catan?.longestRoad;
+    const army = m.catan?.largestArmy;
+    if (m.live || (!road && !army)) continue;
+    for (const id of m.playerIds) get(id).games++;
+    const won = (id: string) => m.winnerIds.includes(id);
+    if (road) {
+      get(road).road++;
+      if (won(road)) get(road).roadWins++;
+    }
+    if (army) {
+      get(army).army++;
+      if (won(army)) get(army).armyWins++;
+    }
+  }
+  return [...out.values()].sort((a, b) => b.road + b.army - (a.road + a.army) || a.id.localeCompare(b.id));
+}
