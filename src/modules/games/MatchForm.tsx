@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
+import { CATAN_COLORS, CATAN_ROUTES, CATAN_VARIANTS, cleanCatan, isCatan, type CatanInfo } from './catan';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -26,6 +27,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   // null: follow the scores; an array: the user picked.
   const [picked, setPicked] = useState<string[] | null>(existing ? existing.winnerIds : null);
   const [note, setNote] = useState(existing?.note ?? '');
+  const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
   const back = `/games/night/${night.id}`;
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const title = titles.find((t) => t.id === titleId);
@@ -58,6 +60,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       scores: live ? {} : numeric,
       winnerIds: live ? [] : winners,
       note: note.trim() || undefined,
+      catan: isCatan(titles.find((t) => t.id === id) ?? { name: newName }) ? cleanCatan(catan, playerIds) : existing?.catan,
       ...(live ? { live: true, rounds: [] } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
@@ -130,6 +133,54 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               Use the scores
             </button>
           )}
+        </div>
+      )}
+      {isCatan(title ?? { name: newName }) && (
+        <div className="field">
+          <span>Catan details</span>
+          <ul className="game-scores">
+            {playerIds.map((id) => (
+              <li key={id}>
+                <span>{name(id)}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={6}
+                  value={catan.seats?.[id] ?? ''}
+                  onChange={(e) => setCatan({ ...catan, seats: { ...catan.seats, [id]: Number(e.target.value) } })}
+                  placeholder="Seat"
+                  aria-label={`${name(id)} turn order`}
+                />
+                <select
+                  value={catan.colors?.[id] ?? ''}
+                  onChange={(e) => setCatan({ ...catan, colors: { ...catan.colors, [id]: e.target.value } })}
+                  aria-label={`${name(id)} color`}
+                >
+                  <option value="">Color</option>
+                  {CATAN_COLORS.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </li>
+            ))}
+          </ul>
+          <span className="muted small">Variant</span>
+          <div className="chips">
+            {CATAN_VARIANTS.map((v) => (
+              <button key={v} type="button" className="chip" aria-pressed={catan.variant === v} onClick={() => setCatan({ ...catan, variant: catan.variant === v ? undefined : v })}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <span className="muted small">How the winner got there</span>
+          <div className="chips">
+            {CATAN_ROUTES.map((r) => (
+              <button key={r} type="button" className="chip" aria-pressed={catan.winRoute === r} onClick={() => setCatan({ ...catan, winRoute: catan.winRoute === r ? undefined : r })}>
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       <label className="field">

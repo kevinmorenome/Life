@@ -160,3 +160,17 @@ describe('roundWinners', () => {
     expect(roundWinners('manual', { a: 9, b: 1 }, ['a', 'b'])).toEqual({ winners: [], tied: [] });
   });
 });
+
+describe('catan details', () => {
+  it('cleans empty entries and counts wins by seat', async () => {
+    const { cleanCatan, seatStats, isCatan } = await import('./catan');
+    expect(isCatan({ name: 'Catan' })).toBe(true);
+    expect(cleanCatan({ seats: { a: 1 }, colors: { a: '' } }, ['a', 'b'])).toEqual({ seats: { a: 1 } });
+    expect(cleanCatan({}, ['a'])).toBeUndefined();
+    const m = (seats: Record<string, number>, winnerIds: string[], live = false) => ({ catan: { seats }, winnerIds, live });
+    expect(seatStats([m({ a: 1, b: 2 }, ['a']), m({ a: 2, b: 1 }, ['a']), m({ a: 1, b: 2 }, [], true)])).toEqual({
+      1: { games: 2, wins: 1 },
+      2: { games: 2, wins: 1 },
+    });
+  });
+});
