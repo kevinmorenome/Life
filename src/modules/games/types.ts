@@ -24,6 +24,8 @@ export interface GameTitle {
   updatedAt: string;
 }
 
+import type { CatanInfo } from './catan';
+
 /** One game played during a night. */
 export interface Match {
   id: string;
@@ -40,6 +42,8 @@ export interface Match {
   roundPicks?: (string | null)[];
   /** Being played right now: shown as the active game, and left out of the stats until it is finished. */
   live?: boolean;
+  /** Catan extras: seats, colors, variant, how it was won. */
+  catan?: CatanInfo;
 }
 
 /** An evening of games: where, who, and the games played in order. */
