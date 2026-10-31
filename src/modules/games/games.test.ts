@@ -184,3 +184,28 @@ describe('catan seat order', () => {
     expect(moveSeat(['a', 'b', 'c'], 'a', 2)).toEqual({ b: 1, c: 2, a: 3 });
   });
 });
+
+describe('catan road and army', () => {
+  it('keeps them only for players in the game', async () => {
+    const { cleanCatan } = await import('./catan');
+    expect(cleanCatan({ longestRoad: 'a', largestArmy: 'z' }, ['a', 'b'])).toEqual({ longestRoad: 'a' });
+    expect(cleanCatan({ largestArmy: 'z' }, ['a'])).toBeUndefined();
+  });
+});
+
+describe('catan bonus stats', () => {
+  it('counts road and army and wins while holding them', async () => {
+    const { bonusStats } = await import('./catan');
+    const m = (catan: object | undefined, winnerIds: string[], live = false) => ({ catan, winnerIds, live, playerIds: ['a', 'b'] });
+    const out = bonusStats([
+      m({ longestRoad: 'a', largestArmy: 'b' }, ['a']),
+      m({ longestRoad: 'a' }, ['b']),
+      m(undefined, ['a']),
+      m({ longestRoad: 'b' }, [], true),
+    ]);
+    expect(out).toEqual([
+      { id: 'a', games: 2, road: 2, army: 0, roadWins: 1, armyWins: 0 },
+      { id: 'b', games: 2, road: 0, army: 1, roadWins: 0, armyWins: 0 },
+    ]);
+  });
+});

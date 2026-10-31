@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
 import { Columns, Empty, HBars, Section, Tile, TONES } from '../clothes/charts';
-import { headToHead, playerRecords, playsPerMonth, titleStats } from './games';
+import { bonusStats, isCatan } from './catan';
+import { allMatches, headToHead, playerRecords, playsPerMonth, titleStats } from './games';
 import type { GameNight, GameTitle, Player } from './types';
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -28,6 +29,8 @@ export function GamesStatsRoute() {
   const months = playsPerMonth(nights.items, today());
   const pa = a || records[0]?.id || '';
   const pb = b || records[1]?.id || '';
+  const catanIds = new Set(titles.items.filter((t) => isCatan(t)).map((t) => t.id));
+  const bonus = bonusStats(allMatches(nights.items).filter((m) => catanIds.has(m.titleId)));
   const h2h = pa && pb && pa !== pb ? headToHead(nights.items, pa, pb) : undefined;
 
   return (
@@ -99,6 +102,21 @@ export function GamesStatsRoute() {
           ) : (
             <Empty>Pick two different players.</Empty>
           )}
+        </Section>
+      )}
+
+      {bonus.length > 0 && (
+        <Section title="Catan: road and army" note="Who held Longest Road and Largest Army, and how often they won with it.">
+          <ul className="game-list">
+            {bonus.map((b) => (
+              <li key={b.id} className="game-line">
+                <strong>{name(b.id)}</strong>
+                <span className="muted small">
+                  Road {b.road}{b.road ? ` (${b.roadWins} won)` : ''} · Army {b.army}{b.army ? ` (${b.armyWins} won)` : ''} · {b.games} {b.games === 1 ? 'game' : 'games'}
+                </span>
+              </li>
+            ))}
+          </ul>
         </Section>
       )}
 

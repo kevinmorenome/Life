@@ -16,6 +16,22 @@ export const GripIcon = () => (
   </svg>
 );
 
+/** Longest Road: a road running into the distance. */
+export const RoadIcon = () => (
+  <Icon>
+    <path d="M8 3 4 21M16 3l4 18" />
+    <path d="M12 5v2.5M12 11v2.5M12 17v2.5" />
+  </Icon>
+);
+
+/** Largest Army: a shield with a sword. */
+export const ArmyIcon = () => (
+  <Icon>
+    <path d="M12 3 5 5.5V11c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V5.5L12 3Z" />
+    <path d="M12 8v7M9.5 10.5h5" />
+  </Icon>
+);
+
 export const HangerIcon = () => (
   <Icon>
     <path d="M12 7.5a2 2 0 1 0-2-2" />
