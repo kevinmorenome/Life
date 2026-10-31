@@ -166,11 +166,25 @@ export function standings(rounds: Record<string, number>[], playerIds: string[],
   }));
 }
 
-/** Who won one round: the best points by the game's rule (ties share it). Nobody when nobody scored, everyone is level, or the game has no rule. */
-export function roundWinners(rule: ScoreRule, round: Record<string, number>, playerIds: string[]): string[] {
-  if (rule === 'manual') return [];
+export interface RoundOutcome {
+  /** Who won the round (the picked player when the best points were shared). */
+  winners: string[];
+  /** Players sharing the best points, when there is more than one: the user picks the winner among them. */
+  tied: string[];
+}
+
+/**
+ * Who won one round: the best points by the game's rule. When several players share the best points,
+ * `pick` (the user's choice) decides; until then the round has no winner. Nobody wins a round nobody scored in,
+ * or in a game where the winner is picked by hand.
+ */
+export function roundWinners(rule: ScoreRule, round: Record<string, number>, playerIds: string[], pick?: string | null): RoundOutcome {
+  const none = { winners: [], tied: [] };
+  if (rule === 'manual' || playerIds.length < 2) return none;
   const pts = playerIds.map((id) => (Number.isFinite(round[id]) ? round[id] : 0));
-  if (pts.length < 2 || pts.every((p) => p === pts[0])) return [];
+  if (pts.every((p) => p === 0)) return none;
   const best = rule === 'high' ? Math.max(...pts) : Math.min(...pts);
-  return playerIds.filter((_, i) => pts[i] === best);
+  const top = playerIds.filter((_, i) => pts[i] === best);
+  if (top.length === 1) return { winners: top, tied: [] };
+  return { winners: pick && top.includes(pick) ? [pick] : [], tied: top };
 }

@@ -32,17 +32,19 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
   const [cur, setCur] = useState(match.rounds?.length ?? 0);
   const track = useRef<HTMLDivElement>(null);
   const pills = useRef<HTMLDivElement>(null);
+  const [picks, setPicks] = useState<(string | null)[]>(match.roundPicks ?? []);
   const [picked, setPicked] = useState<string[] | null>(match.live ? null : match.winnerIds);
 
   const board = standings(rounds, ids, rule);
   const started = rounds.length > 0;
-  const wonBy = rounds.map((r) => roundWinners(rule, r, ids));
+  const outcomes = rounds.map((r, i) => roundWinners(rule, r, ids, picks[i]));
+  const wonBy = outcomes.map((o) => o.winners);
   const totals = roundTotals(rounds, ids);
   const winners = picked ?? winnersFromScores(rule, totals, ids);
-  const persist = (next: Record<string, number>[], done = false) => {
+  const persist = (next: Record<string, number>[], done = false, nextPicks = picks) => {
     const t = roundTotals(next, ids);
     const w = picked ?? winnersFromScores(rule, t, ids);
-    const updated: Match = { ...match, rounds: next, scores: t, winnerIds: done || !match.live ? w : [] };
+    const updated: Match = { ...match, rounds: next, roundPicks: nextPicks.slice(0, next.length), scores: t, winnerIds: done || !match.live ? w : [] };
     if (done) delete updated.live;
     return onSave({ ...night, matches: night.matches.map((m) => (m.id === match.id ? updated : m)), updatedAt: new Date().toISOString() });
   };
@@ -92,15 +94,24 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
     setRounds(next);
     dropDraft(i);
     persist(next);
-    // After adding a round, move on to the next blank one.
-    if (i >= rounds.length) setTimeout(() => goTo(i + 1), 50);
+    // After adding a round, move on to the next blank one (unless it's a tie: stay to pick who won it).
+    if (i >= rounds.length && roundWinners(rule, parsed(i), ids).tied.length === 0) setTimeout(() => goTo(i + 1), 50);
   };
   const removeRound = (i: number) => {
     const next = rounds.filter((_, j) => j !== i);
+    const nextPicks = picks.filter((_, j) => j !== i);
     setRounds(next);
+    setPicks(nextPicks);
     setDrafts({});
     setCur(Math.min(cur, next.length));
-    persist(next);
+    persist(next, false, nextPicks);
+  };
+
+  const pickWinner = (i: number, id: string) => {
+    const nextPicks = Array.from({ length: rounds.length }, (_, j) => picks[j] ?? null);
+    nextPicks[i] = nextPicks[i] === id ? null : id;
+    setPicks(nextPicks);
+    persist(rounds, false, nextPicks);
   };
 
   const finish = async () => {
@@ -171,7 +182,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
               <header>
                 <h2>Round {i + 1}</h2>
                 <span className="muted small">
-                  {isNew ? 'Next round' : dirty(i) ? 'Unsaved changes' : wonBy[i]?.length ? <>Won by <span className="won">{wonBy[i].map(name).join(' & ')}</span></> : 'Saved'}
+                  {isNew ? 'Next round' : dirty(i) ? 'Unsaved changes' : wonBy[i]?.length ? <>Won by <span className="won">{wonBy[i].map(name).join(' & ')}</span></> : outcomes[i]?.tied.length ? <span className="tie-note">Tie: pick the winner</span> : 'Saved'}
                 </span>
                 {!isNew && (
                   <button type="button" className="round-del" onClick={() => removeRound(i)} aria-label={`Delete round ${i + 1}`}>
@@ -209,6 +220,18 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
                   </li>
                 ))}
               </ul>
+              {!isNew && outcomes[i]?.tied.length > 1 && (
+                <div className="round-tie" role="group" aria-label={`Who won round ${i + 1}?`}>
+                  <span className="muted small">Same points. Who wins this round?</span>
+                  <div className="chips">
+                    {outcomes[i].tied.map((id) => (
+                      <button key={id} type="button" className="chip" aria-pressed={picks[i] === id} onClick={() => pickWinner(i, id)}>
+                        {name(id)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button type="button" className="btn btn-primary round-save" disabled={!dirty(i)} onClick={() => save(i)}>
                 {isNew ? 'Add round' : 'Save changes'}
               </button>

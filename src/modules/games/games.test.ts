@@ -142,14 +142,21 @@ describe('domino calculator', () => {
 });
 
 describe('roundWinners', () => {
-  it('picks the best points of the round by the rule, sharing ties', () => {
-    expect(roundWinners('high', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual(['a']);
-    expect(roundWinners('low', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual(['c']);
-    expect(roundWinners('high', { a: 20, b: 20, c: 0 }, ['a', 'b', 'c'])).toEqual(['a', 'b']);
+  it('picks the best points of the round by the rule', () => {
+    expect(roundWinners('high', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual({ winners: ['a'], tied: [] });
+    expect(roundWinners('low', { a: 30, b: 12, c: 0 }, ['a', 'b', 'c'])).toEqual({ winners: ['c'], tied: [] });
   });
-  it('has no winner when everyone is level, nobody scored, or the winner is picked by hand', () => {
-    expect(roundWinners('high', {}, ['a', 'b'])).toEqual([]);
-    expect(roundWinners('high', { a: 5, b: 5 }, ['a', 'b'])).toEqual([]);
-    expect(roundWinners('manual', { a: 9, b: 1 }, ['a', 'b'])).toEqual([]);
+  it('leaves a tie for the user to decide, then uses their pick', () => {
+    expect(roundWinners('high', { a: 20, b: 20, c: 0 }, ['a', 'b', 'c'])).toEqual({ winners: [], tied: ['a', 'b'] });
+    expect(roundWinners('high', { a: 20, b: 20, c: 0 }, ['a', 'b', 'c'], 'b')).toEqual({ winners: ['b'], tied: ['a', 'b'] });
+    expect(roundWinners('high', { a: 5, b: 5 }, ['a', 'b'])).toEqual({ winners: [], tied: ['a', 'b'] });
+  });
+  it('ignores a pick that is not among the tied players', () => {
+    expect(roundWinners('high', { a: 20, b: 20, c: 0 }, ['a', 'b', 'c'], 'c').winners).toEqual([]);
+  });
+  it('has no winner when nobody scored or the winner is picked by hand', () => {
+    expect(roundWinners('high', {}, ['a', 'b'])).toEqual({ winners: [], tied: [] });
+    expect(roundWinners('high', { a: 0, b: 0 }, ['a', 'b'])).toEqual({ winners: [], tied: [] });
+    expect(roundWinners('manual', { a: 9, b: 1 }, ['a', 'b'])).toEqual({ winners: [], tied: [] });
   });
 });

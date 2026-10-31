@@ -4965,3 +4965,13 @@ button.detail-row {
   color: #1b1b1b;
   font-weight: 700;
 }
+
+.tie-note {
+  color: var(--tone-orange);
+  font-weight: 600;
+}
+.round-tie {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.25rem 0 0.4rem;
+}

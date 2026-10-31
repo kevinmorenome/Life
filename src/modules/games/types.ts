@@ -36,6 +36,8 @@ export interface Match {
   note?: string;
   /** Points per round (one entry per round, by player id), when the game was scored round by round. `scores` is their sum. */
   rounds?: Record<string, number>[];
+  /** For each round, the player the user picked as its winner when the best points were tied (null/absent otherwise). */
+  roundPicks?: (string | null)[];
   /** Being played right now: shown as the active game, and left out of the stats until it is finished. */
   live?: boolean;
 }
