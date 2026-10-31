@@ -4,6 +4,7 @@ import { useCollection } from '../../lib/useCollection';
 import { Columns, Empty, HBars, Section, Tile, TONES } from '../clothes/charts';
 import { bonusStats, isCatan } from './catan';
 import { allMatches, headToHead, playerRecords, playsPerMonth, titleStats } from './games';
+import { isWaterdeep, lordStats } from './waterdeep';
 import type { GameNight, GameTitle, Player } from './types';
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -31,6 +32,8 @@ export function GamesStatsRoute() {
   const pb = b || records[1]?.id || '';
   const catanIds = new Set(titles.items.filter((t) => isCatan(t)).map((t) => t.id));
   const bonus = bonusStats(allMatches(nights.items).filter((m) => catanIds.has(m.titleId)));
+  const wdIds = new Set(titles.items.filter((t) => isWaterdeep(t)).map((t) => t.id));
+  const lords = lordStats(allMatches(nights.items).filter((m) => wdIds.has(m.titleId)));
   const h2h = pa && pb && pa !== pb ? headToHead(nights.items, pa, pb) : undefined;
 
   return (
@@ -113,6 +116,23 @@ export function GamesStatsRoute() {
                 <strong>{name(b.id)}</strong>
                 <span className="muted small">
                   Road {b.road}{b.road ? ` (${b.roadWins} won)` : ''} · Army {b.army}{b.army ? ` (${b.armyWins} won)` : ''} · {b.games} {b.games === 1 ? 'game' : 'games'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {lords.length > 0 && (
+        <Section title="Lords of Waterdeep: Lords" note="How often each Lord was drawn and won, and the average points its bonus added (needs the points before the Lord).">
+          <ul className="game-list">
+            {lords.map((l) => (
+              <li key={l.lord} className="game-line">
+                <strong>{l.lord}</strong>
+                <span className="muted small">
+                  {l.games} {l.games === 1 ? 'game' : 'games'} · {l.wins} won
+                  {l.avgBonus !== undefined ? ` · avg +${Math.round(l.avgBonus * 10) / 10}` : ''}
+                  {l.turnarounds ? ` · ${l.turnarounds} comeback${l.turnarounds === 1 ? '' : 's'}` : ''}
                 </span>
               </li>
             ))}

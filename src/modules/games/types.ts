@@ -29,6 +29,7 @@ export interface GameTitle {
 }
 
 import type { CatanInfo } from './catan';
+import type { WaterdeepInfo } from './waterdeep';
 
 /** One game played during a night. */
 export interface Match {
@@ -48,6 +49,8 @@ export interface Match {
   live?: boolean;
   /** Catan extras: seats, colors, variant, how it was won. */
   catan?: CatanInfo;
+  /** Lords of Waterdeep extras: each player's Lord and their points before its bonus. */
+  waterdeep?: WaterdeepInfo;
 }
 
 /** An evening of games: where, who, and the games played in order. */

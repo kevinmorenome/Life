@@ -6,6 +6,7 @@ import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColor
 import { ColorDot } from './ColorDot';
 import { winnersFromScores } from './games';
 import { RuleSelect } from './TitlesTab';
+import { WATERDEEP_LORDS, cleanWaterdeep, isWaterdeep, lordBonus, type WaterdeepInfo } from './waterdeep';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
 
 interface Props {
@@ -30,6 +31,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [picked, setPicked] = useState<string[] | null>(existing ? existing.winnerIds : null);
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
+  const [waterdeep, setWaterdeep] = useState<WaterdeepInfo>(existing?.waterdeep ?? {});
   // Seat drag: the row being dragged floats under the pointer.
   const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
@@ -55,6 +57,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const hasColors = titleHasColors(settings);
   const hasOrder = titleHasOrder(settings);
   const catanGame = isCatan(settings);
+  const waterdeepGame = isWaterdeep(settings);
 
   const numeric: Record<string, number> = {};
   for (const id of playerIds) {
@@ -86,6 +89,8 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       note: note.trim() || undefined,
       // Keep everything stored (seats, colors, variant, route) even when a setting is off; with turn order on, save the order shown.
       catan: cleanCatan(hasOrder ? { ...catan, seats: Object.fromEntries(seatOrder(playerIds, catan.seats).map((p, i) => [p, i + 1])) } : catan, playerIds),
+      // Kept even when the game is renamed, like the Catan details.
+      waterdeep: cleanWaterdeep(waterdeep, playerIds),
       ...(live ? { live: true, rounds: [] } : {}),
     };
     const matches = existing ? night.matches.map((m) => (m.id === match.id ? match : m)) : [...night.matches, match];
@@ -208,14 +213,31 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       </button>
                     ))}
                 </div>
+                {waterdeepGame && (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    value={waterdeep.before?.[id] ?? ''}
+                    onChange={(e) => {
+                      const n = e.target.value.trim();
+                      const rest = { ...waterdeep.before };
+                      if (n && Number.isFinite(Number(n))) rest[id] = Number(n);
+                      else delete rest[id];
+                      setWaterdeep({ ...waterdeep, before: rest });
+                    }}
+                    placeholder="Before Lord"
+                    aria-label={`${name(id)} points before the Lord`}
+                  />
+                )}
                 <input
                   type="number"
                   inputMode="decimal"
                   step="any"
                   value={scores[id] ?? ''}
                   onChange={(e) => setScores({ ...scores, [id]: e.target.value })}
-                  placeholder="Score"
-                  aria-label={`${name(id)} score`}
+                  placeholder={waterdeepGame ? 'Final' : 'Score'}
+                  aria-label={`${name(id)} ${waterdeepGame ? 'final score, after the Lord' : 'score'}`}
                 />
                 <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
                   🏆
@@ -237,6 +259,35 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
+        </div>
+      )}
+      {waterdeepGame && playerIds.length > 0 && (
+        <div className="field">
+          <span>Lords</span>
+          <span className="muted small">Each player’s Lord, revealed at the end. Enter points before the Lord above and the final total in the score field.</span>
+          <datalist id="waterdeep-lords">
+            {WATERDEEP_LORDS.map((l) => (
+              <option key={l} value={l} />
+            ))}
+          </datalist>
+          <ul className="game-scores">
+            {playerIds.map((id) => {
+              const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
+              return (
+                <li key={id}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{name(id)}</span>
+                  <input
+                    list="waterdeep-lords"
+                    value={waterdeep.lords?.[id] ?? ''}
+                    onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
+                    placeholder="Lord"
+                    aria-label={`${name(id)} Lord`}
+                  />
+                  {bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
       <label className="field">
