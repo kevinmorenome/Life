@@ -120,7 +120,11 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
-          {hasOrder && <span className="muted small">Drag the dots to set the turn order.</span>}
+          {(hasOrder || hasColors) && (
+            <span className="muted small">
+              {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+            </span>
+          )}
           <ul className="game-scores">
             {(hasOrder ? seatOrder(playerIds, catan.seats) : playerIds).map((id, idx, order) => (
               <li
