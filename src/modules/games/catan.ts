@@ -3,6 +3,19 @@ import type { GameTitle, Match } from './types';
 export const isCatan = (title?: Pick<GameTitle, 'name'>): boolean => !!title && /catan/i.test(title.name);
 
 export const CATAN_COLORS = ['Red', 'Blue', 'Orange', 'White', 'Green', 'Brown'] as const;
+export const PLAYER_COLOR_HEX: Record<string, string> = {
+  Red: '#d64545',
+  Blue: '#3f7be0',
+  Orange: '#f0922b',
+  White: '#f4f4f4',
+  Green: '#3fa35b',
+  Brown: '#8a5a3b',
+};
+
+/** Whether a game tracks player colors / turn order; Catan does unless its settings say otherwise. */
+export const titleHasColors = (t?: Pick<GameTitle, 'name' | 'colors'>): boolean => !!t && (t.colors ?? isCatan(t));
+export const titleHasOrder = (t?: Pick<GameTitle, 'name' | 'orderMatters'>): boolean => !!t && (t.orderMatters ?? isCatan(t));
+
 export const CATAN_VARIANTS = ['Base', 'Seafarers', 'Cities & Knights', '5–6 players'] as const;
 export const CATAN_ROUTES = ['Longest road', 'Largest army', 'Dev cards', 'Cities', 'Settlements', 'Mixed'] as const;
 
@@ -31,6 +44,21 @@ export function cleanCatan(info: CatanInfo, playerIds: string[]): CatanInfo | un
     winRoute: info.winRoute || undefined,
   };
   return Object.values(clean).some((v) => v !== undefined) ? clean : undefined;
+}
+
+/** Players in turn order: by seat, players without one after, ties keep their order. */
+export function seatOrder(playerIds: string[], seats: Record<string, number> = {}): string[] {
+  return playerIds
+    .map((id, i) => ({ id, i }))
+    .sort((a, b) => (seats[a.id] ?? Infinity) - (seats[b.id] ?? Infinity) || a.i - b.i)
+    .map((x) => x.id);
+}
+
+/** Move a player to another position in the order; seats become 1..n. */
+export function moveSeat(order: string[], id: string, to: number): Record<string, number> {
+  const next = order.filter((x) => x !== id);
+  next.splice(Math.max(0, Math.min(to, next.length)), 0, id);
+  return Object.fromEntries(next.map((x, i) => [x, i + 1]));
 }
 
 /** Wins and games by turn-order seat, over finished matches that recorded seats. */

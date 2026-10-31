@@ -9,6 +9,13 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
+/** Six-dot drag handle. */
+export const GripIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    {[8.5, 15.5].flatMap((x) => [6, 12, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={1.6} />))}
+  </svg>
+);
+
 export const HangerIcon = () => (
   <Icon>
     <path d="M12 7.5a2 2 0 1 0-2-2" />

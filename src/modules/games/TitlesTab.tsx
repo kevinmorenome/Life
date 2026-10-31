@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { newId } from '../../lib/db';
 import { shortDate } from '../../lib/format';
 import { GamesTabs } from './GamesTabs';
+import { titleHasColors, titleHasOrder } from './catan';
 import { titleStats } from './games';
 import { RULE_LABELS, type GameNight, type GameTitle, type ScoreRule } from './types';
 
@@ -68,6 +69,14 @@ export function TitlesTab({ titles, nights, onSave }: { titles: GameTitle[]; nig
                     onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== t.name && onSave({ ...t, name: e.target.value.trim(), updatedAt: new Date().toISOString() })}
                   />
                   <RuleSelect value={t.rule} onChange={(r) => onSave({ ...t, rule: r, updatedAt: new Date().toISOString() })} />
+                  <div className="chips">
+                    <button type="button" className="chip" aria-pressed={titleHasColors(t)} onClick={() => onSave({ ...t, colors: !titleHasColors(t), updatedAt: new Date().toISOString() })}>
+                      Player colors
+                    </button>
+                    <button type="button" className="chip" aria-pressed={titleHasOrder(t)} onClick={() => onSave({ ...t, orderMatters: !titleHasOrder(t), updatedAt: new Date().toISOString() })}>
+                      Turn order matters
+                    </button>
+                  </div>
                 </div>
               )}
             </li>

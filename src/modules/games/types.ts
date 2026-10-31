@@ -20,6 +20,10 @@ export interface GameTitle {
   id: string;
   name: string;
   rule: ScoreRule;
+  /** Players get a color (default: on for Catan). */
+  colors?: boolean;
+  /** Turn order matters, so players can be dragged into seats (default: on for Catan). */
+  orderMatters?: boolean;
   createdAt: string;
   updatedAt: string;
 }
