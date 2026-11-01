@@ -4,10 +4,12 @@
 // directly without risking a clobbered edit.
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
-import { LINE_KINDS, UNITS } from '../src/modules/food/types';
+import { LINE_KINDS, PRODUCT_TYPES, STORAGES, UNITS } from '../src/modules/food/types';
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
 import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
+import { canonicalName, defaultStorage, defaultType, isStocked, productId } from '../src/modules/food/products';
+import type { FoodProduct, FoodReceipt } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
@@ -181,7 +183,7 @@ export const TOOLS = [
   {
     name: 'add_grocery_receipt',
     description:
-      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
+      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Give each food and drink line a productType, storage and shelfLifeDays too (they create the product the first time it is seen and are ignored afterwards); the same abbreviation at the same store is matched to the product named earlier, so keep rawName exactly as printed. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -206,6 +208,9 @@ export const TOOLS = [
               unit: { type: 'string', enum: [...UNITS] },
               unitPrice: { type: 'number', minimum: 0, description: 'Price charged per unit as printed (line amount ÷ quantity); a discount is already inside it' },
               discount: { type: 'number', minimum: 0, description: 'Amount saved on this line, positive. Informational only: already included in unitPrice, never subtracted' },
+              productType: { type: 'string', enum: [...PRODUCT_TYPES], description: 'How it is tracked in the inventory: fresh (goes off: meat, vegetables, dairy), staple (pasta, oat drink, hummus), drink (beer, wine, juice) or snack (chips, sweets). Only used the first time this product is seen.' },
+              storage: { type: 'string', enum: [...STORAGES], description: 'Where it is kept. Only used the first time this product is seen.' },
+              shelfLifeDays: { type: 'integer', minimum: 1, description: 'Typical days it keeps once bought (e.g. chicken fillet 2, carrots 14). Only used the first time this product is seen.' },
             },
             required: ['name', 'quantity', 'unitPrice'],
           },
@@ -703,17 +708,42 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
 
   // The id comes from the receipt, so adding it again changes nothing.
   const id = `food-${sourceId}`;
-  if ((await store.list('foodreceipts')).some((r) => r.id === id)) return ok({ alreadyAdded: true });
+  const earlier = (await store.list('foodreceipts')) as unknown as (FoodReceipt & Row)[];
+  if (earlier.some((r) => r.id === id)) return ok({ alreadyAdded: true });
 
+  // Printed text seen before at this store keeps the name it was given then, so it stays the same product.
+  const { receipt, hints, mismatch } = parsed;
+  const renamed: { from: string; to: string }[] = [];
+  const lines = receipt.lines.map((l) => {
+    const name = canonicalName(receipt.store, l.rawName, l.name, earlier);
+    if (name !== l.name) renamed.push({ from: l.name, to: name });
+    return { ...l, name };
+  });
+
+  // New products get a record with what Claude knows; existing ones are never touched.
+  const known = new Set((await store.list('foodproducts')).map((r) => r.id));
   const stamp = now.toISOString();
-  await store.put('foodreceipts', id, { id, ...parsed.receipt, createdAt: stamp, updatedAt: stamp });
+  const created: string[] = [];
+  for (const [i, l] of lines.entries()) {
+    const pid = productId(l.name);
+    if (!isStocked(l.kind) || known.has(pid)) continue;
+    known.add(pid);
+    const type = hints[i]?.type ?? defaultType(l.kind, l.unit);
+    const product: FoodProduct = { id: pid, name: l.name, type, storage: hints[i]?.storage ?? defaultStorage(type), shelfLifeDays: hints[i]?.shelfLifeDays, createdAt: stamp, updatedAt: stamp };
+    await store.put('foodproducts', pid, product);
+    created.push(l.name);
+  }
+
+  await store.put('foodreceipts', id, { id, ...receipt, lines, createdAt: stamp, updatedAt: stamp });
   return ok({
     added: id,
-    lines: parsed.receipt.lines.length,
-    summedFromLines: parsed.mismatch?.summed ?? parsed.receipt.total,
-    ...(parsed.mismatch
+    lines: lines.length,
+    summedFromLines: mismatch?.summed ?? receipt.total,
+    ...(created.length ? { newProducts: created } : {}),
+    ...(renamed.length ? { matchedToKnownProducts: renamed } : {}),
+    ...(mismatch
       ? {
-          warning: `The printed total (${parsed.mismatch.printed}) does not match the lines (${parsed.mismatch.summed}). A line was probably misread or missing: check the receipt again and tell the user.`,
+          warning: `The printed total (${mismatch.printed}) does not match the lines (${mismatch.summed}). A line was probably misread or missing: check the receipt again and tell the user.`,
         }
       : {}),
   });

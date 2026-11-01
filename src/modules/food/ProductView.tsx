@@ -1,0 +1,76 @@
+import { useState } from 'react';
+import { money, shortDate } from '../../lib/format';
+import { href } from '../../lib/router';
+import { averageUnitPrice, defaultStorage, perUnit, type ProductSummary } from './products';
+import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type Storage } from './types';
+
+const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
+
+/** One product: how it is tracked, and every time you bought it. */
+export function ProductView({ product, record, onSave }: { product: ProductSummary; record?: FoodProduct; onSave(p: FoodProduct): Promise<void> }) {
+  const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
+
+  // Spread the record first so fields this screen doesn't show survive; create it on the first change.
+  const save = (patch: Partial<FoodProduct>) => {
+    const now = new Date().toISOString();
+    return onSave({ ...record, id: product.id, name: record?.name ?? product.name, type: product.type, storage: product.storage, shelfLifeDays: product.shelfLifeDays, createdAt: record?.createdAt ?? now, ...patch, updatedAt: now });
+  };
+  const setType = (type: ProductType) => save({ type, ...(product.custom ? {} : { storage: defaultStorage(type) }) });
+  const commitDays = () => {
+    const n = Number(days.replace(',', '.'));
+    const shelfLifeDays = days.trim() && Number.isFinite(n) && n >= 1 ? Math.round(n) : undefined;
+    if (shelfLifeDays !== product.shelfLifeDays) save({ shelfLifeDays });
+  };
+
+  return (
+    <>
+      <h1 className="page-title">{product.name}</h1>
+      <p className="muted small">
+        Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
+        {perUnit(product.unit)}
+      </p>
+
+      <div className="form">
+      <div className="field">
+        <span>Type</span>
+        <div className="chips">
+          {PRODUCT_TYPES.map((t) => (
+            <button key={t} type="button" className="chip" aria-pressed={product.type === t} onClick={() => setType(t)}>
+              {PRODUCT_TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <span>Kept in</span>
+        <div className="chips">
+          {STORAGES.map((s: Storage) => (
+            <button key={s} type="button" className="chip" aria-pressed={product.storage === s} onClick={() => save({ storage: s })}>
+              {STORAGE_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="field">
+        <span>Keeps for (days, optional)</span>
+        <input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} onBlur={commitDays} placeholder="e.g. 3" />
+      </label>
+      </div>
+
+      <h2 className="small muted">Purchases</h2>
+      <ul className="game-list">
+        {product.purchases.map((x, i) => (
+          <li key={i}>
+            <a className="game-row" href={href(`/food/receipt/${x.receiptId}`)}>
+              <strong>
+                {x.quantity}
+                {x.unit === 'pc' ? ' ×' : ` ${x.unit} ×`} {money(x.unitPrice)} = {money(x.paid)}
+              </strong>
+              <span className="muted small">{[shortDate(x.date), x.store].join(' · ')}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}

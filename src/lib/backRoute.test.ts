@@ -8,6 +8,8 @@ describe('parentRoute', () => {
     expect(p('/food/receipt/food-abc')).toBe('/food');
     expect(p('/food')).toBe('/more');
     expect(p('/food/new')).toBe('/food');
+    expect(p('/food/products')).toBe('/more');
+    expect(p('/food/product/fp-beer')).toBe('/food/products');
     expect(p('/food/receipt/food-abc/edit')).toBe('/food/receipt/food-abc');
   });
 

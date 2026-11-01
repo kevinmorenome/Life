@@ -50,3 +50,34 @@ export interface FoodReceipt {
   createdAt: string;
   updatedAt: string;
 }
+
+/** How a product is tracked in the inventory: fresh (goes off), staple (counted), drink (counted exactly), snack (assumed gone soon). */
+export const PRODUCT_TYPES = ['fresh', 'staple', 'drink', 'snack'] as const;
+export type ProductType = (typeof PRODUCT_TYPES)[number];
+
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  fresh: 'Fresh',
+  staple: 'Staple',
+  drink: 'Drink',
+  snack: 'Snack',
+};
+
+export const STORAGES = ['fridge', 'pantry', 'freezer'] as const;
+export type Storage = (typeof STORAGES)[number];
+
+/**
+ * What you or Claude know about a product beyond its receipts. The id comes from the cleaned name
+ * (`productId()`), so the same product on different receipts is the same record. Created on demand;
+ * a product without a record just uses defaults.
+ */
+export interface FoodProduct {
+  id: string;
+  /** Cleaned name, e.g. "Oat drink 3.5%". */
+  name: string;
+  type: ProductType;
+  storage: Storage;
+  /** Days it keeps once bought, for fresh items ("use soon"). */
+  shelfLifeDays?: number;
+  createdAt: string;
+  updatedAt: string;
+}
