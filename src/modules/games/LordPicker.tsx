@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { lordInitials } from './waterdeep';
 
-/** A button showing the player's Lord; tapping opens a floating menu of the Lords nobody else has taken (like the color dots). */
+/** A round button with the initials of the player's Lord; tapping opens a floating menu of the Lords nobody else has taken (like the color dots). */
 export function LordPicker({ value, options, label, onChange }: { value?: string; options: readonly string[]; label: string; onChange: (lord: string) => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -23,17 +24,33 @@ export function LordPicker({ value, options, label, onChange }: { value?: string
   };
 
   return (
-    <div className="menu-wrap" ref={box} style={{ minWidth: 0 }}>
+    <div className="menu-wrap" ref={box}>
       <button
         type="button"
-        className="field-pill"
         aria-label={`${label} Lord: ${value || 'none'}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        style={{ width: '100%', minWidth: 0, padding: '0 0.6rem', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: value ? 1 : 0.6 }}
+        style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', border: 0, background: 'none', padding: 0, cursor: 'pointer' }}
       >
-        {value || 'Lord'}
+        <span
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            display: 'grid',
+            placeItems: 'center',
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1,
+            color: value ? 'var(--accent-text)' : 'inherit',
+            background: value ? 'var(--accent)' : 'transparent',
+            border: value ? 'none' : '2px dashed rgb(128 128 128 / 0.7)',
+            opacity: value ? 1 : 0.7,
+          }}
+        >
+          {value ? lordInitials(value) : ''}
+        </span>
       </button>
       {open && (
         <div className="menu" role="menu" style={{ minWidth: 230, maxHeight: '55vh', overflowY: 'auto' }}>

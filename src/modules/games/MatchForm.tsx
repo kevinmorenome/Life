@@ -230,26 +230,15 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
                     />
                   )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
-                  {waterdeepGame && waterdeep.skullport && (
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      value={waterdeep.corruptions?.[id] ?? ''}
-                      onChange={(e) => {
-                        const n = e.target.value.trim();
-                        const rest = { ...waterdeep.corruptions };
-                        if (n && Number.isFinite(Number(n)) && Number(n) >= 0) rest[id] = Math.floor(Number(n));
-                        else delete rest[id];
-                        setWaterdeep({ ...waterdeep, corruptions: rest });
-                      }}
-                      placeholder="Corr."
-                      aria-label={`${name(id)} number of corruptions`}
-                      style={{ width: '4.5rem', flex: 'none', marginRight: 6 }}
+                  {waterdeepGame && (
+                    <LordPicker
+                      value={waterdeep.lords?.[id]}
+                      label={name(id)}
+                      options={WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase()))}
+                      onChange={(l) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: l } })}
                     />
                   )}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
                   {waterdeepGame && bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                   {catanGame &&
                     ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (
@@ -265,16 +254,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       </button>
                     ))}
                 </div>
-                {waterdeepGame && (
-                  <>
-                    <LordPicker
-                      value={waterdeep.lords?.[id]}
-                      label={name(id)}
-                      options={WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase()))}
-                      onChange={(l) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: l } })}
-                    />
-                  </>
-                )}
                 {waterdeepGame && (
                   <input
                     type="number"
@@ -304,6 +283,28 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                 <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
                   🏆
                 </button>
+                {waterdeepGame && waterdeep.skullport && (
+                  <label className="wd-corr">
+                    <span className="muted small">Corruptions</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={1}
+                      value={waterdeep.corruptions?.[id] ?? ''}
+                      onChange={(e) => {
+                        const n = e.target.value.trim();
+                        const rest = { ...waterdeep.corruptions };
+                        if (n && Number.isFinite(Number(n)) && Number(n) >= 0) rest[id] = Math.floor(Number(n));
+                        else delete rest[id];
+                        setWaterdeep({ ...waterdeep, corruptions: rest });
+                      }}
+                      placeholder="Corr."
+                      aria-label={`${name(id)} number of corruptions`}
+                      style={{ width: '5rem' }}
+                    />
+                    </label>
+                )}
               </li>
               );
             })}
