@@ -6,9 +6,10 @@
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
 import { LINE_KINDS, PRODUCT_TYPES, STORAGES, UNITS } from '../src/modules/food/types';
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
-import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
+import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, ProductEditRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
 import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, pluralize, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
+import { parseProductChanges, withProductChanges } from '../src/modules/food/productEdits';
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
@@ -269,6 +270,24 @@ export const TOOLS = [
     },
   },
   {
+    name: 'set_product_info',
+    description:
+      'Change how a food product is tracked: its pack size (items in one multipack, e.g. 6 for a 6-pack of beer, with packLabel "can"), type (fresh / staple / drink / snack), where it is kept, how many days it keeps, or trackAmount (false for spices, oil and sauces: only "have it or out"). Use it when the user tells you something about a product that is already in the app, e.g. "the Staropramen is a 6-pack of cans". Resolve the product with list_stock if the name is not exact. If the product has no settings yet the change applies at once; if it already has settings the change is queued and the app applies it the next time it syncs, so tell the user it is queued and do not log uses of that product in the meantime, because stock still counts with the old settings until then. Pack size and label only fit products sold in pieces. Only change what the user says; null clears packSize, packLabel or shelfLifeDays.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product: { type: 'string', description: 'Product name or the words the user used' },
+        packSize: { type: ['integer', 'null'], minimum: 2, maximum: 100, description: 'Items in one pack as bought' },
+        packLabel: { type: ['string', 'null'], description: 'What one item is called, singular: "can", "bottle"' },
+        type: { type: 'string', enum: [...PRODUCT_TYPES] },
+        storage: { type: 'string', enum: [...STORAGES] },
+        shelfLifeDays: { type: ['integer', 'null'], minimum: 1 },
+        trackAmount: { type: 'boolean', description: 'false = only "have it or out" (spices, oil, sauces); true = count how many.' },
+      },
+      required: ['product'],
+    },
+  },
+  {
     name: 'create_outfit',
     description: 'Save a set of existing items as an outfit. To log wearing it, call log_wear with the returned id.',
     inputSchema: {
@@ -365,6 +384,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : useStock(args, ctx);
     case 'count_stock':
       return ctx.readOnly ? fail(READ_ONLY) : countStock(args, ctx);
+    case 'set_product_info':
+      return ctx.readOnly ? fail(READ_ONLY) : setProductInfo(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
@@ -815,7 +836,7 @@ async function stockState(store: RecordStore, now: Date) {
   const products = productSummaries(receipts, records);
   const stockFor = (p: ProductSummary): Stock =>
     stockOf(p, p.purchases, events.filter((e) => e.productId === p.id), today);
-  return { products, events, today, stockFor };
+  return { products, records, events, today, stockFor };
 }
 
 /** What the quantity is counted in: "cans" for a multipack, otherwise pieces, kg or l. */
@@ -924,6 +945,39 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     left: left.quantity,
     unit: unitName(p, left.quantity),
     ...(action === 'use' && quantity > before ? { note: `Only ${formatQty(before)} was thought to be in stock, so it now shows none left.` } : {}),
+  });
+}
+
+async function setProductInfo(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const { products, records } = await stockState(store, now);
+  const found = resolveProduct(args.product, products);
+  if ('error' in found) return found.error;
+  const p = found.product;
+  const { product: _ignored, ...rest } = args;
+  const changes = parseProductChanges(rest);
+  if (typeof changes === 'string') return fail(changes);
+  if ((changes.packSize || changes.packLabel) && p.unit !== 'pc') return fail(`"${p.name}" is bought by the ${p.unit}, so it has no pack size. Pack size only fits products sold in pieces.`);
+
+  const stamp = now.toISOString();
+  const record = records.find((r) => r.id === p.id);
+  const described = Object.entries(changes).map(([k, v]) => `${k}: ${v === null ? 'cleared' : String(v)}`).join(', ');
+  if (!record) {
+    // Nothing to overwrite: a product that has no settings yet gets them now.
+    const base: FoodProduct = { id: p.id, name: p.name, type: p.type, storage: p.storage, createdAt: stamp, updatedAt: stamp };
+    await store.put('foodproducts', p.id, withProductChanges(base, changes, stamp));
+    return ok({ product: p.name, set: described, applied: 'now' });
+  }
+  // The product has settings the owner (or an earlier call) may be editing: the app applies this, like other edits.
+  const request: ProductEditRequest = {
+    id: newId(), type: 'product-edit', itemIds: [], outfitIds: [], productId: p.id,
+    base: { name: p.name, type: p.type, storage: p.storage }, changes, source: 'claude', createdAt: stamp, updatedAt: stamp,
+  };
+  await store.put('inbox', request.id, request);
+  return ok({
+    product: p.name,
+    queued: described,
+    applied: 'when the app next syncs',
+    note: 'Not applied yet: stock keeps counting with the old settings until the app syncs, so tell the user it is queued and wait before logging uses of this product.',
   });
 }
 
