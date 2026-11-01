@@ -24,11 +24,11 @@ export interface ReceiptLine {
   /** Pieces, or kg/l for weighed lines. */
   quantity: number;
   unit: Unit;
-  /** Shelf price per unit, before the discount. */
+  /** Price charged per unit, as printed on the receipt (a discount is already inside it). */
   unitPrice: number;
-  /** Discount on this line (positive number), e.g. 0.67. */
+  /** What was saved on this line (POPUST, loyalty card), e.g. 0.67. Informational: already in `unitPrice`, never subtracted again. */
   discount: number;
-  /** What was actually paid for the line: quantity × unitPrice − discount. */
+  /** What was paid for the line: quantity × unitPrice. */
   paid: number;
 }
 

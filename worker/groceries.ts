@@ -26,7 +26,7 @@ export function isRealDate(s: unknown): s is string {
 
 /**
  * Lines without a name or a positive quantity are dropped. The amount paid is always recomputed from
- * quantity, shelf price and discount, so a mis-added figure can't make a line disagree with itself.
+ * quantity and the price per unit, so a mis-added figure can't make a line disagree with itself.
  */
 export function parseGroceryLines(input: unknown): ReceiptLine[] {
   if (!Array.isArray(input)) return [];
@@ -47,7 +47,7 @@ export function parseGroceryLines(input: unknown): ReceiptLine[] {
       unit: (UNITS as readonly string[]).includes(r.unit as string) ? (r.unit as Unit) : 'pc',
       unitPrice,
       discount,
-      paid: linePaid(quantity, unitPrice, discount),
+      paid: linePaid(quantity, unitPrice),
     });
   }
   return out;

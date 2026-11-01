@@ -9,9 +9,9 @@ describe('parseGroceryReceipt', () => {
     expect(parseGroceryReceipt({ store: 'Konzum', lines: [{ name: '', quantity: 1, unitPrice: 1 }] }, '2026-11-01')).toBeUndefined();
   });
 
-  it('recomputes the amount paid from quantity, price and discount', () => {
+  it('recomputes the amount paid from quantity and price, without subtracting the discount again', () => {
     const out = parseGroceryReceipt({ ...base, lines: [{ name: 'Chicken fillet', kind: 'food', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67, paid: 99 }] }, '2026-11-01');
-    expect(out?.receipt.lines[0]).toMatchObject({ quantity: 0.48, unit: 'kg', paid: 2.21 });
+    expect(out?.receipt.lines[0]).toMatchObject({ quantity: 0.48, unit: 'kg', discount: 0.67, paid: 2.88 });
   });
 
   it('falls back on bad dates, kinds and units, and drops invalid lines', () => {

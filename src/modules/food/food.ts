@@ -2,9 +2,9 @@ import { LINE_KINDS, type FoodReceipt, type LineKind, type ReceiptLine, type Uni
 
 export const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-/** Price paid for a line: quantity × shelf price − discount (never below 0). */
-export function linePaid(quantity: number, unitPrice: number, discount: number): number {
-  return Math.max(0, round2(quantity * unitPrice - discount));
+/** Amount paid for a line: quantity × the price charged per unit. Any discount is already inside that price. */
+export function linePaid(quantity: number, unitPrice: number): number {
+  return round2(quantity * unitPrice);
 }
 
 /** Sum of what every line cost. */
@@ -24,7 +24,7 @@ export function spendByKind(lines: ReceiptLine[]): Partial<Record<LineKind, numb
   return out;
 }
 
-/** Total discounts on a receipt. */
+/** Total saved on a receipt (discounts are informational: they are already in the prices). */
 export function totalSaved(lines: ReceiptLine[]): number {
   return round2(lines.reduce((sum, l) => sum + l.discount, 0));
 }
@@ -92,5 +92,5 @@ export function draftToLine(d: LineDraft): ReceiptLine | undefined {
   const unitPrice = parseNumber(d.unitPrice);
   if (!name || !quantity || unitPrice === undefined) return undefined;
   const discount = parseNumber(d.discount) ?? 0;
-  return { name, rawName: d.rawName, kind: d.kind, quantity, unit: d.unit, unitPrice, discount, paid: linePaid(quantity, unitPrice, discount) };
+  return { name, rawName: d.rawName, kind: d.kind, quantity, unit: d.unit, unitPrice, discount, paid: linePaid(quantity, unitPrice) };
 }
