@@ -4,7 +4,8 @@ import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
 import { ColorDot } from './ColorDot';
-import { winnersFromScores } from './games';
+import { standings, winnersFromScores } from './games';
+import { Scoreboard } from './Scoreboard';
 import { LordPicker } from './LordPicker';
 import { RuleSelect } from './TitlesTab';
 import { WATERDEEP_LORDS, cleanWaterdeep, isWaterdeep, lordBonus, type WaterdeepInfo } from './waterdeep';
@@ -67,6 +68,10 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   }
   const derived = winnersFromScores(title?.rule ?? (titleId ? 'manual' : newRule), numeric, playerIds);
   const winners = (picked ?? derived).filter((id) => playerIds.includes(id));
+
+  const rule = title?.rule ?? (titleId ? 'manual' : newRule);
+  const hasScores = Object.keys(numeric).length > 0;
+  const board = standings([numeric], playerIds, rule);
 
   const togglePlayer = (id: string) => setPlayerIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const toggleWinner = (id: string) => setPicked(winners.includes(id) ? winners.filter((x) => x !== id) : [...winners, id]);
@@ -163,6 +168,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               {[waterdeepGame && 'Tap the Lord name to choose it, then enter points before the Lord and the final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
+          {playerIds.length >= 2 && <Scoreboard board={board} rule={rule} started={hasScores} name={name} showTrail={false} />}
           <ul className="game-scores" ref={list}>
             {playerIds.map((id) => {
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
