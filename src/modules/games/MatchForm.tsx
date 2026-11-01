@@ -134,28 +134,25 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       {waterdeepGame && (
         <div className="field">
           <span>Skullport expansion</span>
-          <div className="chips">
+          <div className="chips" style={{ alignItems: 'center' }}>
             <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
               Played with corruption
             </button>
-          </div>
-          {waterdeep.skullport && (
-            <label className="field">
-              <span className="muted small">Points each corruption is worth (for example -5). Then enter how many each player has next to their name.</span>
+            {waterdeep.skullport && (
               <input
                 type="number"
-                inputMode="decimal"
                 step="any"
                 value={waterdeep.corruptionValue ?? ''}
                 onChange={(e) => {
                   const n = e.target.value.trim();
                   setWaterdeep({ ...waterdeep, corruptionValue: n && Number.isFinite(Number(n)) ? Number(n) : undefined });
                 }}
-                placeholder="Value of each corruption"
+                placeholder="Each, e.g. -5"
                 aria-label="Points each corruption is worth"
+                style={{ width: '7.5rem', flex: 'none' }}
               />
-            </label>
-          )}
+            )}
+          </div>
         </div>
       )}
       {playerIds.length > 0 && (
