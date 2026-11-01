@@ -4975,3 +4975,20 @@ button.detail-row {
   gap: 0.4rem;
   padding: 0.25rem 0 0.4rem;
 }
+
+/* Lords of Waterdeep rows: name and trophy on top, then Lord / before / final */
+.game-scores li.wd {
+  grid-template-columns: 1.7fr 1fr 1fr;
+}
+.game-scores li.wd > div:first-child {
+  grid-column: 1 / 3;
+  grid-row: 1;
+}
+.game-scores li.wd > .chip {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+.game-scores li.wd input {
+  min-width: 0;
+}

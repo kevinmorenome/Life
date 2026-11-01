@@ -134,18 +134,23 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
-          {(hasOrder || hasColors || catanGame) && (
+          {(hasOrder || hasColors || catanGame || waterdeepGame) && (
             <span className="muted small">
-              {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+              {[waterdeepGame && 'Per player: Lord, points before the Lord, final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
           <ul className="game-scores" ref={list}>
             {playerIds.map((id) => {
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
               const idx = order.indexOf(id);
+              const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
+              // Every player has a different Lord: leave out the ones the others already picked.
+              const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
+              const dup = !!waterdeep.lords?.[id]?.trim() && taken.includes(waterdeep.lords[id].trim().toLowerCase());
               return (
               <li
                 key={id}
+                className={waterdeepGame ? 'wd' : undefined}
                 ref={(el) => {
                   rows.current[id] = el;
                 }}
@@ -200,6 +205,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                     />
                   )}
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  {waterdeepGame && bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                   {catanGame &&
                     ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (
                       <button
@@ -215,6 +221,23 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                     ))}
                 </div>
                 {waterdeepGame && (
+                  <>
+                    <datalist id={`waterdeep-lords-${id}`}>
+                      {WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase())).map((l) => (
+                        <option key={l} value={l} />
+                      ))}
+                    </datalist>
+                    <input
+                      list={`waterdeep-lords-${id}`}
+                      aria-invalid={dup || undefined}
+                      value={waterdeep.lords?.[id] ?? ''}
+                      onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
+                      placeholder={dup ? 'Taken' : 'Lord'}
+                      aria-label={`${name(id)} Lord`}
+                    />
+                  </>
+                )}
+                {waterdeepGame && (
                   <input
                     type="number"
                     inputMode="decimal"
@@ -227,7 +250,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       else delete rest[id];
                       setWaterdeep({ ...waterdeep, before: rest });
                     }}
-                    placeholder="Before Lord"
+                    placeholder="Before"
                     aria-label={`${name(id)} points before the Lord`}
                   />
                 )}
@@ -260,40 +283,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
-        </div>
-      )}
-      {waterdeepGame && playerIds.length > 0 && (
-        <div className="field">
-          <span>Lords</span>
-          <span className="muted small">Each player’s Lord, revealed at the end. Enter points before the Lord above and the final total in the score field.</span>
-          <ul className="game-scores">
-            {playerIds.map((id) => {
-              const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
-              // Every player has a different Lord: leave out the ones the others already picked.
-              const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
-              const dup = !!waterdeep.lords?.[id]?.trim() && taken.includes(waterdeep.lords[id].trim().toLowerCase());
-              return (
-                <li key={id}>
-                  <datalist id={`waterdeep-lords-${id}`}>
-                    {WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase())).map((l) => (
-                      <option key={l} value={l} />
-                    ))}
-                  </datalist>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{name(id)}</span>
-                  <input
-                    list={`waterdeep-lords-${id}`}
-                    aria-invalid={dup || undefined}
-                    value={waterdeep.lords?.[id] ?? ''}
-                    onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
-                    placeholder="Lord"
-                    aria-label={`${name(id)} Lord`}
-                  />
-                  {dup && <span className="muted small">Already taken</span>}
-                  {bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
-                </li>
-              );
-            })}
-          </ul>
         </div>
       )}
       {waterdeepGame && (
