@@ -227,7 +227,8 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
                     />
                   )}
-                  <span style={waterdeepGame ? { overflow: 'hidden', textOverflow: 'ellipsis', flex: 'none', maxWidth: '38%', paddingRight: 12 } : { overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  <span style={waterdeepGame ? { overflow: 'hidden', textOverflow: 'ellipsis', flex: 'none', maxWidth: '38%', fontWeight: 700 } : { overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  {waterdeepGame && <span aria-hidden="true" style={{ flex: 'none', width: 1, height: 16, margin: '0 10px', background: 'currentColor', opacity: 0.3 }} />}
                   {waterdeepGame && (
                     <LordPicker
                       value={waterdeep.lords?.[id]}
