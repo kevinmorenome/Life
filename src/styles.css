@@ -5272,3 +5272,45 @@ button.detail-row {
   min-height: 44px;
   min-width: 0;
 }
+
+/* Food: stock */
+.stock-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.stock-main {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 0.15rem;
+  padding: 0.6rem 0;
+  color: var(--text);
+  text-decoration: none;
+}
+.check-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+
+.food-gap {
+  margin-bottom: 1.25rem;
+}
+.food-h2 {
+  margin-top: 1.5rem;
+}
+.food-gap + .form,
+.food-gap + .chips {
+  margin-top: 0.5rem;
+}
+a.game-row + section,
+a.game-row + .food-h2 {
+  margin-top: 1rem;
+}
+.stock-row .icon-btn {
+  margin-right: 0;
+}

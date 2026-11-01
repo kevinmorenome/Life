@@ -66,6 +66,12 @@ export const CartIcon = () => (
   </Icon>
 );
 
+export const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
 export const PlusIcon = () => (
   <Icon>
     <path d="M12 5v14M5 12h14" />

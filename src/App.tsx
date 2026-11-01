@@ -24,7 +24,7 @@ function pageTitle(route: string[]): string | undefined {
   if (a === 'stats') return 'Stats';
   if (a === 'games' && (!b || b === 'players' || b === 'titles')) return 'Games';
   if (a === 'more') return 'More';
-  if (a === 'food' && (!b || b === 'products')) return 'Food';
+  if (a === 'food' && (!b || b === 'products' || b === 'stock')) return 'Food';
   if (a === 'clothes' && !b) return 'Closet';
   if (a === 'clothes' && b === 'outfits' && route.length === 2) return 'Outfits';
   return undefined;

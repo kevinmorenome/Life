@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -91,6 +91,9 @@ describe('protocol', () => {
       'add_item',
       'add_receipt_items',
       'add_grocery_receipt',
+      'list_stock',
+      'use_stock',
+      'count_stock',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -478,6 +481,8 @@ describe('read-only deployments', () => {
       ['log_wear', { date: '2026-10-25', itemIds: ['tee'] }],
       ['add_item', { name: 'x', category: 'tops' }],
       ['create_outfit', { itemIds: ['tee'] }],
+      ['use_stock', { product: 'milk' }],
+      ['count_stock', { product: 'milk', quantity: 1 }],
       ['add_grocery_receipt', { sourceId: 'r1', store: 'Konzum', date: '2026-10-31', lines: [{ name: 'Milk', quantity: 1, unitPrice: 1 }] }],
       ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
       ['set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/p.jpg' }],
@@ -627,6 +632,59 @@ describe('add_grocery_receipt', () => {
     const { ctx } = setup();
     expect((await call(ctx, 'add_grocery_receipt', { ...args, store: '' })).isError).toBe(true);
     expect((await call(ctx, 'add_grocery_receipt', { ...args, lines: [{ name: '' }] })).isError).toBe(true);
+  });
+});
+
+describe('food stock', () => {
+  const receipt = (id: string, date: string, lines: object[]) => ({ id, store: 'Konzum', date, lines, createdAt: 'x', updatedAt: 'x' });
+  const L = (name: string, quantity: number, over: object = {}) => ({ name, kind: 'food', quantity, unit: 'pc', unitPrice: 2, discount: 0, paid: quantity * 2, ...over });
+  const seed = () => {
+    const s = setup();
+    s.data.foodreceipts.set('food-1', receipt('food-1', '2026-10-20', [L('Hummus', 2), L('Oat drink 3.5%', 3), L('Chicken fillet', 0.5, { unit: 'kg', unitPrice: 6, paid: 3 })]));
+    s.data.foodreceipts.set('food-2', receipt('food-2', '2026-10-24', [L('Oat drink 3.5%', 1), L('Oat cookies', 1)]));
+    return s;
+  };
+
+  it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
+    const { ctx, data } = seed();
+    data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });
+    const out = (await call(ctx, 'list_stock', {})).json() as { name: string; quantity: number; status: string; useBy?: string }[];
+    expect(out.map((p) => p.name).sort()).toEqual(['Chicken fillet', 'Hummus', 'Oat drink 3.5%']);
+    expect(out.find((p) => p.name === 'Oat drink 3.5%')).toMatchObject({ quantity: 4, status: 'ok' });
+    expect(out.find((p) => p.name === 'Chicken fillet')).toMatchObject({ status: 'use-soon', useBy: '2026-10-25' });
+    expect((await call(ctx, 'list_stock', { query: 'cook', includeOut: true })).json()).toMatchObject([{ name: 'Oat cookies', status: 'out' }]);
+  });
+
+  it('records use, finish and toss as new events and reports what is left', async () => {
+    const { ctx, data } = seed();
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', quantity: 2 })).json()).toMatchObject({ recorded: 'use', used: '2', left: 2 });
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'finish' })).json()).toMatchObject({ recorded: 'finish', left: 0 });
+    expect((await call(ctx, 'use_stock', { product: 'chicken', action: 'toss' })).json()).toMatchObject({ recorded: 'toss', left: 0 });
+    const events = [...data.foodstock.values()];
+    expect(events.map((e) => [e.productId, e.type, e.quantity, e.source])).toEqual([
+      ['fp-oat-drink-3-5', 'use', 2, 'claude'], ['fp-hummus', 'count', 0, 'claude'], ['fp-chicken-fillet', 'toss', 0.5, 'claude'],
+    ]);
+  });
+
+  it('counts, and warns when more was used than was thought to be in stock', async () => {
+    const { ctx } = seed();
+    expect((await call(ctx, 'count_stock', { product: 'hummus', quantity: 1 })).json()).toMatchObject({ counted: 'Hummus', quantity: 1 });
+    const over = (await call(ctx, 'use_stock', { product: 'hummus', quantity: 5 })).json();
+    expect(over).toMatchObject({ left: 0 });
+    expect(over.note).toMatch(/Only 1/);
+  });
+
+  it('fails on unknown or ambiguous products, bad numbers and a toss with nothing left', async () => {
+    const { ctx } = seed();
+    expect((await call(ctx, 'use_stock', { product: 'caviar' })).isError).toBe(true);
+    const ambiguous = await call(ctx, 'use_stock', { product: 'oat' });
+    expect(ambiguous.isError).toBe(true);
+    expect(ambiguous.text).toMatch(/Oat drink 3.5%.*Oat cookies|Oat cookies.*Oat drink 3.5%/);
+    expect((await call(ctx, 'use_stock', { product: 'hummus', quantity: -1 })).isError).toBe(true);
+    expect((await call(ctx, 'count_stock', { product: 'hummus', quantity: -1 })).isError).toBe(true);
+    expect((await call(ctx, 'use_stock', { product: 'hummus', date: '2026-02-31' })).isError).toBe(true);
+    await call(ctx, 'use_stock', { product: 'hummus', action: 'finish' });
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'toss' })).isError).toBe(true);
   });
 });
 

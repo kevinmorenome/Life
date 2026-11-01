@@ -1,9 +1,10 @@
 import { navigate } from '../../lib/router';
 
-/** Switches between receipts and products; Food has one place in More. */
-export function FoodTabs({ active }: { active: 'receipts' | 'products' }) {
+/** Switches between receipts, stock and products; Food has one place in More. */
+export function FoodTabs({ active }: { active: 'receipts' | 'stock' | 'products' }) {
   const tabs = [
     { id: 'receipts', label: 'Receipts', path: '/food' },
+    { id: 'stock', label: 'Stock', path: '/food/stock' },
     { id: 'products', label: 'Products', path: '/food/products' },
   ] as const;
   return (

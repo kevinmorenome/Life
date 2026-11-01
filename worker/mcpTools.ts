@@ -8,8 +8,9 @@ import { LINE_KINDS, PRODUCT_TYPES, STORAGES, UNITS } from '../src/modules/food/
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
 import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
-import { canonicalName, defaultStorage, defaultType, isStocked, productId } from '../src/modules/food/products';
-import type { FoodProduct, FoodReceipt } from '../src/modules/food/types';
+import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
+import { formatQty, stockOf, type Stock } from '../src/modules/food/stock';
+import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
@@ -220,6 +221,50 @@ export const TOOLS = [
     },
   },
   {
+    name: 'list_stock',
+    description:
+      'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Words that must all match the product name, e.g. "oat". Empty lists everything.' },
+        storage: { type: 'string', enum: [...STORAGES] },
+        status: { type: 'string', enum: ['ok', 'use-soon', 'check', 'low', 'out'] },
+        includeOut: { type: 'boolean', description: 'Also list products that are all used up.' },
+      },
+    },
+  },
+  {
+    name: 'use_stock',
+    description:
+      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. The record is a new event; nothing existing is changed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product: { type: 'string', description: 'Product name or the words the user used, e.g. "hummus"' },
+        action: { type: 'string', enum: ['use', 'finish', 'toss'], description: 'Default "use".' },
+        quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
+        date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
+        note: { type: 'string' },
+      },
+      required: ['product'],
+    },
+  },
+  {
+    name: 'count_stock',
+    description:
+      'Set how much of a product there really is, e.g. "I have 3 beers left" or after checking the fridge. This replaces what the stock was worked out to be from that day on. Use 0 for none left. Only when the user tells you the number.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product: { type: 'string', description: 'Product name or the words the user used' },
+        quantity: { type: 'number', minimum: 0 },
+        date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
+      },
+      required: ['product', 'quantity'],
+    },
+  },
+  {
     name: 'create_outfit',
     description: 'Save a set of existing items as an outfit. To log wearing it, call log_wear with the returned id.',
     inputSchema: {
@@ -310,6 +355,12 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addReceiptItems(args, ctx);
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
+    case 'list_stock':
+      return listStock(args, ctx);
+    case 'use_stock':
+      return ctx.readOnly ? fail(READ_ONLY) : useStock(args, ctx);
+    case 'count_stock':
+      return ctx.readOnly ? fail(READ_ONLY) : countStock(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
@@ -747,6 +798,119 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
         }
       : {}),
   });
+}
+
+// ---- food stock ----
+
+/** Everything the stock tools need: the products on receipts, their events, and the date. */
+async function stockState(store: RecordStore, now: Date) {
+  const receipts = (await store.list('foodreceipts')) as unknown as FoodReceipt[];
+  const records = (await store.list('foodproducts')) as unknown as FoodProduct[];
+  const events = (await store.list('foodstock')) as unknown as StockEvent[];
+  const today = utcToday(now);
+  const products = productSummaries(receipts, records);
+  const stockFor = (p: ProductSummary): Stock =>
+    stockOf(p, p.purchases, events.filter((e) => e.productId === p.id), today);
+  return { products, events, today, stockFor };
+}
+
+function describeProduct(p: ProductSummary, s: Stock) {
+  return {
+    name: p.name,
+    quantity: s.quantity,
+    unit: p.unit === 'pc' ? 'pieces' : p.unit,
+    type: p.type,
+    storage: p.storage,
+    status: s.status,
+    ...(s.useBy ? { useBy: s.useBy } : {}),
+    ...(s.lastConfirmed ? { lastBoughtOrCounted: s.lastConfirmed } : {}),
+  };
+}
+
+async function listStock(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { products, stockFor } = await stockState(store, now);
+  const words = normalizeKey(text(args.query) ?? '').split(' ').filter(Boolean);
+  const storage = text(args.storage);
+  const status = text(args.status);
+  const rows = products
+    .filter((p) => words.every((w) => normalizeKey(p.name).split(' ').some((x) => x.startsWith(w))))
+    .filter((p) => !storage || p.storage === storage)
+    .map((p) => ({ p, s: stockFor(p) }))
+    .filter(({ s }) => (status ? s.status === status : args.includeOut === true || s.status !== 'out'));
+  if (rows.length === 0) return ok('Nothing matches. Stock only covers products that were bought and saved from a receipt.');
+  return ok(rows.map(({ p, s }) => describeProduct(p, s)));
+}
+
+/** The one product the user means, or a failure that lists the candidates. */
+function resolveProduct(query: unknown, products: ProductSummary[]): { product: ProductSummary } | { error: ToolResult } {
+  const q = text(query);
+  if (!q) return { error: fail('product is required.') };
+  const exact = products.find((p) => p.id === productId(q));
+  if (exact) return { product: exact };
+  const words = normalizeKey(q).split(' ').filter(Boolean);
+  const hits = products.filter((p) => words.every((w) => normalizeKey(p.name).split(' ').some((x) => x.startsWith(w))));
+  if (hits.length === 1) return { product: hits[0] };
+  if (hits.length === 0) return { error: fail(`No product matches "${q}". Check the name with list_stock (includeOut=true shows everything that was ever bought).`) };
+  return { error: fail(`"${q}" matches several products: ${hits.map((p) => `"${p.name}"`).join(', ')}. Ask the user which one, then call again with the exact name.`) };
+}
+
+function eventDate(v: unknown, fallback: string): string | undefined {
+  return v === undefined ? fallback : isRealDate(v) ? v : undefined;
+}
+
+async function useStock(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const { products, events, today, stockFor } = await stockState(store, now);
+  const found = resolveProduct(args.product, products);
+  if ('error' in found) return found.error;
+  const p = found.product;
+  const date = eventDate(args.date, today);
+  if (!date) return fail('date must be YYYY-MM-DD.');
+  const action = args.action === 'finish' || args.action === 'toss' ? args.action : 'use';
+  const before = stockFor(p).quantity;
+
+  let type: StockEvent['type'];
+  let quantity: number;
+  if (action === 'finish') {
+    type = 'count';
+    quantity = 0;
+  } else if (action === 'toss') {
+    if (before <= 0) return fail(`None of "${p.name}" is in stock, so there is nothing to throw away.`);
+    type = 'toss';
+    quantity = before;
+  } else {
+    const q = args.quantity === undefined ? 1 : args.quantity;
+    if (typeof q !== 'number' || !Number.isFinite(q) || q <= 0 || q > 10_000) return fail('quantity must be a positive number.');
+    type = 'use';
+    quantity = Math.round(q * 1000) / 1000;
+  }
+
+  const stamp = now.toISOString();
+  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
+  await store.put('foodstock', event.id, event);
+  const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
+  return ok({
+    recorded: action,
+    product: p.name,
+    ...(action === 'use' ? { used: formatQty(quantity) } : {}),
+    left: left.quantity,
+    unit: p.unit === 'pc' ? 'pieces' : p.unit,
+    ...(action === 'use' && quantity > before ? { note: `Only ${formatQty(before)} was thought to be in stock, so it now shows none left.` } : {}),
+  });
+}
+
+async function countStock(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const { products, today } = await stockState(store, now);
+  const found = resolveProduct(args.product, products);
+  if ('error' in found) return found.error;
+  const p = found.product;
+  const q = args.quantity;
+  if (typeof q !== 'number' || !Number.isFinite(q) || q < 0 || q > 10_000) return fail('quantity must be a number, 0 or more.');
+  const date = eventDate(args.date, today);
+  if (!date) return fail('date must be YYYY-MM-DD.');
+  const stamp = now.toISOString();
+  const event: StockEvent = { id: newId(), productId: p.id, type: 'count', quantity: Math.round(q * 1000) / 1000, date, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  await store.put('foodstock', event.id, event);
+  return ok({ counted: p.name, quantity: event.quantity, unit: p.unit === 'pc' ? 'pieces' : p.unit });
 }
 
 async function createOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
