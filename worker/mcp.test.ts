@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -90,6 +90,7 @@ describe('protocol', () => {
       'add_tags',
       'add_item',
       'add_receipt_items',
+      'add_grocery_receipt',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -477,6 +478,7 @@ describe('read-only deployments', () => {
       ['log_wear', { date: '2026-10-25', itemIds: ['tee'] }],
       ['add_item', { name: 'x', category: 'tops' }],
       ['create_outfit', { itemIds: ['tee'] }],
+      ['add_grocery_receipt', { sourceId: 'r1', store: 'Konzum', date: '2026-10-31', lines: [{ name: 'Milk', quantity: 1, unitPrice: 1 }] }],
       ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
       ['set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/p.jpg' }],
     ] as const) {
@@ -552,6 +554,48 @@ describe('edit_item', () => {
     const { ctx, data } = setup({ readOnly: true });
     expect((await call(ctx, 'edit_item', { itemId: 'tee', name: 'x' })).isError).toBe(true);
     expect(data.inbox.size).toBe(0);
+  });
+});
+
+describe('add_grocery_receipt', () => {
+  const args = {
+    sourceId: '7d7f54c0-e10d',
+    store: 'Konzum',
+    branch: 'Zarka Dolinara 2',
+    date: '2026-10-31',
+    time: '15:37',
+    total: 6.6,
+    lines: [
+      { name: 'Chicken fillet', rawName: 'FILE OD PRSA K PLU', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67 },
+      { name: 'Oat milk 3.5%', quantity: 1, unitPrice: 4.19 },
+      { name: 'Deposit', kind: 'deposit', quantity: 2, unitPrice: 0.1 },
+    ],
+  };
+
+  it('stores the receipt with recomputed line amounts and is idempotent', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'add_grocery_receipt', args);
+    expect(r.isError).toBe(false);
+    expect(r.json().warning).toBeUndefined();
+    expect(data.foodreceipts.get('food-7d7f54c0-e10d')).toMatchObject({
+      store: 'Konzum', date: '2026-10-31', time: '15:37', total: 6.6,
+      lines: [{ paid: 2.21, unit: 'kg', kind: 'food' }, { paid: 4.19 }, { kind: 'deposit', paid: 0.2 }],
+    });
+    data.foodreceipts.set('food-7d7f54c0-e10d', { ...data.foodreceipts.get('food-7d7f54c0-e10d')!, store: 'My edit' });
+    expect((await call(ctx, 'add_grocery_receipt', args)).json()).toEqual({ alreadyAdded: true });
+    expect(data.foodreceipts.get('food-7d7f54c0-e10d')).toMatchObject({ store: 'My edit' });
+  });
+
+  it('warns when the printed total does not match the lines', async () => {
+    const { ctx } = setup();
+    const r = await call(ctx, 'add_grocery_receipt', { ...args, sourceId: 'r2', total: 50 });
+    expect(r.json().warning).toMatch(/does not match/);
+  });
+
+  it('refuses a receipt without a store or valid lines', async () => {
+    const { ctx } = setup();
+    expect((await call(ctx, 'add_grocery_receipt', { ...args, store: '' })).isError).toBe(true);
+    expect((await call(ctx, 'add_grocery_receipt', { ...args, lines: [{ name: '' }] })).isError).toBe(true);
   });
 });
 

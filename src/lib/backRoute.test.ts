@@ -4,6 +4,13 @@ import { parentRoute } from './backRoute';
 const p = (path: string) => parentRoute(path.split('/').filter(Boolean));
 
 describe('parentRoute', () => {
+  it('goes from a food receipt to the list, and from the list to More', () => {
+    expect(p('/food/receipt/food-abc')).toBe('/food');
+    expect(p('/food')).toBe('/more');
+    expect(p('/food/new')).toBe('/food');
+    expect(p('/food/receipt/food-abc/edit')).toBe('/food/receipt/food-abc');
+  });
+
   it('has no parent on the main pages', () => {
     for (const path of ['/', '/calendar', '/calendar/2026-10', '/stats', '/stats/clothes', '/more', '/clothes', '/clothes/outfits', '/clothes/review']) {
       expect(p(path)).toBeUndefined();

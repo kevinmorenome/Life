@@ -58,6 +58,14 @@ export const ChartIcon = () => (
   </Icon>
 );
 
+export const CartIcon = () => (
+  <Icon>
+    <path d="M3 4h2.5l2 10.5h10L19.5 8H6.2" />
+    <circle cx="9" cy="19" r="1.3" />
+    <circle cx="17" cy="19" r="1.3" />
+  </Icon>
+);
+
 export const PlusIcon = () => (
   <Icon>
     <path d="M12 5v14M5 12h14" />

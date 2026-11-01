@@ -5214,3 +5214,61 @@ button.detail-row {
   padding-left: 16px;
   padding-right: 16px;
 }
+
+/* Food: receipts */
+.food-month {
+  margin: 0 0 1rem;
+}
+.food-total {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.game-line.food-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.food-sum {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.game-head .icon-btn + .icon-btn {
+  margin-left: 0.25rem;
+}
+.food-edit-line {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.food-edit-top {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.food-edit-top input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+.food-edit-nums {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr 1.2fr 1.2fr;
+  gap: 0.5rem;
+}
+.food-edit-nums label {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.food-edit-nums input,
+.food-edit-nums select,
+.food-kind {
+  min-height: 44px;
+  min-width: 0;
+}

@@ -4,9 +4,11 @@
 // directly without risking a clobbered edit.
 
 import { PALETTE, itemColors } from '../src/modules/clothes/colors';
+import { LINE_KINDS, UNITS } from '../src/modules/food/types';
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
 import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
+import { parseGroceryReceipt } from './groceries';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
 
@@ -177,6 +179,42 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_grocery_receipt',
+    description:
+      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the shelf price per unit BEFORE the discount; put the line\'s discount (POPUST, loyalty-card discount) in discount as a positive number. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA), bag, or other. Include every line on the receipt, deposits and bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourceId: { type: 'string', description: 'Unique receipt number (e.g. JIR) or email message id' },
+        store: { type: 'string', description: 'Chain, e.g. "Konzum"' },
+        branch: { type: 'string', description: 'Branch or address' },
+        date: { type: 'string', description: 'YYYY-MM-DD' },
+        time: { type: 'string', description: 'HH:MM, 24 hour' },
+        total: { type: 'number', minimum: 0, description: 'Total printed on the receipt, including deposits' },
+        notes: { type: 'string' },
+        lines: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 120,
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Cleaned-up product name' },
+              rawName: { type: 'string', description: 'Name as printed on the receipt' },
+              kind: { type: 'string', enum: [...LINE_KINDS] },
+              quantity: { type: 'number', exclusiveMinimum: 0, description: 'Pieces, or kg/l for weighed lines' },
+              unit: { type: 'string', enum: [...UNITS] },
+              unitPrice: { type: 'number', minimum: 0, description: 'Shelf price per unit before the discount' },
+              discount: { type: 'number', minimum: 0, description: 'Discount on this line, positive' },
+            },
+            required: ['name', 'quantity', 'unitPrice'],
+          },
+        },
+      },
+      required: ['sourceId', 'store', 'date', 'lines'],
+    },
+  },
+  {
     name: 'create_outfit',
     description: 'Save a set of existing items as an outfit. To log wearing it, call log_wear with the returned id.',
     inputSchema: {
@@ -265,6 +303,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addItem(args, ctx);
     case 'add_receipt_items':
       return ctx.readOnly ? fail(READ_ONLY) : addReceiptItems(args, ctx);
+    case 'add_grocery_receipt':
+      return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
@@ -653,6 +693,30 @@ async function setItemPhoto(args: Args, { store, now, newId, fetchPhoto: downloa
   const request: PhotoRequest = { id: newId(), type: 'photo', itemIds: [itemId], outfitIds: [], photo, source: 'claude', createdAt: stamp, updatedAt: stamp };
   await store.put('inbox', request.id, request);
   return ok(`Queued a new photo for “${item.name}”. It is only applied when the app next syncs, so tell the user it is queued, not already attached; nothing else about the item changes.`);
+}
+
+async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const sourceId = text(args.sourceId, 100)?.replace(/[^A-Za-z0-9_-]/g, '');
+  if (!sourceId) return fail('sourceId is required (the receipt number or email message id).');
+  const parsed = parseGroceryReceipt(args, utcToday(now));
+  if (!parsed) return fail('A store and at least one line (name, quantity, unitPrice) are required.');
+
+  // The id comes from the receipt, so adding it again changes nothing.
+  const id = `food-${sourceId}`;
+  if ((await store.list('foodreceipts')).some((r) => r.id === id)) return ok({ alreadyAdded: true });
+
+  const stamp = now.toISOString();
+  await store.put('foodreceipts', id, { id, ...parsed.receipt, createdAt: stamp, updatedAt: stamp });
+  return ok({
+    added: id,
+    lines: parsed.receipt.lines.length,
+    summedFromLines: parsed.mismatch?.summed ?? parsed.receipt.total,
+    ...(parsed.mismatch
+      ? {
+          warning: `The printed total (${parsed.mismatch.printed}) does not match the lines (${parsed.mismatch.summed}). A line was probably misread or missing: check the receipt again and tell the user.`,
+        }
+      : {}),
+  });
 }
 
 async function createOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

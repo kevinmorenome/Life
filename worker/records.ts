@@ -20,8 +20,8 @@ export type Row = { id: string } & Record<string, unknown>;
 
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
-  list(store: 'clothes' | 'outfits' | 'inbox'): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents', id: string, record: object): Promise<void>;
+  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts'): Promise<Row[]>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -32,6 +32,7 @@ const FIELDS = {
   clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears'],
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
   inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
+  foodreceipts: ['store', 'date', 'total'],
 } as const;
 
 const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds']);
