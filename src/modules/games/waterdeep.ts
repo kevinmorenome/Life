@@ -31,8 +31,20 @@ export interface WaterdeepInfo {
   before?: Record<string, number>;
   /** Played with the Skullport expansion: corruption is tracked. */
   skullport?: boolean;
-  /** Corruption per player id: the value of each corruption they ended with (as entered, e.g. -5), so the count is the length. */
+  /** Points each corruption is worth (as entered, e.g. -5), the same for every player. */
+  corruptionValue?: number;
+  /** How many corruptions each player ended with, by player id. */
+  corruptions?: Record<string, number>;
+  /** Older games: the value of each corruption per player (the count is the length). Still read by the stats. */
   corruption?: Record<string, number[]>;
+}
+
+/** A player's corruptions in a game: how many, and the points they are worth. */
+export function playerCorruption(info: WaterdeepInfo | undefined, id: string): { count: number; points: number } {
+  const n = info?.corruptions?.[id];
+  if (n !== undefined) return { count: n, points: n * (info?.corruptionValue ?? 0) };
+  const list = info?.corruption?.[id] ?? [];
+  return { count: list.length, points: list.reduce((a, b) => a + b, 0) };
 }
 
 /** Drop empty entries and players who are not in the game; undefined when nothing is left. */
@@ -50,11 +62,18 @@ export function cleanWaterdeep(info: WaterdeepInfo, playerIds: string[]): Waterd
     const c = (info.corruption?.[id] ?? []).filter((n) => typeof n === 'number' && Number.isFinite(n));
     if (c.length) corruption[id] = c;
   }
+  const corruptions: Record<string, number> = {};
+  for (const id of playerIds) {
+    const n = info.corruptions?.[id];
+    if (typeof n === 'number' && Number.isFinite(n) && n > 0) corruptions[id] = n;
+  }
   const out: WaterdeepInfo = {
     lords: Object.keys(lords).length ? lords : undefined,
     before: Object.keys(before).length ? before : undefined,
     skullport: info.skullport || undefined,
     corruption: Object.keys(corruption).length ? corruption : undefined,
+    corruptionValue: info.skullport && typeof info.corruptionValue === 'number' && Number.isFinite(info.corruptionValue) ? info.corruptionValue : undefined,
+    corruptions: Object.keys(corruptions).length ? corruptions : undefined,
   };
   return Object.values(out).some((v) => v !== undefined) ? out : undefined;
 }
@@ -125,11 +144,11 @@ export function corruptionStats(matches: Pick<Match, 'waterdeep' | 'winnerIds' |
     for (const id of m.playerIds) {
       const s = out.get(id) ?? { id, games: 0, wins: 0, count: 0, points: 0 };
       out.set(id, s);
-      const c = m.waterdeep.corruption?.[id] ?? [];
+      const c = playerCorruption(m.waterdeep, id);
       s.games++;
       if (m.winnerIds.includes(id)) s.wins++;
-      s.count += c.length;
-      s.points += c.reduce((a, b) => a + b, 0);
+      s.count += c.count;
+      s.points += c.points;
     }
   }
   return [...out.values()].sort((a, b) => b.count / b.games - a.count / a.games || a.id.localeCompare(b.id));

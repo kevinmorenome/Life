@@ -33,7 +33,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
   const [waterdeep, setWaterdeep] = useState<WaterdeepInfo>(existing?.waterdeep ?? {});
-  const [corruptionDraft, setCorruptionDraft] = useState<Record<string, string>>({});
   // Seat drag: the row being dragged floats under the pointer.
   const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
@@ -140,6 +139,23 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               Played with corruption
             </button>
           </div>
+          {waterdeep.skullport && (
+            <label className="field">
+              <span className="muted small">Points each corruption is worth (for example -5). Then enter how many each player has next to their name.</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                value={waterdeep.corruptionValue ?? ''}
+                onChange={(e) => {
+                  const n = e.target.value.trim();
+                  setWaterdeep({ ...waterdeep, corruptionValue: n && Number.isFinite(Number(n)) ? Number(n) : undefined });
+                }}
+                placeholder="Value of each corruption"
+                aria-label="Points each corruption is worth"
+              />
+            </label>
+          )}
         </div>
       )}
       {playerIds.length > 0 && (
@@ -155,15 +171,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
               const idx = order.indexOf(id);
               const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
-              const corrupt = waterdeep.corruption?.[id] ?? [];
-              const setCorrupt = (next: number[]) => setWaterdeep({ ...waterdeep, corruption: { ...waterdeep.corruption, [id]: next } });
-              const draft = corruptionDraft[id] ?? '';
-              const addCorrupt = () => {
-                const n = draft.trim();
-                if (!n || !Number.isFinite(Number(n))) return;
-                setCorrupt([...corrupt, Number(n)]);
-                setCorruptionDraft({ ...corruptionDraft, [id]: '' });
-              };
               // Every player has a different Lord: leave out the ones the others already picked.
               const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
               return (
@@ -224,6 +231,25 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                     />
                   )}
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  {waterdeepGame && waterdeep.skullport && (
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={1}
+                      value={waterdeep.corruptions?.[id] ?? ''}
+                      onChange={(e) => {
+                        const n = e.target.value.trim();
+                        const rest = { ...waterdeep.corruptions };
+                        if (n && Number.isFinite(Number(n)) && Number(n) >= 0) rest[id] = Math.floor(Number(n));
+                        else delete rest[id];
+                        setWaterdeep({ ...waterdeep, corruptions: rest });
+                      }}
+                      placeholder="Corr."
+                      aria-label={`${name(id)} number of corruptions`}
+                      style={{ width: '4.5rem', flex: 'none', marginRight: 6 }}
+                    />
+                  )}
                   {waterdeepGame && bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                   {catanGame &&
                     ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (
@@ -278,36 +304,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                 <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
                   🏆
                 </button>
-                {waterdeepGame && waterdeep.skullport && (
-                  <div className="wd-corruption">
-                    <span className="muted small">
-                      Corruption {corrupt.length} · {corrupt.reduce((a, b) => a + b, 0)}
-                    </span>
-                    {corrupt.map((v, i) => (
-                      <button key={i} type="button" className="chip" aria-label={`Remove corruption ${v} from ${name(id)}`} onClick={() => setCorrupt(corrupt.filter((_, j) => j !== i))}>
-                        {v} ×
-                      </button>
-                    ))}
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="any"
-                      value={draft}
-                      onChange={(e) => setCorruptionDraft({ ...corruptionDraft, [id]: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addCorrupt();
-                        }
-                      }}
-                      placeholder="-5"
-                      aria-label={`${name(id)} corruption value`}
-                    />
-                    <button type="button" className="chip" onClick={addCorrupt} aria-label={`Add corruption for ${name(id)}`}>
-                      ＋
-                    </button>
-                  </div>
-                )}
               </li>
               );
             })}

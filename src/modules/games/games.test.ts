@@ -240,6 +240,11 @@ describe('Skullport corruption', () => {
     expect(cleanWaterdeep({ skullport: true, corruption: { a: [-5, -10], b: [], z: [-1] } }, ['a', 'b'])).toEqual({ skullport: true, corruption: { a: [-5, -10] } });
     expect(cleanWaterdeep({ skullport: false }, ['a'])).toBeUndefined();
     const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof corruptionStats>[0][number];
+    // Counts times a shared value, and the older per-corruption lists still count.
+    const fresh = corruptionStats([m({ waterdeep: { skullport: true, corruptionValue: -5, corruptions: { a: 3, b: 1 } }, winnerIds: ['a'] })]);
+    expect(fresh.find((x) => x.id === 'a')).toMatchObject({ count: 3, points: -15 });
+    expect(fresh.find((x) => x.id === 'b')).toMatchObject({ count: 1, points: -5 });
+    expect(cleanWaterdeep({ skullport: true, corruptionValue: -5, corruptions: { a: 2, b: 0, z: 4 } }, ['a', 'b'])).toEqual({ skullport: true, corruptionValue: -5, corruptions: { a: 2 } });
     const out = corruptionStats([
       m({ waterdeep: { skullport: true, corruption: { a: [-5, -10] } }, winnerIds: ['b'] }),
       m({ waterdeep: { skullport: true, corruption: { a: [-5], b: [-2] } }, winnerIds: ['a'] }),
