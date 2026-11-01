@@ -564,7 +564,7 @@ describe('add_grocery_receipt', () => {
     branch: 'Zarka Dolinara 2',
     date: '2026-10-31',
     time: '15:37',
-    total: 6.6,
+    total: 7.27,
     lines: [
       { name: 'Chicken fillet', rawName: 'FILE OD PRSA K PLU', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67 },
       { name: 'Oat milk 3.5%', quantity: 1, unitPrice: 4.19 },
@@ -578,8 +578,8 @@ describe('add_grocery_receipt', () => {
     expect(r.isError).toBe(false);
     expect(r.json().warning).toBeUndefined();
     expect(data.foodreceipts.get('food-7d7f54c0-e10d')).toMatchObject({
-      store: 'Konzum', date: '2026-10-31', time: '15:37', total: 6.6,
-      lines: [{ paid: 2.21, unit: 'kg', kind: 'food' }, { paid: 4.19 }, { kind: 'deposit', paid: 0.2 }],
+      store: 'Konzum', date: '2026-10-31', time: '15:37', total: 7.27,
+      lines: [{ paid: 2.88, unit: 'kg', kind: 'food', discount: 0.67 }, { paid: 4.19 }, { kind: 'deposit', paid: 0.2 }],
     });
     data.foodreceipts.set('food-7d7f54c0-e10d', { ...data.foodreceipts.get('food-7d7f54c0-e10d')!, store: 'My edit' });
     expect((await call(ctx, 'add_grocery_receipt', args)).json()).toEqual({ alreadyAdded: true });

@@ -6,11 +6,11 @@ const line = (over: Partial<ReceiptLine>): ReceiptLine => ({ name: 'x', kind: 'f
 const receipt = (over: Partial<FoodReceipt>): FoodReceipt => ({ id: 'r', store: 'Konzum', date: '2026-10-31', lines: [], createdAt: '', updatedAt: '', ...over });
 
 describe('linePaid', () => {
-  it('multiplies and subtracts the discount', () => {
-    expect(linePaid(0.48, 5.99, 0.67)).toBe(2.21);
-    expect(linePaid(2, 8.89, 0)).toBe(17.78);
+  it('multiplies quantity by the price charged (a discount is already inside it)', () => {
+    expect(linePaid(0.48, 5.99)).toBe(2.88);
+    expect(linePaid(2, 8.89)).toBe(17.78);
+    expect(linePaid(0.224, 1.89)).toBe(0.42);
   });
-  it('never goes below zero', () => expect(linePaid(1, 1, 5)).toBe(0));
 });
 
 describe('receipt sums', () => {
@@ -58,7 +58,7 @@ describe('parseNumber', () => {
 describe('line drafts', () => {
   it('turns a typed line into a saved one with the amount recomputed', () => {
     expect(draftToLine({ ...blankDraft(), name: ' Chicken fillet ', quantity: '0,48', unit: 'kg', unitPrice: '5,99', discount: '0,67' })).toEqual({
-      name: 'Chicken fillet', rawName: undefined, kind: 'food', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67, paid: 2.21,
+      name: 'Chicken fillet', rawName: undefined, kind: 'food', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67, paid: 2.88,
     });
   });
   it('skips lines that are not finished', () => {
@@ -67,7 +67,7 @@ describe('line drafts', () => {
     expect(draftToLine({ ...blankDraft(), name: 'Milk', quantity: '0', unitPrice: '1' })).toBeUndefined();
   });
   it('round-trips a saved line, keeping the printed name', () => {
-    const saved = line({ name: 'Oat milk', rawName: 'NAP ZOB', quantity: 2, unitPrice: 4.19, discount: 0.5, paid: 7.88 });
+    const saved = line({ name: 'Oat milk', rawName: 'NAP ZOB', quantity: 2, unitPrice: 4.19, discount: 0.5, paid: 8.38 });
     expect(draftToLine(lineToDraft(saved))).toEqual(saved);
   });
 });

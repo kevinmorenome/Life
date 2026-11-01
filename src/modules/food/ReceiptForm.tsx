@@ -106,11 +106,11 @@ export function ReceiptForm({ existing, receipts, onSave }: Props) {
                 </select>
               </label>
               <label>
-                <span className="muted small">Price each</span>
+                <span className="muted small">Paid each</span>
                 <input inputMode="decimal" value={l.unitPrice} onChange={(e) => update(i, { unitPrice: e.target.value })} placeholder="0.00" />
               </label>
               <label>
-                <span className="muted small">Discount</span>
+                <span className="muted small">Saved</span>
                 <input inputMode="decimal" value={l.discount} onChange={(e) => update(i, { discount: e.target.value })} placeholder="0.00" />
               </label>
             </div>

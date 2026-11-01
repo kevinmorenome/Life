@@ -181,7 +181,7 @@ export const TOOLS = [
   {
     name: 'add_grocery_receipt',
     description:
-      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the shelf price per unit BEFORE the discount; put the line\'s discount (POPUST, loyalty-card discount) in discount as a positive number. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA), bag, or other. Include every line on the receipt, deposits and bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
+      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -204,8 +204,8 @@ export const TOOLS = [
               kind: { type: 'string', enum: [...LINE_KINDS] },
               quantity: { type: 'number', exclusiveMinimum: 0, description: 'Pieces, or kg/l for weighed lines' },
               unit: { type: 'string', enum: [...UNITS] },
-              unitPrice: { type: 'number', minimum: 0, description: 'Shelf price per unit before the discount' },
-              discount: { type: 'number', minimum: 0, description: 'Discount on this line, positive' },
+              unitPrice: { type: 'number', minimum: 0, description: 'Price charged per unit as printed (line amount ÷ quantity); a discount is already inside it' },
+              discount: { type: 'number', minimum: 0, description: 'Amount saved on this line, positive. Informational only: already included in unitPrice, never subtracted' },
             },
             required: ['name', 'quantity', 'unitPrice'],
           },

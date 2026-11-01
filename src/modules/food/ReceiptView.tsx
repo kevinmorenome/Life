@@ -54,6 +54,7 @@ export function ReceiptView({ receipt, onDelete }: { receipt: FoodReceipt; onDel
         <strong>{money(total)}</strong>
       </p>
       {saved > 0 && <p className="muted small">You saved {money(saved)} on this receipt.</p>}
+      {receipt.notes && <p className="muted small">{receipt.notes}</p>}
       {Math.abs(total - summed) > 0.05 && <p className="muted small">The lines add up to {money(summed)}, the receipt says {money(total)}: a line may be missing.</p>}
     </>
   );
