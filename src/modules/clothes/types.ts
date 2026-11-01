@@ -78,6 +78,14 @@ export interface ClothingItem {
   needsReview?: boolean;
   /** Situations it suits, e.g. "work", "date night". */
   occasions?: string[];
+  /** e.g. "Striped"; set from Closet review. */
+  pattern?: string;
+  /** e.g. ["Casual", "Vintage"]; set from Closet review. */
+  styles?: string[];
+  /** e.g. "Oversized"; set from Closet review. */
+  fit?: string;
+  /** Closet review step id → YYYY-MM-DD it was last reviewed, so "Only new items" can skip the done ones. */
+  reviewed?: Record<string, string>;
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];
   /** Wears counted before tracking started (e.g. imported), without dates. */

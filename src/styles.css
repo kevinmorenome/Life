@@ -5026,3 +5026,191 @@ button.detail-row {
   width: 100%;
   height: 100%;
 }
+
+/* Settings → Closet review: flat hairline lists; glass only on the controls (time pill, switch, chips, Done bar). */
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 56px;
+  color: var(--text);
+  text-decoration: none;
+}
+.settings-link > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.settings-link > svg {
+  flex: none;
+  color: var(--muted);
+}
+.review-intro {
+  margin: 0 0 0.75rem;
+}
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.review-list li + li {
+  border-top: 1px solid var(--glass-line);
+}
+.review-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+  color: var(--text);
+  text-decoration: none;
+}
+.review-row > svg {
+  flex: none;
+  color: var(--muted);
+}
+.review-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.review-row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+}
+.review-time {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.review-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+.review-tick {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.review-tick-part {
+  background: none;
+  border: 2px solid var(--accent);
+}
+.review-prompt {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+.review-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.review-toggle input {
+  width: 46px;
+  height: 28px;
+  appearance: none;
+  border-radius: 999px;
+  background: var(--glass-line);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.review-toggle input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform 0.2s ease;
+}
+.review-toggle input:checked {
+  background: var(--accent);
+}
+.review-toggle input:checked::after {
+  transform: translateX(18px);
+}
+.review-count {
+  margin: 0.5rem 0 0.25rem;
+}
+.review-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.review-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--glass-line);
+}
+.review-item .thumb {
+  width: 72px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgb(31 38 54 / 0.15));
+}
+.review-chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.review-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.review-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.review-name .muted {
+  font-size: 0.8rem;
+}
+.chip-review {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.review-subs {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--glass-line);
+}
+.review-done {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}

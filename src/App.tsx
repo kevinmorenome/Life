@@ -46,11 +46,11 @@ export function App() {
   else if (!section || section === 'calendar') page = <CalendarPage subroute={rest} />;
   else if (section === 'stats') page = <StatsPage subroute={rest} />;
   else if (section === 'more') page = <Home />;
-  else if (section === 'settings') page = <Settings />;
+  else if (section === 'settings') page = <Settings subroute={rest} />;
   else if (mod) page = mod.render(rest);
   else page = <p className="muted">Page not found.</p>;
 
-  const showNav = !(mod && mod.hideNav?.(rest));
+  const showNav = !(mod && mod.hideNav?.(rest)) && !(section === 'settings' && rest[0] === 'closet-review' && Boolean(rest[1]));
   // The month calendar fills the screen and scrolls inside itself.
   const fullCalendar = !redirect && (!section || section === 'calendar') && !DATE.test(rest[0] ?? '');
   const title = showNav ? pageTitle(route) : undefined;

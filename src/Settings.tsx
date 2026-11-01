@@ -4,6 +4,9 @@ import { downloadBlob, exportBackup, importBackup, mergeBackup } from './lib/bac
 import { getAll, notify, put } from './lib/db';
 import { today } from './lib/format';
 import { PREVIEW_LABEL } from './lib/preview';
+import { ClosetReview } from './modules/clothes/ClosetReview';
+import { ChevronRightIcon } from './modules/clothes/icons';
+import { href } from './lib/router';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { SwarmSection } from './modules/checkins/SwarmSection';
@@ -13,7 +16,7 @@ import { useSettings } from './lib/settings';
 import { syncNow } from './lib/sync';
 import { useSyncStatus } from './lib/useSyncStatus';
 
-export function Settings() {
+export function Settings({ subroute = [] }: { subroute?: string[] }) {
   const [message, setMessage] = useState('');
   const [workMessage, setWorkMessage] = useState('');
   const sync = useSyncStatus();
@@ -73,6 +76,8 @@ export function Settings() {
     }
   }
 
+  if (subroute[0] === 'closet-review') return <ClosetReview step={subroute[1]} />;
+
   return (
     <>
       <h1>Settings</h1>
@@ -88,6 +93,16 @@ export function Settings() {
             ))}
           </select>
         </label>
+      </section>
+      <section className="card">
+        <h2>Closet</h2>
+        <a className="settings-link" href={href('/settings/closet-review')}>
+          <span>
+            <strong>Closet review</strong>
+            <span className="muted small">Go through season, occasion, color, material, fit and more for every item.</span>
+          </span>
+          <ChevronRightIcon />
+        </a>
       </section>
       <section className="card">
         <h2>Work</h2>

@@ -32,5 +32,7 @@ describe('parentRoute', () => {
     expect(p('/packing/t1/edit')).toBe('/packing/t1');
     expect(p('/packing/t1/day/2026-10-29')).toBe('/packing/t1');
     expect(p('/settings')).toBe('/more');
+    expect(p('/settings/closet-review')).toBe('/settings');
+    expect(p('/settings/closet-review/season')).toBe('/settings/closet-review');
   });
 });
