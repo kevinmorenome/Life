@@ -5,6 +5,7 @@ import { href, navigate } from '../../lib/router';
 import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
 import { ColorDot } from './ColorDot';
 import { winnersFromScores } from './games';
+import { LordPicker } from './LordPicker';
 import { RuleSelect } from './TitlesTab';
 import { WATERDEEP_LORDS, cleanWaterdeep, isWaterdeep, lordBonus, type WaterdeepInfo } from './waterdeep';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -146,7 +147,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
               // Every player has a different Lord: leave out the ones the others already picked.
               const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
-              const dup = !!waterdeep.lords?.[id]?.trim() && taken.includes(waterdeep.lords[id].trim().toLowerCase());
               return (
               <li
                 key={id}
@@ -222,18 +222,11 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                 </div>
                 {waterdeepGame && (
                   <>
-                    <datalist id={`waterdeep-lords-${id}`}>
-                      {WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase())).map((l) => (
-                        <option key={l} value={l} />
-                      ))}
-                    </datalist>
-                    <input
-                      list={`waterdeep-lords-${id}`}
-                      aria-invalid={dup || undefined}
-                      value={waterdeep.lords?.[id] ?? ''}
-                      onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
-                      placeholder={dup ? 'Taken' : 'Lord'}
-                      aria-label={`${name(id)} Lord`}
+                    <LordPicker
+                      value={waterdeep.lords?.[id]}
+                      label={name(id)}
+                      options={WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase()))}
+                      onChange={(l) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: l } })}
                     />
                   </>
                 )}
