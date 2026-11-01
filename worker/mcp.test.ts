@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -584,6 +584,37 @@ describe('add_grocery_receipt', () => {
     data.foodreceipts.set('food-7d7f54c0-e10d', { ...data.foodreceipts.get('food-7d7f54c0-e10d')!, store: 'My edit' });
     expect((await call(ctx, 'add_grocery_receipt', args)).json()).toEqual({ alreadyAdded: true });
     expect(data.foodreceipts.get('food-7d7f54c0-e10d')).toMatchObject({ store: 'My edit' });
+  });
+
+  it('creates a product per stocked line, using Claude\'s hints, and none for bags or deposits', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'add_grocery_receipt', {
+      sourceId: 'p1', store: 'Konzum', date: '2026-10-31',
+      lines: [
+        { name: 'Chicken fillet', quantity: 0.5, unit: 'kg', unitPrice: 6, productType: 'fresh', storage: 'fridge', shelfLifeDays: 2 },
+        { name: 'Beer', kind: 'alcohol', quantity: 1, unitPrice: 2, productType: 'bogus', storage: 'attic', shelfLifeDays: -3 },
+        { name: 'Bag', kind: 'bag', quantity: 1, unitPrice: 0.2 },
+      ],
+    });
+    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer']);
+    expect(data.foodproducts.get('fp-chicken-fillet')).toMatchObject({ name: 'Chicken fillet', type: 'fresh', storage: 'fridge', shelfLifeDays: 2 });
+    expect(data.foodproducts.get('fp-beer')).toMatchObject({ type: 'drink', storage: 'pantry' });
+    expect(data.foodproducts.get('fp-beer')!.shelfLifeDays).toBeUndefined();
+    expect(data.foodproducts.size).toBe(2);
+  });
+
+  it('never edits an existing product and reuses the name given to the same printed text', async () => {
+    const { ctx, data } = setup();
+    const line = { name: 'Oat drink 3.5%', rawName: 'NAP ZOB 3,5% MA NO M', quantity: 1, unitPrice: 4.19, productType: 'staple', storage: 'pantry' };
+    await call(ctx, 'add_grocery_receipt', { sourceId: 'a', store: 'Konzum', date: '2026-10-01', lines: [line] });
+    data.foodproducts.set('fp-oat-drink-3-5', { ...data.foodproducts.get('fp-oat-drink-3-5')!, storage: 'fridge' });
+
+    const again = await call(ctx, 'add_grocery_receipt', { sourceId: 'b', store: 'Konzum', date: '2026-10-15', lines: [{ ...line, name: 'Oat milk', storage: 'freezer' }] });
+    expect(again.json().matchedToKnownProducts).toEqual([{ from: 'Oat milk', to: 'Oat drink 3.5%' }]);
+    expect(again.json().newProducts).toBeUndefined();
+    expect((data.foodreceipts.get('food-b')!.lines as { name: string }[])[0].name).toBe('Oat drink 3.5%');
+    expect(data.foodproducts.get('fp-oat-drink-3-5')).toMatchObject({ storage: 'fridge' });
+    expect(data.foodproducts.size).toBe(1);
   });
 
   it('warns when the printed total does not match the lines', async () => {

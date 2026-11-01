@@ -2,7 +2,7 @@
 // (see the `add_grocery_receipt` tool). The input is untrusted: every field is validated and
 // anything off-schema is dropped or clamped.
 import { linePaid, linesTotal, round2 } from '../src/modules/food/food';
-import { LINE_KINDS, UNITS, type FoodReceipt, type LineKind, type ReceiptLine, type Unit } from '../src/modules/food/types';
+import { LINE_KINDS, PRODUCT_TYPES, STORAGES, UNITS, type FoodReceipt, type LineKind, type ProductType, type ReceiptLine, type Storage, type Unit } from '../src/modules/food/types';
 
 const MAX_LINES = 120;
 const MAX_MONEY = 100_000;
@@ -53,8 +53,33 @@ export function parseGroceryLines(input: unknown): ReceiptLine[] {
   return out;
 }
 
+/** What Claude knows about a product from one receipt line, used only when the product is new. */
+export interface ProductHint {
+  type?: ProductType;
+  storage?: Storage;
+  shelfLifeDays?: number;
+}
+
+/** Hints per line, in the same order as the parsed lines (lines dropped by `parseGroceryLines` are skipped in both). */
+export function parseProductHints(input: unknown): ProductHint[] {
+  if (!Array.isArray(input)) return [];
+  const out: ProductHint[] = [];
+  for (const raw of input.slice(0, MAX_LINES)) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    if (parseGroceryLines([raw]).length === 0) continue;
+    const r = raw as Record<string, unknown>;
+    out.push({
+      type: (PRODUCT_TYPES as readonly string[]).includes(r.productType as string) ? (r.productType as ProductType) : undefined,
+      storage: (STORAGES as readonly string[]).includes(r.storage as string) ? (r.storage as Storage) : undefined,
+      shelfLifeDays: typeof r.shelfLifeDays === 'number' && Number.isFinite(r.shelfLifeDays) && r.shelfLifeDays >= 1 && r.shelfLifeDays <= 3650 ? Math.round(r.shelfLifeDays) : undefined,
+    });
+  }
+  return out;
+}
+
 export interface ParsedReceipt {
   receipt: Omit<FoodReceipt, 'id' | 'createdAt' | 'updatedAt'>;
+  hints: ProductHint[];
   /** Set when the printed total and the sum of the lines disagree by more than a few cents (a line was probably misread or missed). */
   mismatch?: { printed: number; summed: number };
 }
@@ -75,6 +100,7 @@ export function parseGroceryReceipt(args: Record<string, unknown>, fallbackDate:
       lines,
       notes: str(args.notes, 1000),
     },
+    hints: parseProductHints(args.lines),
     mismatch: total !== undefined && Math.abs(total - summed) > 0.05 ? { printed: total, summed } : undefined,
   };
 }
