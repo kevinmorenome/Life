@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageUnitPrice, canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, productId, productSummaries } from './products';
+import { averageUnitPrice, canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, packSizeOf, pluralize, pricePerItem, productId, productSummaries } from './products';
 import type { FoodProduct, FoodReceipt, ReceiptLine } from './types';
 
 const line = (over: Partial<ReceiptLine>): ReceiptLine => ({ name: 'Milk', kind: 'food', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1, ...over });
@@ -69,5 +69,27 @@ describe('productSummaries', () => {
   });
   it('averages the price per unit weighted by quantity', () => {
     expect(averageUnitPrice({ purchases: [{ quantity: 1, paid: 4 }, { quantity: 3, paid: 6 }] } as never)).toBe(2.5);
+  });
+});
+
+describe('packs', () => {
+  it('only apply to pieces and to more than one', () => {
+    expect(packSizeOf({ packSize: 6 }, 'pc')).toBe(6);
+    expect(packSizeOf({ packSize: 6 }, 'kg')).toBeUndefined();
+    expect(packSizeOf({ packSize: 1 }, 'pc')).toBeUndefined();
+    expect(packSizeOf({ packSize: 0 }, 'pc')).toBeUndefined();
+    expect(packSizeOf(undefined, 'pc')).toBeUndefined();
+  });
+  it('are carried into the product summary with their label', () => {
+    const rec: FoodProduct = { id: 'fp-beer', name: 'Beer', type: 'drink', storage: 'pantry', packSize: 6, packLabel: 'can', createdAt: '', updatedAt: '' };
+    const out = productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec]);
+    expect(out[0]).toMatchObject({ packSize: 6, packLabel: 'can' });
+  });
+  it('pluralize the item name', () => {
+    expect([pluralize('can', 1), pluralize('can', 12), pluralize('can', 0.5), pluralize('glass', 3), pluralize('bottle', 2)]).toEqual(['can', 'cans', 'cans', 'glasses', 'bottles']);
+  });
+  it('price one item from the pack price', () => {
+    expect(pricePerItem(8.89, 6)).toBe(1.48);
+    expect(pricePerItem(2.45, undefined)).toBe(2.45);
   });
 });

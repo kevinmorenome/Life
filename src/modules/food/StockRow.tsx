@@ -2,12 +2,16 @@ import { CheckIcon, HalfIcon, MinusIcon, TrashIcon, UsedIcon } from '../../icons
 import { shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
 import { IconMenu } from '../clothes/IconMenu';
-import type { ProductSummary } from './products';
+import { pluralize, type ProductSummary } from './products';
 import { formatAmount, levelOptions, type Stock } from './stock';
 import { partLeftEvent, stockEvent } from './stockActions';
 import type { StockEvent } from './types';
 
-export const unitLabel = (unit: ProductSummary['unit']) => (unit === 'pc' ? '' : ` ${unit}`);
+/** The word after a quantity: " kg", " l", " cans" for products counted in items, nothing for plain pieces. */
+export function unitLabel(p: Pick<ProductSummary, 'unit' | 'packLabel' | 'packSize'>, quantity: number): string {
+  if (p.unit !== 'pc') return ` ${p.unit}`;
+  return p.packSize && p.packLabel ? ` ${pluralize(p.packLabel, quantity)}` : '';
+}
 
 const STATUS_TEXT = { ok: '', 'use-soon': 'use soon', check: 'probably past its date', low: 'running low', out: 'none left' } as const;
 
@@ -19,7 +23,7 @@ export function StockRow({ product, stock, uses = 0, onEvent }: { product: Produ
       <a className="stock-main" href={href(`/food/product/${product.id}`)}>
         <strong>{product.name}</strong>
         <span className="muted small">
-          {stock.tracked ? `${formatAmount(stock.quantity, product.unit)}${unitLabel(product.unit)}` : `have it${uses > 0 ? ` · used ${uses}×` : ''}`}
+          {stock.tracked ? `${formatAmount(stock.quantity, product.unit)}${unitLabel(product, stock.quantity)}` : `have it${uses > 0 ? ` · used ${uses}×` : ''}`}
           {meta && ` · ${meta}`}
         </span>
       </a>
@@ -29,8 +33,8 @@ export function StockRow({ product, stock, uses = 0, onEvent }: { product: Produ
           icon={<HalfIcon />}
           triggerClassName="icon-btn"
           entries={[
-            ...(product.unit === 'pc' ? [{ label: 'Used one', icon: <MinusIcon />, onSelect: () => onEvent(stockEvent(product.id, 'use', 1, 'app')) }] : []),
-            ...levelOptions(stock.quantity, product.unit).map((l) => ({
+            ...(product.unit === 'pc' ? [{ label: product.packSize && product.packLabel ? `Used one ${product.packLabel}` : 'Used one', icon: <MinusIcon />, onSelect: () => onEvent(stockEvent(product.id, 'use', 1, 'app')) }] : []),
+            ...levelOptions(stock.quantity, product.unit, product.packSize).map((l) => ({
               label: l.label,
               icon: <HalfIcon />,
               onSelect: () => {
