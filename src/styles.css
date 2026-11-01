@@ -4975,3 +4975,54 @@ button.detail-row {
   gap: 0.4rem;
   padding: 0.25rem 0 0.4rem;
 }
+
+/* Lords of Waterdeep rows: line 1 name + Lord dropdown, line 2 before / final (/ corruptions) + trophy */
+.game-scores li.wd {
+  grid-template-columns: 1fr 1fr 44px;
+  gap: 0.4rem;
+}
+.game-scores li.wd.wd-sk {
+  grid-template-columns: 1fr 1fr 1fr 44px;
+}
+.game-scores li.wd > div:first-child {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.game-scores li.wd > .chip {
+  grid-row: 2;
+}
+.game-scores li.wd input {
+  min-width: 0;
+  grid-row: 2;
+}
+
+.game-scores li.wd .wd-icon-field {
+  position: relative;
+  min-width: 0;
+  grid-row: 2;
+}
+.game-scores li.wd .wd-icon-field input {
+  width: 100%;
+  padding-right: 2.2rem;
+}
+.game-scores li.wd .wd-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translateY(-50%);
+  color: #1e3560;
+  pointer-events: none;
+  display: inline-flex;
+}
+/* Navy disappears on a dark field, so it is a lighter navy there. */
+@media (prefers-color-scheme: dark) {
+  .game-scores li.wd .wd-icon {
+    color: #5f84cf;
+  }
+}
+.game-scores li.wd .wd-icon svg {
+  width: 100%;
+  height: 100%;
+}

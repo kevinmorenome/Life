@@ -1,10 +1,11 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { ArmyIcon, GripIcon, RoadIcon } from '../../icons';
+import { ArmyIcon, GripIcon, RoadIcon, SkullIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
 import { ColorDot } from './ColorDot';
 import { winnersFromScores } from './games';
+import { LordPicker } from './LordPicker';
 import { RuleSelect } from './TitlesTab';
 import { WATERDEEP_LORDS, cleanWaterdeep, isWaterdeep, lordBonus, type WaterdeepInfo } from './waterdeep';
 import type { GameNight, GameTitle, Match, Player, ScoreRule } from './types';
@@ -32,7 +33,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
   const [note, setNote] = useState(existing?.note ?? '');
   const [catan, setCatan] = useState<CatanInfo>(existing?.catan ?? {});
   const [waterdeep, setWaterdeep] = useState<WaterdeepInfo>(existing?.waterdeep ?? {});
-  const [corruptionDraft, setCorruptionDraft] = useState<Record<string, string>>({});
   // Seat drag: the row being dragged floats under the pointer.
   const [drag, setDrag] = useState<{ id: string; y: number; grab: number } | null>(null);
   const rows = useRef<Record<string, HTMLLIElement | null>>({});
@@ -131,21 +131,49 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           ))}
         </div>
       </div>
+      {waterdeepGame && (
+        <div className="field">
+          <span>Skullport expansion</span>
+          <div className="chips" style={{ alignItems: 'center' }}>
+            <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
+              Played with corruption
+            </button>
+            {waterdeep.skullport && (
+              <input
+                type="number"
+                step="any"
+                value={waterdeep.corruptionValue ?? ''}
+                onChange={(e) => {
+                  const n = e.target.value.trim();
+                  setWaterdeep({ ...waterdeep, corruptionValue: n && Number.isFinite(Number(n)) ? Number(n) : undefined });
+                }}
+                placeholder="Each, e.g. -5"
+                aria-label="Points each corruption is worth"
+                style={{ width: '7.5rem', flex: 'none' }}
+              />
+            )}
+          </div>
+        </div>
+      )}
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
-          {(hasOrder || hasColors || catanGame) && (
+          {(hasOrder || hasColors || catanGame || waterdeepGame) && (
             <span className="muted small">
-              {[hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+              {[waterdeepGame && 'Tap the Lord name to choose it, then enter points before the Lord and the final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
           <ul className="game-scores" ref={list}>
             {playerIds.map((id) => {
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
               const idx = order.indexOf(id);
+              const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
+              // Every player has a different Lord: leave out the ones the others already picked.
+              const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
               return (
               <li
                 key={id}
+                className={waterdeepGame ? (waterdeep.skullport ? 'wd wd-sk' : 'wd') : undefined}
                 ref={(el) => {
                   rows.current[id] = el;
                 }}
@@ -199,7 +227,17 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
                     />
                   )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  <span style={waterdeepGame ? { overflow: 'hidden', textOverflow: 'ellipsis', flex: 'none', maxWidth: '38%', fontWeight: 700 } : { overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
+                  {waterdeepGame && <span aria-hidden="true" style={{ flex: 'none', width: 1, height: 16, margin: '0 10px', background: 'currentColor', opacity: 0.3 }} />}
+                  {waterdeepGame && (
+                    <LordPicker
+                      value={waterdeep.lords?.[id]}
+                      label={name(id)}
+                      options={WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase()))}
+                      onChange={(l) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: l } })}
+                    />
+                  )}
+                  {waterdeepGame && bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                   {catanGame &&
                     ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (
                       <button
@@ -227,10 +265,33 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       else delete rest[id];
                       setWaterdeep({ ...waterdeep, before: rest });
                     }}
-                    placeholder="Before Lord"
+                    placeholder="Before"
                     aria-label={`${name(id)} points before the Lord`}
                   />
                 )}
+                {waterdeepGame && waterdeep.skullport && (
+                  <div className="wd-icon-field">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={1}
+                      value={waterdeep.corruptions?.[id] ?? ''}
+                      onChange={(e) => {
+                        const n = e.target.value.trim();
+                        const rest = { ...waterdeep.corruptions };
+                        if (n && Number.isFinite(Number(n)) && Number(n) >= 0) rest[id] = Math.floor(Number(n));
+                        else delete rest[id];
+                        setWaterdeep({ ...waterdeep, corruptions: rest });
+                      }}
+                      placeholder="0"
+                      aria-label={`${name(id)} number of corruptions`}
+                    />
+                    <span className="wd-icon" aria-hidden="true">
+                      <SkullIcon />
+                    </span>
+                  </div>
+                  )}
                 <input
                   type="number"
                   inputMode="decimal"
@@ -260,100 +321,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
-        </div>
-      )}
-      {waterdeepGame && playerIds.length > 0 && (
-        <div className="field">
-          <span>Lords</span>
-          <span className="muted small">Each player’s Lord, revealed at the end. Enter points before the Lord above and the final total in the score field.</span>
-          <ul className="game-scores">
-            {playerIds.map((id) => {
-              const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
-              // Every player has a different Lord: leave out the ones the others already picked.
-              const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
-              const dup = !!waterdeep.lords?.[id]?.trim() && taken.includes(waterdeep.lords[id].trim().toLowerCase());
-              return (
-                <li key={id}>
-                  <datalist id={`waterdeep-lords-${id}`}>
-                    {WATERDEEP_LORDS.filter((l) => !taken.includes(l.toLowerCase())).map((l) => (
-                      <option key={l} value={l} />
-                    ))}
-                  </datalist>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{name(id)}</span>
-                  <input
-                    list={`waterdeep-lords-${id}`}
-                    aria-invalid={dup || undefined}
-                    value={waterdeep.lords?.[id] ?? ''}
-                    onChange={(e) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: e.target.value } })}
-                    placeholder="Lord"
-                    aria-label={`${name(id)} Lord`}
-                  />
-                  {dup && <span className="muted small">Already taken</span>}
-                  {bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-      {waterdeepGame && (
-        <div className="field">
-          <span>Skullport expansion</span>
-          <div className="chips">
-            <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
-              Played with corruption
-            </button>
-          </div>
-          {waterdeep.skullport && playerIds.length > 0 && (
-            <>
-              <span className="muted small">Add the value of each corruption a player ended with (for example -5). Tap one to remove it.</span>
-              <ul className="game-scores">
-                {playerIds.map((id) => {
-                  const list = waterdeep.corruption?.[id] ?? [];
-                  const set = (next: number[]) => setWaterdeep({ ...waterdeep, corruption: { ...waterdeep.corruption, [id]: next } });
-                  const draft = corruptionDraft[id] ?? '';
-                  const add = () => {
-                    const n = draft.trim();
-                    if (!n || !Number.isFinite(Number(n))) return;
-                    set([...list, Number(n)]);
-                    setCorruptionDraft({ ...corruptionDraft, [id]: '' });
-                  };
-                  return (
-                    <li key={id}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                        {name(id)} <span className="muted small">{list.length} · {list.reduce((a, b) => a + b, 0)}</span>
-                      </span>
-                      <div className="chips">
-                        {list.map((v, i) => (
-                          <button key={i} type="button" className="chip" aria-label={`Remove corruption ${v} from ${name(id)}`} onClick={() => set(list.filter((_, j) => j !== i))}>
-                            {v} ×
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="any"
-                        value={draft}
-                        onChange={(e) => setCorruptionDraft({ ...corruptionDraft, [id]: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            add();
-                          }
-                        }}
-                        placeholder="Value"
-                        aria-label={`${name(id)} corruption value`}
-                      />
-                      <button type="button" className="chip" onClick={add} aria-label={`Add corruption for ${name(id)}`}>
-                        ＋
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
         </div>
       )}
       <label className="field">
