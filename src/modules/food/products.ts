@@ -62,6 +62,8 @@ export interface ProductSummary {
   type: ProductType;
   storage: Storage;
   shelfLifeDays?: number;
+  /** False: only "have it" or "out", see `FoodProduct.trackAmount`. */
+  trackAmount: boolean;
   /** True when someone set the type/storage (there is a product record), false when they are defaults. */
   custom: boolean;
   /** Newest first. */
@@ -83,7 +85,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, custom: !!rec, purchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }

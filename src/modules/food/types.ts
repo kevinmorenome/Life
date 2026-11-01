@@ -78,6 +78,33 @@ export interface FoodProduct {
   storage: Storage;
   /** Days it keeps once bought, for fresh items ("use soon"). */
   shelfLifeDays?: number;
+  /**
+   * False for things you can't count or measure in a useful way (spices, salt, oil, sauces): you either have
+   * it or it is out. A use is logged but doesn't lower anything; only "finished" (or a thrown away) does.
+   * Absent means true.
+   */
+  trackAmount?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** What happened to some of a product: eaten/used, thrown away, or counted ("I have 3 left", 0 = finished). */
+export type StockEventType = 'use' | 'toss' | 'count';
+
+/**
+ * One thing that changed what you have. Always a fresh record, never edited (a mistake is fixed with a newer
+ * count). Stock is worked out from purchases plus these, see `stockOf()`.
+ */
+export interface StockEvent {
+  id: string;
+  productId: string;
+  type: StockEventType;
+  /** Units used or thrown away, or the number counted, in the product's unit (pieces, kg or l). */
+  quantity: number;
+  /** YYYY-MM-DD */
+  date: string;
+  source: 'app' | 'check' | 'claude';
+  note?: string;
   createdAt: string;
   updatedAt: string;
 }

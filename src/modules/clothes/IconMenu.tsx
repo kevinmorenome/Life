@@ -11,7 +11,7 @@ export interface MenuEntry {
 }
 
 /** A round ⋮ button that opens a small floating menu; closes on outside tap or Escape. */
-export function IconMenu({ entries, label = 'More' }: { entries: MenuEntry[]; label?: string }) {
+export function IconMenu({ entries, label = 'More', icon, triggerClassName = 'icon-action' }: { entries: MenuEntry[]; label?: string; icon?: ReactNode; triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -30,8 +30,8 @@ export function IconMenu({ entries, label = 'More' }: { entries: MenuEntry[]; la
 
   return (
     <div className="menu-wrap" ref={box}>
-      <button className="icon-action" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <DotsIcon />
+      <button className={triggerClassName} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {icon ?? <DotsIcon />}
       </button>
       {open && (
         <div className="menu menu-end" role="menu">

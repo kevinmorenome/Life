@@ -1,0 +1,183 @@
+import type { Purchase } from './products';
+import type { ProductType, StockEvent, Unit } from './types';
+
+/** Snacks are assumed eaten after this many days unless you say otherwise. */
+export const SNACK_DAYS = 3;
+/** How long fresh things keep when the product has no shelf life set. */
+export const DEFAULT_FRESH_DAYS = 5;
+/** Days after which an item is worth asking about in the weekly check, by type (snacks never: they are assumed gone). */
+const CHECK_AFTER_DAYS: Partial<Record<ProductType, number>> = { fresh: 4, staple: 14, drink: 14 };
+
+const DAY = 86_400_000;
+const toUtc = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+
+export function addDays(iso: string, days: number): string {
+  return new Date(toUtc(iso) + days * DAY).toISOString().slice(0, 10);
+}
+export const daysBetween = (from: string, to: string): number => Math.round((toUtc(to) - toUtc(from)) / DAY);
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/** What is left from one purchase (or from a count). */
+export interface Batch {
+  /** When it was bought or counted. */
+  date: string;
+  quantity: number;
+}
+
+export type StockStatus = 'ok' | 'use-soon' | 'check' | 'low' | 'out';
+
+export interface Stock {
+  /** False for products you only have or don't (`trackAmount` off): then `quantity` is 1 (have it) or 0 (out). */
+  tracked: boolean;
+  quantity: number;
+  /** Oldest first. */
+  batches: Batch[];
+  /** Fresh items: the date the oldest batch should be used by. */
+  useBy?: string;
+  /** Last day a purchase or a count confirmed what you have. */
+  lastConfirmed?: string;
+  status: StockStatus;
+}
+
+interface Op {
+  date: string;
+  /** Orders things on the same day: purchases first, then events by when they were recorded. */
+  order: string;
+  apply(batches: Batch[]): void;
+}
+
+function consume(batches: Batch[], amount: number): void {
+  let left = amount;
+  while (left > 1e-9 && batches.length) {
+    const first = batches[0];
+    if (first.quantity > left + 1e-9) {
+      first.quantity = round3(first.quantity - left);
+      left = 0;
+    } else {
+      left -= first.quantity;
+      batches.shift();
+    }
+  }
+}
+
+/**
+ * What you have of a product: the last count (if any), plus purchases after it, minus what was used or thrown
+ * away after it, oldest first. A purchase on the day of a count is taken as already included in that count.
+ */
+export function stockOf(
+  product: { type: ProductType; shelfLifeDays?: number; trackAmount?: boolean },
+  purchases: Pick<Purchase, 'date' | 'quantity'>[],
+  events: StockEvent[],
+  today: string,
+): Stock {
+  if (product.trackAmount === false) return presenceOf(purchases, events);
+  const mine = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+  const baseline = [...mine].reverse().find((e) => e.type === 'count');
+  const batches: Batch[] = baseline && baseline.quantity > 0 ? [{ date: baseline.date, quantity: baseline.quantity }] : [];
+
+  const ops: Op[] = [];
+  for (const p of purchases) {
+    if (baseline && p.date <= baseline.date) continue;
+    ops.push({ date: p.date, order: '', apply: (b) => b.push({ date: p.date, quantity: p.quantity }) });
+  }
+  for (const e of mine) {
+    if (e.type === 'count') continue;
+    if (baseline && (e.date < baseline.date || (e.date === baseline.date && e.createdAt < baseline.createdAt))) continue;
+    ops.push({ date: e.date, order: e.createdAt, apply: (b) => consume(b, e.quantity) });
+  }
+  ops.sort((a, b) => a.date.localeCompare(b.date) || a.order.localeCompare(b.order));
+  for (const op of ops) op.apply(batches);
+  batches.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Snacks are assumed eaten after a few days.
+  const kept = product.type === 'snack' ? batches.filter((b) => daysBetween(b.date, today) <= SNACK_DAYS) : batches;
+  const quantity = round3(kept.reduce((s, b) => s + b.quantity, 0));
+
+  const lastBought = purchases.reduce<string | undefined>((m, p) => (!m || p.date > m ? p.date : m), undefined);
+  const lastConfirmed = [baseline?.date, lastBought].filter((d): d is string => !!d).sort().pop();
+
+  const keepsDays = product.shelfLifeDays ?? (product.type === 'fresh' ? DEFAULT_FRESH_DAYS : undefined);
+  const useBy = quantity > 0 && keepsDays && kept[0] ? addDays(kept[0].date, keepsDays) : undefined;
+
+  let status: StockStatus = 'ok';
+  if (quantity === 0) status = 'out';
+  else if (useBy && today > useBy) status = 'check';
+  else if (useBy && daysBetween(today, useBy) <= 1) status = 'use-soon';
+  else if ((product.type === 'staple' || product.type === 'drink') && quantity <= 1) status = 'low';
+
+  return { tracked: true, quantity, batches: kept, useBy, lastConfirmed, status };
+}
+
+/**
+ * A product you only have or don't (spices, oil): you have it from the first purchase until you say it is
+ * finished or thrown away, and buying it again puts it back. Uses never lower anything.
+ */
+function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: StockEvent[]): Stock {
+  const resets = events.filter((e) => e.type === 'count' || e.type === 'toss').sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+  const reset = resets[resets.length - 1];
+  const lastBought = purchases.reduce<string | undefined>((m, p) => (!m || p.date > m ? p.date : m), undefined);
+  const boughtAfter = purchases.some((p) => !reset || p.date > reset.date);
+  const have = reset ? (reset.type === 'count' && reset.quantity > 0) || boughtAfter : purchases.length > 0;
+  const lastConfirmed = [reset?.type === 'count' && reset.quantity > 0 ? reset.date : undefined, lastBought].filter((d): d is string => !!d).sort().pop();
+  return { tracked: false, quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
+}
+
+/** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
+export function usesSince(events: StockEvent[], since?: string): number {
+  return events.filter((e) => e.type === 'use' && (!since || e.date >= since)).length;
+}
+
+/** Worth asking about in the weekly check: it is past its use-by date, or nothing has confirmed it for a while. */
+export function needsCheck(type: ProductType, s: Stock, today: string): boolean {
+  if (s.quantity <= 0 || !s.tracked) return false;
+  if (s.status === 'check') return true;
+  const after = CHECK_AFTER_DAYS[type];
+  return after !== undefined && !!s.lastConfirmed && daysBetween(s.lastConfirmed, today) >= after;
+}
+
+/** Quantity worth showing: "3", "0.48", never "0.4800000001". */
+export const formatQty = (n: number): string => String(round3(n));
+
+/** What can be said about how much of the open pack is left: "three quarters", "half", "a quarter", "almost gone". */
+export const LEVELS = [
+  { fraction: 0.75, label: '¾ left' },
+  { fraction: 0.5, label: '½ left' },
+  { fraction: 0.25, label: '¼ left' },
+  { fraction: 0.1, label: 'Almost gone' },
+] as const;
+
+/** How full the pack in use is (1 = unopened): the part after the whole packs. Weighed and poured goods have no packs. */
+function openLevel(quantity: number, unit: Unit): number {
+  if (unit !== 'pc') return 1;
+  const part = quantity - Math.floor(quantity + 1e-9);
+  return part < 1e-9 ? 1 : round3(part);
+}
+
+/**
+ * How much there is once the pack in use (or, for kg/l, what you have) is down to `fraction`. For pieces the
+ * packs you haven't opened stay whole: 2 packs, the open one at half → 1½. Never more than you have now.
+ */
+export function partLeft(quantity: number, unit: Unit, fraction: number): number {
+  if (quantity <= 0) return 0;
+  const next = unit === 'pc' ? Math.ceil(quantity - 1e-9) - 1 + fraction : quantity * fraction;
+  return round3(Math.min(next, quantity));
+}
+
+/** The "part left" choices that actually lower what you have (¼ left makes no sense for a pack that is already at ⅛). */
+export function levelOptions(quantity: number, unit: Unit): { fraction: number; label: string }[] {
+  if (quantity <= 0) return [];
+  const level = openLevel(quantity, unit);
+  return LEVELS.filter((l) => l.fraction < level - 1e-9);
+}
+
+const GLYPHS: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' };
+
+/** A quantity as people say it: pieces in quarters ("1½", "¼"), kg and l as decimals. */
+export function formatAmount(quantity: number, unit: Unit): string {
+  if (unit !== 'pc') return formatQty(quantity);
+  const whole = Math.floor(quantity + 1e-9);
+  const glyph = GLYPHS[String(round3(quantity - whole))];
+  if (glyph) return whole ? `${whole}${glyph}` : glyph;
+  return formatQty(quantity);
+}

@@ -58,6 +58,8 @@ export interface ProductHint {
   type?: ProductType;
   storage?: Storage;
   shelfLifeDays?: number;
+  /** False for things you can't measure (spices, oil): only "have it" or "out". */
+  trackAmount?: false;
 }
 
 /** Hints per line, in the same order as the parsed lines (lines dropped by `parseGroceryLines` are skipped in both). */
@@ -71,6 +73,7 @@ export function parseProductHints(input: unknown): ProductHint[] {
     out.push({
       type: (PRODUCT_TYPES as readonly string[]).includes(r.productType as string) ? (r.productType as ProductType) : undefined,
       storage: (STORAGES as readonly string[]).includes(r.storage as string) ? (r.storage as Storage) : undefined,
+      trackAmount: r.trackAmount === false ? false : undefined,
       shelfLifeDays: typeof r.shelfLifeDays === 'number' && Number.isFinite(r.shelfLifeDays) && r.shelfLifeDays >= 1 && r.shelfLifeDays <= 3650 ? Math.round(r.shelfLifeDays) : undefined,
     });
   }
