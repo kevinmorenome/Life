@@ -132,6 +132,16 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           ))}
         </div>
       </div>
+      {waterdeepGame && (
+        <div className="field">
+          <span>Skullport expansion</span>
+          <div className="chips">
+            <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
+              Played with corruption
+            </button>
+          </div>
+        </div>
+      )}
       {playerIds.length > 0 && (
         <div className="field">
           <span>Scores and winner</span>
@@ -145,6 +155,15 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               const order = hasOrder ? seatOrder(playerIds, catan.seats) : playerIds;
               const idx = order.indexOf(id);
               const bonus = lordBonus(waterdeep.before?.[id], numeric[id]);
+              const corrupt = waterdeep.corruption?.[id] ?? [];
+              const setCorrupt = (next: number[]) => setWaterdeep({ ...waterdeep, corruption: { ...waterdeep.corruption, [id]: next } });
+              const draft = corruptionDraft[id] ?? '';
+              const addCorrupt = () => {
+                const n = draft.trim();
+                if (!n || !Number.isFinite(Number(n))) return;
+                setCorrupt([...corrupt, Number(n)]);
+                setCorruptionDraft({ ...corruptionDraft, [id]: '' });
+              };
               // Every player has a different Lord: leave out the ones the others already picked.
               const taken = playerIds.filter((p) => p !== id).map((p) => waterdeep.lords?.[p]?.trim().toLowerCase());
               return (
@@ -259,6 +278,36 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                 <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
                   🏆
                 </button>
+                {waterdeepGame && waterdeep.skullport && (
+                  <div className="wd-corruption">
+                    <span className="muted small">
+                      Corruption {corrupt.length} · {corrupt.reduce((a, b) => a + b, 0)}
+                    </span>
+                    {corrupt.map((v, i) => (
+                      <button key={i} type="button" className="chip" aria-label={`Remove corruption ${v} from ${name(id)}`} onClick={() => setCorrupt(corrupt.filter((_, j) => j !== i))}>
+                        {v} ×
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={draft}
+                      onChange={(e) => setCorruptionDraft({ ...corruptionDraft, [id]: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCorrupt();
+                        }
+                      }}
+                      placeholder="-5"
+                      aria-label={`${name(id)} corruption value`}
+                    />
+                    <button type="button" className="chip" onClick={addCorrupt} aria-label={`Add corruption for ${name(id)}`}>
+                      ＋
+                    </button>
+                  </div>
+                )}
               </li>
               );
             })}
@@ -276,66 +325,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               </button>
             ))}
           </div>
-        </div>
-      )}
-      {waterdeepGame && (
-        <div className="field">
-          <span>Skullport expansion</span>
-          <div className="chips">
-            <button type="button" className="chip" aria-pressed={!!waterdeep.skullport} onClick={() => setWaterdeep({ ...waterdeep, skullport: !waterdeep.skullport })}>
-              Played with corruption
-            </button>
-          </div>
-          {waterdeep.skullport && playerIds.length > 0 && (
-            <>
-              <span className="muted small">Add the value of each corruption a player ended with (for example -5). Tap one to remove it.</span>
-              <ul className="game-scores">
-                {playerIds.map((id) => {
-                  const list = waterdeep.corruption?.[id] ?? [];
-                  const set = (next: number[]) => setWaterdeep({ ...waterdeep, corruption: { ...waterdeep.corruption, [id]: next } });
-                  const draft = corruptionDraft[id] ?? '';
-                  const add = () => {
-                    const n = draft.trim();
-                    if (!n || !Number.isFinite(Number(n))) return;
-                    set([...list, Number(n)]);
-                    setCorruptionDraft({ ...corruptionDraft, [id]: '' });
-                  };
-                  return (
-                    <li key={id}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                        {name(id)} <span className="muted small">{list.length} · {list.reduce((a, b) => a + b, 0)}</span>
-                      </span>
-                      <div className="chips">
-                        {list.map((v, i) => (
-                          <button key={i} type="button" className="chip" aria-label={`Remove corruption ${v} from ${name(id)}`} onClick={() => set(list.filter((_, j) => j !== i))}>
-                            {v} ×
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="any"
-                        value={draft}
-                        onChange={(e) => setCorruptionDraft({ ...corruptionDraft, [id]: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            add();
-                          }
-                        }}
-                        placeholder="Value"
-                        aria-label={`${name(id)} corruption value`}
-                      />
-                      <button type="button" className="chip" onClick={add} aria-label={`Add corruption for ${name(id)}`}>
-                        ＋
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
         </div>
       )}
       <label className="field">

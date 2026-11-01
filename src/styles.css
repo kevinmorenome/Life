@@ -4993,3 +4993,13 @@ button.detail-row {
 .game-scores li.wd .menu-wrap {
   min-width: 0;
 }
+.game-scores li.wd > .wd-corruption {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.game-scores li.wd > .wd-corruption input {
+  width: 5rem;
+}
