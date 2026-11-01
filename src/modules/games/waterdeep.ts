@@ -153,12 +153,3 @@ export function corruptionStats(matches: Pick<Match, 'waterdeep' | 'winnerIds' |
   }
   return [...out.values()].sort((a, b) => b.count / b.games - a.count / a.games || a.id.localeCompare(b.id));
 }
-
-/** Short mark for a Lord: the capitals of its name ("Caladorn Cassalanter" → CC), or the first two letters when it is one word ("Trobriand" → Tr). "The" is skipped. */
-export function lordInitials(lord?: string): string {
-  const words = (lord ?? '').trim().split(/\s+/).filter((w) => w && !/^the$/i.test(w));
-  const caps = words.filter((w) => /^\p{Lu}/u.test(w)).map((w) => w[0]);
-  if (caps.length >= 2) return caps.slice(0, 3).join('');
-  const w = words[0] ?? '';
-  return w.length > 1 ? w[0].toUpperCase() + w[1].toLowerCase() : w.toUpperCase();
-}

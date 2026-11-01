@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { lordInitials } from './waterdeep';
 
-/** A round button with the initials of the player's Lord; tapping opens a floating menu of the Lords nobody else has taken (like the color dots). */
+/** A dropdown showing the player's Lord; tapping opens a floating menu of the Lords nobody else has taken (like the color dots). */
 export function LordPicker({ value, options, label, onChange }: { value?: string; options: readonly string[]; label: string; onChange: (lord: string) => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -24,33 +23,19 @@ export function LordPicker({ value, options, label, onChange }: { value?: string
   };
 
   return (
-    <div className="menu-wrap" ref={box}>
+    <div className="menu-wrap" ref={box} style={{ flex: 1, minWidth: 0 }}>
       <button
         type="button"
         aria-label={`${label} Lord: ${value || 'none'}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', border: 0, background: 'none', padding: 0, cursor: 'pointer' }}
+        style={{ maxWidth: '100%', minHeight: 44, display: 'flex', alignItems: 'center', gap: 6, border: 0, background: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}
       >
-        <span
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: '50%',
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 13,
-            fontWeight: 600,
-            lineHeight: 1,
-            color: value ? 'var(--accent-text)' : 'inherit',
-            background: value ? 'var(--accent)' : 'transparent',
-            border: value ? 'none' : '2px dashed rgb(128 128 128 / 0.7)',
-            opacity: value ? 1 : 0.7,
-          }}
-        >
-          {value ? lordInitials(value) : ''}
-        </span>
+        <span style={{ flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: value ? 600 : 400, opacity: value ? 1 : 0.55 }}>{value || 'Choose Lord'}</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none', opacity: 0.6, transform: open ? 'rotate(180deg)' : undefined }}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
       {open && (
         <div className="menu" role="menu" style={{ minWidth: 230, maxHeight: '55vh', overflowY: 'auto' }}>

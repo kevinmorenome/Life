@@ -4976,22 +4976,20 @@ button.detail-row {
   padding: 0.25rem 0 0.4rem;
 }
 
-/* Lords of Waterdeep rows: [Lord dot + name] [trophy], then before / final (/ corruptions) */
+/* Lords of Waterdeep rows: line 1 name + Lord dropdown, line 2 before / final (/ corruptions) + trophy */
 .game-scores li.wd {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 44px;
   gap: 0.4rem;
 }
 .game-scores li.wd.wd-sk {
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 44px;
 }
 .game-scores li.wd > div:first-child {
-  grid-column: 1 / -2;
+  grid-column: 1 / -1;
   grid-row: 1;
 }
 .game-scores li.wd > .chip {
-  grid-column: -2 / -1;
-  grid-row: 1;
-  justify-self: end;
+  grid-row: 2;
 }
 .game-scores li.wd input {
   min-width: 0;

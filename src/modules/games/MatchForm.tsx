@@ -163,7 +163,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           <span>Scores and winner</span>
           {(hasOrder || hasColors || catanGame || waterdeepGame) && (
             <span className="muted small">
-              {[waterdeepGame && 'Tap the circle to pick each Lord, then enter points before the Lord and the final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+              {[waterdeepGame && 'Tap the Lord name to choose it, then enter points before the Lord and the final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
           <ul className="game-scores" ref={list}>
@@ -230,6 +230,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(c) => setCatan({ ...catan, colors: { ...catan.colors, [id]: c } })}
                     />
                   )}
+                  <span style={waterdeepGame ? { overflow: 'hidden', textOverflow: 'ellipsis', flex: 'none', maxWidth: '38%', paddingRight: 12 } : { overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
                   {waterdeepGame && (
                     <LordPicker
                       value={waterdeep.lords?.[id]}
@@ -238,7 +239,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       onChange={(l) => setWaterdeep({ ...waterdeep, lords: { ...waterdeep.lords, [id]: l } })}
                     />
                   )}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{name(id)}</span>
                   {waterdeepGame && bonus !== undefined && <span className="muted small">{bonus >= 0 ? '+' : ''}{bonus}</span>}
                   {catanGame &&
                     ([['longestRoad', 'Longest road', <RoadIcon key="r" />], ['largestArmy', 'Largest army', <ArmyIcon key="a" />]] as const).map(([key, label, icon]) => (

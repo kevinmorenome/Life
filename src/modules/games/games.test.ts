@@ -262,14 +262,3 @@ describe('Waterdeep Lord list', () => {
     expect(new Set(WATERDEEP_LORDS).size).toBe(17);
   });
 });
-
-describe('lordInitials', () => {
-  it('uses capitals, skips "the", and falls back to two letters', async () => {
-    const { lordInitials } = await import('./waterdeep');
-    expect(lordInitials('Caladorn Cassalanter')).toBe('CC');
-    expect(lordInitials('Durnan the Wanderer')).toBe('DW');
-    expect(lordInitials('The Xanathar')).toBe('Xa');
-    expect(lordInitials('Trobriand')).toBe('Tr');
-    expect(lordInitials('')).toBe('');
-  });
-});
