@@ -1,6 +1,6 @@
-import { TrashIcon } from '../../icons';
+import { EditIcon, TrashIcon } from '../../icons';
 import { money, shortDate } from '../../lib/format';
-import { navigate } from '../../lib/router';
+import { href, navigate } from '../../lib/router';
 import { groupLines, linesTotal, receiptTotal, totalSaved } from './food';
 import { KIND_LABELS, type FoodReceipt, type ReceiptLine } from './types';
 
@@ -25,6 +25,9 @@ export function ReceiptView({ receipt, onDelete }: { receipt: FoodReceipt; onDel
           <h1 className="page-title">{receipt.store}</h1>
           <p className="muted small">{[shortDate(receipt.date), receipt.time, receipt.branch].filter(Boolean).join(' · ')}</p>
         </div>
+        <a className="icon-btn" href={href(`/food/receipt/${receipt.id}/edit`)} aria-label="Edit receipt">
+          <EditIcon />
+        </a>
         <button type="button" className="icon-btn" onClick={del} aria-label="Delete receipt">
           <TrashIcon />
         </button>

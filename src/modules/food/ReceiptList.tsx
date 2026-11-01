@@ -1,3 +1,4 @@
+import { PlusIcon } from '../../icons';
 import { money, shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
 import { monthlySpend, receiptTotal, sortReceipts } from './food';
@@ -10,7 +11,10 @@ export function ReceiptList({ receipts }: { receipts: FoodReceipt[] }) {
   if (receipts.length === 0) {
     return (
       <div className="empty">
-        <p className="muted">No receipts yet. Give Claude a grocery receipt (a PDF, a photo or an e-receipt email) and ask it to add it to Life.</p>
+        <p className="muted">No receipts yet. Add one by hand, or give Claude a grocery receipt (a PDF, a photo or an e-receipt email) and ask it to add it to Life.</p>
+        <a className="btn btn-primary game-new" href={href('/food/new')}>
+          <PlusIcon /> New receipt
+        </a>
       </div>
     );
   }
@@ -41,6 +45,9 @@ export function ReceiptList({ receipts }: { receipts: FoodReceipt[] }) {
           </li>
         ))}
       </ul>
+      <a className="btn btn-primary game-new" href={href('/food/new')}>
+        <PlusIcon /> New receipt
+      </a>
     </>
   );
 }

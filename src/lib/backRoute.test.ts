@@ -7,6 +7,8 @@ describe('parentRoute', () => {
   it('goes from a food receipt to the list, and from the list to More', () => {
     expect(p('/food/receipt/food-abc')).toBe('/food');
     expect(p('/food')).toBe('/more');
+    expect(p('/food/new')).toBe('/food');
+    expect(p('/food/receipt/food-abc/edit')).toBe('/food/receipt/food-abc');
   });
 
   it('has no parent on the main pages', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupLines, linePaid, linesTotal, monthlySpend, receiptTotal, sortReceipts, spendByKind, totalSaved } from './food';
+import { blankDraft, draftToLine, groupLines, lineToDraft, parseNumber, linePaid, linesTotal, monthlySpend, receiptTotal, sortReceipts, spendByKind, totalSaved } from './food';
 import type { FoodReceipt, ReceiptLine } from './types';
 
 const line = (over: Partial<ReceiptLine>): ReceiptLine => ({ name: 'x', kind: 'food', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1, ...over });
@@ -41,5 +41,33 @@ describe('sortReceipts', () => {
   it('puts the newest first, later time first on the same day', () => {
     const sorted = sortReceipts([receipt({ id: 'a', date: '2026-10-30' }), receipt({ id: 'b', date: '2026-10-31', time: '09:00' }), receipt({ id: 'c', date: '2026-10-31', time: '15:37' })]);
     expect(sorted.map((r) => r.id)).toEqual(['c', 'b', 'a']);
+  });
+});
+
+describe('parseNumber', () => {
+  it('accepts a comma or a point', () => {
+    expect(parseNumber('5,99')).toBe(5.99);
+    expect(parseNumber(' 0.48 ')).toBe(0.48);
+    expect(parseNumber('2')).toBe(2);
+  });
+  it('rejects anything else', () => {
+    for (const t of ['', 'abc', '-1', '1,2,3', '1e3']) expect(parseNumber(t)).toBeUndefined();
+  });
+});
+
+describe('line drafts', () => {
+  it('turns a typed line into a saved one with the amount recomputed', () => {
+    expect(draftToLine({ ...blankDraft(), name: ' Chicken fillet ', quantity: '0,48', unit: 'kg', unitPrice: '5,99', discount: '0,67' })).toEqual({
+      name: 'Chicken fillet', rawName: undefined, kind: 'food', quantity: 0.48, unit: 'kg', unitPrice: 5.99, discount: 0.67, paid: 2.21,
+    });
+  });
+  it('skips lines that are not finished', () => {
+    expect(draftToLine({ ...blankDraft(), name: '', unitPrice: '1' })).toBeUndefined();
+    expect(draftToLine({ ...blankDraft(), name: 'Milk' })).toBeUndefined();
+    expect(draftToLine({ ...blankDraft(), name: 'Milk', quantity: '0', unitPrice: '1' })).toBeUndefined();
+  });
+  it('round-trips a saved line, keeping the printed name', () => {
+    const saved = line({ name: 'Oat milk', rawName: 'NAP ZOB', quantity: 2, unitPrice: 4.19, discount: 0.5, paid: 7.88 });
+    expect(draftToLine(lineToDraft(saved))).toEqual(saved);
   });
 });

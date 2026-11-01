@@ -1,4 +1,4 @@
-import { LINE_KINDS, type FoodReceipt, type LineKind, type ReceiptLine } from './types';
+import { LINE_KINDS, type FoodReceipt, type LineKind, type ReceiptLine, type Unit } from './types';
 
 export const round2 = (n: number): number => Math.round(n * 100) / 100;
 
@@ -52,4 +52,45 @@ export function sortReceipts(receipts: FoodReceipt[]): FoodReceipt[] {
 /** Lines grouped in display order (food first), keeping receipt order inside each kind. */
 export function groupLines(lines: ReceiptLine[]): { kind: LineKind; lines: ReceiptLine[] }[] {
   return LINE_KINDS.map((kind) => ({ kind, lines: lines.filter((l) => l.kind === kind) })).filter((g) => g.lines.length > 0);
+}
+
+/** A line as typed in the form: everything is text until it is saved. */
+export interface LineDraft {
+  name: string;
+  rawName?: string;
+  kind: LineKind;
+  quantity: string;
+  unit: Unit;
+  unitPrice: string;
+  discount: string;
+}
+
+export const blankDraft = (): LineDraft => ({ name: '', kind: 'food', quantity: '1', unit: 'pc', unitPrice: '', discount: '' });
+
+/** Reads a number typed with a comma or a point as decimal separator; undefined when it isn't one. */
+export function parseNumber(text: string): number | undefined {
+  const t = text.trim().replace(',', '.');
+  if (t === '' || !/^\d*\.?\d+$|^\d+\.$/.test(t)) return undefined;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+export const lineToDraft = (l: ReceiptLine): LineDraft => ({
+  name: l.name,
+  rawName: l.rawName,
+  kind: l.kind,
+  quantity: String(l.quantity),
+  unit: l.unit,
+  unitPrice: String(l.unitPrice),
+  discount: l.discount ? String(l.discount) : '',
+});
+
+/** A saved line from a draft, or undefined when it has no name, a quantity above 0 or a price. The amount paid is recomputed. */
+export function draftToLine(d: LineDraft): ReceiptLine | undefined {
+  const name = d.name.trim();
+  const quantity = parseNumber(d.quantity);
+  const unitPrice = parseNumber(d.unitPrice);
+  if (!name || !quantity || unitPrice === undefined) return undefined;
+  const discount = parseNumber(d.discount) ?? 0;
+  return { name, rawName: d.rawName, kind: d.kind, quantity, unit: d.unit, unitPrice, discount, paid: linePaid(quantity, unitPrice, discount) };
 }
