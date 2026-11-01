@@ -8,7 +8,7 @@ import { LINE_KINDS, PRODUCT_TYPES, STORAGES, UNITS } from '../src/modules/food/
 import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothes/types';
 import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
-import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
+import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, pluralize, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
@@ -184,7 +184,7 @@ export const TOOLS = [
   {
     name: 'add_grocery_receipt',
     description:
-      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Give each food and drink line a productType, storage and shelfLifeDays too (and trackAmount false for spices, oil and sauces) (they create the product the first time it is seen and are ignored afterwards); the same abbreviation at the same store is matched to the product named earlier, so keep rawName exactly as printed. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
+      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Give each food and drink line a productType, storage and shelfLifeDays too (trackAmount false for spices, oil and sauces; packSize and packLabel for multipacks such as a 6-pack of beer) (they create the product the first time it is seen and are ignored afterwards); the same abbreviation at the same store is matched to the product named earlier, so keep rawName exactly as printed. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -212,6 +212,8 @@ export const TOOLS = [
               productType: { type: 'string', enum: [...PRODUCT_TYPES], description: 'How it is tracked in the inventory: fresh (goes off: meat, vegetables, dairy), staple (pasta, oat drink, hummus), drink (beer, wine, juice) or snack (chips, sweets). Only used the first time this product is seen.' },
               storage: { type: 'string', enum: [...STORAGES], description: 'Where it is kept. Only used the first time this product is seen.' },
               shelfLifeDays: { type: 'integer', minimum: 1, description: 'Typical days it keeps once bought (e.g. chicken fillet 2, carrots 14). Only used the first time this product is seen.' },
+              packSize: { type: 'integer', minimum: 2, maximum: 100, description: 'Items in one pack as bought, when the line is a multipack (6 for a 6-pack of beer, 4 for a 4-pack of yoghurt). Quantity stays the number of packs bought. Stock is then counted in single items. Only used the first time this product is seen.' },
+              packLabel: { type: 'string', description: 'What one item in the pack is called, singular: "can", "bottle", "cup". Only used with packSize.' },
               trackAmount: { type: 'boolean', description: 'Pass false for things nobody can count or measure in a useful way: spices, salt, oil, vinegar, sauces. They are then only "have it" or "out" and a use never lowers them. Only used the first time this product is seen.' },
             },
             required: ['name', 'quantity', 'unitPrice'],
@@ -224,7 +226,7 @@ export const TOOLS = [
   {
     name: 'list_stock',
     description:
-      'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
+      'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -238,7 +240,7 @@ export const TOOLS = [
   {
     name: 'use_stock',
     description:
-      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. For products with no amount (spices, oil), "use" is only logged and the product stays in stock until "finish". The record is a new event; nothing existing is changed.',
+      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l, or single items for multipacks: "had two beers" = 2 cans); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. For products with no amount (spices, oil), "use" is only logged and the product stays in stock until "finish". The record is a new event; nothing existing is changed.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -782,7 +784,7 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
     if (!isStocked(l.kind) || known.has(pid)) continue;
     known.add(pid);
     const type = hints[i]?.type ?? defaultType(l.kind, l.unit);
-    const product: FoodProduct = { id: pid, name: l.name, type, storage: hints[i]?.storage ?? defaultStorage(type), shelfLifeDays: hints[i]?.shelfLifeDays, ...(hints[i]?.trackAmount === false ? { trackAmount: false } : {}), createdAt: stamp, updatedAt: stamp };
+    const product: FoodProduct = { id: pid, name: l.name, type, storage: hints[i]?.storage ?? defaultStorage(type), shelfLifeDays: hints[i]?.shelfLifeDays, ...(hints[i]?.trackAmount === false ? { trackAmount: false } : {}), ...(l.unit === 'pc' && hints[i]?.packSize ? { packSize: hints[i]!.packSize, packLabel: hints[i]!.packLabel } : {}), createdAt: stamp, updatedAt: stamp };
     await store.put('foodproducts', pid, product);
     created.push(l.name);
   }
@@ -816,11 +818,15 @@ async function stockState(store: RecordStore, now: Date) {
   return { products, events, today, stockFor };
 }
 
+/** What the quantity is counted in: "cans" for a multipack, otherwise pieces, kg or l. */
+const unitName = (p: ProductSummary, quantity: number): string =>
+  p.unit !== 'pc' ? p.unit : p.packSize && p.packLabel ? pluralize(p.packLabel, quantity) : p.packSize ? 'items' : 'pieces';
+
 function describeProduct(p: ProductSummary, s: Stock) {
   return {
     name: p.name,
     ...(s.tracked
-      ? { quantity: s.quantity, unit: p.unit === 'pc' ? 'pieces' : p.unit }
+      ? { quantity: s.quantity, unit: unitName(p, s.quantity), ...(p.packSize ? { packSize: p.packSize } : {}) }
       : { tracking: 'have it or out (no amount)', have: s.quantity > 0 }),
     type: p.type,
     storage: p.storage,
@@ -884,6 +890,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     quantity = before;
   } else if (action === 'some_left') {
     if (untracked) return fail(`"${p.name}" is tracked as have it or out, so it has no amount to lower. Use action "use" to log a use, or "finish" when it is all gone.`);
+    if (p.packSize) return fail(`"${p.name}" comes in packs of ${p.packSize} and is counted in single ${p.packLabel ? pluralize(p.packLabel, 2) : 'items'}, so there is no "part left". Use action "use" with the number of items used, or count_stock with how many are left.`);
     const f = args.fractionLeft;
     if (typeof f !== 'number' || !Number.isFinite(f) || f <= 0 || f >= 1) return fail('fractionLeft must be between 0 and 1, e.g. 0.5 for half left. Use action "finish" when none is left.');
     if (before <= 0) return fail(`None of "${p.name}" is in stock, so nothing can be partly used. Use count_stock if the user says they have some.`);
@@ -915,7 +922,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     product: p.name,
     ...(action === 'use' || action === 'some_left' ? { used: formatQty(quantity) } : {}),
     left: left.quantity,
-    unit: p.unit === 'pc' ? 'pieces' : p.unit,
+    unit: unitName(p, left.quantity),
     ...(action === 'use' && quantity > before ? { note: `Only ${formatQty(before)} was thought to be in stock, so it now shows none left.` } : {}),
   });
 }
@@ -933,7 +940,7 @@ async function countStock(args: Args, { store, now, newId }: ToolContext): Promi
   const event: StockEvent = { id: newId(), productId: p.id, type: 'count', quantity: Math.round(q * 1000) / 1000, date, source: 'claude', createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const untracked = p.trackAmount === false;
-  return ok(untracked ? { counted: p.name, have: event.quantity > 0 } : { counted: p.name, quantity: event.quantity, unit: p.unit === 'pc' ? 'pieces' : p.unit });
+  return ok(untracked ? { counted: p.name, have: event.quantity > 0 } : { counted: p.name, quantity: event.quantity, unit: unitName(p, event.quantity) });
 }
 
 async function createOutfit(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

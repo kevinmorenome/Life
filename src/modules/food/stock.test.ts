@@ -161,3 +161,34 @@ describe('products you only have or do not (spices)', () => {
     expect(usesSince(events, '2026-10-10')).toBe(2);
   });
 });
+
+describe('packs (a 6-pack of beer is bought as 1 and drunk as 6)', () => {
+  const beer = { type: 'drink' as const, packSize: 6 };
+  it('counts in items: each pack bought adds its size', () => {
+    expect(stockOf(beer, [buy('2026-10-31', 2)], [], '2026-11-01').quantity).toBe(12);
+  });
+  it('takes single items off, oldest pack first', () => {
+    const s = stockOf(beer, [buy('2026-10-01', 1), buy('2026-10-20', 1)], [ev('use', 8, '2026-10-21')], '2026-10-22');
+    expect(s.quantity).toBe(4);
+    expect(s.batches).toEqual([{ date: '2026-10-20', quantity: 4 }]);
+  });
+  it('a count is in items, and later packs add on top of it', () => {
+    const s = stockOf(beer, [buy('2026-10-01', 2), buy('2026-10-25', 1)], [ev('count', 3, '2026-10-20')], '2026-10-26');
+    expect(s.quantity).toBe(9);
+  });
+  it('is low at the last item, like any drink', () => {
+    expect(stockOf(beer, [buy('2026-10-01', 1)], [ev('use', 5, '2026-10-02')], '2026-10-03').status).toBe('low');
+  });
+  it('has no "part left" levels, since an item is not partly used', () => {
+    expect(levelOptions(12, 'pc', 6)).toEqual([]);
+    expect(levelOptions(1.5, 'pc', 1).length).toBeGreaterThan(0);
+    expect(levelOptions(1.5, 'pc', undefined).length).toBeGreaterThan(0);
+  });
+  it('is ignored for products you only have or do not', () => {
+    expect(stockOf({ type: 'staple', trackAmount: false, packSize: 6 }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(1);
+  });
+  it('a pack size of 1 or nothing changes nothing', () => {
+    expect(stockOf({ type: 'staple', packSize: 1 }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(2);
+    expect(stockOf({ type: 'staple' }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(2);
+  });
+});

@@ -66,12 +66,15 @@ function consume(batches: Batch[], amount: number): void {
  * away after it, oldest first. A purchase on the day of a count is taken as already included in that count.
  */
 export function stockOf(
-  product: { type: ProductType; shelfLifeDays?: number; trackAmount?: boolean },
+  product: { type: ProductType; shelfLifeDays?: number; trackAmount?: boolean; packSize?: number },
   purchases: Pick<Purchase, 'date' | 'quantity'>[],
   events: StockEvent[],
   today: string,
 ): Stock {
   if (product.trackAmount === false) return presenceOf(purchases, events);
+  // With a pack size, stock is counted in items: each pack bought adds that many.
+  const perPack = product.packSize && product.packSize > 1 ? product.packSize : 1;
+  if (perPack > 1) purchases = purchases.map((p) => ({ date: p.date, quantity: p.quantity * perPack }));
   const mine = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
   const baseline = [...mine].reverse().find((e) => e.type === 'count');
   const batches: Batch[] = baseline && baseline.quantity > 0 ? [{ date: baseline.date, quantity: baseline.quantity }] : [];
@@ -165,8 +168,9 @@ export function partLeft(quantity: number, unit: Unit, fraction: number): number
 }
 
 /** The "part left" choices that actually lower what you have (¼ left makes no sense for a pack that is already at ⅛). */
-export function levelOptions(quantity: number, unit: Unit): { fraction: number; label: string }[] {
-  if (quantity <= 0) return [];
+export function levelOptions(quantity: number, unit: Unit, packSize?: number): { fraction: number; label: string }[] {
+  // Counted in items (cans): a can isn't "half left"; say how many are left instead.
+  if (quantity <= 0 || (packSize && packSize > 1)) return [];
   const level = openLevel(quantity, unit);
   return LEVELS.filter((l) => l.fraction < level - 1e-9);
 }

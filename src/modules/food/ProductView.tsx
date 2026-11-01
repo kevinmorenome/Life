@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { averageUnitPrice, defaultStorage, perUnit, type ProductSummary } from './products';
+import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, type ProductSummary } from './products';
 import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
 import { partLeftEvent, stockEvent } from './stockActions';
 import { unitLabel } from './StockRow';
@@ -32,13 +32,26 @@ export function ProductView({
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
   };
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
+  const [pack, setPack] = useState(product.packSize ? String(product.packSize) : '');
+  const [label, setLabel] = useState(product.packLabel ?? '');
 
   // Spread the record first so fields this screen doesn't show survive; create it on the first change.
   const save = (patch: Partial<FoodProduct>) => {
     const now = new Date().toISOString();
-    return onSave({ ...record, id: product.id, name: record?.name ?? product.name, type: product.type, storage: product.storage, shelfLifeDays: product.shelfLifeDays, trackAmount: product.trackAmount ? undefined : false, createdAt: record?.createdAt ?? now, ...patch, updatedAt: now });
+    return onSave({ ...record, id: product.id, name: record?.name ?? product.name, type: product.type, storage: product.storage, shelfLifeDays: product.shelfLifeDays, trackAmount: product.trackAmount ? undefined : false, packSize: product.packSize, packLabel: product.packLabel, createdAt: record?.createdAt ?? now, ...patch, updatedAt: now });
   };
   const setType = (type: ProductType) => save({ type, ...(product.custom ? {} : { storage: defaultStorage(type) }) });
+  const commitPack = () => {
+    const n = Number(pack.replace(',', '.'));
+    const packSize = pack.trim() && Number.isFinite(n) && n >= 2 && n <= 100 ? Math.round(n) : undefined;
+    setPack(packSize ? String(packSize) : '');
+    if (packSize !== product.packSize) save({ packSize });
+  };
+  const commitLabel = () => {
+    const packLabel = label.trim().slice(0, 20) || undefined;
+    setLabel(packLabel ?? '');
+    if (packLabel !== product.packLabel) save({ packLabel });
+  };
   const commitDays = () => {
     const n = Number(days.replace(',', '.'));
     const shelfLifeDays = days.trim() && Number.isFinite(n) && n >= 1 ? Math.round(n) : undefined;
@@ -50,13 +63,14 @@ export function ProductView({
       <h1 className="page-title">{product.name}</h1>
       <p className="muted small">
         Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
-        {perUnit(product.unit)}
+        {product.packSize ? ' per pack' : perUnit(product.unit)}
+        {product.packSize && ` · ${money(pricePerItem(averageUnitPrice(product), product.packSize))} per ${product.packLabel || 'item'}`}
       </p>
 
       <section className="food-gap">
         <p className="food-total">
           {stock.tracked ? formatAmount(stock.quantity, product.unit) : stock.quantity > 0 ? 'Have it' : 'Out'}
-          {stock.tracked && <span className="muted small">{unitLabel(product.unit) || ' in stock'}</span>}
+          {stock.tracked && <span className="muted small">{unitLabel(product, stock.quantity) || ' in stock'}</span>}
         </p>
         <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : '', !stock.tracked && uses > 0 ? `used ${uses}× since you bought it` : ''].filter(Boolean).join(' · ')}</p>
         <div className="chips food-gap">
@@ -72,7 +86,7 @@ export function ProductView({
               >
                 Used some
               </button>
-              {levelOptions(stock.quantity, product.unit).map((l) => (
+              {levelOptions(stock.quantity, product.unit, product.packSize).map((l) => (
                 <button
                   key={l.fraction}
                   type="button"
@@ -149,6 +163,18 @@ export function ProductView({
         </div>
         <span className="muted small">For spices, oil and sauces: a use is logged but never lowers it; tap Finished when it is all gone.</span>
       </div>
+      {product.unit === 'pc' && product.trackAmount && (
+        <div className="field-grid">
+          <label className="field">
+            <span>Items in a pack</span>
+            <input inputMode="numeric" value={pack} onChange={(e) => setPack(e.target.value)} onBlur={commitPack} placeholder="e.g. 6" />
+          </label>
+          <label className="field">
+            <span>One item is a</span>
+            <input value={label} onChange={(e) => setLabel(e.target.value)} onBlur={commitLabel} placeholder="e.g. can" />
+          </label>
+        </div>
+      )}
       <label className="field">
         <span>Keeps for (days, optional)</span>
         <input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} onBlur={commitDays} placeholder="e.g. 3" />
@@ -164,7 +190,7 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product.unit)}`}
+                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
                   <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}
@@ -179,7 +205,7 @@ export function ProductView({
             <a className="game-row" href={href(`/food/receipt/${x.receiptId}`)}>
               <strong>
                 {x.quantity}
-                {x.unit === 'pc' ? ' ×' : ` ${x.unit} ×`} {money(x.unitPrice)} = {money(x.paid)}
+                {x.unit !== 'pc' ? ` ${x.unit} ×` : product.packSize ? ` ${pluralize('pack', x.quantity)} of ${product.packSize} ×` : ' ×'} {money(x.unitPrice)} = {money(x.paid)}
               </strong>
               <span className="muted small">{[shortDate(x.date), x.store].join(' · ')}</span>
             </a>

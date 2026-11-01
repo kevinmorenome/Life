@@ -600,16 +600,22 @@ describe('add_grocery_receipt', () => {
         { name: 'Beer', kind: 'alcohol', quantity: 1, unitPrice: 2, productType: 'bogus', storage: 'attic', shelfLifeDays: -3 },
         { name: 'Bag', kind: 'bag', quantity: 1, unitPrice: 0.2 },
         { name: 'Cumin', quantity: 1, unitPrice: 1.5, trackAmount: false },
+        { name: 'Cider 4-pack', kind: 'alcohol', quantity: 1, unitPrice: 6, packSize: 4, packLabel: 'bottle' },
+        { name: 'Odd pack', quantity: 1, unitPrice: 6, packSize: 1, packLabel: 'x' },
+        { name: 'Weighed pack', quantity: 0.5, unit: 'kg', unitPrice: 6, packSize: 4 },
         { name: 'Rice', quantity: 1, unitPrice: 1.5, trackAmount: 'no' },
       ],
     });
-    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cumin', 'Rice']);
+    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cumin', 'Cider 4-pack', 'Odd pack', 'Weighed pack', 'Rice']);
+    expect(data.foodproducts.get('fp-cider-4-pack')).toMatchObject({ packSize: 4, packLabel: 'bottle' });
+    expect(data.foodproducts.get('fp-odd-pack')!.packSize).toBeUndefined();
+    expect(data.foodproducts.get('fp-weighed-pack')!.packSize).toBeUndefined();
     expect(data.foodproducts.get('fp-cumin')).toMatchObject({ trackAmount: false });
     expect(data.foodproducts.get('fp-rice')!.trackAmount).toBeUndefined();
     expect(data.foodproducts.get('fp-chicken-fillet')).toMatchObject({ name: 'Chicken fillet', type: 'fresh', storage: 'fridge', shelfLifeDays: 2 });
     expect(data.foodproducts.get('fp-beer')).toMatchObject({ type: 'drink', storage: 'pantry' });
     expect(data.foodproducts.get('fp-beer')!.shelfLifeDays).toBeUndefined();
-    expect(data.foodproducts.size).toBe(4);
+    expect(data.foodproducts.size).toBe(7);
   });
 
   it('never edits an existing product and reuses the name given to the same printed text', async () => {
@@ -702,6 +708,18 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
     expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
     expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
+  });
+
+  it('counts multipacks in single items', async () => {
+    const { ctx, data } = seed();
+    data.foodreceipts.set('food-4', receipt('food-4', '2026-10-24', [L('Staropramen beer 6-pack', 2, { kind: 'alcohol' })]));
+    data.foodproducts.set('fp-staropramen-beer-6-pack', { id: 'fp-staropramen-beer-6-pack', name: 'Staropramen beer 6-pack', type: 'drink', storage: 'pantry', packSize: 6, packLabel: 'can' });
+    expect((await call(ctx, 'list_stock', { query: 'beer' })).json()).toMatchObject([{ name: 'Staropramen beer 6-pack', quantity: 12, unit: 'cans', packSize: 6 }]);
+    expect((await call(ctx, 'use_stock', { product: 'beer', quantity: 2 })).json()).toMatchObject({ used: '2', left: 10, unit: 'cans' });
+    expect((await call(ctx, 'count_stock', { product: 'beer', quantity: 1 })).json()).toMatchObject({ quantity: 1, unit: 'can' });
+    const partial = await call(ctx, 'use_stock', { product: 'beer', action: 'some_left', fractionLeft: 0.5 });
+    expect(partial.isError).toBe(true);
+    expect(partial.text).toMatch(/packs of 6/);
   });
 
   it('counts, and warns when more was used than was thought to be in stock', async () => {
