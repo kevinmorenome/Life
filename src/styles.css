@@ -4995,3 +4995,28 @@ button.detail-row {
   min-width: 0;
   grid-row: 2;
 }
+
+.game-scores li.wd .wd-icon-field {
+  position: relative;
+  min-width: 0;
+  grid-row: 2;
+}
+.game-scores li.wd .wd-icon-field input {
+  width: 100%;
+  padding-right: 2.2rem;
+}
+.game-scores li.wd .wd-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translateY(-50%);
+  opacity: 0.55;
+  pointer-events: none;
+  display: inline-flex;
+}
+.game-scores li.wd .wd-icon svg {
+  width: 100%;
+  height: 100%;
+}

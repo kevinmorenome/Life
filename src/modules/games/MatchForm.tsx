@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { ArmyIcon, GripIcon, RoadIcon } from '../../icons';
+import { ArmyIcon, GripIcon, RoadIcon, SkullIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { CATAN_VARIANTS, cleanCatan, isCatan, moveSeat, seatOrder, titleHasColors, titleHasOrder, type CatanInfo } from './catan';
@@ -269,6 +269,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   />
                 )}
                 {waterdeepGame && waterdeep.skullport && (
+                  <div className="wd-icon-field">
                     <input
                       type="number"
                       inputMode="numeric"
@@ -282,9 +283,13 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                         else delete rest[id];
                         setWaterdeep({ ...waterdeep, corruptions: rest });
                       }}
-                      placeholder="Corrupt."
+                      placeholder="0"
                       aria-label={`${name(id)} number of corruptions`}
                     />
+                    <span className="wd-icon" aria-hidden="true">
+                      <SkullIcon />
+                    </span>
+                  </div>
                   )}
                 <input
                   type="number"

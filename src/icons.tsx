@@ -188,3 +188,10 @@ export const CalculatorIcon = () => (
     <path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
   </Icon>
 );
+
+/** Skull silhouette (Lords of Waterdeep corruption). Filled, unlike the line icons. */
+export const SkullIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M12 0C18.4 0 22.6 5.2 22.6 11c0 2.6-1.2 3.6-2.4 4.3-1 .6-1.5 1.1-1.5 2.3v3c0 2.1-2.7 3.4-6.7 3.4s-6.7-1.3-6.7-3.4v-3c0-1.2-.5-1.7-1.5-2.3C2.6 14.6 1.4 13.6 1.4 11 1.4 5.2 5.6 0 12 0Z" />
+  </svg>
+);
