@@ -78,6 +78,12 @@ export interface FoodProduct {
   storage: Storage;
   /** Days it keeps once bought, for fresh items ("use soon"). */
   shelfLifeDays?: number;
+  /**
+   * False for things you can't count or measure in a useful way (spices, salt, oil, sauces): you either have
+   * it or it is out. A use is logged but doesn't lower anything; only "finished" (or a thrown away) does.
+   * Absent means true.
+   */
+  trackAmount?: boolean;
   createdAt: string;
   updatedAt: string;
 }

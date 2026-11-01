@@ -2,7 +2,7 @@ import { href } from '../../lib/router';
 import { today } from '../../lib/format';
 import { FoodTabs } from './FoodTabs';
 import { productSummaries, type ProductSummary } from './products';
-import { needsCheck, stockOf, type Stock } from './stock';
+import { needsCheck, stockOf, usesSince, type Stock } from './stock';
 import { StockRow } from './StockRow';
 import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent } from './types';
 
@@ -11,14 +11,17 @@ const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' 
 export interface Entry {
   product: ProductSummary;
   stock: Stock;
+  /** Uses since it was last bought; only shown for products that are just "have it". */
+  uses: number;
 }
 
 /** Every product with what is left of it today. */
 export function stockEntries(receipts: FoodReceipt[], products: FoodProduct[], events: StockEvent[], day = today()): Entry[] {
-  return productSummaries(receipts, products).map((product) => ({
-    product,
-    stock: stockOf(product, product.purchases, events.filter((e) => e.productId === product.id), day),
-  }));
+  return productSummaries(receipts, products).map((product) => {
+    const mine = events.filter((e) => e.productId === product.id);
+    const stock = stockOf(product, product.purchases, mine, day);
+    return { product, stock, uses: stock.tracked ? 0 : usesSince(mine, product.purchases[0]?.date) };
+  });
 }
 
 /** What you have, with the things to use soon first and a way to the weekly check. */

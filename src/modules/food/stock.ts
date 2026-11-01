@@ -28,6 +28,8 @@ export interface Batch {
 export type StockStatus = 'ok' | 'use-soon' | 'check' | 'low' | 'out';
 
 export interface Stock {
+  /** False for products you only have or don't (`trackAmount` off): then `quantity` is 1 (have it) or 0 (out). */
+  tracked: boolean;
   quantity: number;
   /** Oldest first. */
   batches: Batch[];
@@ -64,11 +66,12 @@ function consume(batches: Batch[], amount: number): void {
  * away after it, oldest first. A purchase on the day of a count is taken as already included in that count.
  */
 export function stockOf(
-  product: { type: ProductType; shelfLifeDays?: number },
+  product: { type: ProductType; shelfLifeDays?: number; trackAmount?: boolean },
   purchases: Pick<Purchase, 'date' | 'quantity'>[],
   events: StockEvent[],
   today: string,
 ): Stock {
+  if (product.trackAmount === false) return presenceOf(purchases, events);
   const mine = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
   const baseline = [...mine].reverse().find((e) => e.type === 'count');
   const batches: Batch[] = baseline && baseline.quantity > 0 ? [{ date: baseline.date, quantity: baseline.quantity }] : [];
@@ -103,12 +106,31 @@ export function stockOf(
   else if (useBy && daysBetween(today, useBy) <= 1) status = 'use-soon';
   else if ((product.type === 'staple' || product.type === 'drink') && quantity <= 1) status = 'low';
 
-  return { quantity, batches: kept, useBy, lastConfirmed, status };
+  return { tracked: true, quantity, batches: kept, useBy, lastConfirmed, status };
+}
+
+/**
+ * A product you only have or don't (spices, oil): you have it from the first purchase until you say it is
+ * finished or thrown away, and buying it again puts it back. Uses never lower anything.
+ */
+function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: StockEvent[]): Stock {
+  const resets = events.filter((e) => e.type === 'count' || e.type === 'toss').sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+  const reset = resets[resets.length - 1];
+  const lastBought = purchases.reduce<string | undefined>((m, p) => (!m || p.date > m ? p.date : m), undefined);
+  const boughtAfter = purchases.some((p) => !reset || p.date > reset.date);
+  const have = reset ? (reset.type === 'count' && reset.quantity > 0) || boughtAfter : purchases.length > 0;
+  const lastConfirmed = [reset?.type === 'count' && reset.quantity > 0 ? reset.date : undefined, lastBought].filter((d): d is string => !!d).sort().pop();
+  return { tracked: false, quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
+}
+
+/** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
+export function usesSince(events: StockEvent[], since?: string): number {
+  return events.filter((e) => e.type === 'use' && (!since || e.date >= since)).length;
 }
 
 /** Worth asking about in the weekly check: it is past its use-by date, or nothing has confirmed it for a while. */
 export function needsCheck(type: ProductType, s: Stock, today: string): boolean {
-  if (s.quantity <= 0) return false;
+  if (s.quantity <= 0 || !s.tracked) return false;
   if (s.status === 'check') return true;
   const after = CHECK_AFTER_DAYS[type];
   return after !== undefined && !!s.lastConfirmed && daysBetween(s.lastConfirmed, today) >= after;

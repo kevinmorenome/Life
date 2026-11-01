@@ -66,6 +66,14 @@ export const CartIcon = () => (
   </Icon>
 );
 
+/** A ring with a dot: "used it, still have it". */
+export const UsedIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="2.2" fill="currentColor" />
+  </Icon>
+);
+
 /** A circle filled on one side: "some of it is left". */
 export const HalfIcon = () => (
   <Icon>

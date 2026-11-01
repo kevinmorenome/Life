@@ -599,13 +599,17 @@ describe('add_grocery_receipt', () => {
         { name: 'Chicken fillet', quantity: 0.5, unit: 'kg', unitPrice: 6, productType: 'fresh', storage: 'fridge', shelfLifeDays: 2 },
         { name: 'Beer', kind: 'alcohol', quantity: 1, unitPrice: 2, productType: 'bogus', storage: 'attic', shelfLifeDays: -3 },
         { name: 'Bag', kind: 'bag', quantity: 1, unitPrice: 0.2 },
+        { name: 'Cumin', quantity: 1, unitPrice: 1.5, trackAmount: false },
+        { name: 'Rice', quantity: 1, unitPrice: 1.5, trackAmount: 'no' },
       ],
     });
-    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer']);
+    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cumin', 'Rice']);
+    expect(data.foodproducts.get('fp-cumin')).toMatchObject({ trackAmount: false });
+    expect(data.foodproducts.get('fp-rice')!.trackAmount).toBeUndefined();
     expect(data.foodproducts.get('fp-chicken-fillet')).toMatchObject({ name: 'Chicken fillet', type: 'fresh', storage: 'fridge', shelfLifeDays: 2 });
     expect(data.foodproducts.get('fp-beer')).toMatchObject({ type: 'drink', storage: 'pantry' });
     expect(data.foodproducts.get('fp-beer')!.shelfLifeDays).toBeUndefined();
-    expect(data.foodproducts.size).toBe(2);
+    expect(data.foodproducts.size).toBe(4);
   });
 
   it('never edits an existing product and reuses the name given to the same printed text', async () => {
@@ -683,6 +687,21 @@ describe('food stock', () => {
     }
     await call(ctx, 'use_stock', { product: 'hummus', action: 'finish' });
     expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
+  });
+
+  it('spices and the like are only have-it-or-out: a use is logged but never lowers them', async () => {
+    const { ctx, data } = seed();
+    data.foodreceipts.set('food-3', receipt('food-3', '2026-10-22', [L('Smoked paprika', 1)]));
+    data.foodproducts.set('fp-smoked-paprika', { id: 'fp-smoked-paprika', name: 'Smoked paprika', type: 'staple', storage: 'pantry', trackAmount: false });
+    expect((await call(ctx, 'list_stock', { query: 'paprika' })).json()).toMatchObject([{ name: 'Smoked paprika', tracking: 'have it or out (no amount)', have: true, status: 'ok' }]);
+    for (let i = 0; i < 3; i++) {
+      expect((await call(ctx, 'use_stock', { product: 'paprika', quantity: 5 })).json()).toMatchObject({ recorded: 'use', have: true });
+    }
+    expect([...data.foodstock.values()].map((e) => [e.type, e.quantity])).toEqual([['use', 1], ['use', 1], ['use', 1]]);
+    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
+    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
+    expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
+    expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
   });
 
   it('counts, and warns when more was used than was thought to be in stock', async () => {

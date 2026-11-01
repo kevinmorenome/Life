@@ -63,7 +63,9 @@ describe('productSummaries', () => {
     const out = productSummaries(receipts, [rec]);
     const beer = out.find((p) => p.id === 'fp-beer')!;
     expect(beer).toMatchObject({ storage: 'fridge', shelfLifeDays: 90, custom: true });
-    expect(out.find((p) => p.id === 'fp-oat-drink-3-5')).toMatchObject({ type: 'staple', storage: 'pantry', custom: false });
+    expect(out.find((p) => p.id === 'fp-oat-drink-3-5')).toMatchObject({ type: 'staple', storage: 'pantry', custom: false, trackAmount: true });
+    const spice: FoodProduct = { id: 'fp-oat-drink-3-5', name: 'x', type: 'staple', storage: 'pantry', trackAmount: false, createdAt: '', updatedAt: '' };
+    expect(productSummaries(receipts, [spice]).find((p) => p.id === spice.id)?.trackAmount).toBe(false);
   });
   it('averages the price per unit weighted by quantity', () => {
     expect(averageUnitPrice({ purchases: [{ quantity: 1, paid: 4 }, { quantity: 3, paid: 6 }] } as never)).toBe(2.5);

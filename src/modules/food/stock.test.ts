@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, partLeft, stockOf } from './stock';
+import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, partLeft, stockOf, usesSince } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (date: string, quantity: number) => ({ date, quantity });
@@ -131,5 +131,33 @@ describe('part left', () => {
     const used = 2 - partLeft(2, 'pc', 0.5);
     expect(stockOf(staple, [buy('2026-10-01', 2)], [ev('use', used, '2026-10-02')], '2026-10-03')).toMatchObject({ quantity: 1.5, status: 'ok' });
     expect(stockOf(staple, [buy('2026-10-01', 1)], [ev('use', 0.5, '2026-10-02')], '2026-10-03').status).toBe('low');
+  });
+});
+
+describe('products you only have or do not (spices)', () => {
+  const spice = { type: 'staple' as const, trackAmount: false };
+  it('are in stock from the first purchase and uses change nothing', () => {
+    const s = stockOf(spice, [buy('2026-10-01', 1)], [ev('use', 1, '2026-10-02'), ev('use', 1, '2026-10-03'), ev('use', 1, '2026-10-04')], '2026-11-01');
+    expect(s).toMatchObject({ tracked: false, quantity: 1, status: 'ok' });
+    expect(s.batches).toEqual([{ date: '2026-10-01', quantity: 1 }]);
+  });
+  it('are out once finished or thrown away, and back after buying it again', () => {
+    expect(stockOf(spice, [buy('2026-10-01', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01')).toMatchObject({ quantity: 0, status: 'out' });
+    expect(stockOf(spice, [buy('2026-10-01', 1)], [ev('toss', 1, '2026-10-20')], '2026-11-01').quantity).toBe(0);
+    expect(stockOf(spice, [buy('2026-10-01', 1), buy('2026-10-25', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01').quantity).toBe(1);
+  });
+  it('a purchase on the day it was finished does not bring it back, a count above zero does', () => {
+    expect(stockOf(spice, [buy('2026-10-20', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01').quantity).toBe(0);
+    expect(stockOf(spice, [], [ev('count', 0, '2026-10-20'), ev('count', 1, '2026-10-22')], '2026-11-01').quantity).toBe(1);
+  });
+  it('are never "low" and never asked about in the weekly check', () => {
+    const s = stockOf(spice, [buy('2026-01-01', 1)], [], '2026-11-01');
+    expect(s.status).toBe('ok');
+    expect(needsCheck('staple', s, '2026-11-01')).toBe(false);
+  });
+  it('can still count how often they were used', () => {
+    const events = [ev('use', 1, '2026-10-02'), ev('use', 1, '2026-10-10'), ev('count', 1, '2026-10-12'), ev('use', 1, '2026-10-15')];
+    expect(usesSince(events)).toBe(3);
+    expect(usesSince(events, '2026-10-10')).toBe(2);
   });
 });
