@@ -10,7 +10,7 @@ function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
-    put: async (s, id, record) => void data[s].set(id, { id, ...record }),
+    put: async (s, id, record) => void data[s as StoreName].set(id, { id, ...record }),
     photos: async (ids) =>
       new Map(ids.flatMap((id) => (typeof data.clothes.get(id)?.photo === 'string' ? [[id, data.clothes.get(id)!.photo as string] as const] : []))),
   };
@@ -89,9 +89,11 @@ describe('protocol', () => {
       'log_wear',
       'add_tags',
       'add_item',
+      'add_receipt_items',
       'create_outfit',
       'edit_outfit',
       'edit_item',
+      'set_item_photo',
     ]);
     expect(await rpc(ctx, 'notifications/initialized', undefined, true)).toBeNull();
     expect((await rpc(ctx, 'nope')).error.code).toBe(-32601);
@@ -475,6 +477,8 @@ describe('read-only deployments', () => {
       ['log_wear', { date: '2026-10-25', itemIds: ['tee'] }],
       ['add_item', { name: 'x', category: 'tops' }],
       ['create_outfit', { itemIds: ['tee'] }],
+      ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
+      ['set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/p.jpg' }],
     ] as const) {
       expect((await call(ctx, name, args)).isError).toBe(true);
     }
@@ -548,5 +552,129 @@ describe('edit_item', () => {
     const { ctx, data } = setup({ readOnly: true });
     expect((await call(ctx, 'edit_item', { itemId: 'tee', name: 'x' })).isError).toBe(true);
     expect(data.inbox.size).toBe(0);
+  });
+});
+
+describe('add_receipt_items', () => {
+  const photo = 'data:image/jpeg;base64,AAAA';
+  const withPhotos = (urls: string[] = []) => ({ fetchPhoto: async (url: string) => (urls.includes(url) ? photo : undefined) });
+
+  it('adds flagged items with the details and photo from the email', async () => {
+    const { ctx, data } = setup(withPhotos(['https://x.com/p.jpg']));
+    const r = await call(ctx, 'add_receipt_items', {
+      sourceId: 'msg/1',
+      items: [
+        { name: 'Polo', category: 'tops', brand: 'Lacoste', colors: ['Navy', 'Neon'], size: 'M', material: 'Cotton', price: 80, purchaseDate: '2026-10-01', seasons: ['summer', 'bogus'], notes: 'Order 42', imageUrl: 'https://x.com/p.jpg' },
+        { name: 'Odd', category: 'spaceship', imageUrl: 'http://insecure.com/p.jpg' },
+      ],
+    });
+    expect(r.isError).toBe(false);
+    expect(data.clothes.get('receipt-msg1-0')).toMatchObject({
+      name: 'Polo', category: 'tops', brand: 'Lacoste', colors: ['Navy'], color: 'Navy', size: 'M', material: 'Cotton', price: 80,
+      purchaseDate: '2026-10-01', seasons: ['summer'], notes: 'Order 42', photo, status: 'active', needsReview: true, wears: [],
+    });
+    expect(data.clothes.get('receipt-msg1-1')).toMatchObject({ category: 'other', purchaseDate: '2026-10-25', needsReview: true });
+    expect(data.clothes.get('receipt-msg1-1')!.photo).toBeUndefined();
+    expect(r.json().added).toHaveLength(2);
+  });
+
+  it('is idempotent and never overwrites an edited item', async () => {
+    const { ctx, data } = setup(withPhotos());
+    const args = { sourceId: 'm1', items: [{ name: 'Tee', category: 'tops' }] };
+    await call(ctx, 'add_receipt_items', args);
+    data.clothes.set('receipt-m1-0', { ...data.clothes.get('receipt-m1-0')!, name: 'My edit', needsReview: undefined });
+    const again = await call(ctx, 'add_receipt_items', args);
+    expect(again.json()).toEqual({ alreadyAdded: true });
+    expect(data.clothes.get('receipt-m1-0')).toMatchObject({ name: 'My edit' });
+  });
+
+  it('rejects calls without a source id or valid items', async () => {
+    const { ctx, data } = setup();
+    expect((await call(ctx, 'add_receipt_items', { items: [{ name: 'x', category: 'tops' }] })).isError).toBe(true);
+    expect((await call(ctx, 'add_receipt_items', { sourceId: 'm1', items: [{ category: 'tops' }] })).isError).toBe(true);
+    expect(data.clothes.size).toBe(ITEMS.length);
+  });
+});
+
+describe('guards against splitting an item\'s history', () => {
+  const photo = 'data:image/jpeg;base64,AAAA';
+  const fetcher = { fetchPhoto: async (url: string) => (url.includes('good') ? photo : undefined) };
+
+  it('add_item refuses a second item with the same name and points to the existing one', async () => {
+    const { ctx, data } = setup(fetcher);
+    const r = await call(ctx, 'add_item', { name: ' navy  BLAZER ', category: 'outerwear', brand: 'Zara' });
+    expect(r.isError).toBe(true);
+    expect(r.text).toMatch(/id blazer/);
+    expect(r.text).toMatch(/set_item_photo/);
+    expect(data.clothes.size).toBe(ITEMS.length);
+    // an explicit confirmation, or a different brand, goes through; retired items don't count
+    expect((await call(ctx, 'add_item', { name: 'Navy blazer', category: 'outerwear', allowDuplicate: true })).isError).toBe(false);
+    expect((await call(ctx, 'add_item', { name: 'Old navy cardigan', category: 'tops' })).isError).toBe(false);
+  });
+
+  it('add_item can attach a downloaded photo', async () => {
+    const { ctx, data } = setup(fetcher);
+    const r = await call(ctx, 'add_item', { name: 'Green cap', category: 'accessories', imageUrl: 'https://x.com/good.jpg' });
+    expect(r.json().added.photo).toBe(true);
+    expect(data.clothes.get('id-1')!.photo).toBe(photo);
+    const bad = await call(ctx, 'add_item', { name: 'Red cap', category: 'accessories', imageUrl: 'https://x.com/bad.jpg' });
+    expect(bad.json().added.photo).toBe(false);
+    expect(bad.json().added.photoNote).toMatch(/Could not download/);
+  });
+
+  it('add_receipt_items skips lines that already exist instead of creating a second item', async () => {
+    const { ctx, data } = setup(fetcher);
+    const r = await call(ctx, 'add_receipt_items', {
+      sourceId: 'm9',
+      items: [
+        { name: 'White Tee', category: 'tops' },
+        { name: 'Linen shirt', category: 'tops', imageUrl: 'https://x.com/bad.jpg' },
+      ],
+    });
+    const out = r.json();
+    expect(out.skippedAsExisting).toEqual([{ line: 'White Tee', existingItemId: 'tee', existingName: 'White tee' }]);
+    expect(out.added.map((a: { name: string }) => a.name)).toEqual(['Linen shirt']);
+    expect(out.added[0].photoNote).toMatch(/Could not download/);
+    expect(data.clothes.has('receipt-m9-0')).toBe(false);
+    expect(data.clothes.get('receipt-m9-1')).toMatchObject({ needsReview: true });
+    // a confirmed second purchase is allowed
+    const again = await call(ctx, 'add_receipt_items', { sourceId: 'm10', allowDuplicates: true, items: [{ name: 'White tee', category: 'tops' }] });
+    expect(again.json().added).toHaveLength(1);
+  });
+
+  it('set_item_photo queues the photo for the app instead of touching the item', async () => {
+    const { ctx, data } = setup(fetcher);
+    const r = await call(ctx, 'set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/good.jpg' });
+    expect(r.isError).toBe(false);
+    expect(r.text).toMatch(/queued, not already attached/);
+    expect(data.inbox.get('id-1')).toMatchObject({ type: 'photo', itemIds: ['tee'], photo, source: 'claude' });
+    expect(data.clothes.get('tee')!.photo).toBeUndefined();
+    expect((await call(ctx, 'set_item_photo', { itemId: 'nope', imageUrl: 'https://x.com/good.jpg' })).isError).toBe(true);
+    expect((await call(ctx, 'set_item_photo', { itemId: 'tee', imageUrl: 'http://x.com/good.jpg' })).isError).toBe(true);
+    expect((await call(ctx, 'set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/bad.jpg' })).text).toMatch(/Could not download/);
+    expect(data.inbox.size).toBe(1);
+  });
+
+  it('edit_item only retires an item when the user confirmed it', async () => {
+    const { ctx, data } = setup();
+    for (const status of ['discarded', 'sold', 'donated']) {
+      const r = await call(ctx, 'edit_item', { itemId: 'tee', status });
+      expect(r.isError).toBe(true);
+      expect(r.text).toMatch(/set_item_photo/);
+    }
+    expect(data.inbox.size).toBe(0);
+    expect((await call(ctx, 'edit_item', { itemId: 'tee', status: 'sold', confirmRetire: true })).isError).toBe(false);
+    expect((await call(ctx, 'edit_item', { itemId: 'blazer', status: 'storage' })).isError).toBe(false);
+  });
+
+  it('tells Claude to look in the other emails about the order when a receipt line has no image', async () => {
+    const { ctx } = setup(fetcher);
+    const r = await call(ctx, 'add_receipt_items', { sourceId: 'm11', items: [{ name: 'Linen shirt', category: 'tops' }, { name: 'Wool cap', category: 'accessories', imageUrl: 'https://x.com/good.jpg' }] });
+    const [shirt, cap] = r.json().added;
+    expect(shirt).toMatchObject({ id: 'receipt-m11-0', photo: false });
+    expect(shirt.photoNote).toMatch(/other emails about this same order/);
+    expect(shirt.photoNote).toMatch(/set_item_photo/);
+    expect(cap).toMatchObject({ photo: true });
+    expect(cap.photoNote).toBeUndefined();
   });
 });

@@ -9,6 +9,29 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
+/** Six-dot drag handle. */
+export const GripIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    {[8.5, 15.5].flatMap((x) => [6, 12, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={1.6} />))}
+  </svg>
+);
+
+/** Longest Road: a road running into the distance. */
+export const RoadIcon = () => (
+  <Icon>
+    <path d="M8 3 4 21M16 3l4 18" />
+    <path d="M12 5v2.5M12 11v2.5M12 17v2.5" />
+  </Icon>
+);
+
+/** Largest Army: a shield with a sword. */
+export const ArmyIcon = () => (
+  <Icon>
+    <path d="M12 3 5 5.5V11c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V5.5L12 3Z" />
+    <path d="M12 8v7M9.5 10.5h5" />
+  </Icon>
+);
+
 export const HangerIcon = () => (
   <Icon>
     <path d="M12 7.5a2 2 0 1 0-2-2" />
@@ -90,4 +113,85 @@ export const UndoIcon = () => (
   <Icon>
     <path d="M4 8v5h5M4.5 13A8 8 0 1 1 7 18.5" />
   </Icon>
+);
+
+export const BuildingIcon = () => (
+  <Icon>
+    <path d="M5 20.5V4.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M15 9.5h3a1 1 0 0 1 1 1v10M3.5 20.5h17" />
+    <path d="M8.5 7.5h3M8.5 11h3M8.5 14.5h3" />
+  </Icon>
+);
+
+export const HomeIcon = () => (
+  <Icon>
+    <path d="M4 11.2 12 4l8 7.2V19a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 19v-7.8Z" />
+    <path d="M9.5 20.5v-5.5h5v5.5" />
+  </Icon>
+);
+
+export const PalmIcon = () => (
+  <Icon>
+    <path d="M12 20.5V11M12 11C12 7 9 4.5 5 5.5c2.5.3 4.5 2 5 4.5M12 11c0-4 3-6.5 7-5.5-2.5.3-4.5 2-5 4.5M12 11c-2.5-1-5.500-.5-7.500 1.500 2.500-.5 4.500.5 6 2.500M12 11c2.500-1 5.500-.5 7.500 1.500-2.500-.5-4.500.5-6 2.500" />
+  </Icon>
+);
+
+export const ClockIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Icon>
+);
+
+export const MoreIcon = () => (
+  <Icon>
+    <circle cx="5.5" cy="12" r="1.2" />
+    <circle cx="12" cy="12" r="1.2" />
+    <circle cx="18.5" cy="12" r="1.2" />
+  </Icon>
+);
+
+export const ZoomInIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
+  </Icon>
+);
+
+export const ZoomOutIcon = () => (
+  <Icon>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+  </Icon>
+);
+
+export const PinIcon = () => (
+  <Icon>
+    <path d="M12 21s6.5-5.800 6.500-11a6.500 6.500 0 0 0-13 0c0 5.200 6.500 11 6.500 11Z" />
+    <circle cx="12" cy="10" r="2.300" />
+  </Icon>
+);
+
+export const DiceIcon = () => (
+  <Icon>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+    <circle cx="8.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+    <circle cx="8.5" cy="15.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="15.5" r="1" fill="currentColor" />
+  </Icon>
+);
+
+export const CalculatorIcon = () => (
+  <Icon>
+    <rect x="5" y="3" width="14" height="18" rx="2.5" />
+    <path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+  </Icon>
+);
+
+/** Skull silhouette (Lords of Waterdeep corruption). Filled, unlike the line icons. */
+export const SkullIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M12 0C18.4 0 22.6 5.2 22.6 11c0 2.6-1.2 3.6-2.4 4.3-1 .6-1.5 1.1-1.5 2.3v3c0 2.1-2.7 3.4-6.7 3.4s-6.7-1.3-6.7-3.4v-3c0-1.2-.5-1.7-1.5-2.3C2.6 14.6 1.4 13.6 1.4 11 1.4 5.2 5.6 0 12 0Z" />
+  </svg>
 );

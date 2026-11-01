@@ -1,100 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { isReviewed, markReviewed, stepItems, stepProgress, stepValues, toggleAllSeasons, toggleStepValue, toggleSubcategory } from './review';
+import { itemsToReview, reviewQueue, withCutOutPhoto, markReviewed, reviewSummary } from './review';
 import type { ClothingItem } from './types';
 
-const item = (over: Partial<ClothingItem> = {}): ClothingItem => ({
-  id: 'a',
-  name: 'Tee',
-  category: 'tops',
-  seasons: [],
-  status: 'active',
-  wears: [],
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-  ...over,
+const item = (id: string, createdAt: string, extra: Partial<ClothingItem> = {}): ClothingItem => ({
+  id, name: id, category: 'tops', seasons: [], status: 'active', wears: [], createdAt, updatedAt: createdAt, ...extra,
 });
 
-describe('toggleStepValue', () => {
-  it('toggles seasons, keeping canonical order', () => {
-    let i = toggleStepValue(item({ seasons: ['winter'] }), 'season', 'Spring');
-    expect(i.seasons).toEqual(['spring', 'winter']);
-    i = toggleStepValue(i, 'season', 'Winter');
-    expect(i.seasons).toEqual(['spring']);
+describe('review', () => {
+  it('lists only flagged items, newest first', () => {
+    const all = [item('a', '2026-01-01', { needsReview: true }), item('b', '2026-01-02'), item('c', '2026-01-03', { needsReview: true })];
+    expect(itemsToReview(all).map((i) => i.id)).toEqual(['c', 'a']);
   });
-
-  it('toggles occasions case-insensitively without touching other fields', () => {
-    const i = toggleStepValue(item({ occasions: ['work'], tags: ['x'] }), 'occasion', 'Work');
-    expect(i.occasions).toBeUndefined();
-    expect(i.tags).toEqual(['x']);
-    expect(toggleStepValue(i, 'occasion', 'Daily').occasions).toEqual(['Daily']);
+  it('queues flagged items oldest first, skipping the ones put off', () => {
+    const all = [item('c', '2026-01-03', { needsReview: true }), item('b', '2026-01-02', { needsReview: true }), item('a', '2026-01-01', { needsReview: true }), item('d', '2026-01-04')];
+    expect(reviewQueue(all, new Set()).map((i) => i.id)).toEqual(['a', 'b', 'c']);
+    expect(reviewQueue(all, new Set(['a'])).map((i) => i.id)).toEqual(['b', 'c']);
   });
-
-  it('changing category drops the sub-category, re-picking it keeps it', () => {
-    const t = item({ subcategory: 'T-shirt' });
-    expect(toggleStepValue(t, 'category', 'Tops').subcategory).toBe('T-shirt');
-    const b = toggleStepValue(t, 'category', 'Bottoms');
-    expect(b.category).toBe('bottoms');
-    expect(b.subcategory).toBeUndefined();
+  it('clears the flag and bumps updatedAt, keeping everything else', () => {
+    const flagged = item('a', '2026-01-01', { needsReview: true, tags: ['x'] });
+    const done = markReviewed(flagged, new Date('2026-02-01T00:00:00Z'));
+    expect(done.needsReview).toBeUndefined();
+    expect('needsReview' in done).toBe(false);
+    expect(done).toMatchObject({ id: 'a', tags: ['x'], updatedAt: '2026-02-01T00:00:00.000Z' });
   });
-
-  it('keeps colors and the legacy color string in step', () => {
-    const i = toggleStepValue(item({ color: 'Red' }), 'color', 'Blue');
-    expect(i.colors).toEqual(['Red', 'Blue']);
-    expect(i.color).toBe('Red, Blue');
-  });
-
-  it('single-choice steps replace, and clear on re-pick', () => {
-    let i = toggleStepValue(item(), 'pattern', 'Striped');
-    expect(i.pattern).toBe('Striped');
-    i = toggleStepValue(i, 'pattern', 'Solid');
-    expect(i.pattern).toBe('Solid');
-    expect(toggleStepValue(i, 'pattern', 'Solid').pattern).toBeUndefined();
-    expect(toggleStepValue(item({ fit: 'Slim' }), 'fit', 'Relaxed').fit).toBe('Relaxed');
-  });
-
-  it('edits the comma-joined material text', () => {
-    let i = toggleStepValue(item({ material: 'Cotton, Elastane' }), 'material', 'Linen');
-    expect(i.material).toBe('Cotton, Elastane, Linen');
-    i = toggleStepValue(i, 'material', 'cotton');
-    expect(i.material).toBe('Elastane, Linen');
-    expect(stepValues(i, 'material')).toEqual(['Elastane', 'Linen']);
+  it('summarises the details from the email', () => {
+    const s = reviewSummary(item('a', '2026-01-01', { brand: 'Lacoste', subcategory: 'Polo shirt', colors: ['Navy'], size: 'M', purchaseDate: '2026-10-01' }));
+    expect(s).toBe('Lacoste · Polo shirt · Navy · Size M · 2026-10-01');
   });
 });
 
-it('toggleSubcategory sets and clears', () => {
-  const i = toggleSubcategory(item(), 'Shirt');
-  expect(i.subcategory).toBe('Shirt');
-  expect(toggleSubcategory(i, 'shirt').subcategory).toBeUndefined();
-});
-
-describe('progress', () => {
-  const items = [
-    item({ id: '1', reviewed: { season: '2026-10-20' } }),
-    item({ id: '2', reviewed: { season: '2026-10-25' } }),
-    item({ id: '3' }),
-    item({ id: '4', status: 'sold' }),
-  ];
-
-  it('counts pending among active items and finds the latest date', () => {
-    expect(stepProgress(items, 'season')).toEqual({ lastReviewed: '2026-10-25', pending: 1, total: 3 });
-    expect(stepProgress(items, 'fit')).toEqual({ lastReviewed: undefined, pending: 3, total: 3 });
+describe('withCutOutPhoto', () => {
+  const now = new Date('2026-02-01T00:00:00Z');
+  const base = item('a', '2026-01-01', { needsReview: true, photo: 'original', name: 'Edited since' });
+  it('swaps in the cut-out, keeping edits made meanwhile', () => {
+    expect(withCutOutPhoto(base, 'original', 'cut', now)).toMatchObject({ photo: 'cut', name: 'Edited since', needsReview: true, updatedAt: '2026-02-01T00:00:00.000Z' });
   });
-
-  it('stepItems filters by category and only-new', () => {
-    expect(stepItems(items, 'season', 'all', true).map((i) => i.id)).toEqual(['3']);
-    expect(stepItems(items, 'season', 'all', false)).toHaveLength(3);
-    expect(stepItems(items, 'season', 'bottoms', false)).toHaveLength(0);
-  });
-
-  it('markReviewed stamps one step only', () => {
-    const m = markReviewed(items[2], 'season', '2026-10-26');
-    expect(isReviewed(m, 'season')).toBe(true);
-    expect(isReviewed(m, 'fit')).toBe(false);
+  it('leaves the item alone when there is no cut-out, no item, or the photo changed', () => {
+    expect(withCutOutPhoto(base, 'original', null, now)).toBeNull();
+    expect(withCutOutPhoto(undefined, 'original', 'cut', now)).toBeNull();
+    expect(withCutOutPhoto({ ...base, photo: 'new one' }, 'original', 'cut', now)).toBeNull();
   });
 });
 
-it('toggleAllSeasons selects all, then clears', () => {
-  const all = toggleAllSeasons(item({ seasons: ['winter'] }));
-  expect(all.seasons).toEqual(['spring', 'summer', 'fall', 'winter']);
-  expect(toggleAllSeasons(all).seasons).toEqual([]);
-});

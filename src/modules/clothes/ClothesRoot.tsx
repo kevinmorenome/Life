@@ -1,21 +1,25 @@
+import type { ReactNode } from 'react';
 import { useCollection } from '../../lib/useCollection';
 import { CalendarView } from './CalendarView';
-import { ClosetReview } from './ClosetReview';
 import { ClothesList } from './ClothesList';
-import { ClothesStatsView } from './ClothesStats';
 import { DayView } from './DayView';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
+import { NewItem } from './NewItem';
 import { LogItemsPicker, LogOutfitPicker, NewOutfitForDay } from './LogWearPickers';
 import { OutfitDetail } from './OutfitDetail';
 import { OutfitForm } from './OutfitForm';
 import { OutfitList } from './OutfitList';
-import { syncPieceWears } from './outfits';
+import { outfitPieces, syncPieceWears, wearOutfit } from './outfits';
+import { newPlan } from './plans';
+import { ReviewFlow } from './ReviewFlow';
+import { today } from '../../lib/format';
 import { TodayView } from './TodayView';
 import type { Trip } from '../packing/types';
 import type { ClothingItem, Outfit, Plan } from './types';
 
-export function ClothesRoot({ subroute }: { subroute: string[] }) {
+/** `dayExtras` is what other modules add to a day screen (see CalendarLayer). */
+export function ClothesRoot({ subroute, dayExtras }: { subroute: string[]; dayExtras?: ReactNode }) {
   const clothes = useCollection<ClothingItem>('clothes');
   const outfits = useCollection<Outfit>('outfits');
   const trips = useCollection<Trip>('trips');
@@ -28,7 +32,18 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
   if (first === 'outfits') {
     const outfitProps = { items, plans: plans.items, onSavePlan: plans.save, onRemovePlan: plans.remove, onSaveOutfit: outfits.save, onSaveItem: save };
     if (!second) return <OutfitList outfits={outfits.items} items={items} />;
-    if (second === 'new') return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} />;
+    if (second === 'new') {
+      // Future dates become plans; today and past dates are real wears.
+      const applyDate = async (o: Outfit, date: string) => {
+        if (date > today()) await plans.save(newPlan(o.id, date));
+        else {
+          const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
+          if (outfit) await outfits.save(outfit);
+          for (const p of pieces) await save(p);
+        }
+      };
+      return <OutfitForm initialItemIds={third ? [third] : undefined} items={items} onSave={outfits.save} onApplyDate={applyDate} />;
+    }
     const outfit = outfits.items.find((o) => o.id === second);
     if (!outfit) return <p className="muted">That outfit doesn’t exist anymore.</p>;
     if (third === 'edit') {
@@ -47,7 +62,7 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
       if (third === 'outfit') return <LogOutfitPicker date={second} {...props} />;
       if (third === 'new-outfit') return <NewOutfitForDay date={second} {...props} />;
       if (third === 'items') return <LogItemsPicker date={second} {...props} />;
-      return <DayView date={second} {...props} />;
+      return <DayView date={second} {...props}>{dayExtras}</DayView>;
     }
     const month = second && /^\d{4}-\d{2}$/.test(second) ? second : undefined;
     return <CalendarView month={month} items={items} outfits={outfits.items} trips={trips.items} plans={plans.items} />;
@@ -57,15 +72,17 @@ export function ClothesRoot({ subroute }: { subroute: string[] }) {
     return <TodayView items={items} outfits={outfits.items} onSaveItem={save} onSaveOutfit={outfits.save} />;
   }
 
-  if (first === 'review') return <ClosetReview step={second} items={items} onSave={save} />;
-
-  if (first === 'new') return <ItemForm onSave={save} />;
-  if (first === 'stats') return <ClothesStatsView items={items} />;
-  if (first) {
+  if (first && first !== 'review' && first !== 'new') {
     const item = items.find((i) => i.id === first);
     if (!item) return <p className="muted">That item doesn’t exist anymore.</p>;
     if (second === 'edit') return <ItemForm existing={item} onSave={save} />;
     return <ItemDetail item={item} items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />;
   }
-  return <ClothesList items={items} onSave={save} />;
+  return (
+    <>
+      <ClothesList items={items} onSave={save} />
+      {first === 'new' && <NewItem items={items} outfits={outfits.items} onSave={save} />}
+      {first === 'review' && <ReviewFlow items={items} outfits={outfits.items} onSave={save} onDelete={clothes.remove} />}
+    </>
+  );
 }

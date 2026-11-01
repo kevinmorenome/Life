@@ -3,7 +3,9 @@ import { href } from '../../lib/router';
 import { CheckIcon, DotsIcon, HeartIcon, PencilIcon, TrashIcon } from './icons';
 
 interface Props {
-  editPath: string;
+  editPath?: string;
+  /** Replaces the edit icon when given. */
+  leading?: ReactNode;
   favorite: boolean;
   onToggleFavorite: () => void;
   onDelete: () => void;
@@ -15,7 +17,7 @@ interface Props {
 }
 
 /** Edit / favourite / ⋮ icons on the left of the hero, primary action on the right. */
-export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, deleteLabel, menuItems = [], children }: Props) {
+export function HeroActions({ editPath, leading, favorite, onToggleFavorite, onDelete, deleteLabel, menuItems = [], children }: Props) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -43,9 +45,12 @@ export function HeroActions({ editPath, favorite, onToggleFavorite, onDelete, de
   return (
     <div className="hero-actions">
       <div className="icon-row">
-        <a className="icon-action" href={href(editPath)} aria-label="Edit">
-          <PencilIcon />
-        </a>
+        {leading ??
+          (editPath && (
+            <a className="icon-action" href={href(editPath)} aria-label="Edit">
+              <PencilIcon />
+            </a>
+          ))}
         <button
           className="icon-action"
           aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}

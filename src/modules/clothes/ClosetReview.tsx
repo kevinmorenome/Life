@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useCollection } from '../../lib/useCollection';
 import { today, shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { swatchCss } from './colors';
-import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { ChevronRightIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import {
   isReviewed,
@@ -18,16 +19,14 @@ import {
   toggleStepValue,
   toggleSubcategory,
   type ReviewStep,
-} from './review';
+} from './closetReview';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
-interface Props {
-  step?: string;
-  items: ClothingItem[];
-  onSave: (item: ClothingItem) => Promise<void>;
-}
+const BASE = '/settings/closet-review';
 
-export function ClosetReview({ step, items, onSave }: Props) {
+/** Settings → Closet review: pick a detail, then tick the right options for every item. */
+export function ClosetReview({ step }: { step?: string }) {
+  const { items, save: onSave } = useCollection<ClothingItem>('clothes');
   const info = step ? stepInfo(step) : undefined;
   if (step && !info) return <p className="muted">That review step doesn’t exist.</p>;
   return info ? <ReviewStepView step={info.id} items={items} onSave={onSave} /> : <ReviewHub items={items} />;
@@ -36,18 +35,15 @@ export function ClosetReview({ step, items, onSave }: Props) {
 function ReviewHub({ items }: { items: ClothingItem[] }) {
   return (
     <>
-      <a className="back" href={href('/clothes')} aria-label="Back to closet">
-        <ChevronLeftIcon />
-      </a>
-      <h2 className="review-title">Closet review</h2>
-      <p className="review-intro muted">Quickly review and edit your clothing details. Accurate details make for better filters and outfit ideas.</p>
+      <h1>Closet review</h1>
+      <p className="review-intro muted">Go through your closet one detail at a time. Accurate details make for better filters and outfit ideas.</p>
       <ul className="review-list">
         {STEPS.map((s) => {
           const p = stepProgress(items, s.id);
           const done = p.total > 0 && p.pending === 0;
           return (
             <li key={s.id}>
-              <a href={href(`/clothes/review/${s.id}`)} className="review-row">
+              <a href={href(`${BASE}/${s.id}`)} className="review-row">
                 <span className="review-row-main">
                   <span className="review-row-title">
                     <strong>{s.title}</strong>
@@ -103,18 +99,13 @@ function ReviewStepView({ step, items, onSave }: { step: ReviewStep; items: Clot
   async function done() {
     const date = today();
     for (const i of shown) await onSave(markReviewed(byId.get(i.id) ?? i, step, date));
-    navigate('/clothes/review');
+    navigate(BASE);
   }
 
   return (
     <div className="review-step">
-      <header className="review-head">
-        <a className="back" href={href('/clothes/review')} aria-label="Back to closet review">
-          <ChevronLeftIcon />
-        </a>
-        <h2>{info.title}</h2>
-      </header>
-      <h3 className="review-prompt">Select appropriate options</h3>
+      <h3 className="review-prompt">{info.title}</h3>
+      <p className="review-intro muted">Select the options that fit each item.</p>
 
       <label className="review-toggle">
         <span>Only new items</span>

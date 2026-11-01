@@ -1,15 +1,33 @@
 import { useState } from 'react';
 import { SYNC_LABELS } from './SyncBadge';
 import { downloadBlob, exportBackup, importBackup, mergeBackup } from './lib/backup';
+import { getAll, notify, put } from './lib/db';
 import { today } from './lib/format';
+import { PREVIEW_LABEL } from './lib/preview';
+import { ClosetReview } from './modules/clothes/ClosetReview';
+import { ChevronRightIcon } from './modules/clothes/icons';
+import { href } from './lib/router';
+import { sampleReviewItems } from './modules/clothes/sampleReview';
+import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
+import { SwarmSection } from './modules/checkins/SwarmSection';
+import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
+import type { WorkDay } from './modules/work/types';
 import { useSettings } from './lib/settings';
 import { syncNow } from './lib/sync';
 import { useSyncStatus } from './lib/useSyncStatus';
 
-export function Settings() {
+export function Settings({ subroute = [] }: { subroute?: string[] }) {
   const [message, setMessage] = useState('');
+  const [workMessage, setWorkMessage] = useState('');
   const sync = useSyncStatus();
   const { settings, update } = useSettings();
+
+  // PR previews never push, so these stay on this device and never reach your real closet.
+  async function addSamples() {
+    for (const item of sampleReviewItems(new Date())) await put('clothes', item);
+    notify('clothes');
+    setMessage('Added 4 sample items to review. Open the closet to see them.');
+  }
 
   async function onExport() {
     downloadBlob(await exportBackup(), `life-backup-${today()}.json`);
@@ -28,6 +46,26 @@ export function Settings() {
     }
   }
 
+  async function onBadgeReport(file: File | undefined) {
+    if (!file) return;
+    try {
+      const { days, skipped } = parseBadgeReport(await file.text(), new Date().toISOString());
+      if (days.length === 0) throw new Error('No days found. Is this the badge report CSV?');
+      const plan = planImport(days, await getAll<WorkDay>('workdays'));
+      for (const day of plan.write) await put('workdays', day);
+      notify('workdays');
+      const parts = [`Imported ${plan.write.length} days`];
+      if (plan.overridden) parts.push(`${plan.overridden} business ${plan.overridden === 1 ? 'trip replaced' : 'trips replaced'} days already set`);
+      if (plan.kept) parts.push(`${plan.kept} you set by hand were kept`);
+      if (plan.unchanged) parts.push(`${plan.unchanged} were already up to date`);
+      const other = Object.entries(skipped).filter(([label]) => label !== 'Weekend');
+      if (other.length) parts.push(`skipped ${other.map(([label, n]) => `${n} “${label}”`).join(', ')}`);
+      setWorkMessage(parts.join('; ') + '.');
+    } catch (e) {
+      setWorkMessage(e instanceof Error ? e.message : 'Import failed');
+    }
+  }
+
   async function onMerge(file: File | undefined) {
     if (!file) return;
     try {
@@ -37,6 +75,8 @@ export function Settings() {
       setMessage(e instanceof Error ? e.message : 'Import failed');
     }
   }
+
+  if (subroute[0] === 'closet-review') return <ClosetReview step={subroute[1]} />;
 
   return (
     <>
@@ -53,6 +93,64 @@ export function Settings() {
             ))}
           </select>
         </label>
+      </section>
+      <section className="card">
+        <h2>Closet</h2>
+        <a className="settings-link" href={href('/settings/closet-review')}>
+          <span>
+            <strong>Closet review</strong>
+            <span className="muted small">Go through season, occasion, color, material, fit and more for every item.</span>
+          </span>
+          <ChevronRightIcon />
+        </a>
+      </section>
+      <section className="card">
+        <h2>Work</h2>
+        <label className="field">
+          <span className="muted small">Your monthly number of days.</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={31}
+            value={settings.workTarget ?? 7}
+            onChange={(e) => update({ workTarget: Math.min(31, Math.max(0, Math.round(Number(e.target.value) || 0))) })}
+          />
+        </label>
+        <label className="field">
+          <span className="muted small">What it counts.</span>
+          <select
+            value={settings.workTargetKind ?? 'max-home'}
+            onChange={(e) => update({ workTargetKind: e.target.value as 'min-office' | 'max-home' })}
+          >
+            <option value="max-home">At most this many home days</option>
+            <option value="min-office">At least this many office days</option>
+          </select>
+        </label>
+        {(settings.workTargetKind ?? 'max-home') === 'max-home' && (
+          <label className="field">
+            <span className="muted small">Home days you can request on top, as a total (flagged as needing approval).</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={31}
+              value={settings.workExtended ?? 10}
+              onChange={(e) => update({ workExtended: Math.min(31, Math.max(0, Math.round(Number(e.target.value) || 0))) })}
+            />
+          </label>
+        )}
+        <p className="muted small">
+          Import your badge report (CSV) to fill in past office, home, trip and off days. Days you set by hand are never replaced, and home
+          days get no times, since the report only has placeholders for them.
+        </p>
+        <div className="form-actions start">
+          <label className="btn">
+            Import badge report
+            <input type="file" accept=".csv,text/csv" hidden onChange={(e) => onBadgeReport(e.target.files?.[0])} />
+          </label>
+        </div>
+        {workMessage && <p className="small">{workMessage}</p>}
       </section>
       <section className="card">
         <h2>Sync</h2>
@@ -81,6 +179,19 @@ export function Settings() {
           )}
         </div>
       </section>
+      <SwarmSection />
+      <OfficeFromSwarm />
+      {PREVIEW_LABEL && (
+        <section className="card">
+          <h2>Preview tools</h2>
+          <p className="muted small">Adds made-up “needs review” items so you can try the review flow. They stay on this device only.</p>
+          <div className="form-actions start">
+            <button className="btn" onClick={addSamples}>
+              Add sample items to review
+            </button>
+          </div>
+        </section>
+      )}
       <section className="card">
         <h2>Backup & import</h2>
         <p className="muted small">

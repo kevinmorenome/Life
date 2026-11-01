@@ -1,4 +1,4 @@
-import type { InboxRequest, ItemEditRequest, OutfitEditRequest, TagRequest, WearRequest } from '../../../worker/protocol';
+import type { InboxRequest, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from '../../../worker/protocol';
 import { outfitPieces, wearOutfit } from './outfits';
 import type { ClothingItem, Outfit } from './types';
 import { withWear } from './wear';
@@ -47,11 +47,15 @@ export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], a
       applyOutfitEdit(req, items, outfits, changedOutfits, missing);
     } else if (req.type === 'item-edit') {
       applyItemEdit(req, items, changedItems, missing);
+    } else if (req.type === 'photo') {
+      applyPhoto(req, items, changedItems, missing, now);
     } else if (req.type === 'wear') {
       applyWear(req, items, outfits, changedItems, changedOutfits, missing);
     }
     applied.push({
       ...req,
+      // The image now lives on the item; don't keep a second copy in the inbox.
+      ...(req.type === 'photo' ? { photo: undefined } : {}),
       appliedAt: now.toISOString(),
       updatedAt: now.toISOString(),
       ...(missing.length ? { error: `No longer exist: ${missing.join(', ')}` } : {}),
@@ -65,6 +69,15 @@ export function applyInbox(requests: InboxRequest[], allItems: ClothingItem[], a
     requests: applied,
     expired: requests.filter((r) => r.appliedAt && r.appliedAt < cutoff).map((r) => r.id),
   };
+}
+
+function applyPhoto(req: PhotoRequest, items: Map<string, ClothingItem>, changedItems: Set<string>, missing: string[], now: Date) {
+  const id = req.itemIds[0];
+  const item = id ? items.get(id) : undefined;
+  if (!item) return void missing.push(id ?? 'item');
+  if (!req.photo || item.photo === req.photo) return;
+  items.set(item.id, { ...item, photo: req.photo, updatedAt: now.toISOString() });
+  changedItems.add(item.id);
 }
 
 type Records = { items: Map<string, ClothingItem>; outfits: Map<string, Outfit> };
@@ -188,4 +201,22 @@ function applyWear(
     items.set(id, withWear(item, req.date));
     changedItems.add(id);
   }
+}
+
+/**
+ * Runs queued photos (from `set_item_photo`) through `convert` (downscale, background removal) before they are
+ * applied, because the Worker can only store the image as downloaded. A photo that fails to convert is applied
+ * as is rather than dropped. Requests already applied are left alone.
+ */
+export async function preparePhotos(requests: InboxRequest[], convert: (dataUrl: string) => Promise<string>): Promise<InboxRequest[]> {
+  return Promise.all(
+    requests.map(async (r) => {
+      if (r.type !== 'photo' || r.appliedAt || !r.photo) return r;
+      try {
+        return { ...r, photo: await convert(r.photo) };
+      } catch {
+        return r;
+      }
+    }),
+  );
 }

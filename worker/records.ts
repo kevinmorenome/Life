@@ -21,7 +21,7 @@ export type Row = { id: string } & Record<string, unknown>;
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
   list(store: 'clothes' | 'outfits' | 'inbox'): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox', id: string, record: object): Promise<void>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }

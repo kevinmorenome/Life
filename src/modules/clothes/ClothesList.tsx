@@ -3,15 +3,23 @@ import { today } from '../../lib/format';
 import { EyeIcon, EyeOffIcon } from '../../icons';
 import { href } from '../../lib/router';
 import { activeFilterCount, categoryCounts, DEFAULT_FILTERS, filterItems, type ClosetFilters } from './closetFilter';
+import { ClosetTabs } from './ClosetTabs';
 import { FilterSheet } from './FilterSheet';
 import { withStatusFor } from './bulk';
-import { CheckIcon, CloseIcon, HeartIcon, SlidersIcon } from './icons';
+import { CheckIcon, CloseIcon, HeartIcon, SlidersIcon, SparkleIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
 import { wearCount } from './stats';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
+// Kept at module level so filters survive opening an item and coming back (the list unmounts).
+let savedFilters: ClosetFilters = DEFAULT_FILTERS;
+
 export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: (item: ClothingItem) => Promise<void> }) {
-  const [filters, setFilters] = useState<ClosetFilters>(DEFAULT_FILTERS);
+  const [filters, setFiltersState] = useState<ClosetFilters>(savedFilters);
+  const setFilters = (next: ClosetFilters) => {
+    savedFilters = next;
+    setFiltersState(next);
+  };
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -41,8 +49,17 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
     stopSelecting();
   }
 
+  const toReview = items.filter((i) => i.needsReview).length;
+
   return (
     <>
+      <ClosetTabs active="closet" />
+      {toReview > 0 && (
+        <a className="card today-prompt" href={href('/clothes/review')}>
+          <span>{toReview === 1 ? '1 new item to review' : `${toReview} new items to review`}</span>
+          <strong>Review →</strong>
+        </a>
+      )}
       {items.length > 0 && !items.some((i) => i.wears.includes(today())) && (
         <a className="card today-prompt" href={href('/clothes/today')}>
           <span>Nothing logged today</span>
@@ -99,7 +116,7 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
           </nav>
 
           {visible.length === 0 ? (
-            <p className="muted empty">{filters.favoritesOnly && !filters.query && active === 1 ? 'No favorites yet.' : 'No items match.'}</p>
+            <p className="muted empty">{filters.reviewOnly && !filters.query && active === 1 ? 'Nothing left to review.' : filters.favoritesOnly && !filters.query && active === 1 ? 'No favorites yet.' : 'No items match.'}</p>
           ) : (
             <ul className="closet-grid">
               {visible.map((item) => (
@@ -123,6 +140,7 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
                     <a href={href(`/clothes/${item.id}`)} className="closet-tile">
                       <ItemThumb item={item} />
                       {item.favorite && <FavMark />}
+                      {item.needsReview && <ReviewMark />}
                       <span className="tile-name">{item.name}</span>
                       <span className="tile-meta">{tileMeta(item)}</span>
                     </a>
@@ -161,6 +179,15 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
         />
       )}
     </>
+  );
+}
+
+/** Corner marker on items added automatically (e.g. from a receipt) that still need checking. */
+export function ReviewMark() {
+  return (
+    <span className="review-mark" role="img" aria-label="Needs review">
+      <SparkleIcon />
+    </span>
   );
 }
 

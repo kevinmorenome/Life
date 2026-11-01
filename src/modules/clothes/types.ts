@@ -64,6 +64,8 @@ export interface ClothingItem {
   /** YYYY-MM-DD */
   purchaseDate?: string;
   status: Status;
+  /** YYYY-MM-DD the item left the closet (sold, donated, discarded). Unset for older records. */
+  retiredDate?: string;
   condition?: Condition;
   /** JPEG data URL */
   photo?: string;
@@ -72,6 +74,8 @@ export interface ClothingItem {
   material?: string;
   tags?: string[];
   favorite?: boolean;
+  /** Added automatically (e.g. from a receipt email) and not yet checked by the owner. */
+  needsReview?: boolean;
   /** Situations it suits, e.g. "work", "date night". */
   occasions?: string[];
   /** e.g. "Striped"; set from Closet review. */
@@ -97,6 +101,7 @@ export interface Outfit {
   name?: string;
   itemIds: string[];
   tags?: string[];
+  seasons?: Season[];
   favorite?: boolean;
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];
