@@ -268,18 +268,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                     aria-label={`${name(id)} points before the Lord`}
                   />
                 )}
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  value={scores[id] ?? ''}
-                  onChange={(e) => setScores({ ...scores, [id]: e.target.value })}
-                  placeholder={waterdeepGame ? 'Final' : 'Score'}
-                  aria-label={`${name(id)} ${waterdeepGame ? 'final score, after the Lord' : 'score'}`}
-                />
-                <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
-                  🏆
-                </button>
                 {waterdeepGame && waterdeep.skullport && (
                     <input
                       type="number"
@@ -298,6 +286,18 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                       aria-label={`${name(id)} number of corruptions`}
                     />
                   )}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={scores[id] ?? ''}
+                  onChange={(e) => setScores({ ...scores, [id]: e.target.value })}
+                  placeholder={waterdeepGame ? 'Final' : 'Score'}
+                  aria-label={`${name(id)} ${waterdeepGame ? 'final score, after the Lord' : 'score'}`}
+                />
+                <button type="button" className="chip" aria-pressed={winners.includes(id)} onClick={() => toggleWinner(id)} aria-label={`${name(id)} won`}>
+                  🏆
+                </button>
               </li>
               );
             })}
