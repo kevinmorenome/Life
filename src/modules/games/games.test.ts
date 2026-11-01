@@ -249,3 +249,11 @@ describe('Skullport corruption', () => {
     expect(out.find((s) => s.id === 'b')).toEqual({ id: 'b', games: 2, wins: 1, count: 1, points: -2 });
   });
 });
+
+describe('Waterdeep Lord list', () => {
+  it('has all 17 distinct Lords', async () => {
+    const { WATERDEEP_LORDS } = await import('./waterdeep');
+    expect(WATERDEEP_LORDS).toHaveLength(17);
+    expect(new Set(WATERDEEP_LORDS).size).toBe(17);
+  });
+});

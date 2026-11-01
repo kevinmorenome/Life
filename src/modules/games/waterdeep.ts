@@ -2,18 +2,25 @@ import type { GameTitle, Match } from './types';
 
 export const isWaterdeep = (title?: Pick<GameTitle, 'name'>): boolean => !!title && /waterdeep/i.test(title.name);
 
-/** Suggestions for the Lord field (free text, so expansion Lords can be typed too). */
+/** Suggestions for the Lord field (free text, so anything else can still be typed): the base game, then Undermountain, then Skullport. */
 export const WATERDEEP_LORDS = [
   'Brianne Byndraeth',
   'Caladorn Cassalanter',
   'Durnan the Wanderer',
-  'Kyriani Agrivar',
   'Khelben Arunsun',
+  'Kyriani Agrivar',
   'Larissa Neathal',
   'Mirt the Moneylender',
   'Nindil Jalbuck',
+  'Nymara Scheiron',
   'Piergeiron the Paladinson',
   'Sammereza Sulphontis',
+  'Danilo Thann',
+  'Halaster Blackcloak',
+  'Trobriand',
+  'Irusyl Eraneth',
+  'The Xanathar',
+  'Sangalor',
 ] as const;
 
 /** Extra details for a Lords of Waterdeep game, kept on the match. The match score is the final total, after the Lord's bonus. */
