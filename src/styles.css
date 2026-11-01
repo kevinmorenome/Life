@@ -5012,9 +5012,15 @@ button.detail-row {
   width: 1.1rem;
   height: 1.1rem;
   transform: translateY(-50%);
-  opacity: 0.55;
+  color: #1e3560;
   pointer-events: none;
   display: inline-flex;
+}
+/* Navy disappears on a dark field, so it is a lighter navy there. */
+@media (prefers-color-scheme: dark) {
+  .game-scores li.wd .wd-icon {
+    color: #5f84cf;
+  }
 }
 .game-scores li.wd .wd-icon svg {
   width: 100%;
