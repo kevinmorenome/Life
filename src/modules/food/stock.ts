@@ -1,5 +1,5 @@
 import type { Purchase } from './products';
-import type { ProductType, StockEvent } from './types';
+import type { ProductType, StockEvent, Unit } from './types';
 
 /** Snacks are assumed eaten after this many days unless you say otherwise. */
 export const SNACK_DAYS = 3;
@@ -116,3 +116,46 @@ export function needsCheck(type: ProductType, s: Stock, today: string): boolean 
 
 /** Quantity worth showing: "3", "0.48", never "0.4800000001". */
 export const formatQty = (n: number): string => String(round3(n));
+
+/** What can be said about how much of the open pack is left: "three quarters", "half", "a quarter", "almost gone". */
+export const LEVELS = [
+  { fraction: 0.75, label: '¾ left' },
+  { fraction: 0.5, label: '½ left' },
+  { fraction: 0.25, label: '¼ left' },
+  { fraction: 0.1, label: 'Almost gone' },
+] as const;
+
+/** How full the pack in use is (1 = unopened): the part after the whole packs. Weighed and poured goods have no packs. */
+function openLevel(quantity: number, unit: Unit): number {
+  if (unit !== 'pc') return 1;
+  const part = quantity - Math.floor(quantity + 1e-9);
+  return part < 1e-9 ? 1 : round3(part);
+}
+
+/**
+ * How much there is once the pack in use (or, for kg/l, what you have) is down to `fraction`. For pieces the
+ * packs you haven't opened stay whole: 2 packs, the open one at half → 1½. Never more than you have now.
+ */
+export function partLeft(quantity: number, unit: Unit, fraction: number): number {
+  if (quantity <= 0) return 0;
+  const next = unit === 'pc' ? Math.ceil(quantity - 1e-9) - 1 + fraction : quantity * fraction;
+  return round3(Math.min(next, quantity));
+}
+
+/** The "part left" choices that actually lower what you have (¼ left makes no sense for a pack that is already at ⅛). */
+export function levelOptions(quantity: number, unit: Unit): { fraction: number; label: string }[] {
+  if (quantity <= 0) return [];
+  const level = openLevel(quantity, unit);
+  return LEVELS.filter((l) => l.fraction < level - 1e-9);
+}
+
+const GLYPHS: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' };
+
+/** A quantity as people say it: pieces in quarters ("1½", "¼"), kg and l as decimals. */
+export function formatAmount(quantity: number, unit: Unit): string {
+  if (unit !== 'pc') return formatQty(quantity);
+  const whole = Math.floor(quantity + 1e-9);
+  const glyph = GLYPHS[String(round3(quantity - whole))];
+  if (glyph) return whole ? `${whole}${glyph}` : glyph;
+  return formatQty(quantity);
+}

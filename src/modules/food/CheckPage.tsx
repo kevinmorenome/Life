@@ -1,6 +1,6 @@
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { needsCheck, formatQty } from './stock';
+import { formatAmount, needsCheck } from './stock';
 import { stockEntries } from './StockPage';
 import { unitLabel } from './StockRow';
 import { stockEvent } from './stockActions';
@@ -27,7 +27,7 @@ export function CheckPage({ receipts, products, events, onEvent }: { receipts: F
           <li key={product.id} className="check-row">
             <strong>{product.name}</strong>
             <span className="muted small">
-              {formatQty(stock.quantity)}
+              {formatAmount(stock.quantity, product.unit)}
               {unitLabel(product.unit)} thought left{stock.lastConfirmed ? ` · last confirmed ${shortDate(stock.lastConfirmed)}` : ''}
               {stock.status === 'check' ? ' · probably past its date' : ''}
             </span>

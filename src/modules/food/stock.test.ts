@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, needsCheck, stockOf } from './stock';
+import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, partLeft, stockOf } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (date: string, quantity: number) => ({ date, quantity });
@@ -98,5 +98,38 @@ describe('needsCheck', () => {
     expect(needsCheck('staple', counted, '2026-10-20')).toBe(false);
     const gone = stockOf(staple, [buy('2026-10-01', 3)], [ev('count', 0, '2026-10-18')], '2026-10-30');
     expect(needsCheck('staple', gone, '2026-10-30')).toBe(false);
+  });
+});
+
+describe('part left', () => {
+  it('lowers the open pack and keeps the unopened ones whole', () => {
+    expect(partLeft(2, 'pc', 0.5)).toBe(1.5);
+    expect(partLeft(1, 'pc', 0.5)).toBe(0.5);
+    expect(partLeft(1.5, 'pc', 0.25)).toBe(1.25);
+    expect(partLeft(3, 'pc', 0.1)).toBe(2.1);
+  });
+  it('takes a fraction of what you have for weighed and poured goods', () => {
+    expect(partLeft(0.48, 'kg', 0.5)).toBe(0.24);
+    expect(partLeft(1, 'l', 0.25)).toBe(0.25);
+  });
+  it('never raises the stock, and nothing from nothing', () => {
+    expect(partLeft(1.25, 'pc', 0.75)).toBe(1.25);
+    expect(partLeft(0, 'pc', 0.5)).toBe(0);
+  });
+  it('only offers levels below how full the open pack already is', () => {
+    expect(levelOptions(2, 'pc').map((l) => l.fraction)).toEqual([0.75, 0.5, 0.25, 0.1]);
+    expect(levelOptions(1.5, 'pc').map((l) => l.fraction)).toEqual([0.25, 0.1]);
+    expect(levelOptions(1.1, 'pc')).toEqual([]);
+    expect(levelOptions(0, 'pc')).toEqual([]);
+    expect(levelOptions(0.5, 'kg').map((l) => l.fraction)).toEqual([0.75, 0.5, 0.25, 0.1]);
+  });
+  it('shows pieces in quarters and everything else as decimals', () => {
+    expect(['0.5', '1.5', '0.25', '2.75', '2', '0.1'].map((q) => formatAmount(Number(q), 'pc'))).toEqual(['½', '1½', '¼', '2¾', '2', '0.1']);
+    expect(formatAmount(0.5, 'kg')).toBe('0.5');
+  });
+  it('is what stock then shows after a use of the difference', () => {
+    const used = 2 - partLeft(2, 'pc', 0.5);
+    expect(stockOf(staple, [buy('2026-10-01', 2)], [ev('use', used, '2026-10-02')], '2026-10-03')).toMatchObject({ quantity: 1.5, status: 'ok' });
+    expect(stockOf(staple, [buy('2026-10-01', 1)], [ev('use', 0.5, '2026-10-02')], '2026-10-03').status).toBe('low');
   });
 });

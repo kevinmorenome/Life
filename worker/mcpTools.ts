@@ -9,7 +9,7 @@ import { CATEGORIES, CONDITIONS, SEASONS, STATUSES } from '../src/modules/clothe
 import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, TagRequest, WearRequest } from './protocol';
 import { PHOTOS_URI } from './photosView';
 import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
-import { formatQty, stockOf, type Stock } from '../src/modules/food/stock';
+import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
@@ -237,12 +237,13 @@ export const TOOLS = [
   {
     name: 'use_stock',
     description:
-      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. The record is a new event; nothing existing is changed.',
+      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. The record is a new event; nothing existing is changed.',
     inputSchema: {
       type: 'object',
       properties: {
         product: { type: 'string', description: 'Product name or the words the user used, e.g. "hummus"' },
-        action: { type: 'string', enum: ['use', 'finish', 'toss'], description: 'Default "use".' },
+        action: { type: 'string', enum: ['use', 'some_left', 'finish', 'toss'], description: 'Default "use".' },
+        fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
         note: { type: 'string' },
@@ -865,7 +866,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   const p = found.product;
   const date = eventDate(args.date, today);
   if (!date) return fail('date must be YYYY-MM-DD.');
-  const action = args.action === 'finish' || args.action === 'toss' ? args.action : 'use';
+  const action = args.action === 'finish' || args.action === 'toss' || args.action === 'some_left' ? args.action : 'use';
   const before = stockFor(p).quantity;
 
   let type: StockEvent['type'];
@@ -877,6 +878,14 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     if (before <= 0) return fail(`None of "${p.name}" is in stock, so there is nothing to throw away.`);
     type = 'toss';
     quantity = before;
+  } else if (action === 'some_left') {
+    const f = args.fractionLeft;
+    if (typeof f !== 'number' || !Number.isFinite(f) || f <= 0 || f >= 1) return fail('fractionLeft must be between 0 and 1, e.g. 0.5 for half left. Use action "finish" when none is left.');
+    if (before <= 0) return fail(`None of "${p.name}" is in stock, so nothing can be partly used. Use count_stock if the user says they have some.`);
+    const used = Math.round((before - partLeft(before, p.unit, f)) * 1000) / 1000;
+    if (used <= 0) return fail(`"${p.name}" is already at or below that level (${formatQty(before)} ${p.unit === 'pc' ? 'pieces' : p.unit} in stock). Use count_stock if the user says otherwise.`);
+    type = 'use';
+    quantity = used;
   } else {
     const q = args.quantity === undefined ? 1 : args.quantity;
     if (typeof q !== 'number' || !Number.isFinite(q) || q <= 0 || q > 10_000) return fail('quantity must be a positive number.');
@@ -891,7 +900,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   return ok({
     recorded: action,
     product: p.name,
-    ...(action === 'use' ? { used: formatQty(quantity) } : {}),
+    ...(action === 'use' || action === 'some_left' ? { used: formatQty(quantity) } : {}),
     left: left.quantity,
     unit: p.unit === 'pc' ? 'pieces' : p.unit,
     ...(action === 'use' && quantity > before ? { note: `Only ${formatQty(before)} was thought to be in stock, so it now shows none left.` } : {}),

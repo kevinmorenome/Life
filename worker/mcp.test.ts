@@ -666,6 +666,25 @@ describe('food stock', () => {
     ]);
   });
 
+  it('records part of a pack used up from how much is left', async () => {
+    const { ctx, data } = seed();
+    // 2 hummus bought: half of the open one left → 1.5 pieces
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).json()).toMatchObject({ recorded: 'some_left', used: '0.5', left: 1.5 });
+    // already at ½: "¾ left" would raise it, "¼ left" lowers it
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.75 })).isError).toBe(true);
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.25 })).json()).toMatchObject({ used: '0.25', left: 1.25 });
+    // weighed: a fraction of what there was
+    expect((await call(ctx, 'use_stock', { product: 'chicken', action: 'some_left', fractionLeft: 0.5 })).json()).toMatchObject({ used: '0.25', left: 0.25 });
+    expect([...data.foodstock.values()].map((e) => [e.productId, e.type, e.quantity])).toEqual([
+      ['fp-hummus', 'use', 0.5], ['fp-hummus', 'use', 0.25], ['fp-chicken-fillet', 'use', 0.25],
+    ]);
+    for (const bad of [0, 1, 2, -0.5, 'half', undefined]) {
+      expect((await call(ctx, 'use_stock', { product: 'oat drink', action: 'some_left', fractionLeft: bad })).isError).toBe(true);
+    }
+    await call(ctx, 'use_stock', { product: 'hummus', action: 'finish' });
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
+  });
+
   it('counts, and warns when more was used than was thought to be in stock', async () => {
     const { ctx } = seed();
     expect((await call(ctx, 'count_stock', { product: 'hummus', quantity: 1 })).json()).toMatchObject({ counted: 'Hummus', quantity: 1 });

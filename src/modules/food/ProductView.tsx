@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { averageUnitPrice, defaultStorage, perUnit, type ProductSummary } from './products';
-import { formatQty, stockOf } from './stock';
-import { stockEvent } from './stockActions';
+import { formatAmount, formatQty, levelOptions, stockOf } from './stock';
+import { partLeftEvent, stockEvent } from './stockActions';
 import { unitLabel } from './StockRow';
 import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
 
@@ -54,7 +54,7 @@ export function ProductView({
 
       <section className="food-gap">
         <p className="food-total">
-          {formatQty(stock.quantity)}
+          {formatAmount(stock.quantity, product.unit)}
           <span className="muted small">{unitLabel(product.unit) || ' in stock'}</span>
         </p>
         <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : ''].filter(Boolean).join(' · ')}</p>
@@ -69,6 +69,19 @@ export function ProductView({
           >
             Used some
           </button>
+          {levelOptions(stock.quantity, product.unit).map((l) => (
+            <button
+              key={l.fraction}
+              type="button"
+              className="chip"
+              onClick={() => {
+                const e = partLeftEvent(product.id, product.unit, stock, l.fraction, 'app');
+                if (e) onEvent(e);
+              }}
+            >
+              {l.label}
+            </button>
+          ))}
           <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 0, 'app'))}>
             Finished
           </button>
@@ -124,7 +137,7 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : `${formatQty(e.quantity)}${unitLabel(product.unit)}`}
+                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product.unit)}`}
                   <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}
