@@ -163,7 +163,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
           <span>Scores and winner</span>
           {(hasOrder || hasColors || catanGame || waterdeepGame) && (
             <span className="muted small">
-              {[waterdeepGame && 'Per player: Lord, points before the Lord, final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
+              {[waterdeepGame && 'Tap the circle to pick each Lord, then enter points before the Lord and the final total', hasOrder && 'Drag the players to choose the turn order', hasColors && 'tap the dots to choose colors', catanGame && 'tap the road and shield for longest road and largest army'].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase())}.
             </span>
           )}
           <ul className="game-scores" ref={list}>
@@ -176,7 +176,7 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
               return (
               <li
                 key={id}
-                className={waterdeepGame ? 'wd' : undefined}
+                className={waterdeepGame ? (waterdeep.skullport ? 'wd wd-sk' : 'wd') : undefined}
                 ref={(el) => {
                   rows.current[id] = el;
                 }}
@@ -284,8 +284,6 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                   🏆
                 </button>
                 {waterdeepGame && waterdeep.skullport && (
-                  <label className="wd-corr">
-                    <span className="muted small">Corruptions</span>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -299,12 +297,10 @@ export function MatchForm({ night, existing, players, titles, onSave, onSaveTitl
                         else delete rest[id];
                         setWaterdeep({ ...waterdeep, corruptions: rest });
                       }}
-                      placeholder="Corr."
+                      placeholder="Corrupt."
                       aria-label={`${name(id)} number of corruptions`}
-                      style={{ width: '5rem' }}
                     />
-                    </label>
-                )}
+                  )}
               </li>
               );
             })}
