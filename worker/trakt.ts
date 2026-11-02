@@ -4,7 +4,7 @@
 // into the `watched` store as fresh, immutable records with ids `trakt-<history id>`.
 // These routes sit behind Cloudflare Access like the sync API.
 
-import { upsertStatement } from './records';
+import { insertIfMissingStatement } from './records';
 
 export interface TraktEnv {
   TRAKT_CLIENT_ID?: string;
@@ -130,10 +130,10 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
   if (route === 'device/start' && request.method === 'POST') {
     const res = await ctx.fetch(`${AUTH}/oauth/device/code`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: traktHeaders(env),
       body: JSON.stringify({ client_id: env.TRAKT_CLIENT_ID }),
     });
-    if (!res.ok) return json({ error: `Trakt answered ${res.status}` }, 502);
+    if (!res.ok) return json({ error: failure(res.status) }, 502);
     const d = (await res.json()) as { device_code?: string; user_code?: string; verification_url?: string; expires_in?: number; interval?: number };
     if (!d.device_code || !d.user_code) return json({ error: 'Trakt gave no code' }, 502);
     return json({
@@ -150,7 +150,7 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
     if (typeof code !== 'string' || !code) return json({ error: 'deviceCode is required' }, 400);
     const res = await ctx.fetch(`${AUTH}/oauth/device/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: traktHeaders(env),
       body: JSON.stringify({ code, client_id: env.TRAKT_CLIENT_ID, ...secret(env) }),
     });
     if (res.status === 200) {
@@ -193,6 +193,18 @@ interface TokenResponse {
   created_at?: number;
 }
 
+/** Headers Trakt requires on every request, OAuth ones included (a call without them is refused with 403). */
+const traktHeaders = (env: TraktEnv): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  'User-Agent': 'Life/1.0',
+  'trakt-api-key': env.TRAKT_CLIENT_ID!,
+  'trakt-api-version': '2',
+});
+
+/** What a failed Trakt call says, with a hint for the one people hit first. */
+const failure = (status: number) =>
+  status === 403 ? 'Trakt refused the app (403): check TRAKT_CLIENT_ID is the Client ID of your Trakt app' : `Trakt answered ${status}`;
+
 const secret = (env: TraktEnv) => (env.TRAKT_CLIENT_SECRET ? { client_secret: env.TRAKT_CLIENT_SECRET } : {});
 
 function tokensFrom(t: TokenResponse, now: Date): Tokens | null {
@@ -204,7 +216,7 @@ function tokensFrom(t: TokenResponse, now: Date): Tokens | null {
 async function requestTokens(ctx: TraktContext, body: Record<string, string>): Promise<Tokens | null> {
   const res = await ctx.fetch(`${AUTH}/oauth/token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: traktHeaders(ctx.env),
     body: JSON.stringify({ ...body, client_id: ctx.env.TRAKT_CLIENT_ID, ...secret(ctx.env) }),
   });
   return res.ok ? tokensFrom((await res.json()) as TokenResponse, ctx.now) : null;
@@ -227,15 +239,10 @@ async function sync(conn: Connection, ctx: TraktContext, firstPage: number): Pro
     url.searchParams.set('limit', String(PAGE));
     if (conn.historyDone && conn.cursor > 0) url.searchParams.set('start_at', new Date(conn.cursor * 1000).toISOString());
     const res = await ctx.fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${conn.token}`,
-        'Content-Type': 'application/json',
-        'trakt-api-version': '2',
-        'trakt-api-key': ctx.env.TRAKT_CLIENT_ID!,
-      },
+      headers: { ...traktHeaders(ctx.env), Authorization: `Bearer ${conn.token}` },
     });
     if (res.status === 401) return json({ error: 'Trakt sign-in expired: connect again', reconnect: true }, 409);
-    if (!res.ok) return json({ error: `Trakt answered ${res.status}` }, 502);
+    if (!res.ok) return json({ error: failure(res.status) }, 502);
     const items = (await res.json()) as RawPlay[];
     const records = items.map((i) => playRecord(i, ctx.now)).filter((r): r is PlayRecord => r !== null);
     newest = records.reduce((max, r) => Math.max(max, Math.floor(Date.parse(r.at) / 1000)), newest);
@@ -281,7 +288,8 @@ export function d1TraktStore(db: D1Database): TraktStore {
       await db.prepare('UPDATE integrations SET token = ?1, refresh_token = ?2, expires_at = ?3 WHERE name = ?4').bind(t.token, t.refreshToken, t.expiresAt, 'trakt').run();
     },
     async savePlays(records, progress, now) {
-      const stmt = upsertStatement(db);
+      // Plays never change, and one the user deleted must not be brought back by a later fetch.
+      const stmt = insertIfMissingStatement(db);
       await db.batch([
         ...records.map((r) => stmt.bind('watched', r.id, JSON.stringify(r), now)),
         progress

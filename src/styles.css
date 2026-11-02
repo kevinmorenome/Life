@@ -6042,11 +6042,18 @@ a.game-row + .food-h2 {
 }
 .watch-plays li {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
+  grid-template-columns: 5.5rem 1fr auto;
   gap: 0.5rem;
-  align-items: baseline;
-  padding: 0.6rem 0;
+  align-items: center;
+  padding: 0.1rem 0;
   border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+}
+.checkins-day li.watch-day-play,
+.widget-list li.watch-day-play {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 .trakt-code {
   margin: 0.5rem 0;
@@ -6390,4 +6397,43 @@ a.game-row + .food-h2 {
   .widget-chevron {
     transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
   }
+}
+
+.watch-search {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.watch-search .search {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+.watch-search .icon-btn[aria-pressed='true'] {
+  color: var(--accent);
+}
+.watch-plays li.is-selected {
+  background: var(--accent-soft);
+}
+.watch-select-bar {
+  top: 8px;
+  bottom: auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  border-top: 1px solid var(--glass-edge, var(--border));
+}
+.watch-select-bar .small {
+  flex: 1;
+  white-space: nowrap;
+}
+.watch-select-bar .btn {
+  white-space: nowrap;
+}
+.watch-search .icon-btn,
+.watch-select-bar .icon-btn {
+  margin-right: 0;
 }
