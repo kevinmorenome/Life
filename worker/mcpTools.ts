@@ -10,6 +10,8 @@ import type { ItemChanges, ItemEditRequest, OutfitEditRequest, PhotoRequest, Pro
 import { PHOTOS_URI } from './photosView';
 import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, pluralize, productId, productSummaries, type ProductSummary } from '../src/modules/food/products';
 import { parseProductChanges, withProductChanges } from '../src/modules/food/productEdits';
+import { comparePrices, offerShare, priceUnit } from '../src/modules/food/prices';
+import { REASON_LABELS, shoppingList } from '../src/modules/food/shopping';
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
@@ -273,6 +275,22 @@ export const TOOLS = [
     },
   },
   {
+    name: 'shopping_list',
+    description:
+      'What to buy next: products that are out or running low, and products the user usually rebuys by now (based on how often they bought them before), each with the usual quantity and the cheapest store known for it with its shelf price per unit (kg, l or item), and how much that saves compared with the store they bought it at last. Worked out from the grocery receipts and stock, so it only knows products bought before. Use it to answer "what do I need from the shop?" or "where should I buy X?"; it changes nothing.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'product_prices',
+    description:
+      'What a food product costs at each store the user has bought it at (shelf price per kg, l or item, without offers; the last price paid when it was on offer; last visit and lowest price), and whether another store has been clearly cheaper than where it was bought last. Resolve the product by words in its name; if several match the call fails and lists them. Only prices from the last six months are compared. Changes nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: { product: { type: 'string', description: 'Words from the product name, e.g. "oat".' } },
+      required: ['product'],
+    },
+  },
+  {
     name: 'use_stock',
     description:
       'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l, or single items for multipacks: "had two beers" = 2 cans); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. For products with no amount (spices, oil), "use" is only logged and the product stays in stock until "finish". The record is a new event; nothing existing is changed.',
@@ -440,6 +458,10 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'add_wolt_orders':
       return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
+    case 'shopping_list':
+      return shoppingListTool(ctx);
+    case 'product_prices':
+      return productPrices(args, ctx);
     case 'list_stock':
       return listStock(args, ctx);
     case 'use_stock':
@@ -956,6 +978,43 @@ async function listStock(args: Args, { store, now }: ToolContext): Promise<ToolR
     .filter(({ s }) => (status ? s.status === status : args.includeOut === true || s.status !== 'out'));
   if (rows.length === 0) return ok('Nothing matches. Stock only covers products that were bought and saved from a receipt.');
   return ok(rows.map(({ p, s }) => describeProduct(p, s, withPicture.has(p.id))));
+}
+
+async function shoppingListTool({ store, now }: ToolContext): Promise<ToolResult> {
+  const { products, today, stockFor } = await stockState(store, now);
+  const items = shoppingList(products.map((product) => ({ product, stock: stockFor(product), uses: 0 })), today);
+  if (items.length === 0) return ok('Nothing to buy: nothing is out or low, and nothing is due to be rebought yet.');
+  return ok(
+    items.map((i) => ({
+      name: i.name,
+      why: REASON_LABELS[i.reason],
+      usualQuantity: i.quantity,
+      unit: i.unit === 'pc' ? 'pieces or packs as bought' : i.unit,
+      ...(i.everyDays ? { usuallyBoughtEveryDays: i.everyDays } : {}),
+      daysSinceLastBought: i.daysSince,
+      ...(i.store && i.price ? { cheapestStore: i.store, shelfPrice: `${i.price.regular.toFixed(2)}${i.per}` } : { cheapestStore: 'unknown' }),
+      ...(i.saving ? { savesVersusLastStore: i.saving } : {}),
+    })),
+  );
+}
+
+async function productPrices(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { products, today } = await stockState(store, now);
+  const found = resolveProduct(args.product, products);
+  if ('error' in found) return found.error;
+  const p = found.product;
+  const c = comparePrices(p, today);
+  if (!c) return ok(`No price for "${p.name}" from the last six months.`);
+  const per = priceUnit(p);
+  const offers = offerShare(p);
+  return ok({
+    name: p.name,
+    pricesPer: per.replace(/^ (\/ )?/, ''),
+    stores: c.prices.map((x) => ({ store: x.store, shelfPrice: x.regular, lastPaid: x.paid, onOfferLastTime: x.onOffer, lastBought: x.date, lowestShelfPrice: x.lowestRegular, times: x.purchases })),
+    lastBoughtAt: c.usual.store,
+    ...(c.cheaper ? { cheaperElsewhere: { store: c.cheaper.store, saves: c.saving, savesPercent: Math.round((c.savingPct ?? 0) * 100) } } : { cheaperElsewhere: 'no' }),
+    ...(offers.offers ? { onOffer: `${offers.offers} of ${offers.of} purchases, saving ${offers.saved}` } : {}),
+  });
 }
 
 /** The one product the user means, or a failure that lists the candidates. */

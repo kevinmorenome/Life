@@ -5919,3 +5919,63 @@ a.game-row + .food-h2 {
 .wolt-total {
   font-variant-numeric: tabular-nums;
 }
+
+/* Food: groceries on the calendar, shopping list, prices */
+.dot.mark-food {
+  background: var(--tone-lime);
+}
+.day-badge.mark-food {
+  color: var(--tone-lime);
+}
+.pill.mark-food {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.food-saving {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+.shop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.shop-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.shop-check {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.shop-check::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 2px solid var(--muted, currentColor);
+  border-radius: 50%;
+}
+.shop-check[aria-checked='true']::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.shop-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.5rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+.shop-done .shop-main {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
