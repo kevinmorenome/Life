@@ -6107,6 +6107,9 @@ a.game-row + .food-h2 {
 .widget-wolt {
   --w: var(--tone-orange);
 }
+.widget-watch {
+  --w: var(--tone-purple);
+}
 .widget-head {
   display: flex;
   align-items: center;
