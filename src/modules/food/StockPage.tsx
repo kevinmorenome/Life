@@ -28,21 +28,18 @@ export function StockPage({
   events,
   onEvent,
   onProduct,
-  initialShowAll = false,
 }: {
   receipts: FoodReceipt[];
   products: FoodProduct[];
   events: StockEvent[];
   onEvent(e: StockEvent): Promise<void>;
   onProduct(p: FoodProduct): Promise<void>;
-  /** Start with the used-up products shown (the old `#/food/products` address). */
-  initialShowAll?: boolean;
 }) {
   const day = today();
   const entries = stockEntries(receipts, products, events, day);
   const [selId, setSelId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [showAll, setShowAll] = useState(initialShowAll);
+  const [showAll, setShowAll] = useState(false);
   const close = useCallback(() => setSelId(null), []);
 
   // The toast fades on its own; an undo that is not taken stays a plain count history.
