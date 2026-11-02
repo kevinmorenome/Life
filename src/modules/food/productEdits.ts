@@ -50,8 +50,33 @@ export function withProductChanges(rec: FoodProduct, c: ProductChanges, now: str
   if (c.trackAmount !== undefined) next.trackAmount = c.trackAmount ? undefined : false;
   if (c.packSize !== undefined) next.packSize = c.packSize ?? undefined;
   if (c.packLabel !== undefined) next.packLabel = c.packLabel ?? undefined;
+  if (c.photo !== undefined) next.photo = c.photo ?? undefined;
   const same = (Object.keys({ ...rec, ...next }) as (keyof FoodProduct)[]).every((k) => k === 'updatedAt' || rec[k] === next[k]);
   return same ? rec : { ...next, updatedAt: now };
+}
+
+/** The record to save for a product: what is already there, the product as shown (so a first change creates the record with its defaults) and the change. */
+export function productRecord(
+  product: { id: string; name: string; type: ProductType; storage: Storage; shelfLifeDays?: number; trackAmount: boolean; packSize?: number; packLabel?: string; photo?: string },
+  record: FoodProduct | undefined,
+  patch: Partial<FoodProduct>,
+  now: string,
+): FoodProduct {
+  return {
+    ...record,
+    id: product.id,
+    name: record?.name ?? product.name,
+    type: product.type,
+    storage: product.storage,
+    shelfLifeDays: product.shelfLifeDays,
+    trackAmount: product.trackAmount ? undefined : false,
+    packSize: product.packSize,
+    packLabel: product.packLabel,
+    photo: product.photo,
+    createdAt: record?.createdAt ?? now,
+    ...patch,
+    updatedAt: now,
+  };
 }
 
 export interface ProductEditsResult {
@@ -83,7 +108,8 @@ export function applyProductEdits(requests: InboxRequest[], records: FoodProduct
       byId.set(req.productId, next);
       changed.add(req.productId);
     }
-    applied.push({ ...req, appliedAt: stamp, updatedAt: stamp });
+    // The picture now lives on the product; don't keep a second copy in the inbox.
+    applied.push({ ...req, changes: { ...req.changes, photo: undefined }, appliedAt: stamp, updatedAt: stamp });
   }
 
   const cutoff = new Date(now.getTime() - KEEP_APPLIED_DAYS * 86_400_000).toISOString();

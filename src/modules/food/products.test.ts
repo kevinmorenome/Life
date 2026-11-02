@@ -85,6 +85,10 @@ describe('packs', () => {
     const out = productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec]);
     expect(out[0]).toMatchObject({ packSize: 6, packLabel: 'can' });
   });
+  it('carry the product picture into the summary', () => {
+    const rec: FoodProduct = { id: 'fp-beer', name: 'Beer', type: 'drink', storage: 'pantry', photo: 'data:image/webp;base64,AAAA', createdAt: '', updatedAt: '' };
+    expect(productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec])[0].photo).toBe(rec.photo);
+  });
   it('pluralize the item name', () => {
     expect([pluralize('can', 1), pluralize('can', 12), pluralize('can', 0.5), pluralize('glass', 3), pluralize('bottle', 2)]).toEqual(['can', 'cans', 'cans', 'glasses', 'bottles']);
   });

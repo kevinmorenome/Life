@@ -1,6 +1,7 @@
 import { authorize, type AuthEnv } from './auth';
 import { checkinAuthorized, handleCheckin, isCheckinPath, type CheckinEnv } from './checkin';
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
+import { handleFoodPhotos, searchPhotos } from './openfoodfacts';
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
 import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
@@ -52,6 +53,7 @@ export default {
         now: new Date(),
         newId: () => crypto.randomUUID(),
         fetchPhoto,
+        searchPhotos: (input) => searchPhotos(input, (i, init) => fetch(i, init)),
       });
     }
 
@@ -67,6 +69,10 @@ export default {
         // Not the bare global: Workers throw "Illegal invocation" when it's called as a method of another object.
         fetch: (input, init) => fetch(input, init),
       });
+    }
+
+    if (url.pathname === '/api/food/photos' && request.method === 'GET') {
+      return handleFoodPhotos(url, (i, init) => fetch(i, init));
     }
 
     if (url.pathname === '/api/sync/pull' && request.method === 'GET') {

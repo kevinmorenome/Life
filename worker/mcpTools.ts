@@ -13,6 +13,7 @@ import { parseProductChanges, withProductChanges } from '../src/modules/food/pro
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
+import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
 
@@ -25,6 +26,8 @@ export interface ToolContext {
   newId: () => string;
   /** Downloads a product image as a data URL (undefined if unusable). Faked in tests. */
   fetchPhoto?: (url: string) => Promise<string | undefined>;
+  /** Looks pictures of packaged food up in Open Food Facts. Faked in tests. */
+  searchPhotos?: (input: { query?: string; code?: string }) => Promise<PhotoSearchResult>;
 }
 
 export interface ToolImage {
@@ -288,6 +291,32 @@ export const TOOLS = [
     },
   },
   {
+    name: 'find_product_photo',
+    description:
+      'Look for a picture of a packaged food product in Open Food Facts (open data), by words from its name or by its barcode (exact, preferred when the user has one). Returns up to nine candidates with name, brand, size, country, barcode and picture URL. It is a loose search: results are often other variants (another country, another size or flavour), and fresh produce or shop own-brand goods usually have none. Compare brand, product, size and flavour with the product before choosing, and if none is clearly the same product say so instead of picking one; the user can photograph it themselves in the app. Then call set_product_photo with the chosen imageUrl. Use list_stock to find products whose picture is "none".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product: { type: 'string', description: 'A product already in the app: its name is used as the search words when query is not given.' },
+        query: { type: 'string', description: 'Words to search for, e.g. "Somersby blueberry cider".' },
+        code: { type: 'string', description: 'Barcode (EAN) of the product, 6 to 14 digits.' },
+      },
+    },
+  },
+  {
+    name: 'set_product_photo',
+    description:
+      'Give a food product a picture from an image URL, e.g. a candidate from find_product_photo, or the product image of a shop the user is buying from. Only when you are confident it shows this exact product. The image must be a public https URL (jpeg, png, webp or avif, under about 700 KB). The picture is queued and the app downscales it and removes its background the next time it syncs, so tell the user it is queued, not already shown. Replaces any earlier picture; null-clearing is done in the app.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product: { type: 'string', description: 'Product name or the words the user used' },
+        imageUrl: { type: 'string', description: 'https URL of the picture' },
+      },
+      required: ['product', 'imageUrl'],
+    },
+  },
+  {
     name: 'create_outfit',
     description: 'Save a set of existing items as an outfit. To log wearing it, call log_wear with the returned id.',
     inputSchema: {
@@ -386,6 +415,10 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : countStock(args, ctx);
     case 'set_product_info':
       return ctx.readOnly ? fail(READ_ONLY) : setProductInfo(args, ctx);
+    case 'find_product_photo':
+      return findProductPhoto(args, ctx);
+    case 'set_product_photo':
+      return ctx.readOnly ? fail(READ_ONLY) : setProductPhoto(args, ctx);
     case 'create_outfit':
       return ctx.readOnly ? fail(READ_ONLY) : createOutfit(args, ctx);
     case 'edit_outfit':
@@ -843,9 +876,10 @@ async function stockState(store: RecordStore, now: Date) {
 const unitName = (p: ProductSummary, quantity: number): string =>
   p.unit !== 'pc' ? p.unit : p.packSize && p.packLabel ? pluralize(p.packLabel, quantity) : p.packSize ? 'items' : 'pieces';
 
-function describeProduct(p: ProductSummary, s: Stock) {
+function describeProduct(p: ProductSummary, s: Stock, hasPicture: boolean) {
   return {
     name: p.name,
+    picture: hasPicture ? 'set' : 'none',
     ...(s.tracked
       ? { quantity: s.quantity, unit: unitName(p, s.quantity), ...(p.packSize ? { packSize: p.packSize } : {}) }
       : { tracking: 'have it or out (no amount)', have: s.quantity > 0 }),
@@ -858,7 +892,8 @@ function describeProduct(p: ProductSummary, s: Stock) {
 }
 
 async function listStock(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
-  const { products, stockFor } = await stockState(store, now);
+  const { products, records, stockFor } = await stockState(store, now);
+  const withPicture = new Set(records.filter((r) => (r as unknown as { hasPhoto?: unknown }).hasPhoto).map((r) => r.id));
   const words = normalizeKey(text(args.query) ?? '').split(' ').filter(Boolean);
   const storage = text(args.storage);
   const status = text(args.status);
@@ -868,7 +903,7 @@ async function listStock(args: Args, { store, now }: ToolContext): Promise<ToolR
     .map((p) => ({ p, s: stockFor(p) }))
     .filter(({ s }) => (status ? s.status === status : args.includeOut === true || s.status !== 'out'));
   if (rows.length === 0) return ok('Nothing matches. Stock only covers products that were bought and saved from a receipt.');
-  return ok(rows.map(({ p, s }) => describeProduct(p, s)));
+  return ok(rows.map(({ p, s }) => describeProduct(p, s, withPicture.has(p.id))));
 }
 
 /** The one product the user means, or a failure that lists the candidates. */
@@ -979,6 +1014,46 @@ async function setProductInfo(args: Args, { store, now, newId }: ToolContext): P
     applied: 'when the app next syncs',
     note: 'Not applied yet: stock keeps counting with the old settings until the app syncs, so tell the user it is queued and wait before logging uses of this product.',
   });
+}
+
+async function findProductPhoto(args: Args, { store, now, searchPhotos: search }: ToolContext): Promise<ToolResult> {
+  if (!search) return fail('Picture search is not available in this deployment.');
+  let query = text(args.query, 100);
+  const code = text(args.code, 20);
+  if (!query && !code) {
+    const { products } = await stockState(store, now);
+    const found = resolveProduct(args.product, products);
+    if ('error' in found) return found.error;
+    query = found.product.name;
+  }
+  const r = await search({ query, code });
+  if (r.error && r.candidates.length === 0) return fail(`${r.error} Try again in a minute, or use a barcode.`);
+  if (r.candidates.length === 0) return ok({ candidates: [], note: 'Nothing found. Try other words or the barcode, or ask the user to photograph the product in the app.' });
+  return ok({
+    searched: code ? `barcode ${code}` : query,
+    candidates: r.candidates.map((c) => ({ name: c.name, brand: c.brand, size: c.quantity, country: c.country, barcode: c.code, imageUrl: c.imageUrl })),
+    note: 'Pick one only if brand, product, size and flavour match; otherwise tell the user none matched.',
+  });
+}
+
+async function setProductPhoto(args: Args, { store, now, newId, fetchPhoto: download = fetchPhoto }: ToolContext): Promise<ToolResult> {
+  const { products } = await stockState(store, now);
+  const found = resolveProduct(args.product, products);
+  if ('error' in found) return found.error;
+  const p = found.product;
+  const url = text(args.imageUrl, 2000);
+  if (!url || !url.startsWith('https://')) return fail('imageUrl must be an https URL.');
+  const photo = await download(url);
+  if (!photo) return fail(PHOTO_FAILED);
+
+  // Applied by the app like other product edits (which also creates the record if the product has none).
+  const stamp = now.toISOString();
+  const request: ProductEditRequest = {
+    id: newId(), type: 'product-edit', itemIds: [], outfitIds: [], productId: p.id,
+    base: { name: p.name, type: p.type, storage: p.storage }, changes: { photo }, source: 'claude', createdAt: stamp, updatedAt: stamp,
+  };
+  await store.put('inbox', request.id, request);
+  return ok({ product: p.name, queued: 'picture', applied: 'when the app next syncs', note: 'Queued, not shown yet: the app downscales it and removes the background when it next syncs.' });
 }
 
 async function countStock(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

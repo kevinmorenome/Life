@@ -33,7 +33,7 @@ const FIELDS = {
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
   inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
   foodreceipts: ['store', 'date', 'total', 'lines'],
-  foodproducts: ['name', 'type', 'storage', 'shelfLifeDays'],
+  foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
 } as const;
 
@@ -42,7 +42,8 @@ const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
 export function d1Store(db: D1Database): RecordStore {
   return {
     async list(store) {
-      const columns = FIELDS[store].map((f) => `json_extract(data, '$.${f}') AS ${f}`).join(', ');
+      // `hasPhoto` says whether a product has a picture without loading the picture itself.
+      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? "(json_extract(data, '$.photo') IS NOT NULL) AS hasPhoto" : `json_extract(data, '$.${f}') AS ${f}`)).join(', ');
       const { results } = await db
         .prepare(`SELECT id, ${columns} FROM records WHERE store = ?1 AND data IS NOT NULL`)
         .bind(store)

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { PictureControl } from './PictureControl';
+import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
 import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
 import { partLeftEvent, stockEvent } from './stockActions';
@@ -36,10 +38,7 @@ export function ProductView({
   const [label, setLabel] = useState(product.packLabel ?? '');
 
   // Spread the record first so fields this screen doesn't show survive; create it on the first change.
-  const save = (patch: Partial<FoodProduct>) => {
-    const now = new Date().toISOString();
-    return onSave({ ...record, id: product.id, name: record?.name ?? product.name, type: product.type, storage: product.storage, shelfLifeDays: product.shelfLifeDays, trackAmount: product.trackAmount ? undefined : false, packSize: product.packSize, packLabel: product.packLabel, createdAt: record?.createdAt ?? now, ...patch, updatedAt: now });
-  };
+  const save = (patch: Partial<FoodProduct>) => onSave(productRecord(product, record, patch, new Date().toISOString()));
   const setType = (type: ProductType) => save({ type, ...(product.custom ? {} : { storage: defaultStorage(type) }) });
   const commitPack = () => {
     const n = Number(pack.replace(',', '.'));
@@ -60,6 +59,7 @@ export function ProductView({
 
   return (
     <>
+      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined })} />
       <h1 className="page-title">{product.name}</h1>
       <p className="muted small">
         Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}

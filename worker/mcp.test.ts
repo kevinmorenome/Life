@@ -95,6 +95,8 @@ describe('protocol', () => {
       'use_stock',
       'count_stock',
       'set_product_info',
+      'find_product_photo',
+      'set_product_photo',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -485,6 +487,7 @@ describe('read-only deployments', () => {
       ['use_stock', { product: 'milk' }],
       ['count_stock', { product: 'milk', quantity: 1 }],
       ['set_product_info', { product: 'milk', packSize: 6 }],
+      ['set_product_photo', { product: 'milk', imageUrl: 'https://images.openfoodfacts.org/x.jpg' }],
       ['add_grocery_receipt', { sourceId: 'r1', store: 'Konzum', date: '2026-10-31', lines: [{ name: 'Milk', quantity: 1, unitPrice: 1 }] }],
       ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
       ['set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/p.jpg' }],
@@ -650,8 +653,8 @@ describe('add_grocery_receipt', () => {
 describe('food stock', () => {
   const receipt = (id: string, date: string, lines: object[]) => ({ id, store: 'Konzum', date, lines, createdAt: 'x', updatedAt: 'x' });
   const L = (name: string, quantity: number, over: object = {}) => ({ name, kind: 'food', quantity, unit: 'pc', unitPrice: 2, discount: 0, paid: quantity * 2, ...over });
-  const seed = () => {
-    const s = setup();
+  const seed = (over: Partial<ToolContext> = {}) => {
+    const s = setup(over);
     s.data.foodreceipts.set('food-1', receipt('food-1', '2026-10-20', [L('Hummus', 2), L('Oat drink 3.5%', 3), L('Chicken fillet', 0.5, { unit: 'kg', unitPrice: 6, paid: 3 })]));
     s.data.foodreceipts.set('food-2', receipt('food-2', '2026-10-24', [L('Oat drink 3.5%', 1), L('Oat cookies', 1)]));
     return s;
@@ -710,6 +713,68 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
     expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
     expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
+  });
+
+  describe('product pictures', () => {
+    const photo = 'data:image/jpeg;base64,AAAA';
+    const candidates = [{ code: '3850131003398', name: 'Staropramen', brand: 'Staropramen', quantity: '0,5 l', country: 'croatia', imageUrl: 'https://images.openfoodfacts.org/images/products/385/013/100/3398/front_hr.3.400.jpg' }];
+    const withSearch = (result: { candidates: typeof candidates; error?: string }, calls: object[] = []) => ({
+      searchPhotos: async (input: object) => {
+        calls.push(input);
+        return result;
+      },
+      fetchPhoto: async (url: string) => (url.startsWith('https://images.') ? photo : undefined),
+    });
+
+    it('list_stock says which products have a picture, without loading it', async () => {
+      const { ctx, data } = seed();
+      data.foodproducts.set('fp-hummus', { id: 'fp-hummus', name: 'Hummus', type: 'staple', storage: 'fridge', hasPhoto: 1 });
+      const out = (await call(ctx, 'list_stock', {})).json() as { name: string; picture: string }[];
+      expect(out.find((p) => p.name === 'Hummus')?.picture).toBe('set');
+      expect(out.filter((p) => p.name !== 'Hummus').every((p) => p.picture === 'none')).toBe(true);
+    });
+
+    it('find_product_photo searches with the product name, a barcode or words, and lists the candidates', async () => {
+      const calls: object[] = [];
+      const { ctx } = setup(withSearch({ candidates }, calls));
+      ctx.store.put('foodreceipts', 'r', { id: 'r', store: 'K', date: '2026-10-24', lines: [{ name: 'Staropramen beer', kind: 'alcohol', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1 }] });
+      const byName = (await call(ctx, 'find_product_photo', { product: 'staropramen' })).json();
+      expect(calls[0]).toEqual({ query: 'Staropramen beer', code: undefined });
+      expect(byName.candidates[0]).toMatchObject({ name: 'Staropramen', barcode: '3850131003398', imageUrl: candidates[0].imageUrl });
+      await call(ctx, 'find_product_photo', { code: '3850131003398' });
+      await call(ctx, 'find_product_photo', { query: 'somersby cider' });
+      expect(calls.slice(1)).toEqual([{ query: undefined, code: '3850131003398' }, { query: 'somersby cider', code: undefined }]);
+    });
+
+    it('find_product_photo says so when there is nothing, when the search fails and when it is unavailable', async () => {
+      expect((await call(setup(withSearch({ candidates: [] })).ctx, 'find_product_photo', { query: 'x' })).json().note).toMatch(/photograph/);
+      const failed = await call(setup(withSearch({ candidates: [], error: 'Open Food Facts is busy right now' })).ctx, 'find_product_photo', { query: 'x' });
+      expect(failed.isError).toBe(true);
+      expect(failed.text).toMatch(/busy/);
+      expect((await call(setup().ctx, 'find_product_photo', { query: 'x' })).isError).toBe(true);
+      expect((await call(setup(withSearch({ candidates })).ctx, 'find_product_photo', { product: 'caviar' })).isError).toBe(true);
+    });
+
+    it('set_product_photo queues the picture for the app instead of writing the product', async () => {
+      const { ctx, data } = seed(withSearch({ candidates }));
+      const r = (await call(ctx, 'set_product_photo', { product: 'hummus', imageUrl: 'https://images.openfoodfacts.org/h.jpg' })).json();
+      expect(r).toMatchObject({ product: 'Hummus', queued: 'picture', applied: 'when the app next syncs' });
+      expect(data.foodproducts.size).toBe(0);
+      expect([...data.inbox.values()]).toMatchObject([{ type: 'product-edit', productId: 'fp-hummus', source: 'claude', changes: { photo }, base: { name: 'Hummus' } }]);
+    });
+
+    it('set_product_photo refuses a bad url, an image it cannot download, and an unknown or ambiguous product', async () => {
+      const { ctx, data } = seed(withSearch({ candidates }));
+      for (const args of [
+        { product: 'hummus', imageUrl: 'http://images.example/h.jpg' },
+        { product: 'hummus', imageUrl: 'https://nowhere.example/h.jpg' },
+        { product: 'caviar', imageUrl: 'https://images.example/h.jpg' },
+        { product: 'oat', imageUrl: 'https://images.example/h.jpg' },
+      ]) {
+        expect((await call(ctx, 'set_product_photo', args)).isError).toBe(true);
+      }
+      expect(data.inbox.size).toBe(0);
+    });
   });
 
   describe('set_product_info', () => {

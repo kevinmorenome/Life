@@ -91,6 +91,8 @@ export interface FoodProduct {
   packSize?: number;
   /** What one item is called, singular: "can", "bottle", "slice". */
   packLabel?: string;
+  /** A picture of the product (small image data URL, background removed when possible); the drawn icon is used without one. */
+  photo?: string;
   createdAt: string;
   updatedAt: string;
 }

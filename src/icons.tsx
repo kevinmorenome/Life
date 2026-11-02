@@ -66,6 +66,28 @@ export const CartIcon = () => (
   </Icon>
 );
 
+export const CameraIcon = () => (
+  <Icon>
+    <path d="M4 8h3l1.5-2.500h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.500" />
+  </Icon>
+);
+
+export const ImageIcon = () => (
+  <Icon>
+    <rect x="3.500" y="4.500" width="17" height="15" rx="2" />
+    <circle cx="9" cy="10" r="1.500" />
+    <path d="M4 17l5-4.500 4 3.500 3-2.500 4 3.500" />
+  </Icon>
+);
+
+export const SearchIcon = () => (
+  <Icon>
+    <circle cx="11" cy="11" r="6.500" />
+    <path d="M16 16l4.500 4.500" />
+  </Icon>
+);
+
 /** A ring with a dot: "used it, still have it". */
 export const UsedIcon = () => (
   <Icon>
