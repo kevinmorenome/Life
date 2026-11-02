@@ -6304,27 +6304,68 @@ a.game-row + .food-h2 {
 }
 
 /* ───────────── Liquid Glass: day widgets ─────────────
-   Same vocabulary as the closet: a plain page, one neutral glass plate (--plate) for the panes, hairlines inside,
-   colour only on the small icon bubble. Work is a segmented track with a raised lens, like Items | Outfits. */
+   Glass is the control layer, content is flat: a widget is a plain section on the page, separated by a hairline.
+   What floats as glass are its controls: the icon lens, the count chip and the collapse button.
+   Work is a segmented track with a raised lens, like Items | Outfits. */
+.day-grid {
+  column-gap: 1rem;
+  row-gap: 0;
+}
 .widget {
-  border: 1px solid var(--glass-edge);
-  background: var(--plate);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--plate-shadow);
+  border: 0;
+  border-top: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  padding-top: 0.15rem;
+}
+.widget-toggle {
+  padding: 0.3rem 0;
+}
+.widget-head {
+  padding-right: 0;
+}
+.widget-body {
+  padding: 0 0 0.75rem;
+}
+.widget-summary {
+  padding: 0 0 0.75rem;
 }
 .widget-icon {
   border: 1px solid var(--glass-edge);
-  background: color-mix(in srgb, var(--w) 16%, var(--glass-bg-strong));
-  box-shadow: inset 0 1px 0 var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--w) 22%, var(--glass-bg-strong)), var(--glass-bg));
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 .widget-badge {
   border: 1px solid var(--glass-edge);
-  background: var(--glass-tint);
-  box-shadow: inset 0 1px 0 var(--glass-rim);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron {
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron svg {
+  width: 16px;
+  height: 16px;
 }
 .widget-list li {
   border-top-color: var(--glass-line);
+}
+.work-quick {
+  margin-bottom: 0.6rem;
 }
 .work-quick-row {
   gap: 4px;
