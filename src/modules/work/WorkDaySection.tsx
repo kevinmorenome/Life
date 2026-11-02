@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { BuildingIcon, ClockIcon, HomeIcon, PalmIcon, SuitcaseIcon, UndoIcon } from '../../icons';
-import { DayWidget } from '../../DayWidget';
 import { today } from '../../lib/format';
 import type { OffReason, WorkDay, WorkStatus } from './types';
 import type { DayInfo } from './work';
@@ -59,8 +58,6 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
     { field: 'leave', label: 'End', value: info?.leave },
   ];
 
-  const statusLabel = status ? (status === 'off' && info?.reason ? REASON_LABELS[info.reason] : STATUS_LABELS[status]) : undefined;
-  const hours = info?.arrive || info?.leave ? `${info?.arrive ?? '?'}–${info?.leave ?? '?'}` : undefined;
   const source = info?.manual
     ? day?.source === 'report'
       ? 'From your badge report.'
@@ -69,50 +66,46 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
         : 'Set by hand.'
     : status
       ? 'From your check-ins.'
-      : 'Nothing recorded. Tap where you worked.';
+      : 'Nothing recorded for this day.';
+  const showTimes = !!status && status !== 'off';
+  // The clock button fills in the first empty time with now (today only).
+  const nowField = !info?.arrive ? 'arrive' : 'leave';
 
   return (
-    <DayWidget
-      id="work"
-      title="Work"
-      icon={status ? STATUS_ICONS[status] : <BuildingIcon />}
-      tone="work"
-      size="full"
-      summary={[statusLabel ?? 'Nothing recorded', hours].filter(Boolean).join(' · ')}
-    >
-      <div className="work-choices" role="group" aria-label="Where did you work?">
-        {ORDER.map((s) => (
-          <button key={s} className="work-choice" aria-pressed={status === s} onClick={() => save({ status: s })}>
-            {STATUS_ICONS[s]}
-            <span>{s === 'off' && info?.reason ? REASON_LABELS[info.reason] : STATUS_LABELS[s]}</span>
-          </button>
-        ))}
+    <section className="work-quick widget-full" aria-label="Work" title={source}>
+      <div className="work-quick-row" role="group" aria-label="Where did you work?">
+        {ORDER.map((s) => {
+          const label = s === 'off' && info?.reason ? REASON_LABELS[info.reason] : STATUS_LABELS[s];
+          return (
+            <button key={s} className="work-quick-btn" aria-pressed={status === s} aria-label={label} onClick={() => save({ status: s })}>
+              {STATUS_ICONS[s]}
+              {status === s && <span>{label}</span>}
+            </button>
+          );
+        })}
       </div>
-      {status && status !== 'off' && (
-        <div className="work-times-row">
+      {showTimes && (
+        <div className="work-quick-times">
           {times.map(({ field, label, value }) => (
-            <div key={field} className="work-time">
-              <label>
-                <span className="muted small">{label}</span>
-                <input type="time" value={value ?? ''} onChange={(e) => setTime(field, e.target.value)} />
-              </label>
-              {isToday && (
-                <button className="icon-btn" onClick={() => setTime(field, nowTime())} aria-label={`Set ${label.toLowerCase()} to now`}>
-                  <ClockIcon />
-                </button>
-              )}
-            </div>
+            <input key={field} type="time" aria-label={label} value={value ?? ''} onChange={(e) => setTime(field, e.target.value)} />
           ))}
+          {isToday && (
+            <button className="icon-btn" onClick={() => setTime(nowField, nowTime())} aria-label={`Set ${nowField === 'arrive' ? 'start' : 'end'} to now`}>
+              <ClockIcon />
+            </button>
+          )}
+          {info?.manual && (
+            <button className="icon-btn" onClick={() => onClear(date)} aria-label={`${source} Clear and go back to check-ins`}>
+              <UndoIcon />
+            </button>
+          )}
         </div>
       )}
-      <p className="muted small work-source">
-        {source}
-        {info?.manual && (
-          <button className="icon-btn" onClick={() => onClear(date)} aria-label="Clear and go back to check-ins">
-            <UndoIcon />
-          </button>
-        )}
-      </p>
-    </DayWidget>
+      {!showTimes && info?.manual && (
+        <button className="icon-btn work-quick-undo" onClick={() => onClear(date)} aria-label={`${source} Clear and go back to check-ins`}>
+          <UndoIcon />
+        </button>
+      )}
+    </section>
   );
 }

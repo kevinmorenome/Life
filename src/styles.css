@@ -6245,45 +6245,57 @@ a.game-row + .food-h2 {
 .day-actions {
   margin-top: 0.5rem;
 }
-/* Inside a widget the work controls are compact. */
-.widget .work-choices {
+/* Work on the day screen: one row of icon buttons; the chosen one shows its name. */
+.work-quick {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.5rem;
 }
-.widget .work-choice {
-  min-height: 56px;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0 0.15rem;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-.widget .work-choice svg {
-  width: 22px;
-  height: 22px;
-}
-.widget .work-times-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
-  margin-bottom: 0.25rem;
-}
-.widget .work-time {
+.work-quick-row {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
   min-width: 0;
 }
-.widget .work-time label {
+.work-quick-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.work-quick-btn[aria-pressed='true'] {
+  flex: 2.4;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.work-quick-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.work-quick-times {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-times input {
   flex: 1;
   min-width: 0;
-}
-.widget .work-time input {
-  width: 100%;
-  min-width: 0;
-}
-.widget .work-source {
-  min-height: 0;
-  margin: 0;
-  font-size: 0.78rem;
-}
-.widget .work-source .icon-btn {
-  margin: -0.5rem -0.25rem -0.5rem auto;
+  min-height: 44px;
 }
