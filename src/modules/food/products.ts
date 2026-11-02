@@ -75,6 +75,8 @@ export interface Purchase {
   unit: Unit;
   unitPrice: number;
   paid: number;
+  /** The text printed on the receipt for this line, e.g. "PIVO STAROPRAMEN 6PA". */
+  rawName?: string;
 }
 
 export interface ProductSummary {
@@ -109,7 +111,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       if (!isStocked(l.kind)) continue;
       const id = productId(l.name);
       const rec = records.get(id);
-      const purchase: Purchase = { receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid };
+      const purchase: Purchase = { receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid, rawName: l.rawName };
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);

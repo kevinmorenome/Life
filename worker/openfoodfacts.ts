@@ -7,7 +7,7 @@ const PRODUCT = 'https://world.openfoodfacts.org/api/v2/product';
 const FIELDS = 'code,product_name,brands,quantity,image_front_url,countries_tags';
 const AGENT = 'LifeApp/1.0 (personal grocery tracker; https://github.com/kevinmorenome/Life)';
 /** Only pictures served from Open Food Facts itself are passed on. */
-const IMAGE_HOST = /^https:\/\/(images|static)\.openfoodfacts\.(org|net)\//;
+export const OFF_IMAGE_HOST = /^https:\/\/(images|static)\.openfoodfacts\.(org|net)\//;
 const MAX_CANDIDATES = 9;
 
 export interface PhotoCandidate {
@@ -20,6 +20,10 @@ export interface PhotoCandidate {
   country?: string;
   /** Front picture (about 400 px wide). */
   imageUrl: string;
+  /** Where it came from, e.g. "Open Food Facts" or "Konzum". */
+  source?: string;
+  /** The page about the product at that source. */
+  pageUrl?: string;
 }
 
 const text = (v: unknown, max = 120): string | undefined => {
@@ -33,7 +37,7 @@ function toCandidate(raw: unknown): PhotoCandidate | undefined {
   const r = raw as Record<string, unknown>;
   const imageUrl = text(r.image_front_url, 500);
   const code = text(r.code, 20);
-  if (!imageUrl || !code || !IMAGE_HOST.test(imageUrl)) return undefined;
+  if (!imageUrl || !code || !OFF_IMAGE_HOST.test(imageUrl)) return undefined;
   const countries = Array.isArray(r.countries_tags) ? r.countries_tags.filter((c): c is string => typeof c === 'string') : [];
   return {
     code,
@@ -42,6 +46,7 @@ function toCandidate(raw: unknown): PhotoCandidate | undefined {
     quantity: text(r.quantity, 30),
     country: countries[0]?.replace(/^[a-z]{2}:/, ''),
     imageUrl,
+    source: 'Open Food Facts',
   };
 }
 
@@ -96,10 +101,4 @@ export async function searchPhotos(input: { query?: string; code?: string }, doF
   } catch (e) {
     return { candidates: [], error: e instanceof Error ? e.message : 'Could not reach Open Food Facts.' };
   }
-}
-
-/** GET /api/food/photos?q=<words>|code=<barcode> */
-export async function handleFoodPhotos(url: URL, doFetch: typeof fetch = fetch): Promise<Response> {
-  const result = await searchPhotos({ query: url.searchParams.get('q') ?? undefined, code: url.searchParams.get('code') ?? undefined }, doFetch);
-  return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=300' } });
 }

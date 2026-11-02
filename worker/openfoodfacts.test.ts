@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handleFoodPhotos, parseCandidates, searchPhotos } from './openfoodfacts';
+import { parseCandidates, searchPhotos } from './openfoodfacts';
 
 const img = (code: string) => `https://images.openfoodfacts.org/images/products/${code}/front_en.3.400.jpg`;
 const product = (code: string, extra: object = {}) => ({ code, product_name: `Product ${code}`, brands: 'Brand', quantity: '330 ml', image_front_url: img(code), countries_tags: ['en:germany'], ...extra });
@@ -18,7 +18,7 @@ describe('parseCandidates', () => {
   it('keeps products with a front picture from Open Food Facts and tidies the fields', () => {
     const out = parseCandidates({ products: [product('1'), product('2', { image_front_url: undefined }), product('3', { image_front_url: 'https://evil.example/x.jpg' }), product('4', { product_name: '  ' })] });
     expect(out.map((c) => c.code)).toEqual(['1', '4']);
-    expect(out[0]).toEqual({ code: '1', name: 'Product 1', brand: 'Brand', quantity: '330 ml', country: 'germany', imageUrl: img('1') });
+    expect(out[0]).toEqual({ code: '1', name: 'Product 1', brand: 'Brand', quantity: '330 ml', country: 'germany', imageUrl: img('1'), source: 'Open Food Facts' });
     expect(out[1].name).toBe('Brand');
   });
   it('puts Croatian and nearby products first, otherwise keeps the order', () => {
@@ -63,14 +63,5 @@ describe('searchPhotos', () => {
     expect((await searchPhotos({ query: 'x' }, fakeFetch([{ status: 500 }]).f)).error).toMatch(/500/);
     const down = (async () => { throw new Error('network'); }) as unknown as typeof fetch;
     expect((await searchPhotos({ query: 'x' }, down)).error).toBe('network');
-  });
-});
-
-describe('handleFoodPhotos', () => {
-  it('answers with JSON from the query string', async () => {
-    const { f } = fakeFetch([{ body: { products: [product('1')] } }]);
-    const res = await handleFoodPhotos(new URL('https://x/api/food/photos?q=chips'), f);
-    expect(((await res.json()) as { candidates: unknown[] }).candidates).toHaveLength(1);
-    expect(res.headers.get('Content-Type')).toBe('application/json');
   });
 });

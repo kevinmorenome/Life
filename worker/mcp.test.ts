@@ -737,13 +737,13 @@ describe('food stock', () => {
     it('find_product_photo searches with the product name, a barcode or words, and lists the candidates', async () => {
       const calls: object[] = [];
       const { ctx } = setup(withSearch({ candidates }, calls));
-      ctx.store.put('foodreceipts', 'r', { id: 'r', store: 'K', date: '2026-10-24', lines: [{ name: 'Staropramen beer', kind: 'alcohol', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1 }] });
+      ctx.store.put('foodreceipts', 'r', { id: 'r', store: 'K', date: '2026-10-24', lines: [{ name: 'Staropramen beer', rawName: 'PIVO STAROPRAMEN 6PA', kind: 'alcohol', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1 }] });
       const byName = (await call(ctx, 'find_product_photo', { product: 'staropramen' })).json();
-      expect(calls[0]).toEqual({ query: 'Staropramen beer', code: undefined });
-      expect(byName.candidates[0]).toMatchObject({ name: 'Staropramen', barcode: '3850131003398', imageUrl: candidates[0].imageUrl });
+      expect(calls[0]).toEqual({ query: 'Staropramen beer', rawName: 'PIVO STAROPRAMEN 6PA', code: undefined });
+      expect(byName.candidates[0]).toMatchObject({ name: 'Staropramen', code: '3850131003398', imageUrl: candidates[0].imageUrl });
       await call(ctx, 'find_product_photo', { code: '3850131003398' });
       await call(ctx, 'find_product_photo', { query: 'somersby cider' });
-      expect(calls.slice(1)).toEqual([{ query: undefined, code: '3850131003398' }, { query: 'somersby cider', code: undefined }]);
+      expect(calls.slice(1)).toEqual([{ query: undefined, rawName: undefined, code: '3850131003398' }, { query: 'somersby cider', rawName: undefined, code: undefined }]);
     });
 
     it('find_product_photo says so when there is nothing, when the search fails and when it is unavailable', async () => {
