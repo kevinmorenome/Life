@@ -5878,3 +5878,11 @@ a.game-row + .food-h2 {
   font-size: 0.6875rem;
   letter-spacing: 0.02em;
 }
+
+/* A shop packshot (a flat picture on white) sits on a white tile; a cut-out sits on the neutral one. */
+.food-art.photo-flat {
+  background: #ffffff;
+}
+.food-art.photo-flat .food-photo {
+  padding: 6%;
+}

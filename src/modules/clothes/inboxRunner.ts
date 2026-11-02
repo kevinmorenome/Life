@@ -2,7 +2,7 @@ import type { InboxRequest } from '../../../worker/protocol';
 import { getAll, notify, put, remove } from '../../lib/db';
 import { itemPhoto } from '../../lib/image';
 import { applyProductEdits } from '../food/productEdits';
-import { blobOf, foodPhoto } from '../food/productPhoto';
+import { blobOf, packshotPhoto } from '../food/productPhoto';
 import type { FoodProduct } from '../food/types';
 import { applyInbox, preparePhotos } from './inbox';
 import type { ClothingItem, Outfit } from './types';
@@ -33,13 +33,13 @@ export async function processInbox(): Promise<void> {
 /** Applies `product-edit` requests (Claude changing a food product that already has a record). */
 async function processProductEdits(all: InboxRequest[]): Promise<void> {
   if (!all.some((r) => r.type === 'product-edit')) return;
-  // A picture queued by Claude arrives as downloaded; make a small tile picture of it like any other (one that can't be
-  // converted is left out rather than stored full size).
+  // A picture queued by Claude arrives as downloaded (a shop packshot): make a small tile picture of it, without cutting
+  // the background out (one that can't be converted is left out rather than stored full size).
   const prepared = await Promise.all(
     all.map(async (r) => {
       if (r.type !== 'product-edit' || r.appliedAt || !r.changes.photo) return r;
       try {
-        return { ...r, changes: { ...r.changes, photo: await foodPhoto(await blobOf(r.changes.photo)) } };
+        return { ...r, changes: { ...r.changes, photo: await packshotPhoto(await blobOf(r.changes.photo)) } };
       } catch {
         return { ...r, changes: { ...r.changes, photo: undefined } };
       }
