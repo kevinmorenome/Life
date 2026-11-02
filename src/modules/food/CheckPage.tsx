@@ -28,7 +28,7 @@ export function CheckPage({ receipts, products, events, onEvent }: { receipts: F
             <strong>{product.name}</strong>
             <span className="muted small">
               {formatAmount(stock.quantity, product.unit)}
-              {unitLabel(product.unit)} thought left{stock.lastConfirmed ? ` · last confirmed ${shortDate(stock.lastConfirmed)}` : ''}
+              {unitLabel(product, stock.quantity)} thought left{stock.lastConfirmed ? ` · last confirmed ${shortDate(stock.lastConfirmed)}` : ''}
               {stock.status === 'check' ? ' · probably past its date' : ''}
             </span>
             <div className="chips">

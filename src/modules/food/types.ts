@@ -84,6 +84,13 @@ export interface FoodProduct {
    * Absent means true.
    */
   trackAmount?: boolean;
+  /**
+   * Items in one pack as bought (a 6-pack of beer = 6), for products sold in pieces. Stock is then counted in
+   * items (cans), so you can say "had one", not "used a sixth of a pack". Absent: a piece is what is bought.
+   */
+  packSize?: number;
+  /** What one item is called, singular: "can", "bottle", "slice". */
+  packLabel?: string;
   createdAt: string;
   updatedAt: string;
 }

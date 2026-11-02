@@ -60,6 +60,9 @@ export interface ProductHint {
   shelfLifeDays?: number;
   /** False for things you can't measure (spices, oil): only "have it" or "out". */
   trackAmount?: false;
+  /** Items in one pack as bought (a 6-pack = 6), and what an item is called. */
+  packSize?: number;
+  packLabel?: string;
 }
 
 /** Hints per line, in the same order as the parsed lines (lines dropped by `parseGroceryLines` are skipped in both). */
@@ -74,6 +77,8 @@ export function parseProductHints(input: unknown): ProductHint[] {
       type: (PRODUCT_TYPES as readonly string[]).includes(r.productType as string) ? (r.productType as ProductType) : undefined,
       storage: (STORAGES as readonly string[]).includes(r.storage as string) ? (r.storage as Storage) : undefined,
       trackAmount: r.trackAmount === false ? false : undefined,
+      packSize: typeof r.packSize === 'number' && Number.isFinite(r.packSize) && r.packSize >= 2 && r.packSize <= 100 ? Math.round(r.packSize) : undefined,
+      packLabel: str(r.packLabel, 20),
       shelfLifeDays: typeof r.shelfLifeDays === 'number' && Number.isFinite(r.shelfLifeDays) && r.shelfLifeDays >= 1 && r.shelfLifeDays <= 3650 ? Math.round(r.shelfLifeDays) : undefined,
     });
   }

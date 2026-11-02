@@ -16,6 +16,23 @@ export function productId(name: string): string {
   return `fp-${normalizeKey(name).replace(/ /g, '-') || 'item'}`;
 }
 
+/** The pack size that applies: only for products sold in pieces, and only when it is more than one. */
+export function packSizeOf(rec: Pick<FoodProduct, 'packSize'> | undefined, unit: Unit): number | undefined {
+  const n = rec?.packSize;
+  return unit === 'pc' && typeof n === 'number' && Number.isFinite(n) && n > 1 ? Math.round(n) : undefined;
+}
+
+/** "can" → "cans" for 2 or 0.5, "can" for 1 (and "glass" → "glasses"). */
+export function pluralize(word: string, quantity: number): string {
+  if (quantity === 1) return word;
+  return /(s|x|ch|sh)$/i.test(word) ? `${word}es` : `${word}s`;
+}
+
+/** What one item costs when the product comes in packs (price per pack ÷ items in it). */
+export function pricePerItem(unitPrice: number, packSize: number | undefined): number {
+  return round2(unitPrice / (packSize ?? 1));
+}
+
 /** Lines of these kinds are things you stock; deposits and bags are not. */
 export const isStocked = (kind: LineKind): boolean => kind === 'food' || kind === 'alcohol';
 
@@ -64,6 +81,9 @@ export interface ProductSummary {
   shelfLifeDays?: number;
   /** False: only "have it" or "out", see `FoodProduct.trackAmount`. */
   trackAmount: boolean;
+  /** Items in a pack (pieces only), see `FoodProduct.packSize`. */
+  packSize?: number;
+  packLabel?: string;
   /** True when someone set the type/storage (there is a product record), false when they are defaults. */
   custom: boolean;
   /** Newest first. */
@@ -85,7 +105,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, custom: !!rec, purchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }
