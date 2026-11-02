@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
-import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
+import { useTakeoutOrders } from './useTakeoutOrders';
 import { hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, summarize, topPlaces } from './wolt';
 
 const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -11,13 +11,13 @@ const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const monthLabel = (ym: string, style: 'short' | 'long' = 'short') => new Date(ym + '-01T00:00:00Z').toLocaleDateString(undefined, { month: style, year: '2-digit', timeZone: 'UTC' });
 
 export function WoltStatsRoute() {
-  const { items, loading } = useCollection<WoltOrder>('woltorders');
+  const { items, loading } = useTakeoutOrders();
   const now = today();
   if (loading) return <p className="muted">Loading…</p>;
   if (items.length === 0) {
     return (
       <Section title="Nothing yet">
-        <Empty>Ask Claude to read your Wolt receipt emails and add the orders; the numbers build up here.</Empty>
+        <Empty>Ask Claude to read your Wolt takeout receipts and add the orders; the numbers build up here.</Empty>
       </Section>
     );
   }
@@ -38,7 +38,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
   return (
     <>
       <p className="muted">
-        You have placed <strong>{s.orders}</strong> Wolt {s.orders === 1 ? 'order' : 'orders'}
+        You have ordered takeout <strong>{s.orders}</strong> {s.orders === 1 ? 'time' : 'times'} through Wolt
         {s.since ? <> since <strong>{new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</strong></> : null}, spending <strong>{eur0(s.spent)}</strong>
         {s.topPlace ? <>. Your top place is <strong>{s.topPlace}</strong></> : null}.
       </p>
@@ -63,7 +63,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
           {count(f.orders, 'order')} paid in {f.currency} ({f.currency} {f.total.toLocaleString(undefined, { minimumFractionDigits: 2 })} in total) {f.orders === 1 ? 'is' : 'are'} listed but left out of the euro totals.
         </p>
       ))}
-      <p className="muted small">Data comes from Wolt receipt emails in Gmail. Item lines are only in the PDF attachments, so they are not tracked.</p>
+      <p className="muted small">Data comes from Wolt receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines are only in the PDF attachments, so they are not tracked.</p>
     </>
   );
 }
