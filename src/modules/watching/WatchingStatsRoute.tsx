@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { CheckIcon, TrashIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, Toggle, type Bar } from '../clothes/charts';
-import { RemovePlayButton } from './RemovePlay';
+import { playName, RemovePlayButton } from './RemovePlay';
+import { allSelected, pruned, toggled, toggledAll } from './selection';
 import type { Play } from './types';
 import { dayStreak, episodeCode, hourCounts, monthlyCounts, newestFirst, searchPlays, summarize, topTitles, weekdayCounts, when } from './watched';
 
@@ -92,20 +94,59 @@ function Loaded({ plays, now }: { plays: Play[]; now: string }) {
 }
 
 function AllPlays({ plays }: { plays: Play[] }) {
+  const { remove } = useCollection<Play>('watched');
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(20);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const found = useMemo(() => searchPlays(newestFirst(plays), query), [plays, query]);
+  const foundIds = useMemo(() => found.map((p) => p.id), [found]);
+  // A play removed elsewhere (another device, a sync) can't stay ticked.
+  const ticked = useMemo(() => pruned(selected, plays.map((p) => p.id)), [selected, plays]);
+
+  function stopSelecting() {
+    setSelecting(false);
+    setSelected(new Set());
+  }
+
+  async function removeTicked() {
+    const n = ticked.size;
+    if (!confirm(`Remove ${n} ${n === 1 ? 'play' : 'plays'} from your history here? They stay on Trakt.`)) return;
+    await Promise.all([...ticked].map((id) => remove(id)));
+    stopSelecting();
+  }
+
   return (
     <Section title="History" note="Newest first. Search by title, episode or date.">
-      <input type="search" className="search" placeholder="Search history" aria-label="Search history" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(20); }} />
+      <div className="watch-search">
+        <input type="search" className="search" placeholder="Search history" aria-label="Search history" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(20); }} />
+        <button type="button" className="icon-btn" aria-label="Select plays" aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
+          <CheckIcon />
+        </button>
+      </div>
+      {selecting && (
+        <div className="sticky-actions watch-select-bar">
+          <span className="small">{ticked.size} selected</span>
+          <button type="button" className="btn" disabled={foundIds.length === 0} onClick={() => setSelected(toggledAll(ticked, foundIds))}>
+            {allSelected(ticked, foundIds) ? 'Clear' : `All (${foundIds.length})`}
+          </button>
+          <button type="button" className="icon-btn" aria-label={`Remove ${ticked.size} selected`} disabled={ticked.size === 0} onClick={() => void removeTicked()}>
+            <TrashIcon />
+          </button>
+          <button type="button" className="btn" onClick={stopSelecting}>
+            Cancel
+          </button>
+        </div>
+      )}
       {found.length === 0 ? (
         <Empty>Nothing matches.</Empty>
       ) : (
         <ul className="watch-plays">
           {found.slice(0, limit).map((p) => {
             const w = when(p);
+            const on = ticked.has(p.id);
             return (
-              <li key={p.id}>
+              <li key={p.id} className={selecting && on ? 'is-selected' : undefined}>
                 <span className="wolt-when">
                   {shortDate(w.date)}
                   <span className="muted small"> {w.time}</span>
@@ -114,7 +155,11 @@ function AllPlays({ plays }: { plays: Play[] }) {
                   {p.title}
                   {p.kind === 'episode' && <span className="muted small"> {[episodeCode(p), p.episodeTitle].filter(Boolean).join(' · ')}</span>}
                 </span>
-                <RemovePlayButton play={p} />
+                {selecting ? (
+                  <button type="button" className="shop-check" role="checkbox" aria-checked={on} aria-label={`Select ${playName(p)}`} onClick={() => setSelected(toggled(ticked, p.id))} />
+                ) : (
+                  <RemovePlayButton play={p} />
+                )}
               </li>
             );
           })}
