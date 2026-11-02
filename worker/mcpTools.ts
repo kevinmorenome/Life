@@ -12,7 +12,7 @@ import { canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, pl
 import { parseProductChanges, withProductChanges } from '../src/modules/food/productEdits';
 import { comparePrices, offerShare, priceUnit } from '../src/modules/food/prices';
 import { REASON_LABELS, shoppingList } from '../src/modules/food/shopping';
-import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
+import { formatQty, partLeft, stockOf, type Batch, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { parseWoltOrders } from './wolt';
@@ -299,6 +299,7 @@ export const TOOLS = [
       properties: {
         product: { type: 'string', description: 'Product name or the words the user used, e.g. "hummus"' },
         action: { type: 'string', enum: ['use', 'some_left', 'finish', 'toss'], description: 'Default "use".' },
+        boughtOn: { type: 'string', description: 'YYYY-MM-DD. Act on the batch bought on that day (see "batches" in list_stock) instead of whichever expires first: "threw out the chicken from Tuesday". With toss or finish it applies to that batch only.' },
         fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
@@ -961,6 +962,10 @@ function describeProduct(p: ProductSummary, s: Stock, hasPicture: boolean) {
     storage: p.storage,
     status: s.status,
     ...(s.useBy ? { useBy: s.useBy } : {}),
+    // Several purchases are kept apart, each with its own use-by: name one with boughtOn in use_stock.
+    ...(s.tracked && s.batches.length > 1
+      ? { batches: s.batches.map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === b.id)?.date ?? b.date, quantity: b.quantity, ...(b.useBy ? { useBy: b.useBy } : {}) })) }
+      : {}),
     ...(s.lastConfirmed ? { lastBoughtOrCounted: s.lastConfirmed } : {}),
   };
 }
@@ -1046,15 +1051,30 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   const before = stockBefore.quantity;
   const untracked = !stockBefore.tracked;
 
+  // Optionally one batch (one purchase) instead of whatever expires first.
+  let batch: Batch | undefined;
+  const boughtOn = text(args.boughtOn);
+  if (boughtOn) {
+    if (untracked) return fail(`"${p.name}" is tracked as have it or out, so it has no batches.`);
+    if (!isRealDate(boughtOn)) return fail('boughtOn must be YYYY-MM-DD.');
+    if (action === 'some_left') return fail('some_left applies to the pack in use, not to a batch. Use action "use" with a quantity.');
+    const dateOf = (b: Batch) => p.purchases.find((x) => x.batch === b.id)?.date ?? b.date;
+    const named = stockBefore.batches.filter((b) => b.id && dateOf(b) === boughtOn);
+    const list = stockBefore.batches.map((b) => `${dateOf(b)}: ${formatQty(b.quantity)}${b.useBy ? ` (use by ${b.useBy})` : ''}`).join('; ');
+    if (named.length === 0) return fail(`No batch of "${p.name}" bought on ${boughtOn} is in stock. Batches: ${list || 'none'}.`);
+    if (named.length > 1) return fail(`Several batches of "${p.name}" were bought on ${boughtOn} (${list}). Ask the user which one, or leave boughtOn out.`);
+    batch = named[0];
+  }
+
   let type: StockEvent['type'];
   let quantity: number;
   if (action === 'finish') {
     type = 'count';
     quantity = 0;
   } else if (action === 'toss') {
-    if (before <= 0) return fail(`None of "${p.name}" is in stock, so there is nothing to throw away.`);
+    if ((batch?.quantity ?? before) <= 0) return fail(`None of "${p.name}" is in stock, so there is nothing to throw away.`);
     type = 'toss';
-    quantity = before;
+    quantity = batch?.quantity ?? before;
   } else if (action === 'some_left') {
     if (untracked) return fail(`"${p.name}" is tracked as have it or out, so it has no amount to lower. Use action "use" to log a use, or "finish" when it is all gone.`);
     if (p.packSize) return fail(`"${p.name}" comes in packs of ${p.packSize} and is counted in single ${p.packLabel ? pluralize(p.packLabel, 2) : 'items'}, so there is no "part left". Use action "use" with the number of items used, or count_stock with how many are left.`);
@@ -1073,7 +1093,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   }
 
   const stamp = now.toISOString();
-  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
+  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
   if (untracked) {
@@ -1087,6 +1107,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   return ok({
     recorded: action,
     product: p.name,
+    ...(batch ? { batch: `bought ${boughtOn}` } : {}),
     ...(action === 'use' || action === 'some_left' ? { used: formatQty(quantity) } : {}),
     left: left.quantity,
     unit: unitName(p, left.quantity),

@@ -676,6 +676,23 @@ describe('food stock', () => {
     expect((await call(ctx, 'product_prices', { product: 'oat' })).isError).toBe(true); // oat drink and oat cookies
   });
 
+  it('keeps purchases apart as batches and acts on one of them', async () => {
+    const { ctx, data } = seed();
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { quantity: number; batches?: { boughtOn: string; quantity: number }[] }[];
+    expect(listed[0].batches).toEqual([{ boughtOn: '2026-10-20', quantity: 3 }, { boughtOn: '2026-10-24', quantity: 1 }]);
+
+    const out = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24', action: 'toss' })).json() as { left: number; batch: string };
+    expect(out).toMatchObject({ recorded: 'toss', batch: 'bought 2026-10-24', left: 3 });
+    expect([...data.foodstock.values()][0]).toMatchObject({ type: 'toss', quantity: 1, batch: 'food-2:0' });
+
+    const used = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', quantity: 2 })).json() as { left: number };
+    expect(used.left).toBe(1);
+    const missing = await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24' });
+    expect(missing.isError).toBe(true); // that batch is gone, and the message lists what is left
+    expect(JSON.stringify(missing)).toContain('2026-10-20: 1');
+    expect((await call(ctx, 'use_stock', { product: 'hummus', boughtOn: '2026-10-20', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
+  });
+
   it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
     const { ctx, data } = seed();
     data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });

@@ -193,7 +193,7 @@ export interface WasteSummary {
 }
 
 /**
- * Food thrown away (`toss` events), valued at what the product usually costs per unit. For a product counted in
+ * Food thrown away (`toss` events), valued at what the batch cost when the event names one, otherwise what the product usually costs per unit. For a product counted in
  * items (a 6-pack of cans) the price is per item. Products you only have-or-don't are valued at one pack per toss.
  */
 export function wasteSummary(products: ProductSummary[], events: StockEvent[], receipts: FoodReceipt[], nowMonth: string, months = 12): WasteSummary {
@@ -207,7 +207,10 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
     const p = byId.get(e.productId);
     if (!p) continue;
     // A pack-less product is thrown by pack; for multipacks the quantity is in items and the price per item.
-    const unitCost = p.trackAmount ? comparablePrice(averageUnitPrice(p), p) : averageUnitPrice(p);
+    // A throw-away that names a batch is valued at what that batch cost.
+    const batchPrice = e.batch ? p.purchases.find((x) => x.batch === e.batch && x.unit === p.unit)?.unitPrice : undefined;
+    const price = batchPrice ?? averageUnitPrice(p);
+    const unitCost = p.trackAmount ? comparablePrice(price, p) : price;
     const quantity = p.trackAmount ? e.quantity : 1;
     const worth = round2(unitCost * quantity);
     value = round2(value + worth);

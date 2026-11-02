@@ -75,6 +75,8 @@ export interface Purchase {
   unit: Unit;
   unitPrice: number;
   paid: number;
+  /** Identifies this purchase as a batch of stock: receipt id + line number. Events name it to act on one batch. */
+  batch: string;
   /** What was saved on the line (already inside `unitPrice`), 0 when it was bought at the normal price. */
   discount?: number;
   /** The text printed on the receipt for this line, e.g. "PIVO STAROPRAMEN 6PA". */
@@ -109,11 +111,11 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
   // The name, unit and kind shown are the newest purchase's.
   const newest = new Map<string, string>();
   for (const r of receipts) {
-    for (const l of r.lines) {
+    for (const [i, l] of r.lines.entries()) {
       if (!isStocked(l.kind)) continue;
       const id = productId(l.name);
       const rec = records.get(id);
-      const purchase: Purchase = { receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid, discount: l.discount, rawName: l.rawName };
+      const purchase: Purchase = { batch: `${r.id}:${i}`, receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid, discount: l.discount, rawName: l.rawName };
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);

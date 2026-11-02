@@ -14,3 +14,13 @@ export function partLeftEvent(productId: string, unit: Unit, stock: Pick<Stock, 
   const used = Math.round((stock.quantity - partLeft(stock.quantity, unit, fraction)) * 1000) / 1000;
   return used > 0 ? stockEvent(productId, 'use', used, source) : undefined;
 }
+
+/** A use, throw-away or count that is about one batch (a purchase): see `StockEvent.batch`. */
+export function batchEvent(productId: string, batch: string, type: 'use' | 'toss' | 'count', quantity: number, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, type, quantity, source), batch };
+}
+
+/** Sets the use-by date of a batch; the newest one wins, so changing it again is just another event. */
+export function expiryEvent(productId: string, batch: string, useBy: string, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, 'expiry', 0, source), batch, useBy };
+}
