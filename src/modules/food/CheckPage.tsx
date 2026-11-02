@@ -1,8 +1,8 @@
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { formatAmount, needsCheck } from './stock';
-import { stockEntries } from './StockPage';
-import { unitLabel } from './StockRow';
+import { stockEntries } from './stockEntries';
+import { unitLabel } from './products';
 import { stockEvent } from './stockActions';
 import type { FoodProduct, FoodReceipt, StockEvent } from './types';
 
