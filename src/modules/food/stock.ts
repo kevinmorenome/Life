@@ -38,6 +38,8 @@ export interface Batch {
   frozen?: string;
   /** The day it was taken out of the freezer. Thawed food is not frozen again, and is meant to be used soon. */
   thawed?: string;
+  /** The last day you said you still had it (weekly check, or a count of the product); absent when only the purchase confirms it. */
+  confirmed?: string;
 }
 
 /** The purchase a batch came from: frozen and thawed batches are named `<freeze|thaw>-<event id>:<source batch>`, so this follows them back to the receipt line. */
@@ -83,6 +85,7 @@ interface Work {
   useBy?: string;
   frozen?: string;
   thawed?: string;
+  confirmed?: string;
 }
 
 /** Soonest to expire first, otherwise oldest first. `key` is a batch's use-by, or its date when it has none. */
@@ -160,13 +163,24 @@ export function stockOf(
           }
         } else if (e.type === 'count') {
           if (e.batch) {
-            if (target) target.quantity = round3(Math.max(0, e.quantity));
+            if (target) {
+              target.quantity = round3(Math.max(0, e.quantity));
+              // From the weekly check this is "yes, still have it": the batch counts as confirmed, and one that had gone past its date starts again.
+              if (e.source === 'check' && target.quantity > 1e-9) {
+                target.confirmed = e.date;
+                if (stale(target, e.date)) Object.assign(target, { date: e.date, useBy: undefined });
+              }
+            }
             return;
           }
           const total = round3(b.reduce((s, x) => s + x.quantity, 0));
           if (e.quantity < total) consume(b, round3(total - e.quantity), keyOf);
           else if (e.quantity > total) b.push({ id: `count-${e.id}`, date: e.date, quantity: round3(e.quantity - total) });
-          for (const x of b) if (x.quantity > 1e-9 && stale(x, e.date)) Object.assign(x, { date: e.date, useBy: undefined });
+          for (const x of b) {
+            if (x.quantity <= 1e-9) continue;
+            x.confirmed = e.date;
+            if (stale(x, e.date)) Object.assign(x, { date: e.date, useBy: undefined });
+          }
         } else if (target && target.quantity > 1e-9) {
           target.quantity = round3(target.quantity - Math.min(target.quantity, e.quantity));
         } else {
@@ -190,7 +204,7 @@ export function stockOf(
 
   const out: Batch[] = kept.map((b) => {
     const useBy = useByOf(b);
-    return { date: b.date, quantity: b.quantity, ...(b.id ? { id: b.id } : {}), ...(useBy ? { useBy } : {}), ...(b.frozen ? { frozen: b.frozen } : {}), ...(b.thawed ? { thawed: b.thawed } : {}) };
+    return { date: b.date, quantity: b.quantity, ...(b.id ? { id: b.id } : {}), ...(useBy ? { useBy } : {}), ...(b.frozen ? { frozen: b.frozen } : {}), ...(b.thawed ? { thawed: b.thawed } : {}), ...(b.confirmed ? { confirmed: b.confirmed } : {}) };
   });
   const frozenQuantity = round3(out.filter((b) => b.frozen).reduce((sum, b) => sum + b.quantity, 0));
   const thawedQuantity = round3(out.filter((b) => b.thawed).reduce((sum, b) => sum + b.quantity, 0));
@@ -226,15 +240,26 @@ export function usesSince(events: StockEvent[], since?: string): number {
   return events.filter((e) => e.type === 'use' && (!since || e.date >= since)).length;
 }
 
-/** Worth asking about in the weekly check: it is past its use-by date, or nothing has confirmed it for a while. */
-export function needsCheck(type: ProductType, s: Stock, today: string): boolean {
-  if (s.quantity <= 0 || !s.tracked) return false;
-  if (s.status === 'check') return true;
-  // What is all in the freezer keeps for months: it is only worth a look now and then.
-  if (s.batches.length > 0 && s.batches.every((b) => b.frozen)) return !!s.lastConfirmed && daysBetween(s.lastConfirmed, today) >= FROZEN_CHECK_DAYS;
-  const after = CHECK_AFTER_DAYS[type];
-  return after !== undefined && !!s.lastConfirmed && daysBetween(s.lastConfirmed, today) >= after;
+/**
+ * Worth asking about in the weekly check: this batch is past its use-by date, or nothing has confirmed it for a while
+ * (since it was bought, put in the freezer, or you last said you still had it). Thawed food is only asked about once past its date.
+ */
+export function needsBatchCheck(type: ProductType, b: Batch, today: string): boolean {
+  if (b.quantity <= 0) return false;
+  if (b.useBy && today > b.useBy) return true;
+  if (b.thawed) return false;
+  // What is in the freezer keeps for months: it is only worth a look now and then.
+  const after = b.frozen ? FROZEN_CHECK_DAYS : CHECK_AFTER_DAYS[type];
+  return after !== undefined && daysBetween(b.confirmed ?? b.frozen ?? b.date, today) >= after;
 }
+
+/** The batches of a product the weekly check should ask about, in the order they are listed. */
+export function batchesToCheck(type: ProductType, s: Stock, today: string): Batch[] {
+  return s.tracked ? s.batches.filter((b) => needsBatchCheck(type, b, today)) : [];
+}
+
+/** Worth asking about in the weekly check: at least one batch needs a look. Products you only have or don't are never asked about. */
+export const needsCheck = (type: ProductType, s: Stock, today: string): boolean => batchesToCheck(type, s, today).length > 0;
 
 /** Quantity worth showing: "3", "0.48", never "0.4800000001". */
 export const formatQty = (n: number): string => String(round3(n));
