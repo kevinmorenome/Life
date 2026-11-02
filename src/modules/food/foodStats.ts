@@ -1,7 +1,7 @@
 import { round2 } from './food';
 import { comparablePrice, priceUnit } from './prices';
 import { averageUnitPrice, defaultType, isStocked, productId, type ProductSummary } from './products';
-import { addDays, daysBetween } from './stock';
+import { addDays, daysBetween, originBatch } from './stock';
 import { usualInterval } from './shopping';
 import type { FoodProduct, FoodReceipt, LineKind, ProductType, StockEvent } from './types';
 
@@ -208,7 +208,7 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
     if (!p) continue;
     // A pack-less product is thrown by pack; for multipacks the quantity is in items and the price per item.
     // A throw-away that names a batch is valued at what that batch cost.
-    const batchPrice = e.batch ? p.purchases.find((x) => x.batch === e.batch && x.unit === p.unit)?.unitPrice : undefined;
+    const batchPrice = e.batch ? p.purchases.find((x) => x.batch === originBatch(e.batch!) && x.unit === p.unit)?.unitPrice : undefined;
     const price = batchPrice ?? averageUnitPrice(p);
     const unitCost = p.trackAmount ? comparablePrice(price, p) : price;
     const quantity = p.trackAmount ? e.quantity : 1;

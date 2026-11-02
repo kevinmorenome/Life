@@ -6020,3 +6020,10 @@ a.game-row + .food-h2 {
 .food-sheet .batch-list {
   margin-bottom: 0.5rem;
 }
+.batch-tag {
+  font-weight: 500;
+  color: var(--tone-blue);
+}
+.batch-frozen .batch-main > strong {
+  color: var(--text);
+}

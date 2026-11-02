@@ -5,7 +5,7 @@ import { FoodTabs } from './FoodTabs';
 import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
 import { needsCheck } from './stock';
-import { stockEntries } from './stockEntries';
+import { stockEntries, storageOf } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
 import { StockTile } from './StockTile';
 import { tileInfo } from './stockTiles';
@@ -15,7 +15,7 @@ const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' 
 
 interface Toast {
   text: string;
-  undo?: StockEvent;
+  undo?: StockEvent | StockEvent[];
 }
 
 /**
@@ -95,8 +95,8 @@ export function StockPage({
       )}
       {entries.length > 0 && have.length === 0 && !showAll && <p className="muted food-none">Nothing in stock right now.</p>}
       {STORAGES.map((storage) => {
-        const inStock = have.filter((e) => e.product.storage === storage).sort(bySoonest);
-        const gone = showAll ? out.filter((e) => e.product.storage === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
+        const inStock = have.filter((e) => storageOf(e) === storage).sort(bySoonest);
+        const gone = showAll ? out.filter((e) => storageOf(e) === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
         if (inStock.length + gone.length === 0) return null;
         return (
           <section key={storage} className="food-section">
@@ -131,7 +131,7 @@ export function StockPage({
             <button
               type="button"
               onClick={async () => {
-                if (toast.undo) await onEvent(toast.undo);
+                for (const e of [toast.undo].flat()) if (e) await onEvent(e);
                 setToast(null);
               }}
             >

@@ -24,3 +24,8 @@ export function batchEvent(productId: string, batch: string, type: 'use' | 'toss
 export function expiryEvent(productId: string, batch: string, useBy: string, source: StockEvent['source']): StockEvent {
   return { ...stockEvent(productId, 'expiry', 0, source), batch, useBy };
 }
+
+/** Puts some of a batch in the freezer, or takes some of a frozen batch out: the new batch gets its own use-by (see `stockOf`). */
+export function moveEvent(productId: string, batch: string, type: 'freeze' | 'thaw', quantity: number, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, type, quantity, source), batch };
+}

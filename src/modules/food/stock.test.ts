@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, partLeft, stockOf, usesSince } from './stock';
+import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, originBatch, partLeft, stockOf, usesSince } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (date: string, quantity: number) => ({ date, quantity });
@@ -281,5 +281,93 @@ describe('batches (each purchase has its own use-by and can be acted on alone)',
     const beer = { type: 'drink' as const, packSize: 6 };
     const s = stockOf(beer, [{ date: '2026-10-01', quantity: 1, batch: 'x:0' }, { date: '2026-10-05', quantity: 2, batch: 'y:0' }], [batchEv('use', 'y:0', 3, '2026-10-06')], '2026-10-07');
     expect(s.batches.map((b) => [b.id, b.quantity])).toEqual([['x:0', 6], ['y:0', 9]]);
+  });
+});
+
+describe('freezer', () => {
+  const chicken = { type: 'fresh' as const, shelfLifeDays: 3 };
+  const bought = [{ date: '2026-10-30', quantity: 1.5, batch: 'a:0' }, { date: '2026-11-01', quantity: 0.5, batch: 'b:0' }];
+  const fev = (type: 'freeze' | 'thaw', batch: string | undefined, quantity: number, date: string, id: string): StockEvent => ({
+    id, productId: 'p', type, quantity, date, source: 'app', createdAt: `${date}T10:00:00Z`, updatedAt: '', ...(batch ? { batch } : {}),
+  });
+
+  it('puts part of a batch in the freezer and extends its use-by to the freezer life', () => {
+    const s = stockOf(chicken, bought, [fev('freeze', 'a:0', 0.9, '2026-11-01', 'f1')], '2026-11-01');
+    expect(s.quantity).toBe(2);
+    expect(s.frozenQuantity).toBe(0.9);
+    expect(s.batches).toEqual([
+      { id: 'a:0', date: '2026-10-30', quantity: 0.6, useBy: '2026-11-02' },
+      { id: 'freeze-f1:a:0', date: '2026-10-30', quantity: 0.9, useBy: '2027-01-30', frozen: '2026-11-01' },
+      { id: 'b:0', date: '2026-11-01', quantity: 0.5, useBy: '2026-11-04' },
+    ]);
+  });
+
+  it('the first to go off is still the one in the fridge, so the product stays flagged by it', () => {
+    const s = stockOf(chicken, bought, [fev('freeze', 'a:0', 1.5, '2026-11-01', 'f1')], '2026-11-01');
+    expect(s.useBy).toBe('2026-11-04'); // b:0 in the fridge; the frozen batch is months away
+    expect(s.status).toBe('ok');
+  });
+
+  it('froze everything: it is all in the freezer and is no longer "past its date"', () => {
+    const s = stockOf(chicken, bought.slice(0, 1), [fev('freeze', 'a:0', 5, '2026-11-05', 'f1')], '2026-11-06');
+    expect(s.quantity).toBe(1.5);
+    expect(s.frozenQuantity).toBe(1.5);
+    expect(s.status).toBe('ok');
+    expect(s.batches).toHaveLength(1);
+  });
+
+  it('takes out of the freezer: a short use-by from the day it was taken out', () => {
+    const events = [fev('freeze', 'a:0', 1.5, '2026-10-31', 'f1'), fev('thaw', 'freeze-f1:a:0', 0.5, '2026-12-01', 't1')];
+    const s = stockOf(chicken, bought.slice(0, 1), events, '2026-12-02');
+    expect(s.frozenQuantity).toBe(1);
+    const thawed = s.batches.find((b) => b.id === 'thaw-t1:freeze-f1:a:0');
+    expect(thawed).toMatchObject({ quantity: 0.5, useBy: '2026-12-03' });
+    expect(thawed?.frozen).toBeUndefined();
+    expect(s.status).toBe('use-soon');
+  });
+
+  it('a use-by set by hand on the frozen batch wins, and a batch that is not in that state is left alone', () => {
+    const events = [fev('freeze', 'a:0', 1, '2026-11-01', 'f1'), { ...fev('freeze', 'a:0', 0.1, '2026-11-01', 'f2'), createdAt: '2026-11-01T11:00:00Z' }, { ...fev('thaw', 'b:0', 1, '2026-11-01', 't1'), createdAt: '2026-11-01T12:00:00Z' }];
+    const s = stockOf(chicken, bought, [...events, { ...fev('freeze', 'freeze-f1:a:0', 0, '2026-11-01', 'x'), type: 'expiry', useBy: '2026-12-25', batch: 'freeze-f1:a:0', createdAt: '2026-11-01T13:00:00Z' }], '2026-11-02');
+    expect(s.batches.find((b) => b.id === 'freeze-f1:a:0')?.useBy).toBe('2026-12-25');
+    expect(s.batches.find((b) => b.id === 'b:0')?.quantity).toBe(0.5); // thawing something that is not frozen does nothing
+    expect(s.frozenQuantity).toBe(1.1);
+  });
+
+  it('freezing with no batch named takes from what expires first, across batches', () => {
+    const s = stockOf(chicken, bought, [fev('freeze', undefined, 1.8, '2026-11-01', 'f1')], '2026-11-01');
+    expect(s.frozenQuantity).toBe(1.8);
+    expect(s.batches.filter((b) => !b.frozen).map((b) => [b.id, b.quantity])).toEqual([['b:0', 0.2]]);
+  });
+
+  it('what is used from a mixed product comes out of the fridge first', () => {
+    const events = [fev('freeze', 'a:0', 1, '2026-11-01', 'f1'), { ...fev('freeze', undefined, 0, '2026-11-01', 'u'), type: 'use' as const, quantity: 0.6, createdAt: '2026-11-01T11:00:00Z' }];
+    const s = stockOf(chicken, bought, events, '2026-11-01');
+    expect(s.frozenQuantity).toBe(1);
+    expect(s.batches.find((b) => b.id === 'a:0')).toBeUndefined(); // all 0.5 of it used up
+    expect(s.batches.find((b) => b.id === 'b:0')?.quantity).toBe(0.4); // then 0.1 from the next one in the fridge
+    expect(s.quantity).toBe(1.4);
+  });
+
+  it('undoing a freeze with batch counts puts everything back', () => {
+    const freeze = fev('freeze', 'a:0', 0.9, '2026-11-01', 'f1');
+    const back = [{ ...fev('freeze', 'a:0', 0, '2026-11-01', 'c1'), type: 'count' as const, quantity: 1.5, createdAt: '2026-11-01T11:00:00Z' }, { ...fev('freeze', 'freeze-f1:a:0', 0, '2026-11-01', 'c2'), type: 'count' as const, quantity: 0, batch: 'freeze-f1:a:0', createdAt: '2026-11-01T11:00:01Z' }];
+    const s = stockOf(chicken, bought, [freeze, ...back], '2026-11-01');
+    expect(s.frozenQuantity).toBe(0);
+    expect(s.batches.find((b) => b.id === 'a:0')).toMatchObject({ quantity: 1.5, useBy: '2026-11-02' });
+  });
+
+  it('frozen snacks are not assumed eaten, and the weekly check leaves frozen things alone for a while', () => {
+    const snack = { type: 'snack' as const };
+    const s = stockOf(snack, [{ date: '2026-10-01', quantity: 2, batch: 's:0' }], [fev('freeze', 's:0', 2, '2026-10-02', 'f1')], '2026-12-01');
+    expect(s.quantity).toBe(2);
+    expect(needsCheck('fresh', stockOf(chicken, bought.slice(0, 1), [fev('freeze', 'a:0', 1.5, '2026-11-01', 'f1')], '2026-11-20'), '2026-11-20')).toBe(false);
+    expect(needsCheck('fresh', stockOf(chicken, bought.slice(0, 1), [fev('freeze', 'a:0', 1.5, '2026-11-01', 'f1')], '2027-01-10'), '2027-01-10')).toBe(true);
+  });
+
+  it('follows a frozen or thawed batch back to the purchase', () => {
+    expect(originBatch('freeze-f1:a:0')).toBe('a:0');
+    expect(originBatch('thaw-t1:freeze-f1:a:0')).toBe('a:0');
+    expect(originBatch('a:0')).toBe('a:0');
   });
 });
