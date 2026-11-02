@@ -13,6 +13,7 @@ import { parseProductChanges, withProductChanges } from '../src/modules/food/pro
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
+import { parseWoltOrders } from './wolt';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
@@ -229,6 +230,35 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_wolt_orders',
+    description:
+      'Save Wolt delivery orders in the Wolt log. Find them by searching Gmail for Wolt order/receipt emails (sender wolt.com), read each one and pass every order here, as many as you like per call. Per order give sourceId = a unique id for it (the Wolt order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as Wolt writes it, including the branch ("McDonald\'s - Rotor"), date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR, or PLN for orders placed in Poland; do not convert). Item lines are only in the PDF attachment and are not tracked. Orders are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orders: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              sourceId: { type: 'string', description: 'Wolt order id / receipt number, or the email message id' },
+              restaurant: { type: 'string', description: 'Venue as Wolt names it, with the branch' },
+              date: { type: 'string', description: 'YYYY-MM-DD' },
+              time: { type: 'string', description: 'HH:MM, 24 hour' },
+              total: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              city: { type: 'string' },
+            },
+            required: ['sourceId', 'restaurant', 'date', 'total'],
+          },
+        },
+      },
+      required: ['orders'],
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -408,6 +438,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addReceiptItems(args, ctx);
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
+    case 'add_wolt_orders':
+      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
     case 'list_stock':
       return listStock(args, ctx);
     case 'use_stock':
@@ -856,6 +888,25 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
           warning: `The printed total (${mismatch.printed}) does not match the lines (${mismatch.summed}). A line was probably misread or missing: check the receipt again and tell the user.`,
         }
       : {}),
+  });
+}
+
+// ---- Wolt ----
+
+async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now));
+  const known = new Set((await store.list('woltorders')).map((r) => r.id));
+  const stamp = now.toISOString();
+  let added = 0;
+  for (const o of orders) {
+    if (known.has(o.id)) continue; // already saved: orders are never overwritten
+    await store.put('woltorders', o.id, { ...o, createdAt: stamp, updatedAt: stamp });
+    added++;
+  }
+  return ok({
+    added,
+    alreadyAdded: orders.length - added,
+    ...(rejected.length ? { rejected, warning: 'Some orders were left out: fix them from the emails and add them again.' } : {}),
   });
 }
 
