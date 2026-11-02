@@ -87,7 +87,30 @@ export interface PhotoRequest extends RequestBase {
   photo?: string;
 }
 
-export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest | PhotoRequest;
+/** What may be changed about a food product; `null` clears an optional field. Same meaning as the fields of `FoodProduct`. */
+export interface ProductChanges {
+  type?: string;
+  storage?: string;
+  shelfLifeDays?: number | null;
+  /** `false` = only "have it or out"; `true` = count how many. */
+  trackAmount?: boolean;
+  packSize?: number | null;
+  packLabel?: string | null;
+}
+
+/**
+ * Change what the app knows about a food product (`productId` is its `fp-<slug>` id). `base` is how the product
+ * looked when this was queued, so the app can create the record if it has none yet. Applied by the app after a
+ * pull (`applyProductEdits`), never written to the product record by the Worker.
+ */
+export interface ProductEditRequest extends RequestBase {
+  type: 'product-edit';
+  productId: string;
+  base: { name: string; type: string; storage: string };
+  changes: ProductChanges;
+}
+
+export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest | PhotoRequest | ProductEditRequest;
 
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;

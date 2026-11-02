@@ -94,6 +94,7 @@ describe('protocol', () => {
       'list_stock',
       'use_stock',
       'count_stock',
+      'set_product_info',
       'create_outfit',
       'edit_outfit',
       'edit_item',
@@ -483,6 +484,7 @@ describe('read-only deployments', () => {
       ['create_outfit', { itemIds: ['tee'] }],
       ['use_stock', { product: 'milk' }],
       ['count_stock', { product: 'milk', quantity: 1 }],
+      ['set_product_info', { product: 'milk', packSize: 6 }],
       ['add_grocery_receipt', { sourceId: 'r1', store: 'Konzum', date: '2026-10-31', lines: [{ name: 'Milk', quantity: 1, unitPrice: 1 }] }],
       ['add_receipt_items', { sourceId: 'm1', items: [{ name: 'x', category: 'tops' }] }],
       ['set_item_photo', { itemId: 'tee', imageUrl: 'https://x.com/p.jpg' }],
@@ -708,6 +710,54 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
     expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
     expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
+  });
+
+  describe('set_product_info', () => {
+    const beer = () => {
+      const s = seed();
+      s.data.foodreceipts.set('food-4', receipt('food-4', '2026-10-24', [L('Staropramen beer 6-pack', 2, { kind: 'alcohol' })]));
+      return s;
+    };
+
+    it('sets a pack size at once on a product that has no settings yet, and stock counts in cans straight away', async () => {
+      const { ctx, data } = beer();
+      expect((await call(ctx, 'list_stock', { query: 'beer' })).json()).toMatchObject([{ quantity: 2 }]);
+      const r = (await call(ctx, 'set_product_info', { product: 'staropramen', packSize: 6, packLabel: 'can' })).json();
+      expect(r).toMatchObject({ product: 'Staropramen beer 6-pack', applied: 'now' });
+      expect(data.foodproducts.get('fp-staropramen-beer-6-pack')).toMatchObject({ name: 'Staropramen beer 6-pack', type: 'drink', storage: 'pantry', packSize: 6, packLabel: 'can' });
+      expect(data.inbox.size).toBe(0);
+      expect((await call(ctx, 'list_stock', { query: 'beer' })).json()).toMatchObject([{ quantity: 12, unit: 'cans' }]);
+      expect((await call(ctx, 'use_stock', { product: 'beer', quantity: 2 })).json()).toMatchObject({ left: 10 });
+    });
+
+    it('queues the change instead of touching a product that already has settings', async () => {
+      const { ctx, data } = beer();
+      data.foodproducts.set('fp-staropramen-beer-6-pack', { id: 'fp-staropramen-beer-6-pack', name: 'Staropramen beer 6-pack', type: 'drink', storage: 'fridge', shelfLifeDays: 90 });
+      const before = JSON.stringify(data.foodproducts.get('fp-staropramen-beer-6-pack'));
+      const r = (await call(ctx, 'set_product_info', { product: 'beer', packSize: 6, packLabel: 'can' })).json();
+      expect(r).toMatchObject({ queued: 'packSize: 6, packLabel: can', applied: 'when the app next syncs' });
+      expect(r.note).toMatch(/wait before logging uses/);
+      expect(JSON.stringify(data.foodproducts.get('fp-staropramen-beer-6-pack'))).toBe(before);
+      expect([...data.inbox.values()]).toMatchObject([
+        { type: 'product-edit', productId: 'fp-staropramen-beer-6-pack', source: 'claude', changes: { packSize: 6, packLabel: 'can' }, base: { storage: 'fridge' } },
+      ]);
+    });
+
+    it('can clear a pack size, and turn counting off for spices', async () => {
+      const { ctx, data } = beer();
+      await call(ctx, 'set_product_info', { product: 'hummus', trackAmount: false });
+      expect(data.foodproducts.get('fp-hummus')).toMatchObject({ trackAmount: false });
+      await call(ctx, 'set_product_info', { product: 'hummus', packSize: null });
+      expect([...data.inbox.values()][0]).toMatchObject({ changes: { packSize: null } });
+    });
+
+    it('refuses bad values, nothing to change, weighed products, unknown or ambiguous products', async () => {
+      const { ctx, data } = beer();
+      for (const args of [{ product: 'beer', packSize: 1 }, { product: 'beer', packSize: 'six' }, { product: 'beer', type: 'dessert' }, { product: 'beer' }, { product: 'chicken', packSize: 4 }, { product: 'caviar', packSize: 4 }, { product: 'oat', packSize: 4 }]) {
+        expect((await call(ctx, 'set_product_info', args)).isError).toBe(true);
+      }
+      expect(data.foodproducts.size + data.inbox.size).toBe(0);
+    });
   });
 
   it('counts multipacks in single items', async () => {
