@@ -1,5 +1,6 @@
 import { useCollection } from '../../lib/useCollection';
 import { CheckPage } from './CheckPage';
+import { PicturesPage } from './PicturesPage';
 import { ProductView } from './ProductView';
 import { productSummaries } from './products';
 import { ReceiptForm } from './ReceiptForm';
@@ -25,6 +26,7 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
   }
   // `#/food/products` was the old Products tab: it now opens the same grid with everything you ever bought.
   if (first === 'stock' || first === 'products') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} initialShowAll={first === 'products'} />;
+  if (first === 'pictures') return <PicturesPage receipts={receipts.items} products={products.items} events={events.items} onProduct={products.save} />;
   if (first === 'check') return <CheckPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
   if (first === 'product' && second) {
     const product = productSummaries(receipts.items, products.items).find((p) => p.id === second);

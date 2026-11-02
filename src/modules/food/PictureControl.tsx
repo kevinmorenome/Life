@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { CameraIcon, ImageIcon, SearchIcon, TrashIcon } from '../../icons';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
 import { FoodPicture, pictureClass } from './FoodPicture';
 import { PhotoSearch } from './PhotoSearch';
-import { foodPhoto } from './productPhoto';
+import { usePicturePicker } from './usePicturePicker';
 import type { ProductSummary } from './products';
 
 /**
@@ -11,27 +11,12 @@ import type { ProductSummary } from './products';
  * remove it. Photos get the same treatment as closet photos (downscaled, background removed on-device when possible).
  */
 export function PictureControl({ product, className, size = 64, onPhoto }: { product: ProductSummary; className: string; size?: number; onPhoto(photo: string | null): Promise<void> | void }) {
-  const camera = useRef<HTMLInputElement>(null);
-  const library = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(false);
-  const [error, setError] = useState('');
-
-  async function fromFile(file: File | undefined) {
-    if (!file) return;
-    setBusy(true);
-    setError('');
-    try {
-      await onPhoto(await foodPhoto(file));
-    } catch {
-      setError('Could not use that photo.');
-    }
-    setBusy(false);
-  }
+  const { inputs, busy, error, takePhoto, choosePhoto } = usePicturePicker(onPhoto);
 
   const entries: MenuEntry[] = [
-    { label: 'Take a photo', icon: <CameraIcon />, onSelect: () => camera.current?.click() },
-    { label: 'Choose a photo', icon: <ImageIcon />, onSelect: () => library.current?.click() },
+    { label: 'Take a photo', icon: <CameraIcon />, onSelect: takePhoto },
+    { label: 'Choose a photo', icon: <ImageIcon />, onSelect: choosePhoto },
     { label: 'Find a picture online', icon: <SearchIcon />, onSelect: () => setSearch(true) },
     ...(product.photo ? [{ label: 'Remove the picture', icon: <TrashIcon />, onSelect: () => void onPhoto(null) }] : []),
   ];
@@ -45,8 +30,7 @@ export function PictureControl({ product, className, size = 64, onPhoto }: { pro
       <div className="food-pic-menu">
         <IconMenu entries={entries} label={product.photo ? 'Change the picture' : 'Add a picture'} icon={<CameraIcon />} triggerClassName="food-pic-btn" />
       </div>
-      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void fromFile(e.target.files?.[0]); e.target.value = ''; }} />
-      <input ref={library} type="file" accept="image/*" hidden onChange={(e) => { void fromFile(e.target.files?.[0]); e.target.value = ''; }} />
+      {inputs}
       {error && <p className="small food-pic-error" role="alert">{error}</p>}
       {search && <PhotoSearch name={product.name} onPick={(photo) => onPhoto(photo)} onClose={() => setSearch(false)} />}
     </div>
