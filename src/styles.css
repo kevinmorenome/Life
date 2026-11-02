@@ -5803,3 +5803,17 @@ a.game-row + .food-h2 {
   object-fit: contain;
   padding: 8%;
 }
+
+.food-filter {
+  margin-top: 1rem;
+}
+.food-none {
+  margin: 1.5rem 0 0;
+}
+.food-tile-gone .food-art {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.food-tile-gone .food-name {
+  color: var(--muted);
+}

@@ -6,7 +6,7 @@ import { productRecord } from './productEdits';
 import { needsCheck } from './stock';
 import { stockEntries } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
-import { StockTile, UsedUpLink } from './StockTile';
+import { StockTile } from './StockTile';
 import { tileInfo } from './stockTiles';
 import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent } from './types';
 
@@ -17,24 +17,31 @@ interface Toast {
   undo?: StockEvent;
 }
 
-/** What you have, as a grid of pictures: the fridge first, with the things to use soon at the top of each section. */
+/**
+ * Everything you buy, as a grid of pictures: what you have first (the things to use soon at the top of each section),
+ * and, when asked, what is used up, greyed out after it.
+ */
 export function StockPage({
   receipts,
   products,
   events,
   onEvent,
   onProduct,
+  initialShowAll = false,
 }: {
   receipts: FoodReceipt[];
   products: FoodProduct[];
   events: StockEvent[];
   onEvent(e: StockEvent): Promise<void>;
   onProduct(p: FoodProduct): Promise<void>;
+  /** Start with the used-up products shown (the old `#/food/products` address). */
+  initialShowAll?: boolean;
 }) {
   const day = today();
   const entries = stockEntries(receipts, products, events, day);
   const [selId, setSelId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [showAll, setShowAll] = useState(initialShowAll);
   const close = useCallback(() => setSelId(null), []);
 
   // The toast fades on its own; an undo that is not taken stays a plain count history.
@@ -72,37 +79,35 @@ export function StockPage({
           </span>
         </a>
       )}
+      {out.length > 0 && (
+        <div className="chips food-filter">
+          <button type="button" className="chip" aria-pressed={showAll} onClick={() => setShowAll((v) => !v)}>
+            Show used up ({out.length})
+          </button>
+        </div>
+      )}
+      {entries.length > 0 && have.length === 0 && !showAll && <p className="muted food-none">Nothing in stock right now.</p>}
       {STORAGES.map((storage) => {
-        const group = have.filter((e) => e.product.storage === storage).sort(bySoonest);
-        if (group.length === 0) return null;
+        const inStock = have.filter((e) => e.product.storage === storage).sort(bySoonest);
+        const gone = showAll ? out.filter((e) => e.product.storage === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
+        if (inStock.length + gone.length === 0) return null;
         return (
           <section key={storage} className="food-section">
             <div className="food-section-head">
               <h2>{STORAGE_LABELS[storage]}</h2>
               <span className="muted small">
-                {group.length} {group.length === 1 ? 'item' : 'items'}
+                {inStock.length} {inStock.length === 1 ? 'item' : 'items'}
+                {gone.length > 0 ? ` · ${gone.length} used up` : ''}
               </span>
             </div>
             <ul className="food-grid">
-              {group.map((e) => (
+              {[...inStock, ...gone].map((e) => (
                 <StockTile key={e.product.id} entry={e} today={day} onOpen={setSelId} />
               ))}
             </ul>
           </section>
         );
       })}
-      {out.length > 0 && (
-        <section className="food-section">
-          <div className="food-section-head">
-            <h2>Used up</h2>
-          </div>
-          <div className="chips">
-            {out.map((e) => (
-              <UsedUpLink key={e.product.id} entry={e} />
-            ))}
-          </div>
-        </section>
-      )}
       {selected && (
         <StockSheet
           key={selected.product.id}

@@ -26,6 +26,8 @@ export interface TileInfo {
 /** What a tile shows for one product. `shelfLifeDays` is the product's own, else the default for fresh items. */
 export function tileInfo(entry: Entry, today: string): TileInfo {
   const { product: p, stock: s } = entry;
+  // Everything you ever bought is on the grid; what is gone is greyed out, after what you have.
+  if (s.quantity <= 0) return { badge: 'Out', label: `${p.name}, used up`, sortKey: 2000 };
   const badge = !s.tracked ? 'Have' : `${formatAmount(s.quantity, p.unit)}${p.unit === 'pc' ? '' : ` ${p.unit}`}`;
   const label = `${p.name}, ${s.tracked ? `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}` : 'have it'}`;
   if (!s.useBy || p.type !== 'fresh') return { badge, label, sortKey: 1000 };

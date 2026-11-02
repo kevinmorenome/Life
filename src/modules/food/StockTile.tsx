@@ -1,4 +1,3 @@
-import { href } from '../../lib/router';
 import { FoodPicture, pictureClass } from './FoodPicture';
 import type { Entry } from './stockEntries';
 import { tileInfo } from './stockTiles';
@@ -9,7 +8,7 @@ export function StockTile({ entry, today, onOpen }: { entry: Entry; today: strin
   const info = tileInfo(entry, today);
   return (
     <li>
-      <button type="button" className="food-tile" aria-label={info.label} onClick={() => onOpen(p.id)}>
+      <button type="button" className={`food-tile${entry.stock.quantity <= 0 ? ' food-tile-gone' : ''}`} aria-label={info.label} onClick={() => onOpen(p.id)}>
         <span className={pictureClass(p)}>
           <FoodPicture product={p} />
           <span className="food-badge">{info.badge}</span>
@@ -23,14 +22,5 @@ export function StockTile({ entry, today, onOpen }: { entry: Entry; today: strin
         {info.pill && <span className={`food-pill lvl-${info.pill.level}`}>{info.pill.text}</span>}
       </button>
     </li>
-  );
-}
-
-/** A product that is all used up: just its name, linking to its page. */
-export function UsedUpLink({ entry }: { entry: Entry }) {
-  return (
-    <a className="chip food-used" href={href(`/food/product/${entry.product.id}`)}>
-      {entry.product.name}
-    </a>
   );
 }
