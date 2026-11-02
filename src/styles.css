@@ -6064,3 +6064,11 @@ a.game-row + .food-h2 {
   padding: 0.6rem 0;
   border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
 }
+.trakt-code {
+  margin: 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}

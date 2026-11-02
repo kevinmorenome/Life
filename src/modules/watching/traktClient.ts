@@ -18,6 +18,45 @@ export async function traktStatus(): Promise<TraktStatus | null> {
   }
 }
 
+export interface DeviceCode {
+  deviceCode: string;
+  userCode: string;
+  verificationUrl: string;
+  /** Seconds the code stays valid. */
+  expiresIn: number;
+  /** Seconds to wait between polls. */
+  interval: number;
+}
+
+export async function startDevice(): Promise<DeviceCode | { error: string }> {
+  try {
+    const res = await fetch('/api/trakt/device/start', { method: 'POST', credentials: 'same-origin' });
+    const body = (await res.json().catch(() => ({}))) as Partial<DeviceCode> & { error?: string };
+    if (!res.ok || !body.deviceCode) return { error: body.error ?? `Server error ${res.status}` };
+    return body as DeviceCode;
+  } catch {
+    return { error: 'Could not reach the server' };
+  }
+}
+
+export type PollStatus = 'pending' | 'slow_down' | 'ok' | 'expired' | 'denied' | 'error';
+
+export async function pollDevice(deviceCode: string): Promise<PollStatus> {
+  try {
+    const res = await fetch('/api/trakt/device/poll', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceCode }),
+    });
+    if (!res.ok) return 'error';
+    return ((await res.json()) as { status: PollStatus }).status;
+  } catch {
+    // A dropped request while waiting is not the end of the attempt.
+    return 'pending';
+  }
+}
+
 /** Fetches new plays (the Worker works in batches, so keep asking while there's more), then pulls them in. */
 export async function syncTrakt(): Promise<{ added: number } | { error: string }> {
   let added = 0;

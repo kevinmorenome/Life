@@ -1,7 +1,8 @@
-// Trakt watch history, read only. You connect once (OAuth), the Worker keeps the tokens in the
+// Trakt watch history, read only. You connect once (device code: the app shows a code that you enter at
+// trakt.tv/activate, so no redirect URI is needed and a development app works), the Worker keeps the tokens in the
 // `integrations` table (never in `records`, so they never reach a client) and pulls your history
 // into the `watched` store as fresh, immutable records with ids `trakt-<history id>`.
-// These routes sit behind Cloudflare Access like the sync API; the callback is a browser redirect.
+// These routes sit behind Cloudflare Access like the sync API.
 
 import { upsertStatement } from './records';
 
@@ -65,13 +66,13 @@ export interface PlayRecord {
 
 const PREFIX = '/api/trakt/';
 const API = 'https://api.trakt.tv';
-const AUTHORIZE = 'https://trakt.tv/oauth/authorize';
 const PAGE = 100;
 /** Pages per request, to stay well inside the Worker's subrequest limit; the client asks again while `more`. */
 const MAX_PAGES = 8;
 /** Renew a token that has less than this left. */
 const RENEW_WITHIN = 24 * 3600;
-const STATE_COOKIE = 'trakt_state';
+/** Trakt asks for a redirect URI when renewing a token; this is the "no redirect" value for apps that use the device code. */
+const NO_REDIRECT = 'urn:ietf:wg:oauth:2.0:oob';
 
 export const isTraktPath = (pathname: string): boolean => pathname.startsWith(PREFIX);
 
@@ -121,37 +122,41 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
   if (!configured) return json({ error: 'Trakt is not configured: set TRAKT_CLIENT_ID and TRAKT_CLIENT_SECRET' }, 503);
   if (ctx.readOnly) return json({ error: 'This preview is read-only' }, 409);
 
-  const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}${PREFIX}callback`;
-
-  if (route === 'connect' && request.method === 'GET') {
-    const state = crypto.randomUUID();
-    const url = new URL(AUTHORIZE);
-    url.search = new URLSearchParams({ response_type: 'code', client_id: env.TRAKT_CLIENT_ID!, redirect_uri: redirectUri, state }).toString();
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: url.toString(),
-        'Set-Cookie': `${STATE_COOKIE}=${state}; Path=${PREFIX}; Max-Age=600; HttpOnly; Secure; SameSite=Lax`,
-        'Cache-Control': 'no-store',
-      },
+  if (route === 'device/start' && request.method === 'POST') {
+    const res = await ctx.fetch(`${API}/oauth/device/code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: env.TRAKT_CLIENT_ID }),
+    });
+    if (!res.ok) return json({ error: `Trakt answered ${res.status}` }, 502);
+    const d = (await res.json()) as { device_code?: string; user_code?: string; verification_url?: string; expires_in?: number; interval?: number };
+    if (!d.device_code || !d.user_code) return json({ error: 'Trakt gave no code' }, 502);
+    return json({
+      deviceCode: d.device_code,
+      userCode: d.user_code,
+      verificationUrl: d.verification_url ?? 'https://trakt.tv/activate',
+      expiresIn: d.expires_in ?? 600,
+      interval: d.interval ?? 5,
     });
   }
 
-  if (route === 'callback' && request.method === 'GET') {
-    const params = new URL(request.url).searchParams;
-    const expected = request.headers.get('Cookie')?.match(new RegExp(`(?:^|; )${STATE_COOKIE}=([^;]+)`))?.[1];
-    if (!expected || params.get('state') !== expected) return back(origin, 'state');
-    const code = params.get('code');
-    if (!code) return back(origin, params.get('error') ?? 'denied');
-    try {
-      const tokens = await requestTokens(ctx, { code, grant_type: 'authorization_code', redirect_uri: redirectUri });
-      if (!tokens) return back(origin, 'token');
+  if (route === 'device/poll' && request.method === 'POST') {
+    const code = (await request.json().catch(() => null) as { deviceCode?: unknown } | null)?.deviceCode;
+    if (typeof code !== 'string' || !code) return json({ error: 'deviceCode is required' }, 400);
+    const res = await ctx.fetch(`${API}/oauth/device/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, client_id: env.TRAKT_CLIENT_ID, client_secret: env.TRAKT_CLIENT_SECRET }),
+    });
+    if (res.status === 200) {
+      const tokens = tokensFrom((await res.json()) as TokenResponse, ctx.now);
+      if (!tokens) return json({ status: 'error' });
       await ctx.store.connect(tokens);
-    } catch {
-      return back(origin, 'error');
+      return json({ status: 'ok' });
     }
-    return back(origin, 'ok');
+    // 400: not entered yet, 429: asked too fast; the rest end this attempt.
+    const status: Record<number, string> = { 400: 'pending', 429: 'slow_down', 404: 'error', 409: 'error', 410: 'expired', 418: 'denied' };
+    return json({ status: status[res.status] ?? 'error' });
   }
 
   if (route === 'disconnect' && request.method === 'POST') {
@@ -164,7 +169,7 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
     if (!conn) return json({ error: 'Trakt is not connected' }, 409);
     if (conn.expiresAt - ctx.now.getTime() / 1000 < RENEW_WITHIN) {
       // A refresh token is single use: the answer replaces both tokens.
-      const tokens = await requestTokens(ctx, { refresh_token: conn.refreshToken, grant_type: 'refresh_token', redirect_uri: redirectUri }).catch(() => null);
+      const tokens = await requestTokens(ctx, { refresh_token: conn.refreshToken, grant_type: 'refresh_token', redirect_uri: NO_REDIRECT }).catch(() => null);
       if (!tokens) return json({ error: 'Trakt sign-in expired: connect again', reconnect: true }, 409);
       await ctx.store.saveTokens(tokens);
       conn = { ...conn, ...tokens };
@@ -183,17 +188,19 @@ interface TokenResponse {
   created_at?: number;
 }
 
+function tokensFrom(t: TokenResponse, now: Date): Tokens | null {
+  if (!t.access_token || !t.refresh_token) return null;
+  const created = t.created_at ?? Math.floor(now.getTime() / 1000);
+  return { token: t.access_token, refreshToken: t.refresh_token, expiresAt: created + (t.expires_in ?? 7 * 24 * 3600) };
+}
+
 async function requestTokens(ctx: TraktContext, body: Record<string, string>): Promise<Tokens | null> {
   const res = await ctx.fetch(`${API}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...body, client_id: ctx.env.TRAKT_CLIENT_ID, client_secret: ctx.env.TRAKT_CLIENT_SECRET }),
   });
-  if (!res.ok) return null;
-  const t = (await res.json()) as TokenResponse;
-  if (!t.access_token || !t.refresh_token) return null;
-  const created = t.created_at ?? Math.floor(ctx.now.getTime() / 1000);
-  return { token: t.access_token, refreshToken: t.refresh_token, expiresAt: created + (t.expires_in ?? 7 * 24 * 3600) };
+  return res.ok ? tokensFrom((await res.json()) as TokenResponse, ctx.now) : null;
 }
 
 /**
@@ -230,18 +237,6 @@ async function sync(conn: Connection, ctx: TraktContext, firstPage: number): Pro
     added += records.length;
   }
   return json({ ok: true, added, more: !finished, page });
-}
-
-/** Back to Settings, with the outcome in the query string for the page to show. */
-function back(origin: string, result: string): Response {
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: `${origin}/?trakt=${encodeURIComponent(result)}#/settings`,
-      'Set-Cookie': `${STATE_COOKIE}=; Path=${PREFIX}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
-      'Cache-Control': 'no-store',
-    },
-  });
 }
 
 function json(body: unknown, status = 200): Response {

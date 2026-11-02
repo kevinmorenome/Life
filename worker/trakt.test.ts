@@ -77,7 +77,7 @@ describe('handleTrakt', () => {
   it('reports status without a connection, and fails closed when not configured', async () => {
     const { ctx } = setup({ env: {} });
     expect(await (await call(ctx, '/api/trakt/status')).json()).toEqual({ configured: false, connected: false, lastSync: null });
-    expect((await call(ctx, '/api/trakt/connect')).status).toBe(503);
+    expect((await call(ctx, '/api/trakt/device/start', 'POST')).status).toBe(503);
   });
 
   it('is read only in previews', async () => {
@@ -85,31 +85,64 @@ describe('handleTrakt', () => {
     expect((await call(ctx, '/api/trakt/sync', 'POST')).status).toBe(409);
   });
 
-  it('sends connect to Trakt with a state cookie, and checks it on the way back', async () => {
-    const { ctx, connected } = setup({
-      fetch: (async () => new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 1000, created_at: 5000 }))) as typeof fetch,
+  it('starts a device code and hands back what the app shows', async () => {
+    const { ctx, calls } = setup({
+      fetch: (async (url: string, init?: RequestInit) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ device_code: 'dev', user_code: 'ABCD1234', verification_url: 'https://trakt.tv/activate', expires_in: 600, interval: 5 }));
+      }) as typeof fetch,
     });
-    const res = await call(ctx, '/api/trakt/connect');
-    expect(res.status).toBe(302);
-    const location = new URL(res.headers.get('Location')!);
-    expect(location.origin + location.pathname).toBe('https://trakt.tv/oauth/authorize');
-    expect(location.searchParams.get('redirect_uri')).toBe('https://life.example/api/trakt/callback');
-    const state = location.searchParams.get('state')!;
-    expect(res.headers.get('Set-Cookie')).toContain(`trakt_state=${state}`);
-
-    const bad = await call(ctx, `/api/trakt/callback?code=c&state=${state}`, 'GET', { Cookie: 'trakt_state=other' });
-    expect(bad.headers.get('Location')).toContain('trakt=state');
-    expect(connected()).toBeUndefined();
-
-    const ok = await call(ctx, `/api/trakt/callback?code=c&state=${state}`, 'GET', { Cookie: `trakt_state=${state}` });
-    expect(ok.headers.get('Location')).toBe('https://life.example/?trakt=ok#/settings');
-    expect(connected()).toEqual({ token: 'a', refreshToken: 'r', expiresAt: 6000 });
+    const res = await call(ctx, '/api/trakt/device/start', 'POST');
+    expect(await res.json()).toEqual({ deviceCode: 'dev', userCode: 'ABCD1234', verificationUrl: 'https://trakt.tv/activate', expiresIn: 600, interval: 5 });
+    expect(calls[0].url).toBe('https://api.trakt.tv/oauth/device/code');
+    expect(JSON.parse(calls[0].init!.body as string)).toEqual({ client_id: 'id' });
   });
 
-  it('reports a refused sign-in', async () => {
-    const { ctx } = setup({ fetch: (async () => new Response('{}', { status: 401 })) as typeof fetch });
-    const res = await call(ctx, '/api/trakt/callback?code=c&state=s', 'GET', { Cookie: 'trakt_state=s' });
-    expect(res.headers.get('Location')).toContain('trakt=token');
+  it('reports a Trakt failure when starting', async () => {
+    const { ctx } = setup({ fetch: (async () => new Response('{}', { status: 500 })) as typeof fetch });
+    expect((await call(ctx, '/api/trakt/device/start', 'POST')).status).toBe(502);
+  });
+
+  const poll = (ctx: TraktContext, body: unknown = { deviceCode: 'dev' }) =>
+    handleTrakt(new Request('https://life.example/api/trakt/device/poll', { method: 'POST', body: JSON.stringify(body) }), '/api/trakt/device/poll', ctx);
+
+  it('stores the tokens once the code was entered', async () => {
+    const { ctx, connected, calls } = setup({
+      fetch: (async (url: string, init?: RequestInit) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 1000, created_at: 5000 }));
+      }) as typeof fetch,
+    });
+    expect(await (await poll(ctx)).json()).toEqual({ status: 'ok' });
+    expect(connected()).toEqual({ token: 'a', refreshToken: 'r', expiresAt: 6000 });
+    expect(calls[0].url).toBe('https://api.trakt.tv/oauth/device/token');
+    expect(JSON.parse(calls[0].init!.body as string)).toEqual({ code: 'dev', client_id: 'id', client_secret: 'secret' });
+  });
+
+  it('maps the answers while the code is not entered yet', async () => {
+    const answer = async (status: number) => {
+      const { ctx, connected } = setup({ fetch: (async () => new Response('{}', { status })) as typeof fetch });
+      const body = (await (await poll(ctx)).json()) as { status: string };
+      expect(connected()).toBeUndefined();
+      return body.status;
+    };
+    expect(await answer(400)).toBe('pending');
+    expect(await answer(429)).toBe('slow_down');
+    expect(await answer(410)).toBe('expired');
+    expect(await answer(418)).toBe('denied');
+    expect(await answer(404)).toBe('error');
+    expect(await answer(500)).toBe('error');
+  });
+
+  it('does not connect when Trakt sends no refresh token', async () => {
+    const { ctx, connected } = setup({ fetch: (async () => new Response(JSON.stringify({ access_token: 'a' }))) as typeof fetch });
+    expect(await (await poll(ctx)).json()).toEqual({ status: 'error' });
+    expect(connected()).toBeUndefined();
+  });
+
+  it('needs a device code to poll', async () => {
+    const { ctx } = setup();
+    expect((await poll(ctx, {})).status).toBe(400);
   });
 
   it('needs a connection to sync', async () => {
@@ -150,16 +183,20 @@ describe('handleTrakt', () => {
 
   it('renews a token that is about to expire, and asks to connect again when that fails', async () => {
     const soon = conn({ expiresAt: nowSec + 3600 });
+    const renewCalls: { url: string; init?: RequestInit }[] = [];
     const renewing = setup(
       {
-        fetch: (async (url: string) =>
-          url.endsWith('/oauth/token')
+        fetch: (async (url: string, init?: RequestInit) => {
+          renewCalls.push({ url, init });
+          return url.endsWith('/oauth/token')
             ? new Response(JSON.stringify({ access_token: 'new', refresh_token: 'new-ref', expires_in: 7200, created_at: nowSec }))
-            : new Response('[]')) as typeof fetch,
+            : new Response('[]');
+        }) as typeof fetch,
       },
       soon,
     );
     expect((await call(renewing.ctx, '/api/trakt/sync', 'POST')).status).toBe(200);
+    expect(JSON.parse(renewCalls[0].init!.body as string)).toMatchObject({ grant_type: 'refresh_token', refresh_token: 'ref', redirect_uri: 'urn:ietf:wg:oauth:2.0:oob' });
     expect(renewing.tokens).toEqual([{ token: 'new', refreshToken: 'new-ref', expiresAt: nowSec + 7200 }]);
 
     const failing = setup({ fetch: (async () => new Response('{}', { status: 400 })) as typeof fetch }, soon);
