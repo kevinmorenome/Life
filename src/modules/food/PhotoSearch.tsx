@@ -4,21 +4,23 @@ import { searchPhotoCandidates, type PhotoCandidate } from './photoSearch';
 import { photoFromUrl } from './productPhoto';
 
 /** Search Open Food Facts for a picture of the product; tap the right one. Loose by name, exact by barcode. */
-export function PhotoSearch({ name, onPick, onClose }: { name: string; onPick(photo: string): Promise<void> | void; onClose(): void }) {
+export function PhotoSearch({ name, rawName, onPick, onClose }: { name: string; /** The text printed on the receipt, the best way into Konzum's catalogue. */ rawName?: string; onPick(photo: string): Promise<void> | void; onClose(): void }) {
   const [query, setQuery] = useState(name);
+  // The receipt text is only used until you type your own words.
+  const [typed, setTyped] = useState(false);
   const [code, setCode] = useState('');
   const [state, setState] = useState<{ status: 'loading' | 'done' | 'picking'; candidates: PhotoCandidate[]; error?: string }>({ status: 'loading', candidates: [] });
   const box = useRef<HTMLDivElement>(null);
 
-  async function run(q: string, c: string) {
+  async function run(q: string, c: string, useRaw: boolean) {
     setState({ status: 'loading', candidates: [] });
-    const r = await searchPhotoCandidates(c.trim() ? { code: c } : { query: q });
+    const r = await searchPhotoCandidates(c.trim() ? { code: c } : { query: q, rawName: useRaw ? rawName : undefined });
     setState({ status: 'done', candidates: r.candidates, error: r.error });
   }
 
   useEffect(() => {
     box.current?.focus();
-    void run(name, '');
+    void run(name, '', true);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
@@ -45,10 +47,10 @@ export function PhotoSearch({ name, onPick, onClose }: { name: string; onPick(ph
           className="food-search-form"
           onSubmit={(e) => {
             e.preventDefault();
-            void run(query, code);
+            void run(query, code, !typed);
           }}
         >
-          <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Product name" placeholder="Name of the product" />
+          <input value={query} onChange={(e) => { setQuery(e.target.value); setTyped(true); }} aria-label="Product name" placeholder="Name of the product" />
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" aria-label="Barcode" placeholder="or its barcode" />
           <button type="submit" className="icon-btn" aria-label="Search">
             <SearchIcon />
@@ -65,12 +67,13 @@ export function PhotoSearch({ name, onPick, onClose }: { name: string; onPick(ph
                 <span className="food-result-img">
                   <img src={c.imageUrl} alt="" loading="lazy" />
                 </span>
-                <span className="small">{[c.brand, c.quantity].filter(Boolean).join(' · ') || c.name}</span>
+                <span className="small">{c.source === 'Konzum' ? c.name : [c.brand, c.quantity].filter(Boolean).join(' · ') || c.name}</span>
+                {c.source && <span className="muted food-source">{c.source}</span>}
               </button>
             </li>
           ))}
         </ul>
-        <p className="muted small">Pictures from Open Food Facts. Check that it is the same product (size, flavour) before you tap.</p>
+        <p className="muted small">Pictures from Konzum's web shop and Open Food Facts. Check that it is the same product (size, flavour) before you tap.</p>
       </div>
     </>
   );

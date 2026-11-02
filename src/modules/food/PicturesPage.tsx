@@ -83,7 +83,7 @@ export function PicturesPage({ receipts, products, events, onProduct }: { receip
       )}
       <p className="muted small">The first photo takes a little longer: the app downloads the background remover once.</p>
       {picker.inputs}
-      {search && <PhotoSearch name={p.name} onPick={(photo) => onProduct(productRecord(p, products.find((x) => x.id === p.id), { photo }, new Date().toISOString()))} onClose={() => setSearch(false)} />}
+      {search && <PhotoSearch name={p.name} rawName={p.purchases[0]?.rawName} onPick={(photo) => onProduct(productRecord(p, products.find((x) => x.id === p.id), { photo }, new Date().toISOString()))} onClose={() => setSearch(false)} />}
     </section>
   );
 }

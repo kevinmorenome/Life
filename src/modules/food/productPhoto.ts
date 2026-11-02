@@ -18,9 +18,9 @@ export async function blobOf(dataUrl: string): Promise<Blob> {
   return (await fetch(dataUrl)).blob();
 }
 
-/** Downloads a picture (Open Food Facts's image host allows it) and makes a tile picture of it. */
+/** Downloads a picture through the Worker (which only fetches from the picture sources, and spares us the image hosts' browser rules) and makes a tile picture of it. */
 export async function photoFromUrl(url: string): Promise<string> {
-  const res = await fetch(url);
+  const res = await fetch(`/api/food/photo-image?url=${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error('Could not download that picture.');
   return foodPhoto(await res.blob());
 }

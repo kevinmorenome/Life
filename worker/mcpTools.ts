@@ -13,6 +13,7 @@ import { parseProductChanges, withProductChanges } from '../src/modules/food/pro
 import { formatQty, partLeft, stockOf, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
+import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
@@ -27,7 +28,7 @@ export interface ToolContext {
   /** Downloads a product image as a data URL (undefined if unusable). Faked in tests. */
   fetchPhoto?: (url: string) => Promise<string | undefined>;
   /** Looks pictures of packaged food up in Open Food Facts. Faked in tests. */
-  searchPhotos?: (input: { query?: string; code?: string }) => Promise<PhotoSearchResult>;
+  searchPhotos?: (input: PhotoSearchInput) => Promise<PhotoSearchResult>;
 }
 
 export interface ToolImage {
@@ -293,7 +294,7 @@ export const TOOLS = [
   {
     name: 'find_product_photo',
     description:
-      'Look for a picture of a packaged food product in Open Food Facts (open data), by words from its name or by its barcode (exact, preferred when the user has one). Returns up to nine candidates with name, brand, size, country, barcode and picture URL. It is a loose search: results are often other variants (another country, another size or flavour), and fresh produce or shop own-brand goods usually have none. Compare brand, product, size and flavour with the product before choosing, and if none is clearly the same product say so instead of picking one; the user can photograph it themselves in the app. Then call set_product_photo with the chosen imageUrl. Use list_stock to find products whose picture is "none".',
+      'Look for a picture of a food product in Konzum\'s web shop (the shop most groceries come from: exact products, found with the Croatian text printed on the receipt) and in Open Food Facts (open data, packaged goods by name, or exactly by barcode when the user has one). Returns candidates with source, name, brand, size, country and picture URL. Konzum\'s are the shop\'s own listing and usually the right product, but still check the pack size and flavour in the name (e.g. 330 ml vs 0,5 l, or a different flavour); Open Food Facts is loose: often another country\'s variant or another size. Compare brand, product, size and flavour with the product before choosing, and if none is clearly the same product say so instead of picking one; the user can photograph it themselves in the app. Then call set_product_photo with the chosen imageUrl. Use list_stock to find products whose picture is "none".',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1019,19 +1020,22 @@ async function setProductInfo(args: Args, { store, now, newId }: ToolContext): P
 async function findProductPhoto(args: Args, { store, now, searchPhotos: search }: ToolContext): Promise<ToolResult> {
   if (!search) return fail('Picture search is not available in this deployment.');
   let query = text(args.query, 100);
+  let rawName: string | undefined;
   const code = text(args.code, 20);
   if (!query && !code) {
     const { products } = await stockState(store, now);
     const found = resolveProduct(args.product, products);
     if ('error' in found) return found.error;
     query = found.product.name;
+    // The text printed on the receipt (Croatian) is the way into the shop's catalogue.
+    rawName = found.product.purchases[0]?.rawName;
   }
-  const r = await search({ query, code });
+  const r = await search({ query, rawName, code });
   if (r.error && r.candidates.length === 0) return fail(`${r.error} Try again in a minute, or use a barcode.`);
   if (r.candidates.length === 0) return ok({ candidates: [], note: 'Nothing found. Try other words or the barcode, or ask the user to photograph the product in the app.' });
   return ok({
     searched: code ? `barcode ${code}` : query,
-    candidates: r.candidates.map((c) => ({ name: c.name, brand: c.brand, size: c.quantity, country: c.country, barcode: c.code, imageUrl: c.imageUrl })),
+    candidates: r.candidates.map((c) => ({ source: c.source, name: c.name, brand: c.brand, size: c.quantity, country: c.country, code: c.code, imageUrl: c.imageUrl })),
     note: 'Pick one only if brand, product, size and flavour match; otherwise tell the user none matched.',
   });
 }

@@ -5873,3 +5873,8 @@ a.game-row + .food-h2 {
 .food-pic-error-inline {
   color: var(--danger);
 }
+
+.food-source {
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
