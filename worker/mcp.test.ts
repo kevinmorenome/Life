@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -91,6 +91,7 @@ describe('protocol', () => {
       'add_item',
       'add_receipt_items',
       'add_grocery_receipt',
+      'add_wolt_orders',
       'list_stock',
       'use_stock',
       'count_stock',
@@ -980,5 +981,20 @@ describe('guards against splitting an item\'s history', () => {
     expect(shirt.photoNote).toMatch(/set_item_photo/);
     expect(cap).toMatchObject({ photo: true });
     expect(cap.photoNote).toBeUndefined();
+  });
+});
+
+describe('add_wolt_orders', () => {
+  const call = async (ctx: ToolContext, orders: unknown[]) => {
+    const r = (await rpc(ctx, 'tools/call', { name: 'add_wolt_orders', arguments: { orders } })).result;
+    return JSON.parse(r.content[0].text);
+  };
+  it('saves new orders once and never overwrites', async () => {
+    const { data, ctx } = setup();
+    const order = { sourceId: 'w1', restaurant: "McDonald's - Rotor", date: '2026-05-03', time: '22:36', total: 9.61 };
+    expect(await call(ctx, [order])).toMatchObject({ added: 1, alreadyAdded: 0 });
+    data.woltorders.set('wolt-w1', { ...data.woltorders.get('wolt-w1')!, restaurant: 'My edit' });
+    expect(await call(ctx, [order, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
+    expect(data.woltorders.get('wolt-w1')).toMatchObject({ restaurant: 'My edit', currency: 'EUR' });
   });
 });

@@ -5886,3 +5886,36 @@ a.game-row + .food-h2 {
 .food-art.photo-flat .food-photo {
   padding: 6%;
 }
+
+/* Wolt orders */
+.dot.mark-wolt {
+  background: var(--tone-orange);
+}
+.day-badge.mark-wolt {
+  color: var(--tone-orange);
+}
+.pill.mark-wolt {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.wolt-orders {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.wolt-orders li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+}
+.wolt-when {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+.wolt-total {
+  font-variant-numeric: tabular-nums;
+}
