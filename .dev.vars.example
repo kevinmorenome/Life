@@ -4,6 +4,9 @@ MCP_TOKEN=local-dev-token-0123456789abcdef
 # Swarm check-ins (optional): from your Foursquare app; its redirect URL must be http://localhost:8787/api/swarm/callback
 # FOURSQUARE_CLIENT_ID=
 # FOURSQUARE_CLIENT_SECRET=
-# Trakt watch history (optional): from your Trakt API app (a development app is enough; you connect with a device code, no redirect URI is used, but the form wants one: http://localhost:8787/callback)
+# Trakt watch history (optional): from your Trakt API app. You connect with a device code, so a development
+# app is enough. New Trakt apps get no client secret (they use PKCE); set TRAKT_CLIENT_SECRET only if you have one.
 # TRAKT_CLIENT_ID=
 # TRAKT_CLIENT_SECRET=
+# Optional: the redirect URI registered in the Trakt app, sent when a token is renewed (default urn:ietf:wg:oauth:2.0:oob)
+# TRAKT_REDIRECT_URI=

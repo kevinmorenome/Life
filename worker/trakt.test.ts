@@ -94,7 +94,7 @@ describe('handleTrakt', () => {
     });
     const res = await call(ctx, '/api/trakt/device/start', 'POST');
     expect(await res.json()).toEqual({ deviceCode: 'dev', userCode: 'ABCD1234', verificationUrl: 'https://trakt.tv/activate', expiresIn: 600, interval: 5 });
-    expect(calls[0].url).toBe('https://api.trakt.tv/oauth/device/code');
+    expect(calls[0].url).toBe('https://auth.trakt.tv/oauth/device/code');
     expect(JSON.parse(calls[0].init!.body as string)).toEqual({ client_id: 'id' });
   });
 
@@ -115,8 +115,22 @@ describe('handleTrakt', () => {
     });
     expect(await (await poll(ctx)).json()).toEqual({ status: 'ok' });
     expect(connected()).toEqual({ token: 'a', refreshToken: 'r', expiresAt: 6000 });
-    expect(calls[0].url).toBe('https://api.trakt.tv/oauth/device/token');
+    expect(calls[0].url).toBe('https://auth.trakt.tv/oauth/device/token');
     expect(JSON.parse(calls[0].init!.body as string)).toEqual({ code: 'dev', client_id: 'id', client_secret: 'secret' });
+  });
+
+  it('works without a client secret, which new Trakt apps do not get', async () => {
+    const { ctx, connected, calls } = setup({
+      env: { TRAKT_CLIENT_ID: 'id' },
+      fetch: (async (url: string, init?: RequestInit) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 1000, created_at: 5000 }));
+      }) as typeof fetch,
+    });
+    expect(await (await call(ctx, '/api/trakt/status')).json()).toMatchObject({ configured: true });
+    expect(await (await poll(ctx)).json()).toEqual({ status: 'ok' });
+    expect(JSON.parse(calls[0].init!.body as string)).toEqual({ code: 'dev', client_id: 'id' });
+    expect(connected()).toBeDefined();
   });
 
   it('maps the answers while the code is not entered yet', async () => {
@@ -198,6 +212,25 @@ describe('handleTrakt', () => {
     expect((await call(renewing.ctx, '/api/trakt/sync', 'POST')).status).toBe(200);
     expect(JSON.parse(renewCalls[0].init!.body as string)).toMatchObject({ grant_type: 'refresh_token', refresh_token: 'ref', redirect_uri: 'urn:ietf:wg:oauth:2.0:oob' });
     expect(renewing.tokens).toEqual([{ token: 'new', refreshToken: 'new-ref', expiresAt: nowSec + 7200 }]);
+
+    expect(renewCalls[0].url).toBe('https://auth.trakt.tv/oauth/token');
+
+    // A registered redirect URI is sent instead of the default.
+    const custom: { init?: RequestInit }[] = [];
+    const withUri = setup(
+      {
+        env: { TRAKT_CLIENT_ID: 'id', TRAKT_REDIRECT_URI: 'https://life.example/callback' },
+        fetch: (async (url: string, init?: RequestInit) => {
+          custom.push({ init });
+          return url.endsWith('/oauth/token') ? new Response(JSON.stringify({ access_token: 'n', refresh_token: 'r2', expires_in: 7200, created_at: nowSec })) : new Response('[]');
+        }) as typeof fetch,
+      },
+      soon,
+    );
+    await call(withUri.ctx, '/api/trakt/sync', 'POST');
+    const sent = JSON.parse(custom[0].init!.body as string);
+    expect(sent).toMatchObject({ redirect_uri: 'https://life.example/callback' });
+    expect(sent).not.toHaveProperty('client_secret');
 
     const failing = setup({ fetch: (async () => new Response('{}', { status: 400 })) as typeof fetch }, soon);
     const res = await call(failing.ctx, '/api/trakt/sync', 'POST');

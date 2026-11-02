@@ -8,7 +8,10 @@ import { upsertStatement } from './records';
 
 export interface TraktEnv {
   TRAKT_CLIENT_ID?: string;
+  /** Optional and deprecated by Trakt: new apps get none and sign in without it. Only sent when set. */
   TRAKT_CLIENT_SECRET?: string;
+  /** The redirect URI registered in the Trakt app, sent when renewing a token. Defaults to the "no redirect" value. */
+  TRAKT_REDIRECT_URI?: string;
 }
 
 export interface Tokens {
@@ -66,12 +69,14 @@ export interface PlayRecord {
 
 const PREFIX = '/api/trakt/';
 const API = 'https://api.trakt.tv';
+/** Trakt wants every OAuth request (device code, token, refresh) on this host, not the API's. */
+const AUTH = 'https://auth.trakt.tv';
 const PAGE = 100;
 /** Pages per request, to stay well inside the Worker's subrequest limit; the client asks again while `more`. */
 const MAX_PAGES = 8;
 /** Renew a token that has less than this left. */
 const RENEW_WITHIN = 24 * 3600;
-/** Trakt asks for a redirect URI when renewing a token; this is the "no redirect" value for apps that use the device code. */
+/** Trakt asks for a redirect URI when renewing a token; this is the "no redirect" value, used when TRAKT_REDIRECT_URI isn't set. */
 const NO_REDIRECT = 'urn:ietf:wg:oauth:2.0:oob';
 
 export const isTraktPath = (pathname: string): boolean => pathname.startsWith(PREFIX);
@@ -113,17 +118,17 @@ export function playRecord(raw: RawPlay, now: Date): PlayRecord | null {
 export async function handleTrakt(request: Request, pathname: string, ctx: TraktContext): Promise<Response> {
   const route = pathname.slice(PREFIX.length);
   const { env } = ctx;
-  const configured = Boolean(env.TRAKT_CLIENT_ID && env.TRAKT_CLIENT_SECRET);
+  const configured = Boolean(env.TRAKT_CLIENT_ID);
 
   if (route === 'status' && request.method === 'GET') {
     const conn = configured ? await ctx.store.get() : null;
     return json({ configured, connected: Boolean(conn), lastSync: conn?.lastSync ?? null });
   }
-  if (!configured) return json({ error: 'Trakt is not configured: set TRAKT_CLIENT_ID and TRAKT_CLIENT_SECRET' }, 503);
+  if (!configured) return json({ error: 'Trakt is not configured: set TRAKT_CLIENT_ID' }, 503);
   if (ctx.readOnly) return json({ error: 'This preview is read-only' }, 409);
 
   if (route === 'device/start' && request.method === 'POST') {
-    const res = await ctx.fetch(`${API}/oauth/device/code`, {
+    const res = await ctx.fetch(`${AUTH}/oauth/device/code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: env.TRAKT_CLIENT_ID }),
@@ -143,10 +148,10 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
   if (route === 'device/poll' && request.method === 'POST') {
     const code = (await request.json().catch(() => null) as { deviceCode?: unknown } | null)?.deviceCode;
     if (typeof code !== 'string' || !code) return json({ error: 'deviceCode is required' }, 400);
-    const res = await ctx.fetch(`${API}/oauth/device/token`, {
+    const res = await ctx.fetch(`${AUTH}/oauth/device/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, client_id: env.TRAKT_CLIENT_ID, client_secret: env.TRAKT_CLIENT_SECRET }),
+      body: JSON.stringify({ code, client_id: env.TRAKT_CLIENT_ID, ...secret(env) }),
     });
     if (res.status === 200) {
       const tokens = tokensFrom((await res.json()) as TokenResponse, ctx.now);
@@ -169,7 +174,7 @@ export async function handleTrakt(request: Request, pathname: string, ctx: Trakt
     if (!conn) return json({ error: 'Trakt is not connected' }, 409);
     if (conn.expiresAt - ctx.now.getTime() / 1000 < RENEW_WITHIN) {
       // A refresh token is single use: the answer replaces both tokens.
-      const tokens = await requestTokens(ctx, { refresh_token: conn.refreshToken, grant_type: 'refresh_token', redirect_uri: NO_REDIRECT }).catch(() => null);
+      const tokens = await requestTokens(ctx, { refresh_token: conn.refreshToken, grant_type: 'refresh_token', redirect_uri: env.TRAKT_REDIRECT_URI || NO_REDIRECT }).catch(() => null);
       if (!tokens) return json({ error: 'Trakt sign-in expired: connect again', reconnect: true }, 409);
       await ctx.store.saveTokens(tokens);
       conn = { ...conn, ...tokens };
@@ -188,6 +193,8 @@ interface TokenResponse {
   created_at?: number;
 }
 
+const secret = (env: TraktEnv) => (env.TRAKT_CLIENT_SECRET ? { client_secret: env.TRAKT_CLIENT_SECRET } : {});
+
 function tokensFrom(t: TokenResponse, now: Date): Tokens | null {
   if (!t.access_token || !t.refresh_token) return null;
   const created = t.created_at ?? Math.floor(now.getTime() / 1000);
@@ -195,10 +202,10 @@ function tokensFrom(t: TokenResponse, now: Date): Tokens | null {
 }
 
 async function requestTokens(ctx: TraktContext, body: Record<string, string>): Promise<Tokens | null> {
-  const res = await ctx.fetch(`${API}/oauth/token`, {
+  const res = await ctx.fetch(`${AUTH}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, client_id: ctx.env.TRAKT_CLIENT_ID, client_secret: ctx.env.TRAKT_CLIENT_SECRET }),
+    body: JSON.stringify({ ...body, client_id: ctx.env.TRAKT_CLIENT_ID, ...secret(ctx.env) }),
   });
   return res.ok ? tokensFrom((await res.json()) as TokenResponse, ctx.now) : null;
 }
