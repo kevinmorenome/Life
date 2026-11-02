@@ -5510,6 +5510,12 @@ a.game-row + .food-h2 {
   background: var(--surface);
   box-shadow: 0 -8px 32px rgb(0 0 0 / 0.2);
   outline: none;
+  /* With several batches the sheet is taller than the screen: it scrolls inside itself instead of running off the top. */
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .food-sheet {
