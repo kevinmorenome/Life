@@ -6304,39 +6304,19 @@ a.game-row + .food-h2 {
 }
 
 /* ───────────── Liquid Glass: day widgets ─────────────
-   Each widget is a pane of tinted glass. Soft colour sits behind the grid so the blur has something to refract
-   (it follows the widgets' tones); the text inside stays flat. */
-.day-grid {
-  position: relative;
-  isolation: isolate;
-}
-.day-grid::before {
-  content: '';
-  position: absolute;
-  inset: -1.5rem -16px;
-  z-index: -1;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
-  mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
-  background:
-    radial-gradient(60% 22% at 12% 6%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
-    radial-gradient(55% 20% at 92% 30%, color-mix(in srgb, var(--tone-purple) 30%, transparent), transparent 70%),
-    radial-gradient(60% 22% at 10% 62%, color-mix(in srgb, var(--tone-blue) 28%, transparent), transparent 70%),
-    radial-gradient(55% 20% at 90% 88%, color-mix(in srgb, var(--tone-orange) 28%, transparent), transparent 70%);
-}
+   Same vocabulary as the closet: a plain page, one neutral glass plate (--plate) for the panes, hairlines inside,
+   colour only on the small icon bubble. Work is a segmented track with a raised lens, like Items | Outfits. */
 .widget {
   border: 1px solid var(--glass-edge);
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--w) 16%, transparent), transparent 62%),
-    linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  background: var(--plate);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 22px var(--glass-glow);
+  box-shadow: var(--plate-shadow);
 }
 .widget-icon {
   border: 1px solid var(--glass-edge);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--w) 30%, var(--glass-bg-strong)), color-mix(in srgb, var(--w) 12%, var(--glass-bg)));
-  box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 6px color-mix(in srgb, var(--w) 25%, transparent);
+  background: color-mix(in srgb, var(--w) 16%, var(--glass-bg-strong));
+  box-shadow: inset 0 1px 0 var(--glass-rim);
 }
 .widget-badge {
   border: 1px solid var(--glass-edge);
@@ -6346,18 +6326,27 @@ a.game-row + .food-h2 {
 .widget-list li {
   border-top-color: var(--glass-line);
 }
-.work-quick-btn {
+.work-quick-row {
+  gap: 4px;
+  padding: 4px;
   border: 1px solid var(--glass-edge);
-  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  border-radius: 999px;
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 4px rgb(31 38 54 / 0.1), 0 1px 0 var(--glass-rim);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.work-quick-btn {
+  min-height: 40px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
 }
 .work-quick-btn[aria-pressed='true'] {
-  border-color: var(--glass-rim);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--glass-bg-strong)), color-mix(in srgb, var(--accent) 16%, var(--glass-bg)));
+  border-color: var(--glass-edge);
+  background: var(--plate);
   color: var(--accent);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
 }
 .work-quick-btn:active {
   transform: scale(0.97);
@@ -6366,10 +6355,5 @@ a.game-row + .food-h2 {
   .work-quick-btn,
   .widget-chevron {
     transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .day-grid::before {
-    display: none;
   }
 }
