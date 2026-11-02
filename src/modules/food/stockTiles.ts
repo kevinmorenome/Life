@@ -30,6 +30,12 @@ export function tileInfo(entry: Entry, today: string): TileInfo {
   if (s.quantity <= 0) return { badge: 'Out', label: `${p.name}, used up`, sortKey: 2000 };
   const badge = !s.tracked ? 'Have' : `${formatAmount(s.quantity, p.unit)}${p.unit === 'pc' ? '' : ` ${p.unit}`}`;
   const label = `${p.name}, ${s.tracked ? `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}` : 'have it'}`;
+  // Thawed food is to be used first: it is marked, and goes before everything else on the grid.
+  const thawedBy = s.batches.filter((b) => b.thawed && b.useBy).map((b) => b.useBy!).sort()[0];
+  if (s.thawedQuantity > 0 && thawedBy) {
+    const left = daysBetween(today, thawedBy);
+    return { badge, label: `${label}, thawed`, pill: { text: left < 0 ? 'Thawed · past date' : `Thawed · ${dayText(left)}`, level: left <= 1 ? 'urgent' : 'soon' }, sortKey: left - 1000 };
+  }
   if (!s.useBy || p.type !== 'fresh') return { badge, label, sortKey: 1000 };
   const days = daysBetween(today, s.useBy);
   const life = p.shelfLifeDays ?? DEFAULT_FRESH_DAYS;

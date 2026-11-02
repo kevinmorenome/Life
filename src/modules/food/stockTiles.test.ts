@@ -57,3 +57,27 @@ describe('tileInfo', () => {
     expect(tileInfo(oil, '2026-11-02')).toMatchObject({ badge: 'Have', label: 'Thing, have it' });
   });
 });
+
+describe('thawed food on the grid', () => {
+  const ev = (type: 'freeze' | 'thaw', batch: string, date: string, id: string) => ({ id, productId: 'fp-x', type, quantity: 1, date, source: 'app' as const, batch, createdAt: `${date}T10:00:00Z`, updatedAt: '' });
+  const make = (type: 'staple' | 'fresh') => {
+    const e = entry({ type, name: 'Chicken' }, '2026-10-20');
+    const stock = stockOf(e.product, e.product.purchases, [ev('freeze', 'r:0', '2026-10-21', 'f'), ev('thaw', 'freeze-f:r:0', '2026-11-02', 't')], '2026-11-02');
+    return { ...e, stock };
+  };
+
+  it('is marked and said in words, whatever the type', () => {
+    for (const type of ['staple', 'fresh'] as const) {
+      const info = tileInfo(make(type), '2026-11-02');
+      expect(info.pill).toEqual({ text: 'Thawed · 2 days', level: 'soon' });
+      expect(info.label).toContain('thawed');
+    }
+    expect(tileInfo(make('staple'), '2026-11-04').pill).toEqual({ text: 'Thawed · Today', level: 'urgent' });
+    expect(tileInfo(make('staple'), '2026-11-05').pill?.text).toBe('Thawed · past date');
+  });
+
+  it('goes before everything else', () => {
+    const soonest = entry({ type: 'fresh', shelfLifeDays: 1 }, '2026-11-02');
+    expect(tileInfo(make('staple'), '2026-11-02').sortKey).toBeLessThan(tileInfo(soonest, '2026-11-02').sortKey);
+  });
+});

@@ -693,6 +693,44 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'hummus', boughtOn: '2026-10-20', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
   });
 
+  it('puts part of a batch in the freezer and takes it out again', async () => {
+    const { ctx, data } = seed();
+    const frozen = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze', quantity: 2 })).json() as { moved: string; inFreezerNow: number; left: number };
+    expect(frozen).toMatchObject({ recorded: 'freeze', moved: '2', inFreezerNow: 2, left: 4 });
+    expect([...data.foodstock.values()][0]).toMatchObject({ type: 'freeze', quantity: 2, batch: 'food-1:1' });
+
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { inFreezer: number; batches: { frozenOn?: string; boughtOn: string; quantity: number }[] }[];
+    expect(listed[0].inFreezer).toBe(2);
+    expect(listed[0].batches.find((b) => b.frozenOn)).toMatchObject({ boughtOn: '2026-10-20', quantity: 2 });
+
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24', action: 'thaw' })).isError).toBe(true); // that batch is not frozen
+    const out = (await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw' })).json() as { moved: string; inFreezerNow: number };
+    expect(out).toMatchObject({ moved: '2', inFreezerNow: 0 });
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw' })).isError).toBe(true); // nothing is frozen now
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'freeze', quantity: 'all' })).isError).toBe(true);
+  });
+
+  it('refuses to freeze food that was thawed, and tells Claude to push using it', async () => {
+    const { ctx } = seed();
+    await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze', quantity: 2 });
+    await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw', quantity: 1 });
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { thawed: number; note: string; status: string; batches: { thawedOn?: string }[] }[];
+    expect(listed[0]).toMatchObject({ thawed: 1, status: 'use-soon' });
+    expect(listed[0].note).toContain('do not refreeze');
+    expect(listed[0].batches.some((b) => b.thawedOn)).toBe(true);
+
+    // freeze the rest, take one out: now what is outside the freezer is only thawed
+    await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze' });
+    const again = await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze' });
+    expect(again.isError).toBe(true);
+    expect(JSON.stringify(again)).toContain('thawed');
+    // with no batch named, the other purchase that is still in the fridge is frozen (only thawed food is left out)
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', action: 'freeze' })).isError).toBeFalsy();
+    const noBatch = await call(ctx, 'use_stock', { product: 'oat drink', action: 'freeze' });
+    expect(noBatch.isError).toBe(true);
+    expect(JSON.stringify(noBatch)).toContain('thawed');
+  });
+
   it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
     const { ctx, data } = seed();
     data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });

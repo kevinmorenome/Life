@@ -14,7 +14,7 @@ import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type Pr
 const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
 
 /** One product: how it is tracked, and every time you bought it. */
-const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by' } as const;
+const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by', freeze: 'Froze', thaw: 'Took out' } as const;
 
 export function ProductView({
   product,
@@ -154,7 +154,7 @@ export function ProductView({
                   type="button"
                   className="chip"
                   onClick={() => {
-                    onEvent(note.undo!);
+                    for (const e of [note.undo!].flat()) onEvent(e);
                     setNote(null);
                   }}
                 >
