@@ -299,6 +299,7 @@ export const TOOLS = [
       properties: {
         product: { type: 'string', description: 'Product name or the words the user used, e.g. "hummus"' },
         action: { type: 'string', enum: ['use', 'some_left', 'finish', 'toss', 'freeze', 'thaw'], description: 'Default "use". "freeze" puts quantity (default: all that is not frozen, or all of the batch) in the freezer, which extends its use-by to about three months; "thaw" takes quantity of what is frozen out, use-by two days on.' },
+        notInStats: { type: 'boolean', description: 'True when the user is just catching up on something that happened earlier ("I already used that one", "threw that out last week"): the stock changes, but it is kept out of the statistics (waste, uses). Use it whenever the user says the thing did not happen today or should not count.' },
         boughtOn: { type: 'string', description: 'YYYY-MM-DD. Act on the batch bought on that day (see "batches" in list_stock) instead of whichever expires first: "threw out the chicken from Tuesday". With toss or finish it applies to that batch only.' },
         fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
@@ -318,6 +319,7 @@ export const TOOLS = [
         product: { type: 'string', description: 'Product name or the words the user used' },
         quantity: { type: 'number', minimum: 0 },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
+        notInStats: { type: 'boolean', description: 'True to keep this out of the statistics (see use_stock).' },
       },
       required: ['product', 'quantity'],
     },
@@ -1116,7 +1118,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   }
 
   const stamp = now.toISOString();
-  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
+  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), ...(args.notInStats === true ? { untracked: true } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
   if (untracked) {
@@ -1225,7 +1227,7 @@ async function countStock(args: Args, { store, now, newId }: ToolContext): Promi
   const date = eventDate(args.date, today);
   if (!date) return fail('date must be YYYY-MM-DD.');
   const stamp = now.toISOString();
-  const event: StockEvent = { id: newId(), productId: p.id, type: 'count', quantity: Math.round(q * 1000) / 1000, date, source: 'claude', createdAt: stamp, updatedAt: stamp };
+  const event: StockEvent = { id: newId(), productId: p.id, type: 'count', quantity: Math.round(q * 1000) / 1000, date, source: 'claude', ...(args.notInStats === true ? { untracked: true } : {}), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const untracked = p.trackAmount === false;
   return ok(untracked ? { counted: p.name, have: event.quantity > 0 } : { counted: p.name, quantity: event.quantity, unit: unitName(p, event.quantity) });

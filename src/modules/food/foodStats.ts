@@ -203,7 +203,7 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
   let value = 0;
   let times = 0;
   for (const e of events) {
-    if (e.type !== 'toss' || e.quantity <= 0) continue;
+    if (e.type !== 'toss' || e.quantity <= 0 || e.untracked) continue;
     const p = byId.get(e.productId);
     if (!p) continue;
     // A pack-less product is thrown by pack; for multipacks the quantity is in items and the price per item.

@@ -468,3 +468,67 @@ describe('weekly check, per batch', () => {
     expect(needsBatchCheck('fresh', { date: '2026-10-01', quantity: 0 }, '2026-11-02')).toBe(false);
   });
 });
+
+describe('batch history', () => {
+  const chicken = { type: 'fresh' as const, shelfLifeDays: 6 };
+  const bought = [{ date: '2026-10-20', quantity: 1, batch: 'a:0' }, { date: '2026-10-25', quantity: 1, batch: 'b:0' }];
+  const hev = (type: StockEvent['type'], batch: string | undefined, quantity: number, date: string, id: string, extra: Partial<StockEvent> = {}): StockEvent => ({
+    id, productId: 'p', type, quantity, date, source: 'app', createdAt: `${date}T10:00:00Z`, updatedAt: '', ...(batch ? { batch } : {}), ...extra,
+  });
+  const kinds = (s: ReturnType<typeof stockOf>, id: string) => s.history[id].map((h) => [h.date, h.kind, h.quantity]);
+
+  it('starts with the purchase and records what happened to this batch, with its date', () => {
+    const s = stockOf(chicken, bought, [hev('use', 'a:0', 0.3, '2026-10-22', 'u1'), hev('toss', 'a:0', 0.2, '2026-10-26', 't1')], '2026-10-27');
+    expect(kinds(s, 'a:0')).toEqual([['2026-10-20', 'bought', 1], ['2026-10-22', 'used', 0.3], ['2026-10-26', 'tossed', 0.2]]);
+    expect(kinds(s, 'b:0')).toEqual([['2026-10-25', 'bought', 1]]);
+    expect(s.history['a:0'][1]).toMatchObject({ source: 'app', eventId: 'u1' });
+  });
+
+  it('puts a use that named no batch on the batch it came off, across batches', () => {
+    const s = stockOf(chicken, bought, [hev('use', undefined, 1.4, '2026-10-26', 'u1')], '2026-10-27');
+    expect(kinds(s, 'a:0')).toEqual([['2026-10-20', 'bought', 1], ['2026-10-26', 'used', 1]]);
+    expect(kinds(s, 'b:0')).toEqual([['2026-10-25', 'bought', 1], ['2026-10-26', 'used', 0.4]]);
+  });
+
+  it('keeps batches that are gone, with their history', () => {
+    const s = stockOf(chicken, bought, [hev('count', 'a:0', 0, '2026-10-24', 'c1')], '2026-10-26');
+    expect(s.batches.map((b) => b.id)).toEqual(['b:0']);
+    expect(s.pastBatches.map((b) => b.id)).toEqual(['a:0']);
+    expect(kinds(s, 'a:0')).toEqual([['2026-10-20', 'bought', 1], ['2026-10-24', 'finished', 1]]);
+  });
+
+  it('records a freeze on both sides, and a thaw', () => {
+    const events = [hev('freeze', 'a:0', 0.6, '2026-10-21', 'f1'), hev('thaw', 'freeze-f1:a:0', 0.2, '2026-11-01', 't1')];
+    const s = stockOf(chicken, bought, events, '2026-11-01');
+    expect(kinds(s, 'a:0')).toEqual([['2026-10-20', 'bought', 1], ['2026-10-21', 'moved-out', 0.6]]);
+    expect(s.history['a:0'][1]).toMatchObject({ to: 'freezer' });
+    expect(kinds(s, 'freeze-f1:a:0')).toEqual([['2026-10-21', 'frozen', 0.6], ['2026-11-01', 'moved-out', 0.2]]);
+    expect(kinds(s, 'thaw-t1:freeze-f1:a:0')).toEqual([['2026-11-01', 'thawed', 0.2]]);
+  });
+
+  it('records counts, confirmations, adjustments and use-by changes', () => {
+    const events = [
+      hev('count', undefined, 1.5, '2026-10-26', 'c1'), // 2 → 1.5: takes 0.5 off the batch that expires first
+      hev('expiry', 'b:0', 0, '2026-10-27', 'x1', { useBy: '2026-11-10' }),
+      hev('count', 'b:0', 1, '2026-10-28', 'k1', { source: 'check' }),
+    ];
+    const s = stockOf(chicken, bought, events, '2026-10-28');
+    expect(s.history['a:0'].map((h) => [h.kind, h.quantity])).toEqual([['bought', 1], ['adjusted', -0.5], ['confirmed', 0.5]]);
+    expect(s.history['b:0'].map((h) => h.kind)).toEqual(['bought', 'confirmed', 'expiry', 'confirmed']);
+    expect(s.history['b:0'][2]).toMatchObject({ useBy: '2026-11-10' });
+  });
+
+  it('says that snacks were assumed eaten', () => {
+    const s = stockOf({ type: 'snack' as const }, [{ date: '2026-10-01', quantity: 2, batch: 's:0' }], [], '2026-10-20');
+    expect(s.batches).toEqual([]);
+    expect(s.pastBatches.map((b) => b.id)).toEqual(['s:0']);
+    expect(kinds(s, 's:0')).toEqual([['2026-10-01', 'bought', 2], ['2026-10-04', 'assumed-eaten', 2]]);
+  });
+
+  it('marks what you kept out of the statistics, and the stock still changes', () => {
+    const s = stockOf(chicken, bought, [hev('use', 'a:0', 0.5, '2026-10-26', 'u1', { untracked: true })], '2026-10-27');
+    expect(s.history['a:0'][1]).toMatchObject({ kind: 'used', quantity: 0.5, untracked: true });
+    expect(s.quantity).toBe(1.5);
+    expect(usesSince([hev('use', undefined, 1, '2026-10-26', 'a'), hev('use', undefined, 1, '2026-10-26', 'b', { untracked: true })])).toBe(1);
+  });
+});

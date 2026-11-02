@@ -49,6 +49,38 @@ export function originBatch(id: string): string {
   return out;
 }
 
+/** What happened to a batch. */
+export type HistoryKind =
+  | 'bought' // the purchase
+  | 'counted' // made by a count, or set to this amount by one
+  | 'used'
+  | 'tossed'
+  | 'finished' // counted down to nothing
+  | 'adjusted' // a count of the whole product took (negative) some off it
+  | 'moved-out' // part of it went into the freezer, or was taken out of it
+  | 'frozen' // this batch was made by putting part of another one in the freezer
+  | 'thawed' // this batch was made by taking part of a frozen one out
+  | 'confirmed' // you said you still have it
+  | 'expiry' // its use-by was set by hand
+  | 'assumed-eaten'; // snacks are taken as eaten after a few days
+
+/** One line in a batch's history, oldest first. */
+export interface HistoryEntry {
+  date: string;
+  kind: HistoryKind;
+  /** The amount involved: what was used, thrown away or moved, or the amount counted. */
+  quantity?: number;
+  /** For `moved-out`: where it went. */
+  to?: 'freezer' | 'thawed';
+  /** For `expiry`: the date set. */
+  useBy?: string;
+  source?: StockEvent['source'];
+  /** The event this comes from; absent for the purchase and for what is assumed. */
+  eventId?: string;
+  /** The event was kept out of the statistics (it still changed the stock). */
+  untracked?: boolean;
+}
+
 export type StockStatus = 'ok' | 'use-soon' | 'check' | 'low' | 'out';
 
 export interface Stock {
@@ -63,6 +95,10 @@ export interface Stock {
   frozenQuantity: number;
   /** How much of `quantity` was taken out of the freezer and has not been used yet. */
   thawedQuantity: number;
+  /** What happened to each batch, by batch id, oldest first: bought, used, put in the freezer… (also for batches that are gone). */
+  history: Record<string, HistoryEntry[]>;
+  /** Batches with nothing left (finished, thrown away, or assumed eaten): they stay for their history. */
+  pastBatches: Batch[];
   /** Last day a purchase or a count confirmed what you have. */
   lastConfirmed?: string;
   status: StockStatus;
@@ -86,6 +122,7 @@ interface Work {
   frozen?: string;
   thawed?: string;
   confirmed?: string;
+  history: HistoryEntry[];
 }
 
 /** Soonest to expire first, otherwise oldest first. `key` is a batch's use-by, or its date when it has none. */
@@ -94,14 +131,20 @@ function byExpiry(key: (b: Work) => string) {
 }
 
 /** Takes `amount` from the batches, the ones that expire first (or are oldest) first; never goes below zero. */
-function consume(batches: Work[], amount: number, key: (b: Work) => string): void {
+function consume(batches: Work[], amount: number, key: (b: Work) => string, took?: (b: Work, amount: number) => void): void {
   let left = amount;
   for (const b of batches.filter((x) => x.quantity > 1e-9).sort(byExpiry(key))) {
     if (left <= 1e-9) break;
-    const take = Math.min(b.quantity, left);
+    const take = round3(Math.min(b.quantity, left));
     b.quantity = round3(b.quantity - take);
     left -= take;
+    took?.(b, take);
   }
+}
+
+/** Adds a line to a batch's history, taking the date, source and statistics flag from the event. */
+function log(b: Work, e: StockEvent, entry: Omit<HistoryEntry, 'date' | 'source' | 'eventId' | 'untracked'>): void {
+  b.history.push({ date: e.date, ...entry, source: e.source, eventId: e.id, ...(e.untracked ? { untracked: true } : {}) });
 }
 
 /**
@@ -135,7 +178,7 @@ export function stockOf(
 
   const ops: Op[] = [];
   for (const p of purchases) {
-    ops.push({ date: p.date, order: '', rank: 0, apply: (b) => b.push({ id: p.batch, date: p.date, quantity: p.quantity }) });
+    ops.push({ date: p.date, order: '', rank: 0, apply: (b) => b.push({ id: p.batch, date: p.date, quantity: p.quantity, history: [{ date: p.date, kind: 'bought', quantity: p.quantity }] }) });
   }
   for (const e of mine) {
     ops.push({
@@ -145,7 +188,10 @@ export function stockOf(
       apply: (b) => {
         const target = e.batch ? b.find((x) => x.id === e.batch) : undefined;
         if (e.type === 'expiry') {
-          if (target && e.useBy) target.useBy = e.useBy;
+          if (target && e.useBy) {
+            target.useBy = e.useBy;
+            log(target, e, { kind: 'expiry', useBy: e.useBy });
+          }
         } else if (e.type === 'freeze' || e.type === 'thaw') {
           // Moves some of a batch (or of whatever expires first) into a batch that is frozen, or back out of the freezer.
           const freezing = e.type === 'freeze';
@@ -159,12 +205,18 @@ export function stockOf(
             const take = round3(Math.min(src.quantity, left));
             src.quantity = round3(src.quantity - take);
             left -= take;
-            b.push({ id: `${e.type}-${e.id}:${src.id ?? 'n'}`, date: src.date, quantity: take, ...(freezing ? { frozen: e.date } : { useBy: addDays(e.date, THAW_DAYS), thawed: e.date }) });
+            log(src, e, { kind: 'moved-out', quantity: take, to: freezing ? 'freezer' : 'thawed' });
+            const made: Work = { id: `${e.type}-${e.id}:${src.id ?? 'n'}`, date: src.date, quantity: take, history: [], ...(freezing ? { frozen: e.date } : { useBy: addDays(e.date, THAW_DAYS), thawed: e.date }) };
+            log(made, e, { kind: freezing ? 'frozen' : 'thawed', quantity: take });
+            b.push(made);
           }
         } else if (e.type === 'count') {
           if (e.batch) {
             if (target) {
+              const before = target.quantity;
               target.quantity = round3(Math.max(0, e.quantity));
+              if (target.quantity <= 1e-9 && before > 1e-9) log(target, e, { kind: 'finished', quantity: before });
+              else log(target, e, { kind: e.source === 'check' && target.quantity > 1e-9 ? 'confirmed' : 'counted', quantity: target.quantity });
               // From the weekly check this is "yes, still have it": the batch counts as confirmed, and one that had gone past its date starts again.
               if (e.source === 'check' && target.quantity > 1e-9) {
                 target.confirmed = e.date;
@@ -174,17 +226,27 @@ export function stockOf(
             return;
           }
           const total = round3(b.reduce((s, x) => s + x.quantity, 0));
-          if (e.quantity < total) consume(b, round3(total - e.quantity), keyOf);
-          else if (e.quantity > total) b.push({ id: `count-${e.id}`, date: e.date, quantity: round3(e.quantity - total) });
+          if (e.quantity < total) consume(b, round3(total - e.quantity), keyOf, (x, taken) => log(x, e, { kind: 'adjusted', quantity: -taken }));
+          else if (e.quantity > total) {
+            const made: Work = { id: `count-${e.id}`, date: e.date, quantity: round3(e.quantity - total), history: [] };
+            log(made, e, { kind: 'counted', quantity: made.quantity });
+            b.push(made);
+          }
           for (const x of b) {
             if (x.quantity <= 1e-9) continue;
             x.confirmed = e.date;
+            log(x, e, { kind: 'confirmed', quantity: x.quantity });
             if (stale(x, e.date)) Object.assign(x, { date: e.date, useBy: undefined });
           }
-        } else if (target && target.quantity > 1e-9) {
-          target.quantity = round3(target.quantity - Math.min(target.quantity, e.quantity));
         } else {
-          consume(b, e.quantity, keyOf);
+          const kind = e.type === 'toss' ? 'tossed' : 'used';
+          if (target && target.quantity > 1e-9) {
+            const take = round3(Math.min(target.quantity, e.quantity));
+            target.quantity = round3(target.quantity - take);
+            log(target, e, { kind, quantity: take });
+          } else {
+            consume(b, e.quantity, keyOf, (x, taken) => log(x, e, { kind, quantity: taken }));
+          }
         }
       },
     });
@@ -202,6 +264,16 @@ export function stockOf(
   const lastCount = [...mine].reverse().find((e) => e.type === 'count' && !e.batch);
   const lastConfirmed = [lastCount?.date, lastBought].filter((d): d is string => !!d).sort().pop();
 
+  // What is gone stays for its history; snacks that were assumed eaten get that said.
+  const past: Batch[] = batches
+    .filter((b) => b.id && !kept.includes(b))
+    .map((b) => {
+      if (b.quantity > 1e-9) b.history.push({ date: addDays(b.date, SNACK_DAYS), kind: 'assumed-eaten', quantity: b.quantity });
+      return { date: b.date, quantity: 0, id: b.id, ...(b.frozen ? { frozen: b.frozen } : {}), ...(b.thawed ? { thawed: b.thawed } : {}) };
+    });
+  const history: Record<string, HistoryEntry[]> = {};
+  for (const b of batches) if (b.id) history[b.id] = b.history;
+
   const out: Batch[] = kept.map((b) => {
     const useBy = useByOf(b);
     return { date: b.date, quantity: b.quantity, ...(b.id ? { id: b.id } : {}), ...(useBy ? { useBy } : {}), ...(b.frozen ? { frozen: b.frozen } : {}), ...(b.thawed ? { thawed: b.thawed } : {}), ...(b.confirmed ? { confirmed: b.confirmed } : {}) };
@@ -218,7 +290,7 @@ export function stockOf(
   // Thawed food is to be used first, whatever else it is.
   if (thawedQuantity > 0 && (status === 'ok' || status === 'low')) status = 'use-soon';
 
-  return { tracked: true, quantity, batches: out, useBy, frozenQuantity, thawedQuantity, lastConfirmed, status };
+  return { tracked: true, quantity, batches: out, useBy, frozenQuantity, thawedQuantity, history, pastBatches: past, lastConfirmed, status };
 }
 
 /**
@@ -232,12 +304,12 @@ function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: St
   const boughtAfter = purchases.some((p) => !reset || p.date > reset.date);
   const have = reset ? (reset.type === 'count' && reset.quantity > 0) || boughtAfter : purchases.length > 0;
   const lastConfirmed = [reset?.type === 'count' && reset.quantity > 0 ? reset.date : undefined, lastBought].filter((d): d is string => !!d).sort().pop();
-  return { tracked: false, frozenQuantity: 0, thawedQuantity: 0, quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
+  return { tracked: false, frozenQuantity: 0, thawedQuantity: 0, history: {}, pastBatches: [], quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
 }
 
 /** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
 export function usesSince(events: StockEvent[], since?: string): number {
-  return events.filter((e) => e.type === 'use' && (!since || e.date >= since)).length;
+  return events.filter((e) => e.type === 'use' && !e.untracked && (!since || e.date >= since)).length;
 }
 
 /**

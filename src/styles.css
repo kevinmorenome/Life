@@ -6039,3 +6039,49 @@ a.game-row + .food-h2 {
 .batch-thawed-note {
   font-weight: 600;
 }
+
+/* Food: batch history and "not in statistics" */
+.batch {
+  flex-wrap: wrap;
+}
+.batch-main {
+  flex: 1 1 0;
+}
+.batch-details {
+  flex-basis: 100%;
+}
+.batch-details > summary,
+.batch-past > summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.batch-past {
+  margin-top: 0.5rem;
+}
+.batch-history {
+  list-style: none;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0 0 0 0.25rem;
+}
+.batch-history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  padding: 0.15rem 0;
+}
+.batch-history-date {
+  min-width: 3.5rem;
+}
+.batch-gone .batch-main > strong {
+  font-weight: 600;
+}
+.stats-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}

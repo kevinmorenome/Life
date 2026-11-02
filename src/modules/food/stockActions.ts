@@ -29,3 +29,9 @@ export function expiryEvent(productId: string, batch: string, useBy: string, sou
 export function moveEvent(productId: string, batch: string, type: 'freeze' | 'thaw', quantity: number, source: StockEvent['source']): StockEvent {
   return { ...stockEvent(productId, type, quantity, source), batch };
 }
+
+/** Keeps an event out of the statistics (it still changes the stock): see `StockEvent.untracked`. Use-by changes are not statistics, so they stay as they are. */
+export function keepOutOfStats<T extends StockEvent | StockEvent[] | undefined>(e: T): T {
+  const mark = (x: StockEvent): StockEvent => (x.type === 'expiry' ? x : { ...x, untracked: true });
+  return (Array.isArray(e) ? e.map(mark) : e ? mark(e) : e) as T;
+}

@@ -7,7 +7,8 @@ import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
 import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
-import { partLeftEvent, stockEvent } from './stockActions';
+import { keepOutOfStats, partLeftEvent, stockEvent } from './stockActions';
+import { StatsSwitch } from './StatsSwitch';
 
 import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
 
@@ -21,7 +22,7 @@ export function ProductView({
   record,
   events,
   onSave,
-  onEvent,
+  onEvent: sendEvent,
 }: {
   product: ProductSummary;
   record?: FoodProduct;
@@ -36,6 +37,9 @@ export function ProductView({
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
   };
   const [note, setNote] = useState<BatchAct | null>(null);
+  // While this is on, what you log still changes the stock but is kept out of the statistics.
+  const [quiet, setQuiet] = useState(false);
+  const onEvent = (e: StockEvent) => sendEvent(quiet ? keepOutOfStats(e) : e);
   const comparison = comparePrices(product, today());
   const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
@@ -133,14 +137,16 @@ export function ProductView({
             </button>
           )}
         </div>
+        <StatsSwitch off={quiet} onChange={setQuiet} />
       </section>
 
-      {stock.tracked && stock.batches.length > 0 && (
+      {stock.tracked && (stock.batches.length > 0 || stock.pastBatches.length > 0) && (
         <>
           <h2 className="small muted food-h2">Batches</h2>
           <BatchList
             product={product}
             stock={stock}
+            showPast
             onAct={(a) => {
               onEvent(a.event);
               setNote(a);
@@ -257,7 +263,7 @@ export function ProductView({
               .map((e) => (
                 <li key={e.id} className="game-line">
                   {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
-                  <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : ''].filter(Boolean).join(' · ')}</span>
+                  <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}
           </ul>

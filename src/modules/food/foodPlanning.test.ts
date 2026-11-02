@@ -125,6 +125,16 @@ describe('waste by batch', () => {
   });
 });
 
+describe('waste kept out of the statistics', () => {
+  it('leaves out food thrown away that you marked as not counted', () => {
+    const rs = [receipt({ date: '2026-10-01', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 6 })] })];
+    const products = productSummaries(rs, []);
+    const kept = { ...toss('fp-chicken', 0.5, '2026-10-12'), untracked: true };
+    expect(wasteSummary(products, [kept], rs, '2026-11', 1)).toMatchObject({ value: 0, times: 0 });
+    expect(wasteSummary(products, [kept, toss('fp-chicken', 0.5, '2026-10-13')], rs, '2026-11', 1)).toMatchObject({ value: 3, times: 1 });
+  });
+});
+
 describe('food stats', () => {
   const rs = [
     receipt({ store: 'Konzum', date: '2026-10-26', lines: [line({ name: 'Milk', unitPrice: 1, discount: 0.2 }), line({ name: 'Beer', kind: 'alcohol', unitPrice: 2 }), line({ name: 'Deposit', kind: 'deposit', unitPrice: 0.5 }), line({ name: 'Bag', kind: 'bag', unitPrice: 0.1 })] }),

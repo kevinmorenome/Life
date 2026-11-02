@@ -731,6 +731,17 @@ describe('food stock', () => {
     expect(JSON.stringify(noBatch)).toContain('thawed');
   });
 
+  it('keeps what Claude logs out of the statistics when asked', async () => {
+    const { ctx, data } = seed();
+    await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24', action: 'toss', notInStats: true });
+    await call(ctx, 'use_stock', { product: 'hummus', quantity: 1 });
+    await call(ctx, 'count_stock', { product: 'hummus', quantity: 1, notInStats: true });
+    const events = [...data.foodstock.values()] as unknown as { type: string; untracked?: boolean }[];
+    expect(events.find((e) => e.type === 'toss')).toMatchObject({ untracked: true });
+    expect(events.find((e) => e.type === 'use')?.untracked).toBeUndefined();
+    expect(events.find((e) => e.type === 'count')).toMatchObject({ untracked: true });
+  });
+
   it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
     const { ctx, data } = seed();
     data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });

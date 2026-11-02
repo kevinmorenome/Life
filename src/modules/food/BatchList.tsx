@@ -1,7 +1,8 @@
 import { CheckIcon, MinusIcon, TrashIcon } from '../../icons';
 import { money, shortDate, today } from '../../lib/format';
 import { IconMenu } from '../clothes/IconMenu';
-import { THAW_DAYS, daysBetween, formatAmount, originBatch, type Batch, type Stock } from './stock';
+import { historyNotes, historyText } from './batchHistory';
+import { THAW_DAYS, daysBetween, formatAmount, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
 import { batchEvent, expiryEvent, moveEvent } from './stockActions';
 import { dayText, freshnessLevel } from './stockTiles';
 import { unitLabel, type ProductSummary } from './products';
@@ -26,10 +27,24 @@ export function batchOrigin(product: ProductSummary, b: Batch): string {
  * put in the freezer, finished, threw out). Taking something off here lowers only that batch; the product-level
  * buttons take from whichever expires first. Frozen food is a batch of its own with a much later use-by.
  */
-export function BatchList({ product, stock, onAct }: { product: ProductSummary; stock: Stock; onAct(a: BatchAct): void }) {
+export function BatchList({ product, stock, onAct, showPast = false }: { product: ProductSummary; stock: Stock; onAct(a: BatchAct): void; /** Also list the batches that are gone, for their history. */ showPast?: boolean }) {
   const day = today();
-  if (!stock.tracked || stock.batches.length === 0) return null;
+  const past = showPast ? stock.pastBatches : [];
+  if (!stock.tracked || (stock.batches.length === 0 && past.length === 0)) return null;
   const amount = (q: number) => `${formatAmount(q, product.unit)}${unitLabel(product, q)}`;
+
+  /** What happened to a batch, oldest first: bought, used, put in the freezer… with dates. */
+  const history = (entries: HistoryEntry[] | undefined) => (
+    <ul className="batch-history">
+      {(entries ?? []).map((h, i) => (
+        <li key={`${h.eventId ?? 'x'}-${i}`}>
+          <span className="muted small batch-history-date">{shortDate(h.date)}</span>
+          <span className="small">{historyText(h, amount)}</span>
+          {historyNotes(h).length > 0 && <span className="muted small"> · {historyNotes(h).join(' · ')}</span>}
+        </li>
+      ))}
+    </ul>
+  );
 
   /** Asks how much, between a little and all of the batch (everything for a single item). */
   function askAmount(question: string, b: Batch, fallback: number): number | undefined {
@@ -57,6 +72,7 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
   }
 
   return (
+    <>
     <ul className="batch-list">
       {stock.batches.map((b) => {
         const left = b.useBy ? daysBetween(day, b.useBy) : undefined;
@@ -98,9 +114,31 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
               )}
             </div>
             {act.length > 0 && <IconMenu entries={act} label={`Actions for this batch of ${product.name}`} />}
+            {b.id && stock.history[b.id]?.length > 0 && (
+              <details className="batch-details">
+                <summary className="muted small">History ({stock.history[b.id].length})</summary>
+                {history(stock.history[b.id])}
+              </details>
+            )}
           </li>
         );
       })}
     </ul>
+    {past.length > 0 && (
+      <details className="batch-past">
+        <summary className="muted small">Earlier batches ({past.length})</summary>
+        <ul className="batch-list">
+          {[...past].sort((a, b) => b.date.localeCompare(a.date)).map((b) => (
+            <li key={b.id} className="batch batch-gone">
+              <div className="batch-main">
+                <strong>{batchOrigin(product, b)}</strong>
+                {history(stock.history[b.id!])}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
+    </>
   );
 }
