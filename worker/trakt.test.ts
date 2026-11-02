@@ -96,11 +96,20 @@ describe('handleTrakt', () => {
     expect(await res.json()).toEqual({ deviceCode: 'dev', userCode: 'ABCD1234', verificationUrl: 'https://trakt.tv/activate', expiresIn: 600, interval: 5 });
     expect(calls[0].url).toBe('https://auth.trakt.tv/oauth/device/code');
     expect(JSON.parse(calls[0].init!.body as string)).toEqual({ client_id: 'id' });
+    // Trakt refuses calls without these, OAuth ones included.
+    expect(calls[0].init!.headers).toEqual({ 'Content-Type': 'application/json', 'User-Agent': 'Life/1.0', 'trakt-api-key': 'id', 'trakt-api-version': '2' });
   });
 
   it('reports a Trakt failure when starting', async () => {
     const { ctx } = setup({ fetch: (async () => new Response('{}', { status: 500 })) as typeof fetch });
     expect((await call(ctx, '/api/trakt/device/start', 'POST')).status).toBe(502);
+  });
+
+  it('explains a 403 from Trakt', async () => {
+    const { ctx } = setup({ fetch: (async () => new Response('', { status: 403 })) as typeof fetch });
+    const res = await call(ctx, '/api/trakt/device/start', 'POST');
+    expect(res.status).toBe(502);
+    expect(((await res.json()) as { error: string }).error).toContain('TRAKT_CLIENT_ID');
   });
 
   const poll = (ctx: TraktContext, body: unknown = { deviceCode: 'dev' }) =>
@@ -191,7 +200,7 @@ describe('handleTrakt', () => {
     const url = new URL(calls[0].url);
     expect(url.searchParams.get('start_at')).toBe('2026-10-30T10:00:00.000Z');
     const headers = calls[0].init!.headers as Record<string, string>;
-    expect(headers).toMatchObject({ Authorization: 'Bearer tok', 'trakt-api-version': '2', 'trakt-api-key': 'id' });
+    expect(headers).toMatchObject({ Authorization: 'Bearer tok', 'User-Agent': 'Life/1.0', 'trakt-api-version': '2', 'trakt-api-key': 'id' });
     expect(saved[0].progress).toEqual({ cursor: Date.parse('2026-11-01T20:00:00.000Z') / 1000, historyDone: true });
   });
 
