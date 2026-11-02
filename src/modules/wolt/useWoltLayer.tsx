@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
 import { CartIcon } from '../../icons';
 import { money } from '../../lib/format';
-import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
 import type { WoltOrder } from './types';
+import { useTakeoutOrders } from './useTakeoutOrders';
 import { byDate, placeName } from './wolt';
 
 const amount = (o: WoltOrder) => (o.currency === 'EUR' ? money(o.total).replace(/^[^\d]*/, '€') : `${o.total.toFixed(2)} ${o.currency}`);
 
 /** Wolt orders on the shared calendar: a mark on each day with an order and the list on the day screen. */
 export function useWoltCalendarLayer(): CalendarLayer {
-  const { items } = useCollection<WoltOrder>('woltorders');
+  const { items } = useTakeoutOrders();
   const days = useMemo(() => byDate(items), [items]);
   return {
     earliest: days.size ? [...days.keys()].sort()[0] : undefined,

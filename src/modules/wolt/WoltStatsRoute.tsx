@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
-import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
+import { useTakeoutOrders } from './useTakeoutOrders';
 import { hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, summarize, topPlaces } from './wolt';
 
 const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -11,7 +11,7 @@ const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const monthLabel = (ym: string, style: 'short' | 'long' = 'short') => new Date(ym + '-01T00:00:00Z').toLocaleDateString(undefined, { month: style, year: '2-digit', timeZone: 'UTC' });
 
 export function WoltStatsRoute() {
-  const { items, loading } = useCollection<WoltOrder>('woltorders');
+  const { items, loading } = useTakeoutOrders();
   const now = today();
   if (loading) return <p className="muted">Loading…</p>;
   if (items.length === 0) {
