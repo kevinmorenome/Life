@@ -25,7 +25,7 @@ export function useWoltCalendarLayer(): CalendarLayer {
       if (!list) return null;
       return (
         <section className="checkins-day">
-          <h2>Wolt</h2>
+          <h2>Takeout</h2>
           <ul>
             {list.map((o) => (
               <li key={o.id}>

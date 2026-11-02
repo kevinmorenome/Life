@@ -17,7 +17,7 @@ export function WoltStatsRoute() {
   if (items.length === 0) {
     return (
       <Section title="Nothing yet">
-        <Empty>Ask Claude to read your Wolt receipt emails and add the orders; the numbers build up here.</Empty>
+        <Empty>Ask Claude to read your Wolt takeout receipts and add the orders; the numbers build up here.</Empty>
       </Section>
     );
   }
@@ -38,7 +38,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
   return (
     <>
       <p className="muted">
-        You have placed <strong>{s.orders}</strong> Wolt {s.orders === 1 ? 'order' : 'orders'}
+        You have ordered takeout <strong>{s.orders}</strong> {s.orders === 1 ? 'time' : 'times'} through Wolt
         {s.since ? <> since <strong>{new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</strong></> : null}, spending <strong>{eur0(s.spent)}</strong>
         {s.topPlace ? <>. Your top place is <strong>{s.topPlace}</strong></> : null}.
       </p>
@@ -63,7 +63,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
           {count(f.orders, 'order')} paid in {f.currency} ({f.currency} {f.total.toLocaleString(undefined, { minimumFractionDigits: 2 })} in total) {f.orders === 1 ? 'is' : 'are'} listed but left out of the euro totals.
         </p>
       ))}
-      <p className="muted small">Data comes from Wolt receipt emails in Gmail. Item lines are only in the PDF attachments, so they are not tracked.</p>
+      <p className="muted small">Data comes from Wolt receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines are only in the PDF attachments, so they are not tracked.</p>
     </>
   );
 }

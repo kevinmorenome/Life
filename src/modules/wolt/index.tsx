@@ -3,15 +3,15 @@ import { useWoltCalendarLayer } from './useWoltLayer';
 import { WoltStatsRoute } from './WoltStatsRoute';
 
 // Wolt orders have no pages of their own: Claude adds them from the receipt emails (`add_wolt_orders`),
-// they show on the calendar and in Stats → Wolt.
+// they show on the calendar and in Stats → Takeout. Wolt grocery orders are not takeout: they go to the food log.
 export const woltModule: LifeModule = {
   id: 'wolt',
-  title: 'Wolt',
+  title: 'Takeout',
   icon: '🛵',
-  description: 'Food deliveries from your Wolt receipt emails.',
+  description: 'Takeout and restaurant deliveries ordered through Wolt.',
   listed: false,
   render: () => null,
   actions: [],
   calendarLayer: useWoltCalendarLayer,
-  stats: { label: 'Wolt', render: () => <WoltStatsRoute /> },
+  stats: { label: 'Takeout', render: () => <WoltStatsRoute /> },
 };
