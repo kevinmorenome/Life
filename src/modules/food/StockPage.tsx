@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
+import { productRecord } from './productEdits';
 import { needsCheck } from './stock';
 import { stockEntries } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
@@ -17,7 +18,19 @@ interface Toast {
 }
 
 /** What you have, as a grid of pictures: the fridge first, with the things to use soon at the top of each section. */
-export function StockPage({ receipts, products, events, onEvent }: { receipts: FoodReceipt[]; products: FoodProduct[]; events: StockEvent[]; onEvent(e: StockEvent): Promise<void> }) {
+export function StockPage({
+  receipts,
+  products,
+  events,
+  onEvent,
+  onProduct,
+}: {
+  receipts: FoodReceipt[];
+  products: FoodProduct[];
+  events: StockEvent[];
+  onEvent(e: StockEvent): Promise<void>;
+  onProduct(p: FoodProduct): Promise<void>;
+}) {
   const day = today();
   const entries = stockEntries(receipts, products, events, day);
   const [selId, setSelId] = useState<string | null>(null);
@@ -90,7 +103,15 @@ export function StockPage({ receipts, products, events, onEvent }: { receipts: F
           </div>
         </section>
       )}
-      {selected && <StockSheet key={selected.product.id} entry={selected} onAct={act} onClose={close} />}
+      {selected && (
+        <StockSheet
+          key={selected.product.id}
+          entry={selected}
+          onAct={act}
+          onPhoto={(photo) => onProduct(productRecord(selected.product, products.find((p) => p.id === selected.product.id), { photo: photo ?? undefined }, new Date().toISOString()))}
+          onClose={close}
+        />
+      )}
       {toast && (
         <div className="food-toast" role="status">
           <span>{toast.text}</span>

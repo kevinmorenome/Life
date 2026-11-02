@@ -2,6 +2,7 @@ import type { InboxRequest } from '../../../worker/protocol';
 import { getAll, notify, put, remove } from '../../lib/db';
 import { itemPhoto } from '../../lib/image';
 import { applyProductEdits } from '../food/productEdits';
+import { blobOf, foodPhoto } from '../food/productPhoto';
 import type { FoodProduct } from '../food/types';
 import { applyInbox, preparePhotos } from './inbox';
 import type { ClothingItem, Outfit } from './types';
@@ -32,7 +33,19 @@ export async function processInbox(): Promise<void> {
 /** Applies `product-edit` requests (Claude changing a food product that already has a record). */
 async function processProductEdits(all: InboxRequest[]): Promise<void> {
   if (!all.some((r) => r.type === 'product-edit')) return;
-  const result = applyProductEdits(all, await getAll<FoodProduct>('foodproducts'), new Date());
+  // A picture queued by Claude arrives as downloaded; make a small tile picture of it like any other (one that can't be
+  // converted is left out rather than stored full size).
+  const prepared = await Promise.all(
+    all.map(async (r) => {
+      if (r.type !== 'product-edit' || r.appliedAt || !r.changes.photo) return r;
+      try {
+        return { ...r, changes: { ...r.changes, photo: await foodPhoto(await blobOf(r.changes.photo)) } };
+      } catch {
+        return { ...r, changes: { ...r.changes, photo: undefined } };
+      }
+    }),
+  );
+  const result = applyProductEdits(prepared, await getAll<FoodProduct>('foodproducts'), new Date());
   for (const p of result.products) await put('foodproducts', p);
   for (const r of result.requests) await put('inbox', r);
   for (const id of result.expired) await remove('inbox', id);

@@ -1,6 +1,5 @@
 import { href } from '../../lib/router';
-import { FoodIcon } from './FoodIcon';
-import { iconKind } from './foodIcons';
+import { FoodPicture, pictureClass } from './FoodPicture';
 import type { Entry } from './stockEntries';
 import { tileInfo } from './stockTiles';
 
@@ -8,12 +7,11 @@ import { tileInfo } from './stockTiles';
 export function StockTile({ entry, today, onOpen }: { entry: Entry; today: string; onOpen(id: string): void }) {
   const { product: p } = entry;
   const info = tileInfo(entry, today);
-  const kind = iconKind(p.name, p.type, p.unit);
   return (
     <li>
       <button type="button" className="food-tile" aria-label={info.label} onClick={() => onOpen(p.id)}>
-        <span className={`food-art k-${kind}`}>
-          <FoodIcon kind={kind} />
+        <span className={pictureClass(p)}>
+          <FoodPicture product={p} />
           <span className="food-badge">{info.badge}</span>
           {info.bar && (
             <span className="food-bar" aria-hidden>

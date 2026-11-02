@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckIcon, HalfIcon, MinusIcon, TrashIcon, UsedIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { FoodIcon } from './FoodIcon';
-import { iconKind } from './foodIcons';
+import { PictureControl } from './PictureControl';
 import { unitLabel } from './products';
 import { dayText, tileInfo } from './stockTiles';
 import { formatAmount, levelOptions } from './stock';
@@ -21,13 +20,12 @@ export interface SheetAct {
 }
 
 /** The actions for one product, in a sheet over the stock grid: a big picture, the amount, and four ways to say what happened. */
-export function StockSheet({ entry, onAct, onClose }: { entry: Entry; onAct(a: SheetAct): void; onClose(): void }) {
+export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; onAct(a: SheetAct): void; onPhoto(photo: string | null): Promise<void> | void; onClose(): void }) {
   const { product: p, stock: s, uses } = entry;
   const [levels, setLevels] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const day = today();
   const info = tileInfo(entry, day);
-  const kind = iconKind(p.name, p.type, p.unit);
   const have = !s.tracked;
   const options = have ? [] : levelOptions(s.quantity, p.unit, p.packSize);
 
@@ -62,9 +60,7 @@ export function StockSheet({ entry, onAct, onClose }: { entry: Entry; onAct(a: S
       <div className="food-sheet" role="dialog" aria-modal="true" aria-label={p.name} tabIndex={-1} ref={box}>
         <div className="food-grip" aria-hidden />
         <div className="food-sheet-head">
-          <span className={`food-art food-art-big k-${kind}`}>
-            <FoodIcon kind={kind} size={64} />
-          </span>
+          <PictureControl product={p} className="food-art-big" onPhoto={onPhoto} />
           <div className="food-sheet-text">
             <h2>{p.name}</h2>
             <p className="food-sheet-amount">{amount}</p>

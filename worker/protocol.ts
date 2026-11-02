@@ -96,6 +96,8 @@ export interface ProductChanges {
   trackAmount?: boolean;
   packSize?: number | null;
   packLabel?: string | null;
+  /** The product's picture: an image data URL (the Worker downloads it; the app downscales it before it is saved), `null` removes it. */
+  photo?: string | null;
 }
 
 /**

@@ -24,7 +24,7 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
     if (third === 'edit') return <ReceiptForm existing={receipt} receipts={receipts.items} onSave={receipts.save} />;
     return <ReceiptView receipt={receipt} onDelete={receipts.remove} />;
   }
-  if (first === 'stock') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
+  if (first === 'stock') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} />;
   if (first === 'check') return <CheckPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
   if (first === 'products') return <ProductList receipts={receipts.items} products={products.items} />;
   if (first === 'product' && second) {

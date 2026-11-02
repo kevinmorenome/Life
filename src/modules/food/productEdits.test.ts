@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InboxRequest, ProductEditRequest } from '../../../worker/protocol';
-import { applyProductEdits, parseProductChanges, withProductChanges } from './productEdits';
+import { applyProductEdits, parseProductChanges, productRecord, withProductChanges } from './productEdits';
 import type { FoodProduct } from './types';
 
 const rec = (over: Partial<FoodProduct> = {}): FoodProduct => ({ id: 'fp-beer', name: 'Beer', type: 'drink', storage: 'pantry', createdAt: 'c', updatedAt: 'u', ...over });
@@ -41,6 +41,26 @@ describe('withProductChanges', () => {
   it('returns the same record when nothing changes', () => {
     const r = rec({ packSize: 6 });
     expect(withProductChanges(r, { packSize: 6 }, 'now')).toBe(r);
+  });
+});
+
+describe('product pictures', () => {
+  const photo = 'data:image/webp;base64,AAAA';
+  it('are set, replaced and cleared like any other change', () => {
+    expect(withProductChanges(rec(), { photo }, 'now')).toMatchObject({ photo, updatedAt: 'now' });
+    expect(withProductChanges(rec({ photo }), { photo: null }, 'now').photo).toBeUndefined();
+    const same = rec({ photo });
+    expect(withProductChanges(same, { photo }, 'now')).toBe(same);
+  });
+  it('are applied from a request and then dropped from the request', () => {
+    const out = applyProductEdits([req({ changes: { photo } })], [], NOW);
+    expect(out.products[0]).toMatchObject({ id: 'fp-beer', name: 'Beer', photo });
+    expect((out.requests[0] as ProductEditRequest).changes.photo).toBeUndefined();
+  });
+  it('are kept when the product page saves something else', () => {
+    const product = { id: 'fp-beer', name: 'Beer', type: 'drink' as const, storage: 'pantry' as const, trackAmount: true, photo };
+    expect(productRecord(product, rec({ photo }), { storage: 'fridge' }, 'now')).toMatchObject({ photo, storage: 'fridge' });
+    expect(productRecord(product, undefined, {}, 'now')).toMatchObject({ id: 'fp-beer', name: 'Beer', photo, createdAt: 'now' });
   });
 });
 
