@@ -1,0 +1,38 @@
+import { href } from '../../lib/router';
+import { FoodIcon } from './FoodIcon';
+import { iconKind } from './foodIcons';
+import type { Entry } from './stockEntries';
+import { tileInfo } from './stockTiles';
+
+/** One product on the stock grid: its picture, how much is left, and (for fresh food) how long it will keep. Tap opens the actions. */
+export function StockTile({ entry, today, onOpen }: { entry: Entry; today: string; onOpen(id: string): void }) {
+  const { product: p } = entry;
+  const info = tileInfo(entry, today);
+  const kind = iconKind(p.name, p.type, p.unit);
+  return (
+    <li>
+      <button type="button" className="food-tile" aria-label={info.label} onClick={() => onOpen(p.id)}>
+        <span className={`food-art k-${kind}`}>
+          <FoodIcon kind={kind} />
+          <span className="food-badge">{info.badge}</span>
+          {info.bar && (
+            <span className="food-bar" aria-hidden>
+              <span className={`lvl-${info.bar.level}`} style={{ width: `${info.bar.pct}%` }} />
+            </span>
+          )}
+        </span>
+        <span className="food-name">{p.name}</span>
+        {info.pill && <span className={`food-pill lvl-${info.pill.level}`}>{info.pill.text}</span>}
+      </button>
+    </li>
+  );
+}
+
+/** A product that is all used up: just its name, linking to its page. */
+export function UsedUpLink({ entry }: { entry: Entry }) {
+  return (
+    <a className="chip food-used" href={href(`/food/product/${entry.product.id}`)}>
+      {entry.product.name}
+    </a>
+  );
+}

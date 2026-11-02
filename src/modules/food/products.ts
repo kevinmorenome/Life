@@ -28,6 +28,12 @@ export function pluralize(word: string, quantity: number): string {
   return /(s|x|ch|sh)$/i.test(word) ? `${word}es` : `${word}s`;
 }
 
+/** The word after a quantity: " kg", " l", " cans" for products counted in items, nothing for plain pieces. */
+export function unitLabel(p: Pick<ProductSummary, 'unit' | 'packLabel' | 'packSize'>, quantity: number): string {
+  if (p.unit !== 'pc') return ` ${p.unit}`;
+  return p.packSize && p.packLabel ? ` ${pluralize(p.packLabel, quantity)}` : '';
+}
+
 /** What one item costs when the product comes in packs (price per pack ÷ items in it). */
 export function pricePerItem(unitPrice: number, packSize: number | undefined): number {
   return round2(unitPrice / (packSize ?? 1));

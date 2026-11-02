@@ -1,38 +1,47 @@
-import { href } from '../../lib/router';
+import { useCallback, useEffect, useState } from 'react';
 import { today } from '../../lib/format';
+import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
-import { productSummaries, type ProductSummary } from './products';
-import { needsCheck, stockOf, usesSince, type Stock } from './stock';
-import { StockRow } from './StockRow';
+import { needsCheck } from './stock';
+import { stockEntries } from './stockEntries';
+import { StockSheet, type SheetAct } from './StockSheet';
+import { StockTile, UsedUpLink } from './StockTile';
+import { tileInfo } from './stockTiles';
 import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent } from './types';
 
 const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
 
-export interface Entry {
-  product: ProductSummary;
-  stock: Stock;
-  /** Uses since it was last bought; only shown for products that are just "have it". */
-  uses: number;
+interface Toast {
+  text: string;
+  undo?: StockEvent;
 }
 
-/** Every product with what is left of it today. */
-export function stockEntries(receipts: FoodReceipt[], products: FoodProduct[], events: StockEvent[], day = today()): Entry[] {
-  return productSummaries(receipts, products).map((product) => {
-    const mine = events.filter((e) => e.productId === product.id);
-    const stock = stockOf(product, product.purchases, mine, day);
-    return { product, stock, uses: stock.tracked ? 0 : usesSince(mine, product.purchases[0]?.date) };
-  });
-}
-
-/** What you have, with the things to use soon first and a way to the weekly check. */
+/** What you have, as a grid of pictures: the fridge first, with the things to use soon at the top of each section. */
 export function StockPage({ receipts, products, events, onEvent }: { receipts: FoodReceipt[]; products: FoodProduct[]; events: StockEvent[]; onEvent(e: StockEvent): Promise<void> }) {
   const day = today();
   const entries = stockEntries(receipts, products, events, day);
+  const [selId, setSelId] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const close = useCallback(() => setSelId(null), []);
+
+  // The toast fades on its own; an undo that is not taken stays a plain count history.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 7000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const have = entries.filter((e) => e.stock.quantity > 0);
-  const soon = have.filter((e) => e.stock.status === 'use-soon' || e.stock.status === 'check').sort((a, b) => (a.stock.useBy ?? '').localeCompare(b.stock.useBy ?? ''));
-  const rest = have.filter((e) => !soon.includes(e));
-  const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
   const out = entries.filter((e) => e.stock.quantity === 0);
+  const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
+  const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
+  const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
+
+  async function act(a: SheetAct) {
+    await onEvent(a.event);
+    setToast({ text: a.text, undo: a.undo });
+    if (a.done) setSelId(null);
+  }
 
   return (
     <>
@@ -43,50 +52,60 @@ export function StockPage({ receipts, products, events, onEvent }: { receipts: F
         </div>
       )}
       {toCheck > 0 && (
-        <a className="game-row" href={href('/food/check')}>
+        <a className="food-banner" href={href('/food/check')}>
           <strong>Weekly check</strong>
           <span className="muted small">
-            {toCheck} {toCheck === 1 ? 'thing' : 'things'} to confirm: do you still have them?
+            {toCheck} {toCheck === 1 ? 'thing' : 'things'} to confirm
           </span>
         </a>
       )}
-      {soon.length > 0 && (
-        <section>
-          <h2 className="small muted">Use soon</h2>
-          <ul className="game-list">
-            {soon.map((e) => (
-              <StockRow key={e.product.id} {...e} onEvent={onEvent} />
-            ))}
-          </ul>
-        </section>
-      )}
       {STORAGES.map((storage) => {
-        const group = rest.filter((e) => e.product.storage === storage);
+        const group = have.filter((e) => e.product.storage === storage).sort(bySoonest);
         if (group.length === 0) return null;
         return (
-          <section key={storage}>
-            <h2 className="small muted">{STORAGE_LABELS[storage]}</h2>
-            <ul className="game-list">
+          <section key={storage} className="food-section">
+            <div className="food-section-head">
+              <h2>{STORAGE_LABELS[storage]}</h2>
+              <span className="muted small">
+                {group.length} {group.length === 1 ? 'item' : 'items'}
+              </span>
+            </div>
+            <ul className="food-grid">
               {group.map((e) => (
-                <StockRow key={e.product.id} {...e} onEvent={onEvent} />
+                <StockTile key={e.product.id} entry={e} today={day} onOpen={setSelId} />
               ))}
             </ul>
           </section>
         );
       })}
       {out.length > 0 && (
-        <section>
-          <h2 className="small muted">Used up</h2>
-          <ul className="game-list">
+        <section className="food-section">
+          <div className="food-section-head">
+            <h2>Used up</h2>
+          </div>
+          <div className="chips">
             {out.map((e) => (
-              <li key={e.product.id}>
-                <a className="game-row" href={href(`/food/product/${e.product.id}`)}>
-                  <strong>{e.product.name}</strong>
-                </a>
-              </li>
+              <UsedUpLink key={e.product.id} entry={e} />
             ))}
-          </ul>
+          </div>
         </section>
+      )}
+      {selected && <StockSheet key={selected.product.id} entry={selected} onAct={act} onClose={close} />}
+      {toast && (
+        <div className="food-toast" role="status">
+          <span>{toast.text}</span>
+          {toast.undo && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (toast.undo) await onEvent(toast.undo);
+                setToast(null);
+              }}
+            >
+              Undo
+            </button>
+          )}
+        </div>
       )}
     </>
   );

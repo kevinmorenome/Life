@@ -177,9 +177,12 @@ export function levelOptions(quantity: number, unit: Unit, packSize?: number): {
 
 const GLYPHS: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' };
 
-/** A quantity as people say it: pieces in quarters ("1½", "¼"), kg and l as decimals. */
+/** A quantity as people say it: pieces in quarters ("1½", "¼"), kg and l with at most two decimals (stock is kept to the gram). */
 export function formatAmount(quantity: number, unit: Unit): string {
-  if (unit !== 'pc') return formatQty(quantity);
+  if (unit !== 'pc') {
+    const two = Math.round(quantity * 100) / 100;
+    return two === 0 && quantity > 0 ? formatQty(quantity) : String(two);
+  }
   const whole = Math.floor(quantity + 1e-9);
   const glyph = GLYPHS[String(round3(quantity - whole))];
   if (glyph) return whole ? `${whole}${glyph}` : glyph;

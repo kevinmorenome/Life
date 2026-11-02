@@ -126,6 +126,7 @@ describe('part left', () => {
   it('shows pieces in quarters and everything else as decimals', () => {
     expect(['0.5', '1.5', '0.25', '2.75', '2', '0.1'].map((q) => formatAmount(Number(q), 'pc'))).toEqual(['½', '1½', '¼', '2¾', '2', '0.1']);
     expect(formatAmount(0.5, 'kg')).toBe('0.5');
+    expect([0.908, 0.224, 1, 0.004].map((q) => formatAmount(q, 'kg'))).toEqual(['0.91', '0.22', '1', '0.004']);
   });
   it('is what stock then shows after a use of the difference', () => {
     const used = 2 - partLeft(2, 'pc', 0.5);
