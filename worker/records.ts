@@ -16,6 +16,19 @@ export function upsertStatement(db: D1Database): D1PreparedStatement {
   );
 }
 
+/**
+ * Inserts a record only when there is no row for it yet, a deletion marker (NULL data) included, so
+ * a record the user removed doesn't come back. For immutable records written from outside the app
+ * (Swarm, Trakt), where a re-fetched copy must never undo a deletion or bump the sequence again.
+ */
+export function insertIfMissingStatement(db: D1Database): D1PreparedStatement {
+  return db.prepare(
+    `INSERT INTO records (store, id, data, client_updated_at, server_seq)
+     VALUES (?1, ?2, ?3, ?4, (SELECT COALESCE(MAX(server_seq), 0) + 1 FROM records))
+     ON CONFLICT (store, id) DO NOTHING`,
+  );
+}
+
 export type Row = { id: string } & Record<string, unknown>;
 
 /** Narrow view of the records the MCP tools need; faked in tests. */
