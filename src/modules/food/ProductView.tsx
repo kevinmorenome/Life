@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { PictureControl } from './PictureControl';
+import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
 import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
@@ -33,6 +34,8 @@ export function ProductView({
     const n = Number((window.prompt(question, fallback) ?? '').trim().replace(',', '.'));
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
   };
+  const comparison = comparePrices(product, today());
+  const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
   const [pack, setPack] = useState(product.packSize ? String(product.packSize) : '');
   const [label, setLabel] = useState(product.packLabel ?? '');
@@ -180,6 +183,36 @@ export function ProductView({
         <input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} onBlur={commitDays} placeholder="e.g. 3" />
       </label>
       </div>
+
+      {comparison && (
+        <>
+          <h2 className="small muted food-h2">Prices</h2>
+          {comparison.cheaper && (
+            <p className="food-saving">
+              {comparison.cheaper.store} was {money(comparison.saving!)}{priceUnit(product)} cheaper ({Math.round(comparison.savingPct! * 100)}%) than {comparison.usual.store}, where you bought it last.
+            </p>
+          )}
+          <ul className="game-list">
+            {comparison.prices.map((p, i) => (
+              <li key={p.store} className="game-line">
+                <span>
+                  {p.store}
+                  {i === 0 && comparison.prices.length > 1 && <span className="muted small"> · cheapest</span>}
+                </span>
+                <span>
+                  {money(p.regular)}{priceUnit(product)}
+                  <span className="muted small">{[p.onOffer ? `paid ${money(p.paid)} on offer` : '', `${shortDate(p.date)}`, p.purchases > 1 ? `lowest ${money(p.lowestRegular)}` : ''].filter(Boolean).map((t) => ` · ${t}`).join('')}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {offers.offers > 0 && (
+            <p className="muted small">
+              On offer {offers.offers} of {offers.of} times, saving {money(offers.saved)} in all. Prices compared are shelf prices, without offers.
+            </p>
+          )}
+        </>
+      )}
 
       {events.length > 0 && (
         <>

@@ -93,6 +93,8 @@ describe('protocol', () => {
       'add_grocery_receipt',
       'add_wolt_orders',
       'list_stock',
+      'shopping_list',
+      'product_prices',
       'use_stock',
       'count_stock',
       'set_product_info',
@@ -660,6 +662,19 @@ describe('food stock', () => {
     s.data.foodreceipts.set('food-2', receipt('food-2', '2026-10-24', [L('Oat drink 3.5%', 1), L('Oat cookies', 1)]));
     return s;
   };
+
+  it('lists what to buy with the cheapest store, and compares prices per product', async () => {
+    const { ctx, data } = seed();
+    data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });
+    data.foodreceipts.set('food-3', { ...receipt('food-3', '2026-10-10', [L('Oat cookies', 1, { unitPrice: 1.5, paid: 1.5 })]), store: 'Lidl' });
+    const list = (await call(ctx, 'shopping_list', {})).json() as { name: string; why: string; cheapestStore: string; shelfPrice?: string; savesVersusLastStore?: number }[];
+    expect(list).toMatchObject([{ name: 'Oat cookies', why: 'Out', cheapestStore: 'Lidl', shelfPrice: '1.50 each', savesVersusLastStore: 0.5 }]);
+
+    const prices = (await call(ctx, 'product_prices', { product: 'cookies' })).json() as { stores: { store: string; shelfPrice: number }[]; cheaperElsewhere: { store: string; saves: number } };
+    expect(prices.stores.map((x) => [x.store, x.shelfPrice])).toEqual([['Lidl', 1.5], ['Konzum', 2]]);
+    expect(prices.cheaperElsewhere).toMatchObject({ store: 'Lidl', saves: 0.5 });
+    expect((await call(ctx, 'product_prices', { product: 'oat' })).isError).toBe(true); // oat drink and oat cookies
+  });
 
   it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
     const { ctx, data } = seed();
