@@ -4,6 +4,7 @@ import { App } from './App';
 import { PREVIEW_LABEL } from './lib/preview';
 import { setAfterPull, startSync } from './lib/sync';
 import { startSwarmAutoSync } from './modules/checkins/swarmClient';
+import { startTraktAutoSync } from './modules/watching/traktClient';
 import { processInbox } from './modules/clothes/inboxRunner';
 import './styles.css';
 
@@ -17,3 +18,4 @@ createRoot(document.getElementById('root')!).render(
 if (!PREVIEW_LABEL) setAfterPull(processInbox);
 void startSync();
 if (!PREVIEW_LABEL) startSwarmAutoSync();
+if (!PREVIEW_LABEL) startTraktAutoSync();

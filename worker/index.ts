@@ -5,9 +5,10 @@ import { handleFoodPhotoImage, handleFoodPhotos, searchAllPhotos } from './foodP
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
 import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
+import { d1TraktStore, handleTrakt, isTraktPath, type TraktEnv } from './trakt';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
-interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv {
+interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv, TraktEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   /** Set on PR preview versions: they read real data but never write it. */
@@ -67,6 +68,16 @@ export default {
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
         // Not the bare global: Workers throw "Illegal invocation" when it's called as a method of another object.
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (isTraktPath(url.pathname)) {
+      return handleTrakt(request, url.pathname, {
+        env,
+        store: d1TraktStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
         fetch: (input, init) => fetch(input, init),
       });
     }
