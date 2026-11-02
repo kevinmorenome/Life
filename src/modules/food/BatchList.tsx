@@ -64,7 +64,8 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
         const act = b.id
           ? [
               { label: 'Used some…', icon: <MinusIcon />, onSelect: () => used(b) },
-              b.frozen ? { label: 'Take out of freezer…', icon: <MinusIcon />, onSelect: () => move(b, false) } : { label: 'Put in freezer…', icon: <MinusIcon />, onSelect: () => move(b, true) },
+              // Food that was thawed is not frozen again: it is there to be used.
+              ...(b.frozen ? [{ label: 'Take out of freezer…', icon: <MinusIcon />, onSelect: () => move(b, false) }] : b.thawed ? [] : [{ label: 'Put in freezer…', icon: <MinusIcon />, onSelect: () => move(b, true) }]),
               { label: 'Finished', icon: <CheckIcon />, onSelect: () => onAct({ event: batchEvent(product.id, b.id!, 'count', 0, 'app'), text: `${product.name}: batch finished`, undo: batchEvent(product.id, b.id!, 'count', b.quantity, 'app') }) },
               { label: 'Threw out', icon: <TrashIcon />, onSelect: () => onAct({ event: batchEvent(product.id, b.id!, 'toss', b.quantity, 'app'), text: `${product.name}: batch thrown out`, undo: batchEvent(product.id, b.id!, 'count', b.quantity, 'app') }) },
             ]
@@ -75,8 +76,10 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
               <strong>
                 {amount(b.quantity)}
                 {b.frozen && <span className="batch-tag"> · Frozen {shortDate(b.frozen)}</span>}
+                {b.thawed && <span className="batch-tag batch-tag-thawed"> · Thawed {shortDate(b.thawed)}</span>}
               </strong>
               <span className="muted small">{origin(product, b)}</span>
+              {b.thawed && <span className="small batch-thawed-note">Use this first; thawed food isn’t put back in the freezer.</span>}
               {b.id && (
                 <label className="batch-by">
                   <span className="muted small">Use by</span>

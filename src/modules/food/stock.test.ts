@@ -371,3 +371,43 @@ describe('freezer', () => {
     expect(originBatch('a:0')).toBe('a:0');
   });
 });
+
+describe('thawed food is not frozen again', () => {
+  const chicken = { type: 'fresh' as const, shelfLifeDays: 3 };
+  const bought = [{ date: '2026-10-30', quantity: 2, batch: 'a:0' }];
+  const e = (type: StockEvent['type'], batch: string | undefined, quantity: number, date: string, id: string): StockEvent => ({
+    id, productId: 'p', type, quantity, date, source: 'app', createdAt: `${date}T10:00:00Z`, updatedAt: '', ...(batch ? { batch } : {}),
+  });
+  const thawedOnce = [e('freeze', 'a:0', 2, '2026-10-31', 'f1'), e('thaw', 'freeze-f1:a:0', 1, '2026-11-20', 't1')];
+
+  it('marks what was taken out, and keeps the rest frozen', () => {
+    const s = stockOf(chicken, bought, thawedOnce, '2026-11-20');
+    expect(s.thawedQuantity).toBe(1);
+    expect(s.frozenQuantity).toBe(1);
+    expect(s.batches.find((b) => b.thawed)).toMatchObject({ id: 'thaw-t1:freeze-f1:a:0', quantity: 1, thawed: '2026-11-20', useBy: '2026-11-22' });
+  });
+
+  it('ignores a freeze of a thawed batch, by name or not', () => {
+    const byName = stockOf(chicken, bought, [...thawedOnce, e('freeze', 'thaw-t1:freeze-f1:a:0', 1, '2026-11-21', 'f2')], '2026-11-21');
+    expect(byName.frozenQuantity).toBe(1);
+    expect(byName.thawedQuantity).toBe(1);
+    const anyBatch = stockOf(chicken, bought, [...thawedOnce, e('freeze', undefined, 5, '2026-11-21', 'f3')], '2026-11-21');
+    expect(anyBatch.frozenQuantity).toBe(1); // nothing else outside the freezer, so nothing happens
+    expect(anyBatch.thawedQuantity).toBe(1);
+  });
+
+  it('a product with thawed food is "use soon" until it is used, and past its date it needs a check', () => {
+    expect(stockOf(chicken, bought, thawedOnce, '2026-11-20').status).toBe('use-soon');
+    expect(stockOf(chicken, bought, thawedOnce, '2026-11-23').status).toBe('check');
+    const used = [...thawedOnce, e('use', 'thaw-t1:freeze-f1:a:0', 1, '2026-11-21', 'u1')];
+    const s = stockOf(chicken, bought, used, '2026-11-21');
+    expect(s.thawedQuantity).toBe(0);
+    expect(s.status).toBe('ok');
+  });
+
+  it('a count does not make thawed food fresh again', () => {
+    const s = stockOf(chicken, bought, [...thawedOnce, e('count', undefined, 2, '2026-11-23', 'c1')], '2026-11-23');
+    expect(s.batches.find((b) => b.thawed)).toMatchObject({ useBy: '2026-11-22' });
+    expect(s.status).toBe('check');
+  });
+});

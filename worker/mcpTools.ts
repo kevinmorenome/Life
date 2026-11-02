@@ -293,7 +293,7 @@ export const TOOLS = [
   {
     name: 'use_stock',
     description:
-      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l, or single items for multipacks: "had two beers" = 2 cans); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). "freeze" means some was put in the freezer (use-by moves to about three months on, say how much with quantity, otherwise all of it or of the batch) and "thaw" means some frozen food was taken out (use-by two days on); use boughtOn to name the purchase. Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. For products with no amount (spices, oil), "use" is only logged and the product stays in stock until "finish". The record is a new event; nothing existing is changed.',
+      'Record that some of a product was used up (eaten, cooked with, drunk), that it is all finished, or that it was thrown away. Resolve the product with list_stock first when the name is not exact. action "use" takes quantity (default 1, in the product\'s unit: pieces, kg or l, or single items for multipacks: "had two beers" = 2 cans); "some_left" is for when only part was used and the user says how much is LEFT of the pack in use ("about half the hummus is left" = fractionLeft 0.5, "a quarter" = 0.25, "almost gone" = 0.1; for pieces it is the opened pack, the unopened ones stay whole; for kg/l it is a fraction of what there was); "finish" means none is left; "toss" means the rest was thrown away (it is kept as food waste). "freeze" means some was put in the freezer (use-by moves to about three months on, say how much with quantity, otherwise all of it or of the batch) and "thaw" means some frozen food was taken out (use-by two days on; thawed food is never frozen again, so a freeze of it is refused: encourage using it); use boughtOn to name the purchase. Only record what the user says happened; never guess. If the product is ambiguous the call fails and lists the candidates: ask the user which one. For products with no amount (spices, oil), "use" is only logged and the product stays in stock until "finish". The record is a new event; nothing existing is changed.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -963,9 +963,10 @@ function describeProduct(p: ProductSummary, s: Stock, hasPicture: boolean) {
     status: s.status,
     ...(s.useBy ? { useBy: s.useBy } : {}),
     ...(s.tracked && s.frozenQuantity > 0 ? { inFreezer: s.frozenQuantity } : {}),
+    ...(s.tracked && s.thawedQuantity > 0 ? { thawed: s.thawedQuantity, note: 'Thawed: use this first, do not refreeze.' } : {}),
     // Several purchases are kept apart, each with its own use-by: name one with boughtOn in use_stock.
     ...(s.tracked && s.batches.length > 1
-      ? { batches: s.batches.map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) })) }
+      ? { batches: s.batches.map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.thawed ? { thawedOn: b.thawed } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) })) }
       : {}),
     ...(s.lastConfirmed ? { lastBoughtOrCounted: s.lastConfirmed } : {}),
   };
@@ -1060,13 +1061,21 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     if (!isRealDate(boughtOn)) return fail('boughtOn must be YYYY-MM-DD.');
     if (action === 'some_left') return fail('some_left applies to the pack in use, not to a batch. Use action "use" with a quantity.');
     const dateOf = (b: Batch) => p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date;
-    const named = stockBefore.batches.filter((b) => b.id && dateOf(b) === boughtOn);
-    const list = stockBefore.batches.map((b) => `${dateOf(b)}: ${formatQty(b.quantity)}${b.useBy ? ` (use by ${b.useBy})` : ''}`).join('; ');
+    const state = (b: Batch) => (b.frozen ? ', frozen' : b.thawed ? ', thawed' : '');
+    const list = stockBefore.batches.map((b) => `${dateOf(b)}: ${formatQty(b.quantity)}${state(b)}${b.useBy ? ` (use by ${b.useBy})` : ''}`).join('; ');
+    let named = stockBefore.batches.filter((b) => b.id && dateOf(b) === boughtOn);
     if (named.length === 0) return fail(`No batch of "${p.name}" bought on ${boughtOn} is in stock. Batches: ${list || 'none'}.`);
+    // One purchase can be split into fridge, frozen and thawed batches: only some of them fit freezing or thawing.
+    if (action === 'freeze' || action === 'thaw') {
+      const fits = named.filter((b) => (action === 'freeze' ? !b.frozen && !b.thawed : !!b.frozen));
+      if (fits.length === 0) {
+        if (action === 'thaw') return fail(`Nothing of "${p.name}" bought on ${boughtOn} is frozen.`);
+        return fail(named.some((b) => b.thawed) ? `What is left of "${p.name}" bought on ${boughtOn} outside the freezer was thawed. Thawed food is not frozen again: it should be used soon.` : `That batch of "${p.name}" is already in the freezer.`);
+      }
+      named = fits;
+    }
     if (named.length > 1) return fail(`Several batches of "${p.name}" were bought on ${boughtOn} (${list}). Ask the user which one, or leave boughtOn out.`);
     batch = named[0];
-    if (action === 'freeze' && batch.frozen) return fail(`That batch of "${p.name}" is already in the freezer.`);
-    if (action === 'thaw' && !batch.frozen) return fail(`That batch of "${p.name}" is not frozen.`);
   }
 
   let type: StockEvent['type'];
@@ -1080,8 +1089,11 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
     quantity = batch?.quantity ?? before;
   } else if (action === 'freeze' || action === 'thaw') {
     if (untracked) return fail(`"${p.name}" is tracked as have it or out, so it has no amount to put in the freezer.`);
-    const movable = batch ? batch.quantity : action === 'freeze' ? before - stockBefore.frozenQuantity : stockBefore.frozenQuantity;
-    if (movable <= 0) return fail(action === 'freeze' ? `Nothing of "${p.name}" is outside the freezer.` : `Nothing of "${p.name}" is frozen.`);
+    const movable = batch ? batch.quantity : action === 'freeze' ? before - stockBefore.frozenQuantity - stockBefore.thawedQuantity : stockBefore.frozenQuantity;
+    if (movable <= 0) {
+      if (action === 'freeze' && stockBefore.thawedQuantity > 0) return fail(`What is left of "${p.name}" outside the freezer was thawed, and thawed food is not frozen again: it should be used soon.`);
+      return fail(action === 'freeze' ? `Nothing of "${p.name}" is outside the freezer.` : `Nothing of "${p.name}" is frozen.`);
+    }
     const q = args.quantity === undefined ? movable : args.quantity;
     if (typeof q !== 'number' || !Number.isFinite(q) || q <= 0 || q > 10_000) return fail('quantity must be a positive number.');
     type = action;

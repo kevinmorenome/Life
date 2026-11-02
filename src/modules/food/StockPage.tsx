@@ -54,6 +54,7 @@ export function StockPage({
   const missing = needsPicture(entries).length;
   const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
+  const thawed = have.filter((e) => e.stock.thawedQuantity > 0);
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
 
   async function act(a: SheetAct) {
@@ -68,6 +69,12 @@ export function StockPage({
       {entries.length === 0 && (
         <div className="empty">
           <p className="muted">Nothing here yet. Stock is worked out from your receipts, so add one first.</p>
+        </div>
+      )}
+      {thawed.length > 0 && (
+        <div className="food-banner" role="status">
+          <strong>Use first: thawed</strong>
+          <span className="muted small">{thawed.map((e) => e.product.name).join(', ')}. Thawed food isn’t put back in the freezer.</span>
         </div>
       )}
       {toCheck > 0 && (

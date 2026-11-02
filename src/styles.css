@@ -6027,3 +6027,9 @@ a.game-row + .food-h2 {
 .batch-frozen .batch-main > strong {
   color: var(--text);
 }
+.batch-tag-thawed {
+  color: var(--tone-orange);
+}
+.batch-thawed-note {
+  font-weight: 600;
+}

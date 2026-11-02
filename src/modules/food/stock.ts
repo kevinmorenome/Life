@@ -36,6 +36,8 @@ export interface Batch {
   useBy?: string;
   /** The day it went into the freezer; absent when it is not frozen. */
   frozen?: string;
+  /** The day it was taken out of the freezer. Thawed food is not frozen again, and is meant to be used soon. */
+  thawed?: string;
 }
 
 /** The purchase a batch came from: frozen and thawed batches are named `<freeze|thaw>-<event id>:<source batch>`, so this follows them back to the receipt line. */
@@ -57,6 +59,8 @@ export interface Stock {
   useBy?: string;
   /** How much of `quantity` is in the freezer. */
   frozenQuantity: number;
+  /** How much of `quantity` was taken out of the freezer and has not been used yet. */
+  thawedQuantity: number;
   /** Last day a purchase or a count confirmed what you have. */
   lastConfirmed?: string;
   status: StockStatus;
@@ -78,6 +82,7 @@ interface Work {
   quantity: number;
   useBy?: string;
   frozen?: string;
+  thawed?: string;
 }
 
 /** Soonest to expire first, otherwise oldest first. `key` is a batch's use-by, or its date when it has none. */
@@ -119,6 +124,7 @@ export function stockOf(
   const keyOf = (b: Work) => useByOf(b) ?? b.date;
   // A count confirms what it leaves: snacks past their days and fresh food past its use-by start again from the count.
   const stale = (b: Work, day: string) => {
+    if (b.thawed) return false; // thawed food is not made fresh again by counting it
     if (product.type === 'snack' && !b.frozen) return daysBetween(b.date, day) > SNACK_DAYS;
     const by = useByOf(b);
     return !!by && day > by;
@@ -140,15 +146,17 @@ export function stockOf(
         } else if (e.type === 'freeze' || e.type === 'thaw') {
           // Moves some of a batch (or of whatever expires first) into a batch that is frozen, or back out of the freezer.
           const freezing = e.type === 'freeze';
-          if (target && !!target.frozen === freezing) return;
+          // Only fresh food goes in the freezer, and only frozen food comes out: food that was thawed is never frozen again.
+          const eligible = (x: Work) => (freezing ? !x.frozen && !x.thawed : !!x.frozen);
+          if (target && !eligible(target)) return;
           let left = e.quantity;
-          const sources = target ? [target] : b.filter((x) => x.quantity > 1e-9 && !!x.frozen !== freezing).sort(byExpiry(keyOf));
+          const sources = target ? [target] : b.filter((x) => x.quantity > 1e-9 && eligible(x)).sort(byExpiry(keyOf));
           for (const src of sources) {
             if (left <= 1e-9) break;
             const take = round3(Math.min(src.quantity, left));
             src.quantity = round3(src.quantity - take);
             left -= take;
-            b.push({ id: `${e.type}-${e.id}:${src.id ?? 'n'}`, date: src.date, quantity: take, ...(freezing ? { frozen: e.date } : { useBy: addDays(e.date, THAW_DAYS) }) });
+            b.push({ id: `${e.type}-${e.id}:${src.id ?? 'n'}`, date: src.date, quantity: take, ...(freezing ? { frozen: e.date } : { useBy: addDays(e.date, THAW_DAYS), thawed: e.date }) });
           }
         } else if (e.type === 'count') {
           if (e.batch) {
@@ -182,9 +190,10 @@ export function stockOf(
 
   const out: Batch[] = kept.map((b) => {
     const useBy = useByOf(b);
-    return { date: b.date, quantity: b.quantity, ...(b.id ? { id: b.id } : {}), ...(useBy ? { useBy } : {}), ...(b.frozen ? { frozen: b.frozen } : {}) };
+    return { date: b.date, quantity: b.quantity, ...(b.id ? { id: b.id } : {}), ...(useBy ? { useBy } : {}), ...(b.frozen ? { frozen: b.frozen } : {}), ...(b.thawed ? { thawed: b.thawed } : {}) };
   });
   const frozenQuantity = round3(out.filter((b) => b.frozen).reduce((sum, b) => sum + b.quantity, 0));
+  const thawedQuantity = round3(out.filter((b) => b.thawed).reduce((sum, b) => sum + b.quantity, 0));
   const useBy = out.map((b) => b.useBy).filter((d): d is string => !!d).sort()[0];
 
   let status: StockStatus = 'ok';
@@ -192,8 +201,10 @@ export function stockOf(
   else if (useBy && today > useBy) status = 'check';
   else if (useBy && daysBetween(today, useBy) <= 1) status = 'use-soon';
   else if ((product.type === 'staple' || product.type === 'drink') && quantity <= 1) status = 'low';
+  // Thawed food is to be used first, whatever else it is.
+  if (thawedQuantity > 0 && (status === 'ok' || status === 'low')) status = 'use-soon';
 
-  return { tracked: true, quantity, batches: out, useBy, frozenQuantity, lastConfirmed, status };
+  return { tracked: true, quantity, batches: out, useBy, frozenQuantity, thawedQuantity, lastConfirmed, status };
 }
 
 /**
@@ -207,7 +218,7 @@ function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: St
   const boughtAfter = purchases.some((p) => !reset || p.date > reset.date);
   const have = reset ? (reset.type === 'count' && reset.quantity > 0) || boughtAfter : purchases.length > 0;
   const lastConfirmed = [reset?.type === 'count' && reset.quantity > 0 ? reset.date : undefined, lastBought].filter((d): d is string => !!d).sort().pop();
-  return { tracked: false, frozenQuantity: 0, quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
+  return { tracked: false, frozenQuantity: 0, thawedQuantity: 0, quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
 }
 
 /** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
