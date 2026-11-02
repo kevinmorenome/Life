@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { BuildingIcon, ClockIcon, HomeIcon, PalmIcon, SuitcaseIcon, UndoIcon } from '../../icons';
+import { DayWidget } from '../../DayWidget';
 import { today } from '../../lib/format';
 import type { OffReason, WorkDay, WorkStatus } from './types';
 import type { DayInfo } from './work';
@@ -58,9 +59,27 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
     { field: 'leave', label: 'End', value: info?.leave },
   ];
 
+  const statusLabel = status ? (status === 'off' && info?.reason ? REASON_LABELS[info.reason] : STATUS_LABELS[status]) : undefined;
+  const hours = info?.arrive || info?.leave ? `${info?.arrive ?? '?'}–${info?.leave ?? '?'}` : undefined;
+  const source = info?.manual
+    ? day?.source === 'report'
+      ? 'From your badge report.'
+      : day?.source === 'swarm'
+        ? 'From your Swarm check-ins.'
+        : 'Set by hand.'
+    : status
+      ? 'From your check-ins.'
+      : 'Nothing recorded. Tap where you worked.';
+
   return (
-    <section className="work-day-section">
-      <h2>Work</h2>
+    <DayWidget
+      id="work"
+      title="Work"
+      icon={status ? STATUS_ICONS[status] : <BuildingIcon />}
+      tone="work"
+      size="full"
+      summary={[statusLabel ?? 'Nothing recorded', hours].filter(Boolean).join(' · ')}
+    >
       <div className="work-choices" role="group" aria-label="Where did you work?">
         {ORDER.map((s) => (
           <button key={s} className="work-choice" aria-pressed={status === s} onClick={() => save({ status: s })}>
@@ -69,16 +88,16 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
           </button>
         ))}
       </div>
-      {status !== 'off' && (
+      {status && status !== 'off' && (
         <div className="work-times-row">
           {times.map(({ field, label, value }) => (
             <div key={field} className="work-time">
               <label>
                 <span className="muted small">{label}</span>
-                <input type="time" value={value ?? ''} disabled={!status} onChange={(e) => setTime(field, e.target.value)} />
+                <input type="time" value={value ?? ''} onChange={(e) => setTime(field, e.target.value)} />
               </label>
               {isToday && (
-                <button className="icon-btn" disabled={!status} onClick={() => setTime(field, nowTime())} aria-label={`Set ${label.toLowerCase()} to now`}>
+                <button className="icon-btn" onClick={() => setTime(field, nowTime())} aria-label={`Set ${label.toLowerCase()} to now`}>
                   <ClockIcon />
                 </button>
               )}
@@ -87,14 +106,13 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
         </div>
       )}
       <p className="muted small work-source">
-        {info?.manual ? (day?.source === 'report' ? 'From your badge report.' : day?.source === 'swarm' ? 'From your Swarm check-ins.' : 'Set by hand.') : status ? 'From your check-ins.' : 'Nothing recorded for this day.'}
-        {!status && ' Choose where you worked to add times.'}
+        {source}
         {info?.manual && (
           <button className="icon-btn" onClick={() => onClear(date)} aria-label="Clear and go back to check-ins">
             <UndoIcon />
           </button>
         )}
       </p>
-    </section>
+    </DayWidget>
   );
 }

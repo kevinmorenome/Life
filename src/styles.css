@@ -3315,22 +3315,6 @@ progress {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
   cursor: pointer;
 }
-.work-day-section {
-  margin: 0.5rem 0 1rem;
-}
-.work-day-section .work-choices {
-  margin: 0.5rem 0;
-}
-.work-day-section .work-choice {
-  min-height: 64px;
-  flex-direction: row;
-  gap: 0.5rem;
-}
-.work-day-section .work-choice svg {
-  width: 22px;
-  height: 22px;
-}
-
 /* ───────────────────────── Liquid Glass ─────────────────────────
    Controls are a translucent material floating above the content: blurred and
    saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
@@ -6071,4 +6055,235 @@ a.game-row + .food-h2 {
   letter-spacing: 0.2em;
   font-variant-numeric: tabular-nums;
   user-select: all;
+}
+
+/* Day screen as a dashboard: tiles in a two-column grid. A widget is a flat, lightly tinted tile whose header collapses it;
+   glass stays on the controls inside. */
+.day-head h1 {
+  font-size: 1.05rem;
+}
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  align-items: start;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.75rem;
+}
+@media (min-width: 720px) {
+  .day-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.detail .day-grid > .widget {
+  margin-top: 0;
+}
+.widget {
+  --w: var(--accent);
+  grid-column: span 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--w) 5%, var(--surface));
+  overflow: hidden;
+}
+.widget-full {
+  grid-column: 1 / -1;
+}
+.widget-work,
+.widget-clothes {
+  --w: var(--accent);
+}
+.widget-place,
+.widget-trip {
+  --w: var(--tone-blue);
+}
+.widget-games {
+  --w: var(--tone-purple);
+}
+.widget-food {
+  --w: var(--tone-lime);
+}
+.widget-wolt {
+  --w: var(--tone-orange);
+}
+.widget-head {
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+}
+.widget-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.widget-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--w) 18%, var(--surface));
+  color: var(--w);
+}
+.widget-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-badge {
+  flex: none;
+  max-width: 45%;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--w) 14%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-chevron {
+  display: grid;
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.widget-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+.widget.is-collapsed .widget-chevron {
+  transform: rotate(-90deg);
+}
+.widget-summary {
+  margin: -0.2rem 0 0;
+  padding: 0 0.75rem 0.6rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-body {
+  padding: 0 0.75rem 0.7rem;
+}
+.widget-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.widget-list li,
+.widget-link {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+.widget-list li:first-child {
+  border-top: 0;
+  padding-top: 0.1rem;
+}
+.widget-list li > li,
+.widget-list li .widget-link {
+  padding: 0;
+  border: 0;
+}
+.widget-list strong,
+.widget-list .small,
+.widget-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-link {
+  color: inherit;
+  text-decoration: none;
+}
+.widget-link strong {
+  white-space: normal;
+}
+.widget-champ {
+  font-weight: 600;
+}
+.widget-line {
+  margin: 0 0 0.4rem;
+}
+.widget .outfit-cards,
+.widget .day-items {
+  margin: 0.25rem 0 0;
+}
+.widget-head .icon-btn {
+  flex: none;
+}
+.day-empty {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+}
+.day-actions {
+  margin-top: 0.5rem;
+}
+/* Inside a widget the work controls are compact. */
+.widget .work-choices {
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+}
+.widget .work-choice {
+  min-height: 56px;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 0.15rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.widget .work-choice svg {
+  width: 22px;
+  height: 22px;
+}
+.widget .work-times-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.25rem;
+}
+.widget .work-time {
+  min-width: 0;
+}
+.widget .work-time label {
+  flex: 1;
+  min-width: 0;
+}
+.widget .work-time input {
+  width: 100%;
+  min-width: 0;
+}
+.widget .work-source {
+  min-height: 0;
+  margin: 0;
+  font-size: 0.78rem;
+}
+.widget .work-source .icon-btn {
+  margin: -0.5rem -0.25rem -0.5rem auto;
 }
