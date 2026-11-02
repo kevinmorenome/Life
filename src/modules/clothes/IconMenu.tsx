@@ -15,6 +15,11 @@ export function IconMenu({ entries, label = 'More', icon, triggerClassName = 'ic
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
+  // A menu near the bottom of a scrolling sheet or page would be cut off: bring it into view when it opens.
+  useEffect(() => {
+    if (open) box.current?.querySelector('.menu')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const close = (e: Event) => {
