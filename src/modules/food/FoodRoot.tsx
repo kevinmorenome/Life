@@ -1,6 +1,5 @@
 import { useCollection } from '../../lib/useCollection';
 import { CheckPage } from './CheckPage';
-import { ProductList } from './ProductList';
 import { ProductView } from './ProductView';
 import { productSummaries } from './products';
 import { ReceiptForm } from './ReceiptForm';
@@ -24,9 +23,9 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
     if (third === 'edit') return <ReceiptForm existing={receipt} receipts={receipts.items} onSave={receipts.save} />;
     return <ReceiptView receipt={receipt} onDelete={receipts.remove} />;
   }
-  if (first === 'stock') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} />;
+  // `#/food/products` was the old Products tab: it now opens the same grid with everything you ever bought.
+  if (first === 'stock' || first === 'products') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} initialShowAll={first === 'products'} />;
   if (first === 'check') return <CheckPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
-  if (first === 'products') return <ProductList receipts={receipts.items} products={products.items} />;
   if (first === 'product' && second) {
     const product = productSummaries(receipts.items, products.items).find((p) => p.id === second);
     if (!product) return <p className="muted">That product isn’t on any receipt.</p>;

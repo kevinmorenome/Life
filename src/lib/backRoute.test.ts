@@ -11,7 +11,7 @@ describe('parentRoute', () => {
     expect(p('/food/products')).toBe('/more');
     expect(p('/food/stock')).toBe('/more');
     expect(p('/food/check')).toBe('/food/stock');
-    expect(p('/food/product/fp-beer')).toBe('/food/products');
+    expect(p('/food/product/fp-beer')).toBe('/food/stock');
     expect(p('/food/receipt/food-abc/edit')).toBe('/food/receipt/food-abc');
   });
 

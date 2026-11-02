@@ -51,7 +51,7 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
     onAct({ event: stockEvent(p.id, 'use', n, 'app'), text: `${p.name}: used ${formatAmount(n, p.unit)}${unitLabel(p, n)}`, undo: restore(), done: s.quantity - n <= 1e-9 });
   }
 
-  const amount = have ? (s.quantity > 0 ? 'Have it' : 'Out') : `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
+  const amount = s.quantity <= 0 ? 'Used up' : have ? 'Have it' : `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
   const where = `${p.storage[0].toUpperCase()}${p.storage.slice(1)} · bought ${shortDate(p.purchases[0].date)}${have && uses > 0 ? ` · used ${uses}×` : ''}`;
 
   return (
@@ -74,7 +74,7 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
           </p>
         )}
         <div className="food-actions">
-          <button type="button" className="food-action" onClick={usedOne} disabled={!have && s.quantity <= 0}>
+          <button type="button" className="food-action" onClick={usedOne} disabled={s.quantity <= 0}>
             {have ? <UsedIcon /> : <MinusIcon />}
             {have ? 'Used it' : p.unit === 'pc' ? one : 'Used some'}
           </button>
@@ -82,7 +82,7 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
             <HalfIcon />
             Part left
           </button>
-          <button type="button" className="food-action" onClick={() => onAct({ event: stockEvent(p.id, 'count', 0, 'app'), text: `${p.name} finished`, undo: restore(), done: true })}>
+          <button type="button" className="food-action" disabled={s.quantity <= 0} onClick={() => onAct({ event: stockEvent(p.id, 'count', 0, 'app'), text: `${p.name} finished`, undo: restore(), done: true })}>
             <CheckIcon />
             Finished
           </button>
@@ -110,7 +110,9 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
           </div>
         )}
         <p className="muted small food-hint">
-          {have
+          {s.quantity <= 0
+            ? 'Used up. If you have some again, say how many with I have… on the product page.'
+            : have
             ? 'Counted as have it or out: Used it logs a use and keeps it in stock; Finished takes it away.'
             : p.packSize
               ? `Counted in single ${p.packLabel ? p.packLabel + 's' : 'items'}; ${p.purchases.length === 1 ? 'one purchase' : `${p.purchases.length} purchases`} of packs of ${p.packSize}.`

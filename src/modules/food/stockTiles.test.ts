@@ -18,6 +18,13 @@ describe('freshness words', () => {
   });
 });
 
+describe('tileInfo for what is used up', () => {
+  it('says Out, sorts after everything you have and drops the pill and bar', () => {
+    const gone = { ...entry({ type: 'fresh', shelfLifeDays: 2 }), stock: stockOf({ type: 'fresh', shelfLifeDays: 2 }, [{ date: '2026-10-31', quantity: 1 }], [{ id: 'e', productId: 'fp-x', type: 'count', quantity: 0, date: '2026-11-01', source: 'app', createdAt: 'a', updatedAt: 'a' }], '2026-11-02') };
+    expect(tileInfo(gone, '2026-11-02')).toEqual({ badge: 'Out', label: 'Thing, used up', sortKey: 2000 });
+  });
+});
+
 describe('tileInfo', () => {
   it('shows a plain count with no pill or bar for staples', () => {
     expect(tileInfo(entry({}), '2026-11-02')).toEqual({ badge: '1', label: 'Thing, 1', sortKey: 1000 });
