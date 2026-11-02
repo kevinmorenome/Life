@@ -10,6 +10,7 @@ import { href } from './lib/router';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { SwarmSection } from './modules/checkins/SwarmSection';
+import { TraktSection } from './modules/watching/TraktSection';
 import { MoveTakeoutSection } from './modules/wolt/MoveTakeoutSection';
 import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
 import type { WorkDay } from './modules/work/types';
@@ -182,6 +183,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       </section>
       <SwarmSection />
       <OfficeFromSwarm />
+      <TraktSection />
       <MoveTakeoutSection />
       {PREVIEW_LABEL && (
         <section className="card">

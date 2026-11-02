@@ -4,3 +4,6 @@ MCP_TOKEN=local-dev-token-0123456789abcdef
 # Swarm check-ins (optional): from your Foursquare app; its redirect URL must be http://localhost:8787/api/swarm/callback
 # FOURSQUARE_CLIENT_ID=
 # FOURSQUARE_CLIENT_SECRET=
+# Trakt watch history (optional): from your Trakt API app; its redirect URI must be http://localhost:8787/api/trakt/callback
+# TRAKT_CLIENT_ID=
+# TRAKT_CLIENT_SECRET=

@@ -6039,3 +6039,28 @@ a.game-row + .food-h2 {
 .batch-thawed-note {
   font-weight: 600;
 }
+
+/* Trakt plays */
+.dot.mark-watch {
+  background: var(--tone-purple);
+}
+.day-badge.mark-watch {
+  color: var(--tone-purple);
+}
+.pill.mark-watch {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.watch-plays {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.watch-plays li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+}
