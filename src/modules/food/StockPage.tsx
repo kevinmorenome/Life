@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
+import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
 import { needsCheck } from './stock';
 import { stockEntries } from './stockEntries';
@@ -53,6 +54,7 @@ export function StockPage({
 
   const have = entries.filter((e) => e.stock.quantity > 0);
   const out = entries.filter((e) => e.stock.quantity === 0);
+  const missing = needsPicture(entries).length;
   const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
@@ -76,6 +78,14 @@ export function StockPage({
           <strong>Weekly check</strong>
           <span className="muted small">
             {toCheck} {toCheck === 1 ? 'thing' : 'things'} to confirm
+          </span>
+        </a>
+      )}
+      {missing > 0 && (
+        <a className="food-banner" href={href('/food/pictures')}>
+          <strong>Add pictures</strong>
+          <span className="muted small">
+            {missing} {missing === 1 ? 'product has' : 'products have'} no picture yet
           </span>
         </a>
       )}
