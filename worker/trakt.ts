@@ -4,7 +4,7 @@
 // into the `watched` store as fresh, immutable records with ids `trakt-<history id>`.
 // These routes sit behind Cloudflare Access like the sync API.
 
-import { upsertStatement } from './records';
+import { insertIfMissingStatement } from './records';
 
 export interface TraktEnv {
   TRAKT_CLIENT_ID?: string;
@@ -288,7 +288,8 @@ export function d1TraktStore(db: D1Database): TraktStore {
       await db.prepare('UPDATE integrations SET token = ?1, refresh_token = ?2, expires_at = ?3 WHERE name = ?4').bind(t.token, t.refreshToken, t.expiresAt, 'trakt').run();
     },
     async savePlays(records, progress, now) {
-      const stmt = upsertStatement(db);
+      // Plays never change, and one the user deleted must not be brought back by a later fetch.
+      const stmt = insertIfMissingStatement(db);
       await db.batch([
         ...records.map((r) => stmt.bind('watched', r.id, JSON.stringify(r), now)),
         progress

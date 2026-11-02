@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, Toggle, type Bar } from '../clothes/charts';
+import { RemovePlayButton } from './RemovePlay';
 import type { Play } from './types';
 import { dayStreak, episodeCode, hourCounts, monthlyCounts, newestFirst, searchPlays, summarize, topTitles, weekdayCounts, when } from './watched';
 
@@ -113,6 +114,7 @@ function AllPlays({ plays }: { plays: Play[] }) {
                   {p.title}
                   {p.kind === 'episode' && <span className="muted small"> {[episodeCode(p), p.episodeTitle].filter(Boolean).join(' · ')}</span>}
                 </span>
+                <RemovePlayButton play={p} />
               </li>
             );
           })}

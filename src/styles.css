@@ -6058,11 +6058,17 @@ a.game-row + .food-h2 {
 }
 .watch-plays li {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
+  grid-template-columns: 5.5rem 1fr auto;
   gap: 0.5rem;
-  align-items: baseline;
-  padding: 0.6rem 0;
+  align-items: center;
+  padding: 0.1rem 0;
   border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+}
+.checkins-day li.watch-day-play {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 .trakt-code {
   margin: 0.5rem 0;
