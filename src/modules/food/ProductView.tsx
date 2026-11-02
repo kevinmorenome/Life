@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { BatchList, type BatchAct } from './BatchList';
 import { PictureControl } from './PictureControl';
 import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
@@ -13,7 +14,7 @@ import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type Pr
 const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
 
 /** One product: how it is tracked, and every time you bought it. */
-const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted' } as const;
+const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by' } as const;
 
 export function ProductView({
   product,
@@ -34,6 +35,7 @@ export function ProductView({
     const n = Number((window.prompt(question, fallback) ?? '').trim().replace(',', '.'));
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
   };
+  const [note, setNote] = useState<BatchAct | null>(null);
   const comparison = comparePrices(product, today());
   const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
@@ -133,6 +135,37 @@ export function ProductView({
         </div>
       </section>
 
+      {stock.tracked && stock.batches.length > 0 && (
+        <>
+          <h2 className="small muted food-h2">Batches</h2>
+          <BatchList
+            product={product}
+            stock={stock}
+            onAct={(a) => {
+              onEvent(a.event);
+              setNote(a);
+            }}
+          />
+          {note && (
+            <p className="muted small food-batch-note" role="status">
+              {note.text}
+              {note.undo && (
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    onEvent(note.undo!);
+                    setNote(null);
+                  }}
+                >
+                  Undo
+                </button>
+              )}
+            </p>
+          )}
+        </>
+      )}
+
       <div className="form">
       <div className="field">
         <span>Type</span>
@@ -223,7 +256,7 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
+                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
                   <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}

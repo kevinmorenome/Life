@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckIcon, HalfIcon, MinusIcon, TrashIcon, UsedIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { BatchList } from './BatchList';
 import { PictureControl } from './PictureControl';
 import { unitLabel } from './products';
 import { dayText, tileInfo } from './stockTiles';
@@ -108,6 +109,12 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
               </button>
             ))}
           </div>
+        )}
+        {!have && s.batches.length > 1 && (
+          <>
+            <h3 className="small muted food-h2">Batches</h3>
+            <BatchList product={p} stock={s} onAct={(a) => onAct({ event: a.event, text: a.text, undo: a.undo })} />
+          </>
         )}
         <p className="muted small food-hint">
           {s.quantity <= 0

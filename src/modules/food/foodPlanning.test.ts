@@ -115,6 +115,16 @@ describe('shopping list', () => {
   });
 });
 
+describe('waste by batch', () => {
+  it('values a thrown-away batch at what that batch cost', () => {
+    const rs = [receipt({ id: 'a', date: '2026-10-01', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 6 })] }), receipt({ id: 'b', date: '2026-10-10', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 10 })] })];
+    const products = productSummaries(rs, []);
+    const batchToss = { ...toss('fp-chicken', 0.5, '2026-10-12'), batch: 'b:0' };
+    expect(wasteSummary(products, [batchToss], rs, '2026-11', 1).value).toBe(5); // 0.5 kg × 10, not the 8 average
+    expect(wasteSummary(products, [toss('fp-chicken', 0.5, '2026-10-12')], rs, '2026-11', 1).value).toBe(4);
+  });
+});
+
 describe('food stats', () => {
   const rs = [
     receipt({ store: 'Konzum', date: '2026-10-26', lines: [line({ name: 'Milk', unitPrice: 1, discount: 0.2 }), line({ name: 'Beer', kind: 'alcohol', unitPrice: 2 }), line({ name: 'Deposit', kind: 'deposit', unitPrice: 0.5 }), line({ name: 'Bag', kind: 'bag', unitPrice: 0.1 })] }),

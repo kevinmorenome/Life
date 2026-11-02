@@ -97,8 +97,8 @@ export interface FoodProduct {
   updatedAt: string;
 }
 
-/** What happened to some of a product: eaten/used, thrown away, or counted ("I have 3 left", 0 = finished). */
-export type StockEventType = 'use' | 'toss' | 'count';
+/** What happened to some of a product: eaten/used, thrown away, counted ("I have 3 left", 0 = finished), or a use-by date set for a batch. */
+export type StockEventType = 'use' | 'toss' | 'count' | 'expiry';
 
 /**
  * One thing that changed what you have. Always a fresh record, never edited (a mistake is fixed with a newer
@@ -113,6 +113,13 @@ export interface StockEvent {
   /** YYYY-MM-DD */
   date: string;
   source: 'app' | 'check' | 'claude';
+  /**
+   * The batch (purchase) this is about, `Purchase.batch`. A use or throw-away then comes off that batch; a count
+   * sets that batch's amount; an `expiry` belongs to it. Without one, the stock that expires first is used.
+   */
+  batch?: string;
+  /** For `expiry` events: the use-by date (YYYY-MM-DD) set for the batch. The newest one wins. */
+  useBy?: string;
   note?: string;
   createdAt: string;
   updatedAt: string;

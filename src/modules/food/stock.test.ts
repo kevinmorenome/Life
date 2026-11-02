@@ -193,3 +193,93 @@ describe('packs (a 6-pack of beer is bought as 1 and drunk as 6)', () => {
     expect(stockOf({ type: 'staple' }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(2);
   });
 });
+
+describe('batches (each purchase has its own use-by and can be acted on alone)', () => {
+  const chicken = { type: 'fresh' as const, shelfLifeDays: 3 };
+  // 1.87 kg of chicken from three purchases: 0.62 + 0.5 + 0.75
+  const bought = [
+    { date: '2026-10-28', quantity: 0.62, batch: 'a:0' },
+    { date: '2026-10-30', quantity: 0.5, batch: 'b:0' },
+    { date: '2026-11-01', quantity: 0.75, batch: 'c:0' },
+  ];
+  const batchEv = (type: StockEvent['type'], batch: string, quantity: number, date: string, extra: Partial<StockEvent> = {}): StockEvent => ({ ...ev(type, quantity, date), batch, ...extra });
+
+  it('keeps one batch per purchase, each with its own use-by', () => {
+    const s = stockOf(chicken, bought, [], '2026-11-01');
+    expect(s.quantity).toBe(1.87);
+    expect(s.batches).toEqual([
+      { id: 'a:0', date: '2026-10-28', quantity: 0.62, useBy: '2026-10-31' },
+      { id: 'b:0', date: '2026-10-30', quantity: 0.5, useBy: '2026-11-02' },
+      { id: 'c:0', date: '2026-11-01', quantity: 0.75, useBy: '2026-11-04' },
+    ]);
+    expect(s.useBy).toBe('2026-10-31'); // the first to go off
+    expect(s.status).toBe('check'); // and it is past
+  });
+
+  it('uses part of one batch and leaves the others alone', () => {
+    const s = stockOf(chicken, bought, [batchEv('use', 'c:0', 0.25, '2026-11-01')], '2026-11-01');
+    expect(s.batches.map((b) => [b.id, b.quantity])).toEqual([['a:0', 0.62], ['b:0', 0.5], ['c:0', 0.5]]);
+  });
+
+  it('throws out just the batch that went off', () => {
+    const s = stockOf(chicken, bought, [batchEv('toss', 'a:0', 0.62, '2026-11-01')], '2026-11-01');
+    expect(s.quantity).toBe(1.25);
+    expect(s.batches.map((b) => b.id)).toEqual(['b:0', 'c:0']);
+    expect(s.status).toBe('use-soon');
+  });
+
+  it('takes more than a batch has only from that batch', () => {
+    const s = stockOf(chicken, bought, [batchEv('use', 'b:0', 5, '2026-11-01')], '2026-11-01');
+    expect(s.batches.map((b) => b.id)).toEqual(['a:0', 'c:0']);
+    expect(s.quantity).toBe(1.37);
+  });
+
+  it('a use with no batch comes off the batch that expires first', () => {
+    const s = stockOf(chicken, bought, [ev('use', 0.7, '2026-11-01')], '2026-11-01');
+    expect(s.batches.map((b) => [b.id, b.quantity])).toEqual([['b:0', 0.42], ['c:0', 0.75]]);
+  });
+
+  it('a use-by set by hand replaces the default, and decides which batch goes first', () => {
+    const events = [batchEv('expiry', 'c:0', 0, '2026-11-01', { useBy: '2026-10-29' })];
+    const s = stockOf(chicken, bought, [...events, ev('use', 0.5, '2026-11-01')], '2026-11-01');
+    expect(s.batches.find((b) => b.id === 'c:0')).toMatchObject({ useBy: '2026-10-29', quantity: 0.25 });
+    expect(s.batches.map((b) => b.id)).toEqual(['a:0', 'b:0', 'c:0']);
+  });
+
+  it('the newest use-by set for a batch wins', () => {
+    const first = batchEv('expiry', 'a:0', 0, '2026-10-29', { useBy: '2026-11-10', createdAt: '2026-10-29T09:00:00Z' });
+    const second = batchEv('expiry', 'a:0', 0, '2026-10-30', { useBy: '2026-11-20', createdAt: '2026-10-30T09:00:00Z' });
+    expect(stockOf(chicken, bought, [second, first], '2026-11-01').batches[0].useBy).toBe('2026-11-20');
+  });
+
+  it('a count of one batch puts it back, which is how an undo works', () => {
+    const toss = batchEv('toss', 'a:0', 0.62, '2026-11-01', { createdAt: '2026-11-01T10:00:00Z' });
+    const undo = batchEv('count', 'a:0', 0.62, '2026-11-01', { createdAt: '2026-11-01T10:00:05Z' });
+    const s = stockOf(chicken, bought, [toss, undo], '2026-11-01');
+    expect(s.batches[0]).toEqual({ id: 'a:0', date: '2026-10-28', quantity: 0.62, useBy: '2026-10-31' });
+  });
+
+  it('a count of the whole product keeps the batches and takes the difference from the oldest', () => {
+    const s = stockOf(chicken, bought, [ev('count', 1.4, '2026-11-01')], '2026-11-01');
+    expect(s.quantity).toBe(1.4);
+    expect(Object.fromEntries(s.batches.map((b) => [b.id, b.quantity]))).toEqual({ 'a:0': 0.15, 'b:0': 0.5, 'c:0': 0.75 });
+  });
+
+  it('a count above what there is adds a batch of the difference', () => {
+    const s = stockOf(chicken, bought, [ev('count', 2, '2026-11-01')], '2026-11-01');
+    expect(s.quantity).toBe(2);
+    expect(s.batches.at(-1)).toMatchObject({ date: '2026-11-01', quantity: 0.13 });
+  });
+
+  it('a count confirms what had gone past its use-by: it starts again from the count', () => {
+    const s = stockOf(chicken, bought, [ev('count', 1.87, '2026-11-01')], '2026-11-01');
+    expect(s.batches.find((b) => b.id === 'a:0')).toMatchObject({ date: '2026-11-01', useBy: '2026-11-04' });
+    expect(s.batches.find((b) => b.id === 'b:0')?.useBy).toBe('2026-11-02'); // not past, left alone
+  });
+
+  it('counts in items for multipacks, per batch too', () => {
+    const beer = { type: 'drink' as const, packSize: 6 };
+    const s = stockOf(beer, [{ date: '2026-10-01', quantity: 1, batch: 'x:0' }, { date: '2026-10-05', quantity: 2, batch: 'y:0' }], [batchEv('use', 'y:0', 3, '2026-10-06')], '2026-10-07');
+    expect(s.batches.map((b) => [b.id, b.quantity])).toEqual([['x:0', 6], ['y:0', 9]]);
+  });
+});
