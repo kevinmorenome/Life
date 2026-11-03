@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, formatAmount, levelOptions, needsCheck, originBatch, partLeft, stockOf, usesSince } from './stock';
+import { addDays, batchesToCheck, daysBetween, formatAmount, levelOptions, needsBatchCheck, needsCheck, originBatch, partLeft, stockOf, usesSince } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (date: string, quantity: number) => ({ date, quantity });
@@ -409,5 +409,62 @@ describe('thawed food is not frozen again', () => {
     const s = stockOf(chicken, bought, [...thawedOnce, e('count', undefined, 2, '2026-11-23', 'c1')], '2026-11-23');
     expect(s.batches.find((b) => b.thawed)).toMatchObject({ useBy: '2026-11-22' });
     expect(s.status).toBe('check');
+  });
+});
+
+describe('weekly check, per batch', () => {
+  const chicken = { type: 'fresh' as const, shelfLifeDays: 6 };
+  const bought = [{ date: '2026-10-20', quantity: 0.5, batch: 'a:0' }, { date: '2026-11-01', quantity: 0.7, batch: 'b:0' }];
+  const bev = (type: StockEvent['type'], batch: string | undefined, quantity: number, date: string, source: StockEvent['source'], id: string): StockEvent => ({
+    id, productId: 'p', type, quantity, date, source, createdAt: `${date}T10:00:00Z`, updatedAt: '', ...(batch ? { batch } : {}),
+  });
+
+  it('asks about the old batch even though a newer one was bought since', () => {
+    const s = stockOf(chicken, bought, [], '2026-11-02');
+    expect(batchesToCheck('fresh', s, '2026-11-02').map((b) => b.id)).toEqual(['a:0']); // 13 days old; b:0 is 1 day old
+    expect(needsCheck('fresh', s, '2026-11-02')).toBe(true);
+  });
+
+  it('a "still have" on one batch confirms just that batch', () => {
+    const s = stockOf({ type: 'staple' as const }, [{ date: '2026-10-01', quantity: 2, batch: 'a:0' }, { date: '2026-10-02', quantity: 2, batch: 'b:0' }], [bev('count', 'a:0', 2, '2026-10-20', 'check', 'c1')], '2026-10-20');
+    expect(s.batches.find((b) => b.id === 'a:0')?.confirmed).toBe('2026-10-20');
+    expect(batchesToCheck('staple', s, '2026-10-20').map((b) => b.id)).toEqual(['b:0']); // both are 19 days old; only b:0 is still unconfirmed
+  });
+
+  it('confirming a batch that was past its date starts it again, but an undo does not', () => {
+    const past = stockOf(chicken, bought.slice(0, 1), [], '2026-11-02');
+    expect(past.status).toBe('check');
+    const confirmed = stockOf(chicken, bought.slice(0, 1), [bev('count', 'a:0', 0.5, '2026-11-02', 'check', 'c1')], '2026-11-02');
+    expect(confirmed.batches[0]).toMatchObject({ date: '2026-11-02', useBy: '2026-11-08', confirmed: '2026-11-02' });
+    expect(confirmed.status).toBe('ok');
+    expect(batchesToCheck('fresh', confirmed, '2026-11-02')).toEqual([]);
+    // the same count from the app (what an undo writes) only sets the amount
+    const undone = stockOf(chicken, bought.slice(0, 1), [bev('count', 'a:0', 0.5, '2026-11-02', 'app', 'c2')], '2026-11-02');
+    expect(undone.batches[0]).toMatchObject({ date: '2026-10-20', useBy: '2026-10-26' });
+    expect(undone.batches[0].confirmed).toBeUndefined();
+  });
+
+  it('finished or thrown out from the check takes just that batch off', () => {
+    const s = stockOf(chicken, bought, [bev('count', 'a:0', 0, '2026-11-02', 'check', 'c1')], '2026-11-02');
+    expect(s.batches.map((b) => b.id)).toEqual(['b:0']);
+    expect(needsCheck('fresh', s, '2026-11-02')).toBe(false);
+  });
+
+  it('a count of the whole product confirms every batch', () => {
+    const s = stockOf(chicken, bought, [bev('count', undefined, 1.2, '2026-11-02', 'app', 'c1')], '2026-11-02');
+    expect(s.batches.every((b) => b.confirmed === '2026-11-02')).toBe(true);
+  });
+
+  it('the days since the last confirmation count, by type, and frozen or thawed food has its own rules', () => {
+    const batch = (over: Partial<{ date: string; frozen: string; thawed: string; confirmed: string; useBy: string }>) => ({ date: '2026-10-01', quantity: 1, ...over });
+    expect(needsBatchCheck('fresh', batch({ date: '2026-10-29' }), '2026-11-02')).toBe(true); // 4 days
+    expect(needsBatchCheck('fresh', batch({ date: '2026-10-30' }), '2026-11-02')).toBe(false);
+    expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', confirmed: '2026-11-01' }), '2026-11-02')).toBe(false);
+    expect(needsBatchCheck('snack', batch({}), '2026-12-01')).toBe(false);
+    expect(needsBatchCheck('staple', batch({ frozen: '2026-10-20' }), '2026-11-20')).toBe(false); // frozen: months, not days
+    expect(needsBatchCheck('staple', batch({ frozen: '2026-10-20' }), '2026-12-25')).toBe(true);
+    expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', thawed: '2026-11-01', useBy: '2026-11-03' }), '2026-11-02')).toBe(false);
+    expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', thawed: '2026-11-01', useBy: '2026-11-03' }), '2026-11-04')).toBe(true); // past its date
+    expect(needsBatchCheck('fresh', { date: '2026-10-01', quantity: 0 }, '2026-11-02')).toBe(false);
   });
 });

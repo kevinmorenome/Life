@@ -15,7 +15,7 @@ export interface BatchAct {
 }
 
 /** Where a batch came from: the purchase it names (also for frozen and thawed parts of it), or "counted" for stock that only came from a count. */
-function origin(product: ProductSummary, b: Batch): string {
+export function batchOrigin(product: ProductSummary, b: Batch): string {
   const purchase = product.purchases.find((p) => p.batch === (b.id ? originBatch(b.id) : undefined));
   if (!purchase) return `counted ${shortDate(b.date)}`;
   return `bought ${shortDate(purchase.date)} · ${purchase.store} · ${money(purchase.unitPrice)}${purchase.unit === 'pc' ? '' : ` / ${purchase.unit}`}`;
@@ -78,7 +78,7 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
                 {b.frozen && <span className="batch-tag"> · Frozen {shortDate(b.frozen)}</span>}
                 {b.thawed && <span className="batch-tag batch-tag-thawed"> · Thawed {shortDate(b.thawed)}</span>}
               </strong>
-              <span className="muted small">{origin(product, b)}</span>
+              <span className="muted small">{batchOrigin(product, b)}</span>
               {b.thawed && <span className="small batch-thawed-note">Use this first; thawed food isn’t put back in the freezer.</span>}
               {b.id && (
                 <label className="batch-by">
@@ -86,7 +86,7 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
                   <input
                     type="date"
                     value={b.useBy ?? ''}
-                    aria-label={`Use-by date for the ${b.frozen ? 'frozen ' : ''}batch ${origin(product, b)}`}
+                    aria-label={`Use-by date for the ${b.frozen ? 'frozen ' : ''}batch ${batchOrigin(product, b)}`}
                     onChange={(e) => {
                       const v = e.target.value;
                       if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v === b.useBy) return;
