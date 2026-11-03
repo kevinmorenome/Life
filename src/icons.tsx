@@ -263,3 +263,11 @@ export const CarIcon = () => (
     <circle cx="16" cy="14" r=".6" />
   </Icon>
 );
+
+export const MusicIcon = () => (
+  <Icon>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6.500" cy="18" r="2.500" />
+    <circle cx="17.500" cy="16" r="2.500" />
+  </Icon>
+);

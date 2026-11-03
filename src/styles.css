@@ -6147,3 +6147,15 @@ a.game-row + .food-h2 {
   white-space: nowrap;
   scroll-snap-align: center;
 }
+
+/* stats.fm listening */
+.dot.mark-music {
+  background: var(--tone-lime);
+}
+.day-badge.mark-music {
+  color: var(--tone-lime);
+}
+.pill.mark-music {
+  background: var(--accent-soft);
+  color: var(--text);
+}

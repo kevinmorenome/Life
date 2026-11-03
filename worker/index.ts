@@ -4,6 +4,7 @@ import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
 import { handleFoodPhotoImage, handleFoodPhotos, searchAllPhotos } from './foodPhotos';
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
+import { d1StatsfmStore, handleStatsfm, isStatsfmPath } from './statsfm';
 import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
 import { d1TraktStore, handleTrakt, isTraktPath, type TraktEnv } from './trakt';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
@@ -76,6 +77,15 @@ export default {
       return handleTrakt(request, url.pathname, {
         env,
         store: d1TraktStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (isStatsfmPath(url.pathname)) {
+      return handleStatsfm(request, url.pathname, {
+        ...d1StatsfmStore(env.DB),
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
         fetch: (input, init) => fetch(input, init),

@@ -7,11 +7,11 @@
 
 import type { Change } from '../../worker/protocol';
 
-export const STORES = ['clothes', 'outfits', 'trips', 'plans', 'settings', 'inbox', 'workdays', 'workevents', 'checkins', 'players', 'gametitles', 'gamenights', 'foodreceipts', 'foodproducts', 'foodstock', 'woltorders', 'watched', 'rides'] as const;
+export const STORES = ['clothes', 'outfits', 'trips', 'plans', 'settings', 'inbox', 'workdays', 'workevents', 'checkins', 'players', 'gametitles', 'gamenights', 'foodreceipts', 'foodproducts', 'foodstock', 'woltorders', 'watched', 'rides', 'musicdays'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 16;
+const DB_VERSION = 17;
 const OUTBOX = 'outbox';
 const META = 'meta';
 
