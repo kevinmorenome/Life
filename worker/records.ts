@@ -57,8 +57,9 @@ const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
 export function d1Store(db: D1Database): RecordStore {
   return {
     async list(store) {
+      // Aliases are quoted: a field can be an SQL keyword (a ride's `from`).
       // `hasPhoto` says whether a product has a picture without loading the picture itself.
-      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? "(json_extract(data, '$.photo') IS NOT NULL) AS hasPhoto" : `json_extract(data, '$.${f}') AS ${f}`)).join(', ');
+      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? `(json_extract(data, '$.photo') IS NOT NULL) AS "hasPhoto"` : `json_extract(data, '$.${f}') AS "${f}"`)).join(', ');
       const { results } = await db
         .prepare(`SELECT id, ${columns} FROM records WHERE store = ?1 AND data IS NOT NULL`)
         .bind(store)
