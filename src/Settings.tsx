@@ -8,8 +8,11 @@ import { ClosetReview } from './modules/clothes/ClosetReview';
 import { ChevronRightIcon } from './modules/clothes/icons';
 import { href } from './lib/router';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
+import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { SwarmSection } from './modules/checkins/SwarmSection';
+import { StatsfmSection } from './modules/music/StatsfmSection';
+import { TraktSection } from './modules/watching/TraktSection';
 import { MoveTakeoutSection } from './modules/wolt/MoveTakeoutSection';
 import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
 import type { WorkDay } from './modules/work/types';
@@ -28,6 +31,12 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
     for (const item of sampleReviewItems(new Date())) await put('clothes', item);
     notify('clothes');
     setMessage('Added 4 sample items to review. Open the closet to see them.');
+  }
+
+  async function addSampleRides() {
+    for (const ride of sampleRides(new Date())) await put('rides', ride);
+    notify('rides');
+    setMessage('Added sample Bolt and Uber rides. See them on the calendar and in Stats → Rides.');
   }
 
   async function onExport() {
@@ -182,14 +191,19 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       </section>
       <SwarmSection />
       <OfficeFromSwarm />
+      <TraktSection />
+      <StatsfmSection />
       <MoveTakeoutSection />
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>
-          <p className="muted small">Adds made-up “needs review” items so you can try the review flow. They stay on this device only.</p>
+          <p className="muted small">Adds made-up “needs review” items and Bolt/Uber rides so you can try them out. They stay on this device only.</p>
           <div className="form-actions start">
             <button className="btn" onClick={addSamples}>
               Add sample items to review
+            </button>
+            <button className="btn" onClick={addSampleRides}>
+              Add sample rides
             </button>
           </div>
         </section>

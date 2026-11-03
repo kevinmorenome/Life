@@ -223,6 +223,13 @@ export const PinIcon = () => (
   </Icon>
 );
 
+export const FilmIcon = () => (
+  <Icon>
+    <rect x="4" y="4" width="16" height="16" rx="2.500" />
+    <path d="M8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4" />
+  </Icon>
+);
+
 export const DiceIcon = () => (
   <Icon>
     <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
@@ -246,4 +253,27 @@ export const SkullIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
     <path d="M12 0C18.4 0 22.6 5.2 22.6 11c0 2.6-1.2 3.6-2.4 4.3-1 .6-1.5 1.1-1.5 2.3v3c0 2.1-2.7 3.4-6.7 3.4s-6.7-1.3-6.7-3.4v-3c0-1.2-.5-1.7-1.5-2.3C2.6 14.6 1.4 13.6 1.4 11 1.4 5.2 5.6 0 12 0Z" />
   </svg>
+);
+
+export const ChevronIcon = () => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
+export const CarIcon = () => (
+  <Icon>
+    <path d="M5 16.5V11l1.7-4.5a1 1 0 0 1 .9-.6h8.8a1 1 0 0 1 .9.6L19 11v5.500M4 16.500h16v2H4z" />
+    <path d="M5 11h14" />
+    <circle cx="8" cy="14" r=".6" />
+    <circle cx="16" cy="14" r=".6" />
+  </Icon>
+);
+
+export const MusicIcon = () => (
+  <Icon>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6.500" cy="18" r="2.500" />
+    <circle cx="17.500" cy="16" r="2.500" />
+  </Icon>
 );

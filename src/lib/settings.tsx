@@ -14,6 +14,8 @@ export interface AppSettings {
   workExtended?: number;
   /** Checkins module: the venue (`venueKey`) of your office, used to mark office days from Swarm. */
   officeVenue?: string;
+  /** Music module: your stats.fm custom ID (the last part of your profile link). */
+  statsfmUser?: string;
   updatedAt: string;
 }
 

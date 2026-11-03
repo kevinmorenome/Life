@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SearchIcon } from '../../icons';
 import { searchPhotoCandidates, type PhotoCandidate } from './photoSearch';
 import { photoFromUrl } from './productPhoto';
@@ -37,7 +38,9 @@ export function PhotoSearch({ name, rawName, onPick, onClose }: { name: string; 
     }
   }
 
-  return (
+  // Rendered on the page itself: opened from the stock sheet, whose blur makes it the anchor of anything `fixed` inside it
+  // and whose scrolling would clip it, the search sheet would otherwise sit inside it, half off the screen.
+  return createPortal(
     <>
       <button type="button" className="food-scrim food-scrim-top" aria-label="Close search" onClick={onClose} />
       <div className="food-search" role="dialog" aria-modal="true" aria-label="Find a picture" tabIndex={-1} ref={box}>
@@ -75,6 +78,7 @@ export function PhotoSearch({ name, rawName, onPick, onClose }: { name: string; 
         </ul>
         <p className="muted small">Pictures from Konzum's web shop and Open Food Facts. Check that it is the same product (size, flavour) before you tap.</p>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
