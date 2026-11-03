@@ -260,3 +260,12 @@ export const ChevronIcon = () => (
     <path d="m6 9 6 6 6-6" />
   </Icon>
 );
+
+export const CarIcon = () => (
+  <Icon>
+    <path d="M5 16.5V11l1.7-4.5a1 1 0 0 1 .9-.6h8.8a1 1 0 0 1 .9.6L19 11v5.500M4 16.500h16v2H4z" />
+    <path d="M5 11h14" />
+    <circle cx="8" cy="14" r=".6" />
+    <circle cx="16" cy="14" r=".6" />
+  </Icon>
+);

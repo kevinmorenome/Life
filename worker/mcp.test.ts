@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -92,6 +92,7 @@ describe('protocol', () => {
       'add_receipt_items',
       'add_grocery_receipt',
       'add_wolt_orders',
+      'add_rides',
       'list_stock',
       'shopping_list',
       'product_prices',
@@ -1066,5 +1067,20 @@ describe('add_wolt_orders', () => {
     data.woltorders.set('wolt-w1', { ...data.woltorders.get('wolt-w1')!, restaurant: 'My edit' });
     expect(await call(ctx, [order, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
     expect(data.woltorders.get('wolt-w1')).toMatchObject({ restaurant: 'My edit', currency: 'EUR' });
+  });
+});
+
+describe('add_rides', () => {
+  const call = async (ctx: ToolContext, rides: unknown[]) => {
+    const r = (await rpc(ctx, 'tools/call', { name: 'add_rides', arguments: { rides } })).result;
+    return JSON.parse(r.content[0].text);
+  };
+  it('saves new rides once and never overwrites', async () => {
+    const { data, ctx } = setup();
+    const ride = { provider: 'bolt', sourceId: 'r1', date: '2026-05-03', time: '22:36', to: 'Ilica 12', fare: 7.4 };
+    expect(await call(ctx, [ride])).toMatchObject({ added: 1, alreadyAdded: 0 });
+    data.rides.set('ride-bolt-r1', { ...data.rides.get('ride-bolt-r1')!, to: 'My edit' });
+    expect(await call(ctx, [ride, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
+    expect(data.rides.get('ride-bolt-r1')).toMatchObject({ to: 'My edit', currency: 'EUR' });
   });
 });
