@@ -6116,3 +6116,15 @@ a.game-row + .food-h2 {
 .watch-select-bar .icon-btn {
   margin-right: 0;
 }
+
+/* Rides (Bolt / Uber) */
+.dot.mark-rides {
+  background: var(--tone-blue);
+}
+.day-badge.mark-rides {
+  color: var(--tone-blue);
+}
+.pill.mark-rides {
+  background: var(--accent-soft);
+  color: var(--text);
+}
