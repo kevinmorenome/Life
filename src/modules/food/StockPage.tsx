@@ -4,7 +4,7 @@ import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
 import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
-import { needsCheck } from './stock';
+import { batchesToCheck } from './stock';
 import { stockEntries, storageOf } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
 import { StockTile } from './StockTile';
@@ -52,7 +52,7 @@ export function StockPage({
   const have = entries.filter((e) => e.stock.quantity > 0);
   const out = entries.filter((e) => e.stock.quantity === 0);
   const missing = needsPicture(entries).length;
-  const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
+  const toCheck = have.reduce((n, e) => n + batchesToCheck(e.product.type, e.stock, day).length, 0);
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
   const thawed = have.filter((e) => e.stock.thawedQuantity > 0);
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
@@ -81,7 +81,7 @@ export function StockPage({
         <a className="food-banner" href={href('/food/check')}>
           <strong>Weekly check</strong>
           <span className="muted small">
-            {toCheck} {toCheck === 1 ? 'thing' : 'things'} to confirm
+            {toCheck} {toCheck === 1 ? 'batch' : 'batches'} to confirm
           </span>
         </a>
       )}
