@@ -6128,3 +6128,22 @@ a.game-row + .food-h2 {
   background: var(--accent-soft);
   color: var(--text);
 }
+
+/* Stats tabs: too many for one row, so the switch scrolls sideways. */
+.seg.seg-scroll {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.seg.seg-scroll::-webkit-scrollbar {
+  display: none;
+}
+.seg.seg-scroll button {
+  flex: 0 0 auto;
+  padding: 0 1rem;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
