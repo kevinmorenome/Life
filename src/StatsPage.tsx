@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { href } from './lib/router';
 import { MODULES } from './modules';
 
@@ -6,12 +7,20 @@ export function StatsPage({ subroute }: { subroute: string[] }) {
   const [id, ...rest] = subroute;
   const mods = MODULES.filter((m) => m.stats);
   const current = mods.find((m) => m.id === id) ?? mods[0];
+  const bar = useRef<HTMLDivElement>(null);
+  // Keep the active tab in view: the row scrolls sideways when there are many tabs.
+  useEffect(() => {
+    const el = bar.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!el || !bar.current) return;
+    const box = bar.current;
+    box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' });
+  }, [current?.id]);
   if (!current) return <p className="muted">Nothing to show yet.</p>;
 
   return (
     <>
       {mods.length > 1 && (
-        <div className="seg" role="tablist" aria-label="Stats sections" style={{ ['--tabs' as string]: mods.length }}>
+        <div ref={bar} className="seg seg-scroll" role="tablist" aria-label="Stats sections">
           {mods.map((m) => (
             <button
               key={m.id}

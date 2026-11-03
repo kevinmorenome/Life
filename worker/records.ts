@@ -33,8 +33,8 @@ export type Row = { id: string } & Record<string, unknown>;
 
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
-  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders'): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders', id: string, record: object): Promise<void>;
+  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides'): Promise<Row[]>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -49,6 +49,7 @@ const FIELDS = {
   foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
+  rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
 } as const;
 
 const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);

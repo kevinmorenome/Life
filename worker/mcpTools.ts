@@ -15,6 +15,7 @@ import { REASON_LABELS, shoppingList } from '../src/modules/food/shopping';
 import { formatQty, originBatch, partLeft, stockOf, type Batch, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
+import { parseRides } from './rides';
 import { parseWoltOrders } from './wolt';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
@@ -261,6 +262,39 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_rides',
+    description:
+      'Save Bolt and Uber taxi rides in the rides log. Find the receipts by searching Gmail for Bolt ("Your Bolt ride", sender bolt.eu) and Uber ("Your trip with Uber", sender uber.com) ride receipt emails, read each one and pass every ride here, as many as you like per call. Food deliveries (Uber Eats, Bolt Food) are NOT rides: skip them (Wolt-style takeout goes to add_wolt_orders). Per ride give provider = "bolt" or "uber", sourceId = a unique id for it (the trip/order id or receipt number in the email, otherwise the email message id) so the same ride is never added twice: adding again is safe and skips ones already saved. date and time = when the ride STARTED (pickup time, YYYY-MM-DD and HH:MM 24 hour, local), not when the email was sent; from and to = the pickup and drop-off addresses as printed; fare = what was paid in total including tip as the email states it; currency = ISO code (EUR by default; do not convert); distanceKm and durationMin if the receipt shows them; city if clear. Cancelled rides with no charge are skipped. Rides are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rides: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              provider: { type: 'string', enum: ['bolt', 'uber'] },
+              sourceId: { type: 'string', description: 'Trip / order id or receipt number, or the email message id' },
+              date: { type: 'string', description: 'YYYY-MM-DD, the day the ride started' },
+              time: { type: 'string', description: 'HH:MM, 24 hour, pickup time' },
+              from: { type: 'string', description: 'Pickup address as printed' },
+              to: { type: 'string', description: 'Drop-off address as printed' },
+              fare: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              distanceKm: { type: 'number', minimum: 0 },
+              durationMin: { type: 'number', minimum: 0 },
+              city: { type: 'string' },
+            },
+            required: ['provider', 'sourceId', 'date', 'fare'],
+          },
+        },
+      },
+      required: ['rides'],
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -459,6 +493,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'add_wolt_orders':
       return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
+    case 'add_rides':
+      return ctx.readOnly ? fail(READ_ONLY) : addRides(args, ctx);
     case 'shopping_list':
       return shoppingListTool(ctx);
     case 'product_prices':
@@ -930,6 +966,25 @@ async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<T
     added,
     alreadyAdded: orders.length - added,
     ...(rejected.length ? { rejected, warning: 'Some orders were left out: fix them from the emails and add them again.' } : {}),
+  });
+}
+
+// ---- rides ----
+
+async function addRides(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { rides, rejected } = parseRides(args.rides, utcToday(now));
+  const known = new Set((await store.list('rides')).map((r) => r.id));
+  const stamp = now.toISOString();
+  let added = 0;
+  for (const r of rides) {
+    if (known.has(r.id)) continue; // already saved: rides are never overwritten
+    await store.put('rides', r.id, { ...r, createdAt: stamp, updatedAt: stamp });
+    added++;
+  }
+  return ok({
+    added,
+    alreadyAdded: rides.length - added,
+    ...(rejected.length ? { rejected, warning: 'Some rides were left out: fix them from the emails and add them again.' } : {}),
   });
 }
 
