@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useCollection } from './lib/useCollection';
 import { MODULES } from './modules';
 import { CalendarView } from './modules/clothes/CalendarView';
@@ -25,7 +25,7 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
   const plans = useCollection<Plan>('plans');
 
   if (first && DATE.test(first)) {
-    const sections: ReactNode[] = layers.map((l, i) => <div key={i}>{l.daySection?.(first)}</div>);
+    const sections: ReactNode[] = layers.map((l, i) => <Fragment key={i}>{l.daySection?.(first)}</Fragment>);
     return <ClothesRoot subroute={['calendar', first]} dayExtras={sections} />;
   }
   if (clothes.loading || outfits.loading || trips.loading || plans.loading) return <p className="muted">Loading…</p>;

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { CartIcon } from '../../icons';
 import { money } from '../../lib/format';
 import type { CalendarLayer } from '../types';
@@ -24,16 +25,16 @@ export function useWoltCalendarLayer(): CalendarLayer {
       const list = days.get(date);
       if (!list) return null;
       return (
-        <section className="checkins-day">
-          <h2>Takeout</h2>
-          <ul>
+        <DayWidget id="takeout" title="Takeout" icon={<CartIcon />} tone="wolt" badge={list.length > 1 ? list.length : undefined} summary={[list.map((o) => placeName(o.restaurant)).join(', '), amount(list[0])].join(' · ')}>
+          <ul className="widget-list">
             {list.map((o) => (
               <li key={o.id}>
-                <span className="muted small">{o.time}</span> <strong>{o.restaurant}</strong> <span className="muted small">{amount(o)}</span>
+                <strong>{o.restaurant}</strong>
+                <span className="muted small">{[o.time, amount(o)].filter(Boolean).join(' · ')}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { FilmIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
@@ -22,24 +23,21 @@ export function useWatchedCalendarLayer(): CalendarLayer {
       const list = days.get(date);
       if (!list) return null;
       return (
-        <section className="checkins-day">
-          <h2>Watched</h2>
-          <ul>
+        <DayWidget id="watched" title="Watched" icon={<FilmIcon />} tone="watch" badge={list.length > 1 ? list.length : undefined} summary={dayTitles(list).join(', ')}>
+          <ul className="widget-list">
             {list.map((p) => (
               <li key={p.id} className="watch-day-play">
                 <div>
-                  <span className="muted small">{when(p).time}</span> <strong>{p.title}</strong>
-                  {p.kind === 'episode' && (
-                    <div className="muted small">
-                      {[episodeCode(p), p.episodeTitle].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
+                  <strong>{p.title}</strong>
+                  <div className="muted small">
+                    {[when(p).time, p.kind === 'episode' ? [episodeCode(p), p.episodeTitle].filter(Boolean).join(' ') : undefined].filter(Boolean).join(' · ')}
+                  </div>
                 </div>
                 <RemovePlayButton play={p} />
               </li>
             ))}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };

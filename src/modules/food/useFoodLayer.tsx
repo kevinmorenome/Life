@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { CartIcon } from '../../icons';
 import { money } from '../../lib/format';
 import { href } from '../../lib/router';
@@ -34,21 +35,23 @@ export function useFoodCalendarLayer(): CalendarLayer {
     daySection(date) {
       const list = days.get(date);
       if (!list) return null;
+      const total = money(list.reduce((sum, r) => sum + receiptTotal(r), 0));
       return (
-        <section className="checkins-day">
-          <h2>Groceries</h2>
-          <ul>
+        <DayWidget id="groceries" title="Groceries" icon={<CartIcon />} tone="food" badge={list.length > 1 ? list.length : undefined} summary={[...list.map((r) => r.store), total].join(' · ')}>
+          <ul className="widget-list">
             {list.map((r) => (
               <li key={r.id}>
-                <span className="muted small">{r.time}</span>{' '}
                 <a href={href(`/food/receipt/${r.id}`)}>
                   <strong>{r.store}</strong>
-                </a>{' '}
-                <span className="muted small">{[r.branch, money(receiptTotal(r)), `${r.lines.length} ${r.lines.length === 1 ? 'line' : 'lines'}`].filter(Boolean).join(' · ')}</span>
+                </a>
+                <span className="muted small">
+                  {[r.time, money(receiptTotal(r)), `${r.lines.length} ${r.lines.length === 1 ? 'line' : 'lines'}`].filter(Boolean).join(' · ')}
+                </span>
+                {r.branch && <span className="muted small widget-clip">{r.branch}</span>}
               </li>
             ))}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };

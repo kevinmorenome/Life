@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { CarIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
@@ -23,22 +24,21 @@ export function useRidesCalendarLayer(): CalendarLayer {
       const list = days.get(date);
       if (!list) return null;
       return (
-        <section className="checkins-day">
-          <h2>Rides</h2>
-          <ul>
+        <DayWidget id="rides" title="Rides" icon={<CarIcon />} tone="rides" badge={list.length > 1 ? list.length : undefined} summary={list.map((r) => PROVIDER_NAME[r.provider]).join(', ')}>
+          <ul className="widget-list">
             {list.map((r) => (
               <li key={r.id}>
-                <span className="muted small">{r.time}</span> <strong>{PROVIDER_NAME[r.provider]}</strong>{' '}
+                <strong>{PROVIDER_NAME[r.provider]}</strong>
+                <span className="muted small">{[r.time, fare(r)].filter(Boolean).join(' · ')}</span>
                 {(r.from || r.to) && (
                   <span className="small">
                     {placeLabel(r.from) ?? '…'} → {placeLabel(r.to) ?? '…'}
                   </span>
-                )}{' '}
-                <span className="muted small">{fare(r)}</span>
+                )}
               </li>
             ))}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };
