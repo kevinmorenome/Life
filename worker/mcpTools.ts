@@ -16,6 +16,7 @@ import { formatQty, originBatch, partLeft, stockOf, type Batch, type Stock } fro
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { parseWoltOrders } from './wolt';
+import type { TakeoutService } from '../src/modules/wolt/types';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
@@ -261,6 +262,36 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_takeout_orders',
+    description:
+      'Save Bolt Food or Uber Eats TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log, the same log Wolt orders go to (use add_wolt_orders for Wolt). Bolt and Uber also deliver groceries (shops, supermarkets): those are NOT takeout, add them with add_grocery_receipt instead. Bolt rides and Uber rides are not orders: skip them. Find the emails by searching Gmail (Bolt Food: sender bolt.eu; Uber Eats: sender uber.com, "Your order with ..."), read each one and pass every order here with `service` = "bolt" or "uber", as many as you like per call. Per order give sourceId = a unique id for it (the order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as the app writes it, date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR by default; do not convert). Item lines are not tracked. Orders are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        service: { type: 'string', enum: ['bolt', 'uber'], description: 'bolt = Bolt Food, uber = Uber Eats' },
+        orders: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              sourceId: { type: 'string', description: 'Order id / receipt number, or the email message id' },
+              restaurant: { type: 'string', description: 'Venue as the app names it, with the branch' },
+              date: { type: 'string', description: 'YYYY-MM-DD' },
+              time: { type: 'string', description: 'HH:MM, 24 hour' },
+              total: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              city: { type: 'string' },
+            },
+            required: ['sourceId', 'restaurant', 'date', 'total'],
+          },
+        },
+      },
+      required: ['service', 'orders'],
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -458,7 +489,9 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'add_wolt_orders':
-      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
+      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx, 'wolt');
+    case 'add_takeout_orders':
+      return ctx.readOnly ? fail(READ_ONLY) : args.service === 'bolt' || args.service === 'uber' ? addWoltOrders(args, ctx, args.service) : fail('service must be "bolt" or "uber"');
     case 'shopping_list':
       return shoppingListTool(ctx);
     case 'product_prices':
@@ -916,8 +949,8 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
 
 // ---- Wolt ----
 
-async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
-  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now));
+async function addWoltOrders(args: Args, { store, now }: ToolContext, service: TakeoutService): Promise<ToolResult> {
+  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now), service);
   const known = new Set((await store.list('woltorders')).map((r) => r.id));
   const stamp = now.toISOString();
   let added = 0;

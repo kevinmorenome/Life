@@ -4,7 +4,7 @@ import { money } from '../../lib/format';
 import type { CalendarLayer } from '../types';
 import type { WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
-import { byDate, placeName } from './wolt';
+import { SERVICE_NAMES, byDate, placeName, serviceOf } from './wolt';
 
 const amount = (o: WoltOrder) => (o.currency === 'EUR' ? money(o.total).replace(/^[^\d]*/, '€') : `${o.total.toFixed(2)} ${o.currency}`);
 
@@ -29,7 +29,7 @@ export function useWoltCalendarLayer(): CalendarLayer {
           <ul>
             {list.map((o) => (
               <li key={o.id}>
-                <span className="muted small">{o.time}</span> <strong>{o.restaurant}</strong> <span className="muted small">{amount(o)}</span>
+                <span className="muted small">{o.time}</span> <strong>{o.restaurant}</strong>{serviceOf(o) !== 'wolt' && <span className="muted small"> {SERVICE_NAMES[serviceOf(o)]}</span>} <span className="muted small">{amount(o)}</span>
               </li>
             ))}
           </ul>

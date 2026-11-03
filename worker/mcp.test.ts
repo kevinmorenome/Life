@@ -92,6 +92,7 @@ describe('protocol', () => {
       'add_receipt_items',
       'add_grocery_receipt',
       'add_wolt_orders',
+      'add_takeout_orders',
       'list_stock',
       'shopping_list',
       'product_prices',
@@ -1051,6 +1052,21 @@ describe('guards against splitting an item\'s history', () => {
     expect(shirt.photoNote).toMatch(/set_item_photo/);
     expect(cap).toMatchObject({ photo: true });
     expect(cap.photoNote).toBeUndefined();
+  });
+});
+
+describe('add_takeout_orders', () => {
+  it('saves Bolt and Uber orders under their own ids and refuses other services', async () => {
+    const { data, ctx } = setup();
+    const call = async (args: unknown) => JSON.parse((await rpc(ctx, 'tools/call', { name: 'add_takeout_orders', arguments: args })).result.content[0].text);
+    const order = { sourceId: 'x1', restaurant: 'Pizza', date: '2026-05-03', total: 12 };
+    expect(await call({ service: 'bolt', orders: [order] })).toMatchObject({ added: 1 });
+    expect(await call({ service: 'uber', orders: [order] })).toMatchObject({ added: 1 });
+    expect(await call({ service: 'bolt', orders: [order] })).toMatchObject({ added: 0, alreadyAdded: 1 });
+    expect(data.woltorders.get('bolt-x1')).toMatchObject({ service: 'bolt' });
+    expect(data.woltorders.get('uber-x1')).toMatchObject({ service: 'uber' });
+    const bad = (await rpc(ctx, 'tools/call', { name: 'add_takeout_orders', arguments: { service: 'wolt', orders: [order] } })).result;
+    expect(bad.isError).toBe(true);
   });
 });
 

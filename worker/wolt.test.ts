@@ -20,5 +20,9 @@ describe('parseWoltOrders', () => {
     ]);
     expect(rejected).toHaveLength(3);
   });
+  it('prefixes ids and records the service for Bolt and Uber', () => {
+    const { orders } = parseWoltOrders([{ sourceId: 'a1', restaurant: 'Pizza', date: '2026-05-03', total: 5 }], '2026-11-02', 'uber');
+    expect(orders[0]).toMatchObject({ id: 'uber-a1', service: 'uber' });
+  });
   it('ignores non-arrays', () => expect(parseWoltOrders('x', '2026-11-02')).toEqual({ orders: [], rejected: [] }));
 });

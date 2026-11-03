@@ -1,4 +1,4 @@
-import type { WoltOrder } from './types';
+import type { TakeoutService, WoltOrder } from './types';
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -6,6 +6,22 @@ export const round2 = (n: number) => Math.round(n * 100) / 100;
 export function placeName(restaurant: string): string {
   const head = restaurant.split(/\s+[-–—]\s+/)[0]?.trim();
   return head || restaurant.trim();
+}
+
+export const SERVICE_NAMES: Record<TakeoutService, string> = { wolt: 'Wolt', bolt: 'Bolt Food', uber: 'Uber Eats' };
+export const serviceOf = (o: WoltOrder): TakeoutService => o.service ?? 'wolt';
+
+/** Orders per service, most used first; services without orders are left out. */
+export function byService(orders: WoltOrder[]): { service: TakeoutService; orders: number; spent: number }[] {
+  const rows = new Map<TakeoutService, { service: TakeoutService; orders: number; spent: number }>();
+  for (const o of orders) {
+    const s = serviceOf(o);
+    const r = rows.get(s) ?? { service: s, orders: 0, spent: 0 };
+    r.orders++;
+    if (isEuro(o)) r.spent = round2(r.spent + o.total);
+    rows.set(s, r);
+  }
+  return [...rows.values()].sort((a, b) => b.orders - a.orders);
 }
 
 export const isEuro = (o: WoltOrder) => o.currency === 'EUR';
@@ -116,7 +132,7 @@ export function searchOrders(orders: WoltOrder[], query: string): WoltOrder[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return orders;
   return orders.filter((o) => {
-    const hay = `${o.restaurant} ${o.date} ${new Date(o.date + 'T00:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })} ${o.currency}`.toLowerCase();
+    const hay = `${o.restaurant} ${SERVICE_NAMES[serviceOf(o)]} ${o.date} ${new Date(o.date + 'T00:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })} ${o.currency}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }
