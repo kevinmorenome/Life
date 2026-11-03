@@ -33,8 +33,8 @@ export type Row = { id: string } & Record<string, unknown>;
 
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
-  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders'): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders', id: string, record: object): Promise<void>;
+  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides'): Promise<Row[]>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -49,6 +49,7 @@ const FIELDS = {
   foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
+  rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
 } as const;
 
 const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
@@ -56,8 +57,9 @@ const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
 export function d1Store(db: D1Database): RecordStore {
   return {
     async list(store) {
+      // Aliases are quoted: a field can be an SQL keyword (a ride's `from`).
       // `hasPhoto` says whether a product has a picture without loading the picture itself.
-      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? "(json_extract(data, '$.photo') IS NOT NULL) AS hasPhoto" : `json_extract(data, '$.${f}') AS ${f}`)).join(', ');
+      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? `(json_extract(data, '$.photo') IS NOT NULL) AS "hasPhoto"` : `json_extract(data, '$.${f}') AS "${f}"`)).join(', ');
       const { results } = await db
         .prepare(`SELECT id, ${columns} FROM records WHERE store = ?1 AND data IS NOT NULL`)
         .bind(store)

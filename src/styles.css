@@ -3315,22 +3315,6 @@ progress {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
   cursor: pointer;
 }
-.work-day-section {
-  margin: 0.5rem 0 1rem;
-}
-.work-day-section .work-choices {
-  margin: 0.5rem 0;
-}
-.work-day-section .work-choice {
-  min-height: 64px;
-  flex-direction: row;
-  gap: 0.5rem;
-}
-.work-day-section .work-choice svg {
-  width: 22px;
-  height: 22px;
-}
-
 /* ───────────────────────── Liquid Glass ─────────────────────────
    Controls are a translucent material floating above the content: blurred and
    saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
@@ -6064,7 +6048,8 @@ a.game-row + .food-h2 {
   padding: 0.1rem 0;
   border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
 }
-.checkins-day li.watch-day-play {
+.checkins-day li.watch-day-play,
+.widget-list li.watch-day-play {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6078,6 +6063,345 @@ a.game-row + .food-h2 {
   font-variant-numeric: tabular-nums;
   user-select: all;
 }
+
+/* Day screen as a dashboard: tiles in a two-column grid. A widget is a flat, lightly tinted tile whose header collapses it;
+   glass stays on the controls inside. */
+.day-head h1 {
+  font-size: 1.05rem;
+}
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  align-items: start;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.75rem;
+}
+@media (min-width: 720px) {
+  .day-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.detail .day-grid > .widget {
+  margin-top: 0;
+}
+.widget {
+  --w: var(--accent);
+  grid-column: span 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--w) 5%, var(--surface));
+  overflow: hidden;
+}
+.widget-full {
+  grid-column: 1 / -1;
+}
+.widget-work,
+.widget-clothes {
+  --w: var(--accent);
+}
+.widget-place,
+.widget-trip {
+  --w: var(--tone-blue);
+}
+.widget-games {
+  --w: var(--tone-purple);
+}
+.widget-food {
+  --w: var(--tone-lime);
+}
+.widget-wolt {
+  --w: var(--tone-orange);
+}
+.widget-watch {
+  --w: var(--tone-purple);
+}
+.widget-rides {
+  --w: var(--tone-blue);
+}
+.widget-head {
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+}
+.widget-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.widget-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--w) 18%, var(--surface));
+  color: var(--w);
+}
+.widget-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-badge {
+  flex: none;
+  max-width: 45%;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--w) 14%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-chevron {
+  display: grid;
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.widget-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+.widget.is-collapsed .widget-chevron {
+  transform: rotate(-90deg);
+}
+.widget-summary {
+  margin: -0.2rem 0 0;
+  padding: 0 0.75rem 0.6rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-body {
+  padding: 0 0.75rem 0.7rem;
+}
+.widget-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.widget-list li,
+.widget-link {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+.widget-list li:first-child {
+  border-top: 0;
+  padding-top: 0.1rem;
+}
+.widget-list li > li,
+.widget-list li .widget-link {
+  padding: 0;
+  border: 0;
+}
+.widget-list strong,
+.widget-list .small,
+.widget-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-link {
+  color: inherit;
+  text-decoration: none;
+}
+.widget-link strong {
+  white-space: normal;
+}
+.widget-champ {
+  font-weight: 600;
+}
+.widget-line {
+  margin: 0 0 0.4rem;
+}
+.widget .outfit-cards,
+.widget .day-items {
+  margin: 0.25rem 0 0;
+}
+.widget-head .icon-btn {
+  flex: none;
+}
+.day-empty {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+}
+.day-actions {
+  margin-top: 0.5rem;
+}
+/* Work on the day screen: one row of icon buttons; the chosen one shows its name. */
+.work-quick {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-row {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.work-quick-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.work-quick-btn[aria-pressed='true'] {
+  flex: 2.4;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.work-quick-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.work-quick-times {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-times input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* ───────────── Liquid Glass: day widgets ─────────────
+   Glass is the control layer, content is flat: a widget is a plain section on the page, separated by a hairline.
+   What floats as glass are its controls: the icon lens, the count chip and the collapse button.
+   Work is a segmented track with a raised lens, like Items | Outfits. */
+.day-grid {
+  column-gap: 1rem;
+  row-gap: 0;
+}
+.widget {
+  border: 0;
+  border-top: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  padding-top: 0.15rem;
+}
+.widget-toggle {
+  padding: 0.3rem 0;
+}
+.widget-head {
+  padding-right: 0;
+}
+.widget-body {
+  padding: 0 0 0.75rem;
+}
+.widget-summary {
+  padding: 0 0 0.75rem;
+}
+.widget-icon {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--w) 22%, var(--glass-bg-strong)), var(--glass-bg));
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-badge {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron {
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-list li {
+  border-top-color: var(--glass-line);
+}
+.work-quick {
+  margin-bottom: 0.6rem;
+}
+.work-quick-btn {
+  min-height: 44px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.work-quick-btn[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--glass-bg-strong)), color-mix(in srgb, var(--accent) 16%, var(--glass-bg)));
+  color: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+}
+.work-quick-btn:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .work-quick-btn,
+  .widget-chevron {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  }
+}
+
 .watch-search {
   display: flex;
   align-items: center;
@@ -6115,4 +6439,47 @@ a.game-row + .food-h2 {
 .watch-search .icon-btn,
 .watch-select-bar .icon-btn {
   margin-right: 0;
+}
+
+/* Rides (Bolt / Uber) */
+.dot.mark-rides {
+  background: var(--tone-blue);
+}
+.day-badge.mark-rides {
+  color: var(--tone-blue);
+}
+.pill.mark-rides {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Stats tabs: too many for one row, so the switch scrolls sideways. */
+.seg.seg-scroll {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.seg.seg-scroll::-webkit-scrollbar {
+  display: none;
+}
+.seg.seg-scroll button {
+  flex: 0 0 auto;
+  padding: 0 1rem;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+/* stats.fm listening */
+.dot.mark-music {
+  background: var(--tone-lime);
+}
+.day-badge.mark-music {
+  color: var(--tone-lime);
+}
+.pill.mark-music {
+  background: var(--accent-soft);
+  color: var(--text);
 }

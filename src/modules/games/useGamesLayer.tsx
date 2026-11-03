@@ -1,3 +1,4 @@
+import { DayWidget } from '../../DayWidget';
 import { DiceIcon } from '../../icons';
 import { href } from '../../lib/router';
 import { useCollection } from '../../lib/useCollection';
@@ -32,24 +33,28 @@ export function useGamesCalendarLayer(): CalendarLayer {
     daySection(date) {
       const day = byDate.get(date);
       if (!day) return null;
+      const games = day.reduce((n, x) => n + x.matches.length, 0);
+      const champs = day.flatMap((n) => {
+        const c = nightChampion(n);
+        return c ? [playerName(c.playerId)] : [];
+      });
       return (
-        <section>
-          <h2>Game night</h2>
-          <ul className="game-list">
+        <DayWidget id="games" title="Game night" icon={<DiceIcon />} tone="games" badge={games > 1 ? games : undefined} summary={champs.length ? `🏆 ${champs.join(', ')}` : day.flatMap((n) => n.matches.map((m) => titleName(m.titleId))).join(', ')}>
+          <ul className="widget-list">
             {day.map((n) => {
               const champ = nightChampion(n);
               return (
                 <li key={n.id}>
-                  <a className="game-row" href={href(`/games/night/${n.id}`)}>
+                  <a className="widget-link" href={href(`/games/night/${n.id}`)}>
                     <strong>{[n.location, `${n.matches.length} ${n.matches.length === 1 ? 'game' : 'games'}`].filter(Boolean).join(' · ')}</strong>
                     <span className="muted small">{n.matches.map((m) => titleName(m.titleId)).join(', ') || 'No games logged yet'}</span>
-                    {champ && <span className="game-champ">🏆 {playerName(champ.playerId)}</span>}
+                    {champ && <span className="small widget-champ">🏆 {playerName(champ.playerId)}</span>}
                   </a>
                 </li>
               );
             })}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };
