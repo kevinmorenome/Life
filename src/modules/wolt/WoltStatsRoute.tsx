@@ -3,7 +3,7 @@ import { shortDate, today } from '../../lib/format';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
-import { hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, summarize, topPlaces } from './wolt';
+import { SERVICE_NAMES, byService, hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, serviceOf, summarize, topPlaces } from './wolt';
 
 const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 const eur0 = (n: number) => `€${Math.round(n).toLocaleString()}`;
@@ -17,7 +17,7 @@ export function WoltStatsRoute() {
   if (items.length === 0) {
     return (
       <Section title="Nothing yet">
-        <Empty>Ask Claude to read your Wolt takeout receipts and add the orders; the numbers build up here.</Empty>
+        <Empty>Ask Claude to read your Wolt, Bolt or Uber Eats takeout receipts and add the orders; the numbers build up here.</Empty>
       </Section>
     );
   }
@@ -30,6 +30,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
   const months = useMemo(() => monthlySpend(orders, now.slice(0, 7)), [orders, now]);
   const places = useMemo(() => topPlaces(orders).slice(0, 10), [orders]);
   const hours = useMemo(() => hourCounts(orders), [orders]);
+  const services = useMemo(() => byService(orders), [orders]);
   const foreign = useMemo(() => otherCurrencies(orders), [orders]);
 
   const monthBars: Bar[] = months.map((m, i) => ({ key: m.month, tick: i % 6 === 0 ? monthLabel(m.month) : '', value: m.spent }));
@@ -38,7 +39,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
   return (
     <>
       <p className="muted">
-        You have ordered takeout <strong>{s.orders}</strong> {s.orders === 1 ? 'time' : 'times'} through Wolt
+        You have ordered takeout <strong>{s.orders}</strong> {s.orders === 1 ? 'time' : 'times'}{services.length === 1 ? <> through {SERVICE_NAMES[services[0].service]}</> : null}
         {s.since ? <> since <strong>{new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</strong></> : null}, spending <strong>{eur0(s.spent)}</strong>
         {s.topPlace ? <>. Your top place is <strong>{s.topPlace}</strong></> : null}.
       </p>
@@ -48,6 +49,11 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
         <Tile value={eur(s.average)} label="average order" tone={2} />
         <Tile value={eur0(s.yearSpent)} label={`spent in ${year} (${count(s.yearOrders, 'order')})`} tone={3} />
       </div>
+      {services.length > 1 && (
+        <Section title="By app" note="Orders and euro spend per delivery app.">
+          <HBars rows={services.map((r) => ({ key: r.service, label: SERVICE_NAMES[r.service], value: r.spent, shown: `${count(r.orders, 'order')} · ${eur0(r.spent)}` }))} />
+        </Section>
+      )}
       <Section title="Spend per month" note="Euro orders, by the month they were delivered. Months without orders show as empty.">
         <ReadoutColumns bars={monthBars} big={(b) => eur(b.value)} small={(b) => `${monthLabel(b.key, 'long')} · ${count(months.find((m) => m.month === b.key)?.orders ?? 0, 'order')}`} initial={months[months.length - 1]?.month} />
       </Section>
@@ -63,7 +69,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
           {count(f.orders, 'order')} paid in {f.currency} ({f.currency} {f.total.toLocaleString(undefined, { minimumFractionDigits: 2 })} in total) {f.orders === 1 ? 'is' : 'are'} listed but left out of the euro totals.
         </p>
       ))}
-      <p className="muted small">Data comes from Wolt receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines are only in the PDF attachments, so they are not tracked.</p>
+      <p className="muted small">Data comes from Wolt, Bolt Food and Uber Eats receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines are only in the PDF attachments, so they are not tracked.</p>
     </>
   );
 }
@@ -73,7 +79,7 @@ function AllOrders({ orders }: { orders: WoltOrder[] }) {
   const [limit, setLimit] = useState(20);
   const found = useMemo(() => searchOrders(newestFirst(orders), query), [orders, query]);
   return (
-    <Section title="All orders" note="Newest first. Search by restaurant or date.">
+    <Section title="All orders" note="Newest first. Search by restaurant, app or date.">
       <input type="search" className="search" placeholder="Search orders" aria-label="Search orders" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(20); }} />
       {found.length === 0 ? (
         <Empty>No orders match.</Empty>
@@ -85,7 +91,7 @@ function AllOrders({ orders }: { orders: WoltOrder[] }) {
                 {shortDate(o.date)}
                 {o.time && <span className="muted small"> {o.time}</span>}
               </span>
-              <span className="wolt-name">{o.restaurant}</span>
+              <span className="wolt-name">{o.restaurant}{serviceOf(o) !== 'wolt' && <span className="muted small"> · {SERVICE_NAMES[serviceOf(o)]}</span>}</span>
               <span className="wolt-total">{o.total.toFixed(2)} <span className="muted small">{o.currency}</span></span>
             </li>
           ))}

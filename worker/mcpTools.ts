@@ -17,6 +17,7 @@ import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/t
 import { parseGroceryReceipt } from './groceries';
 import { parseRides } from './rides';
 import { parseWoltOrders } from './wolt';
+import type { TakeoutService } from '../src/modules/wolt/types';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
@@ -262,6 +263,36 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_takeout_orders',
+    description:
+      'Save Bolt Food or Uber Eats TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log, the same log Wolt orders go to (use add_wolt_orders for Wolt). Bolt and Uber also deliver groceries (shops, supermarkets): those are NOT takeout, add them with add_grocery_receipt instead. Bolt rides and Uber rides are not orders: skip them. Find the emails by searching Gmail (Bolt Food: sender bolt.eu; Uber Eats: sender uber.com, "Your order with ..."), read each one and pass every order here with `service` = "bolt" or "uber", as many as you like per call. Per order give sourceId = a unique id for it (the order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as the app writes it, date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR by default; do not convert). Item lines are not tracked. Orders are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        service: { type: 'string', enum: ['bolt', 'uber'], description: 'bolt = Bolt Food, uber = Uber Eats' },
+        orders: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              sourceId: { type: 'string', description: 'Order id / receipt number, or the email message id' },
+              restaurant: { type: 'string', description: 'Venue as the app names it, with the branch' },
+              date: { type: 'string', description: 'YYYY-MM-DD' },
+              time: { type: 'string', description: 'HH:MM, 24 hour' },
+              total: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              city: { type: 'string' },
+            },
+            required: ['sourceId', 'restaurant', 'date', 'total'],
+          },
+        },
+      },
+      required: ['service', 'orders'],
+    },
+  },
+  {
     name: 'add_rides',
     description:
       'Save Bolt and Uber taxi rides in the rides log. Find the receipts by searching Gmail for Bolt ("Your Bolt ride", sender bolt.eu) and Uber ("Your trip with Uber", sender uber.com) ride receipt emails, read each one and pass every ride here, as many as you like per call. Food deliveries (Uber Eats, Bolt Food) are NOT rides: skip them (Wolt-style takeout goes to add_wolt_orders). Per ride give provider = "bolt" or "uber", sourceId = a unique id for it (the trip/order id or receipt number in the email, otherwise the email message id) so the same ride is never added twice: adding again is safe and skips ones already saved. date and time = when the ride STARTED (pickup time, YYYY-MM-DD and HH:MM 24 hour, local), not when the email was sent; from and to = the pickup and drop-off addresses as printed; fare = what was paid in total including tip as the email states it; currency = ISO code (EUR by default; do not convert); distanceKm and durationMin if the receipt shows them; city if clear. Cancelled rides with no charge are skipped. Rides are never edited afterwards from here.',
@@ -492,7 +523,9 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'add_wolt_orders':
-      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
+      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx, 'wolt');
+    case 'add_takeout_orders':
+      return ctx.readOnly ? fail(READ_ONLY) : args.service === 'bolt' || args.service === 'uber' ? addWoltOrders(args, ctx, args.service) : fail('service must be "bolt" or "uber"');
     case 'add_rides':
       return ctx.readOnly ? fail(READ_ONLY) : addRides(args, ctx);
     case 'shopping_list':
@@ -952,8 +985,8 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
 
 // ---- Wolt ----
 
-async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
-  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now));
+async function addWoltOrders(args: Args, { store, now }: ToolContext, service: TakeoutService): Promise<ToolResult> {
+  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now), service);
   const known = new Set((await store.list('woltorders')).map((r) => r.id));
   const stamp = now.toISOString();
   let added = 0;

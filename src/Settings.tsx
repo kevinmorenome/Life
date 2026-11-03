@@ -8,6 +8,7 @@ import { ClosetReview } from './modules/clothes/ClosetReview';
 import { ChevronRightIcon } from './modules/clothes/icons';
 import { href } from './lib/router';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
+import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
 import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { SwarmSection } from './modules/checkins/SwarmSection';
@@ -31,6 +32,13 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
     for (const item of sampleReviewItems(new Date())) await put('clothes', item);
     notify('clothes');
     setMessage('Added 4 sample items to review. Open the closet to see them.');
+  }
+
+  async function addTakeoutSamples() {
+    const orders = sampleTakeoutOrders(new Date(), today());
+    for (const o of orders) await put('woltorders', o);
+    notify('woltorders');
+    setMessage(`Added ${orders.length} sample takeout orders. See the calendar and Stats → Takeout.`);
   }
 
   async function addSampleRides() {
@@ -197,10 +205,13 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>
-          <p className="muted small">Adds made-up “needs review” items and Bolt/Uber rides so you can try them out. They stay on this device only.</p>
+          <p className="muted small">Adds made-up “needs review” items, takeout orders and Bolt/Uber rides so you can try them out. They stay on this device only.</p>
           <div className="form-actions start">
             <button className="btn" onClick={addSamples}>
               Add sample items to review
+            </button>
+            <button className="btn" onClick={addTakeoutSamples}>
+              Add sample takeout orders
             </button>
             <button className="btn" onClick={addSampleRides}>
               Add sample rides
