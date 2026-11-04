@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
 import { CalendarIcon, MoreIcon, PlusIcon, ShirtIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
@@ -341,21 +341,23 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
                   {label.slice(0, 4) !== now.slice(0, 4) && ` ${label.slice(0, 4)}`}
                 </div>
               )}
-              <div className="cal-week" role="row" data-week={start}>
-                {days.map((date) => (
-                  <DayCell
-                    key={date}
-                    date={date}
-                    isToday={date === now}
-                    wear={wearDays.get(date)}
-                    planned={planned.get(date)}
-                    trips={tripsOnDate(trips, date)}
-                    layers={layers}
-                    items={items}
-                    onClick={(e) => openDay(e, date)}
-                  />
-                ))}
-              </div>
+              <WeekRow start={start}>
+                {() =>
+                  days.map((date) => (
+                    <DayCell
+                      key={date}
+                      date={date}
+                      isToday={date === now}
+                      wear={wearDays.get(date)}
+                      planned={planned.get(date)}
+                      trips={tripsOnDate(trips, date)}
+                      layers={layers}
+                      items={items}
+                      onClick={(e) => openDay(e, date)}
+                    />
+                  ))
+                }
+              </WeekRow>
             </div>
           );
         })}
@@ -393,6 +395,36 @@ interface CellProps {
   layers: CalendarLayer[];
   items: ClothingItem[];
   onClick: (e: MouseEvent<HTMLAnchorElement>) => void;
+}
+
+/**
+ * One week of the list. The list holds every week of the history (years of them), so a week's days are only built
+ * once it comes near the screen (and then stay). Until then the row is an empty box of exactly the same height
+ * (CSS, from --row-h), so positions, scrolling and zooming don't depend on which weeks are built.
+ */
+function WeekRow({ start, children }: { start: string; children: () => ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [built, setBuilt] = useState(typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    const el = ref.current;
+    if (built || !el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setBuilt(true);
+          io.disconnect();
+        }
+      },
+      { root: el.closest('.cal-scroll'), rootMargin: '900px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [built]);
+  return (
+    <div ref={ref} className={`cal-week${built ? '' : ' cal-week-blank'}`} role="row" data-week={start}>
+      {built ? children() : null}
+    </div>
+  );
 }
 
 /**
