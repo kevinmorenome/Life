@@ -6721,13 +6721,13 @@ a.game-row + .food-h2 {
   --c-home: #00a69c;
   --c-off: #7a8794;
   --c-trip: #4f5bd5;
-  --c-place: #1e88e5;
+  --c-place: #e53935;
   --c-games: #8a4fe0;
   --c-wolt: #f57c00;
   --c-food: #7fb800;
   --c-watch: #d81b8a;
-  --c-rides: #e53935;
-  --c-music: #c79100;
+  --c-rides: #1e88e5;
+  --c-music: #1db954;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -6735,13 +6735,13 @@ a.game-row + .food-h2 {
     --c-home: #3fd6cb;
     --c-off: #a3afbb;
     --c-trip: #8f9bff;
-    --c-place: #4aa8ff;
+    --c-place: #ff7a75;
     --c-games: #b88cff;
     --c-wolt: #ff9a3d;
     --c-food: #b6e83a;
     --c-watch: #ff6ab8;
-    --c-rides: #ff7a75;
-    --c-music: #ffd24a;
+    --c-rides: #4aa8ff;
+    --c-music: #1ed760;
   }
 }
 :root[data-theme="dark"] {
@@ -6749,13 +6749,13 @@ a.game-row + .food-h2 {
   --c-home: #3fd6cb;
   --c-off: #a3afbb;
   --c-trip: #8f9bff;
-  --c-place: #4aa8ff;
+  --c-place: #ff7a75;
   --c-games: #b88cff;
   --c-wolt: #ff9a3d;
   --c-food: #b6e83a;
   --c-watch: #ff6ab8;
-  --c-rides: #ff7a75;
-  --c-music: #ffd24a;
+  --c-rides: #4aa8ff;
+  --c-music: #1ed760;
 }
 .dot.mark-office {
   background: var(--c-office);
