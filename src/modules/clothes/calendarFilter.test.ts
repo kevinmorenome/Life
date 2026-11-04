@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
+import { focusOf, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
 
 describe('calendar filter', () => {
   it('shows everything when nothing is selected', () => {
@@ -19,5 +19,11 @@ describe('calendar filter', () => {
     expect(parseFilter('["music","nope",3]')).toEqual(['music']);
     expect(parseFilter('{')).toEqual([]);
     expect(parseFilter(null)).toEqual([]);
+  });
+  it('focuses on outfits only when they are the only kind selected', () => {
+    expect(focusOf(['outfit'])).toBe('outfit');
+    expect(focusOf([])).toBeNull();
+    expect(focusOf(['outfit', 'trip'])).toBeNull();
+    expect(focusOf(['trip'])).toBeNull();
   });
 });

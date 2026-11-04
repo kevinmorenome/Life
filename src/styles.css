@@ -7080,3 +7080,101 @@ a.game-row + .food-h2 {
 .country-detail p {
   margin: 0 0 0.25rem;
 }
+
+/* ───────────── Calendar: only outfits selected ───────────── */
+/* The days show the outfit as a collage of its pieces instead of icons and pills. Taller rows make room for it:
+   46 → 96px (picture), → 132px (name), → 330px (every outfit of the day). */
+.cal.focus-outfit {
+  --row-h: calc(46px + 50px * min(var(--z), 1) + 36px * clamp(0, var(--z) - 1, 1) + 198px * clamp(0, var(--z) - 2, 1));
+}
+.cal.focus-outfit :is(.cal-cells, .cal-pills, .cal-full) {
+  display: none;
+}
+.cal.focus-outfit .cal-day.has-cells .cal-num {
+  opacity: 1;
+}
+.cal[data-hi="0"] .cal-shots {
+  content-visibility: hidden;
+}
+.cal-shots {
+  top: calc(29px - 3px * clamp(0, var(--z) - 1, 1));
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: clamp(0, var(--z) * 2, 1);
+}
+.shot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.shot:nth-child(n + 2) {
+  opacity: clamp(0, var(--z) - 2, 1);
+}
+.shot.planned {
+  opacity: 0.55;
+}
+.shot-img {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 1px;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--photo-bg);
+}
+.shot-img .thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: none;
+  font-size: 0.8rem;
+}
+/* One piece fills the picture; three leave the first spanning the top. */
+.shot-img.pieces-1 {
+  grid-template-columns: 1fr;
+}
+.shot-img.pieces-3 .thumb:first-child {
+  grid-column: 1 / -1;
+}
+.shot-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-align: left;
+  overflow-wrap: anywhere;
+  opacity: clamp(0, calc((var(--z) - 1.3) * 3), 1);
+}
+.shot-count {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.8));
+  color: var(--text);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  opacity: clamp(0, calc(3 - var(--z) * 1), 1);
+}
+.shot-more {
+  justify-content: center;
+  opacity: clamp(0, var(--z) - 2, 1);
+}

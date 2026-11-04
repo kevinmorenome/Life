@@ -6,8 +6,9 @@ import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
-import { FILTER_KINDS, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
+import { FILTER_KINDS, focusOf, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
 import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
+import { dayShots } from './calendarShots';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
 import { plannedByDay } from './plans';
@@ -323,7 +324,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   );
 
   return (
-    <div className="cal" ref={wrapRef} data-lo={Math.floor(level)} data-hi={Math.ceil(level)}>
+    <div className={`cal${focusOf(filter) ? ` focus-${focusOf(filter)}` : ''}`} ref={wrapRef} data-lo={Math.floor(level)} data-hi={Math.ceil(level)}>
       <div className="cal-head">
         <div className="cal-title-row">
           <h2 className="cal-title">
@@ -383,6 +384,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
                       trips={tripsOnDate(trips, date)}
                       layers={layers}
                       filter={filter}
+                      focus={focusOf(filter)}
                       items={items}
                       onClick={(e) => openDay(e, date)}
                     />
@@ -425,6 +427,7 @@ interface CellProps {
   trips: Trip[];
   layers: CalendarLayer[];
   filter: string[];
+  focus: 'outfit' | null;
   items: ClothingItem[];
   onClick: (e: MouseEvent<HTMLAnchorElement>) => void;
 }
@@ -460,7 +463,7 @@ function WeekRow({ start, children }: { start: string; children: () => ReactNode
  * A day shows all three zoom levels at once, stacked: --z (set on the calendar) fades dots into a photo with
  * badges and then into labelled pills, so zooming can run continuously.
  */
-function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, layers, filter, items, onClick }: CellProps) {
+function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, layers, filter, focus, items, onClick }: CellProps) {
   const marks = layers.flatMap((l) => {
     const mark = l.mark?.(date);
     return mark && isShown(filter, kindOfTone(mark.tone)) ? [mark] : [];
@@ -593,6 +596,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
               </span>
             )}
           </span>
+          {focus === 'outfit' && <Shots shots={dayShots(wear, planned, items)} />}
           <span className="cal-layer cal-full">
             {fullHidden ? full.slice(0, MAX_FULL - 1) : full}
             {fullHidden > 0 && <span className="pill pill-more">+{fullHidden} more</span>}
@@ -609,6 +613,7 @@ const CELLS = 8;
 const WORK_TONES = ['office', 'home', 'off'];
 const MAX_PILLS = 5;
 const MAX_FULL = 10;
+const MAX_SHOTS = 3;
 
 /** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
 function MarkPill({ mark: m }: { mark: DayMark }) {
@@ -636,6 +641,29 @@ function DayBubble({ wear, planned, items }: { wear?: DayWear; planned?: Outfit[
       {pieces.map((p) => (
         <ItemThumb key={p.id} item={p} />
       ))}
+    </span>
+  );
+}
+
+/**
+ * Only outfits are selected: from the first zoom level up each day shows the outfit as a collage of its pieces
+ * (the name joins when zoomed in, and the week zoom lists every outfit), in place of icons and text pills.
+ */
+function Shots({ shots }: { shots: ReturnType<typeof dayShots> }) {
+  if (!shots.length) return null;
+  const listed = shots.slice(0, MAX_SHOTS);
+  return (
+    <span className="cal-layer cal-shots">
+      {listed.map((s, i) => (
+        <span key={s.key} className={`shot${s.planned ? ' planned' : ''}`}>
+          <span className={`shot-img pieces-${Math.max(1, s.pieces.length)}`}>
+            {s.pieces.length ? s.pieces.map((p) => <ItemThumb key={p.id} item={p} />) : null}
+            {i === 0 && shots.length > 1 && <b className="shot-count">{shots.length}</b>}
+          </span>
+          <span className="shot-name">{s.name}</span>
+        </span>
+      ))}
+      {shots.length > MAX_SHOTS && <span className="pill pill-more shot-more">+{shots.length - MAX_SHOTS} more</span>}
     </span>
   );
 }

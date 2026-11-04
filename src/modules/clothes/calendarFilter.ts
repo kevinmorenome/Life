@@ -37,3 +37,11 @@ export function parseFilter(raw: string | null): string[] {
     return [];
   }
 }
+
+/**
+ * The one kind the calendar is narrowed to, when its entries have more to show than an icon or a line of text
+ * (today only outfits: a collage of their pieces). More than one kind, or none, keeps the usual looks.
+ */
+export function focusOf(selected: readonly string[]): 'outfit' | null {
+  return selected.length === 1 && selected[0] === 'outfit' ? 'outfit' : null;
+}
