@@ -493,7 +493,11 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
       </span>,
     ),
   );
-  marks.forEach((m, i) => pills.push(<MarkPill key={i} mark={m} />));
+  // Where you worked is only an icon, in the corner beside the number.
+  const workMark = marks.find((m) => WORK_TONES.includes(m.tone));
+  marks.forEach((m, i) => {
+    if (m !== workMark) pills.push(<MarkPill key={i} mark={m} />);
+  });
   const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
@@ -524,6 +528,11 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
               </span>
             )}
           </span>
+          {workMark && (
+            <span className={`cal-layer cal-work day-badge mark-${workMark.tone}`} role="img" aria-label={workMark.label}>
+              {workMark.icon}
+            </span>
+          )}
           <span className="cal-layer cal-pills">
             {shownPills}
             {pillsHidden > 0 && (
@@ -541,6 +550,7 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
 /** At most this many dots, grid icons (the last one a "+N" when there are more) and labelled pills fit in a day. */
 const MAX_DOTS = 4;
 const CELLS = 8;
+const WORK_TONES = ['office', 'home', 'off'];
 const MAX_PILLS = 5;
 
 /** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */

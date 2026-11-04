@@ -6952,3 +6952,16 @@ a.game-row + .food-h2 {
 .cal-pills {
   top: calc(31px - 4px * clamp(0, var(--z) - 1, 1));
 }
+
+/* Zoomed in: office / home / day off is just an icon in the top-right corner, level with the number. */
+.cal-work {
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  opacity: clamp(0, calc(var(--z) - 1), 1);
+}
+.cal-work svg {
+  width: 13px;
+  height: 13px;
+}
