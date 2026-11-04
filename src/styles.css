@@ -3137,6 +3137,19 @@ progress {
   font-weight: 700;
 }
 /* The three looks of a day sit on top of each other and fade as --z moves between the levels. */
+/* Only the looks that are visible at the current zoom are laid out and painted (the rest are skipped by the
+   browser, not removed, so the pinch can still cross-fade them). data-lo / data-hi are floor / ceil of --z,
+   set from CalendarView. Dots show for z < 1, the photo and badges for 0 < z < 2, the pills for z > 1. */
+.cal:not([data-lo="0"]) .cal-dots,
+.cal[data-hi="0"] .cal-photo,
+.cal[data-hi="0"] .cal-badges,
+.cal[data-hi="0"] .cal-trip,
+.cal[data-lo="2"] .cal-photo,
+.cal[data-lo="2"] .cal-badges,
+.cal[data-lo="2"] .cal-trip,
+.cal:not([data-hi="2"]) .cal-pills {
+  content-visibility: hidden;
+}
 .cal-layer {
   position: absolute;
   pointer-events: none;
