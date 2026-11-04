@@ -1,6 +1,7 @@
 import type { WorkTargetKind } from './types';
 import { targetProgress, type MonthSummary } from './work';
 
+
 export interface Target {
   days: number;
   kind: WorkTargetKind;
