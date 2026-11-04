@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
@@ -138,12 +138,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
     },
     [setZ],
   );
-
-  const stepLevel = (dir: 1 | -1) => {
-    const el = scrollRef.current;
-    pin(el ? el.clientHeight / 3 : 0);
-    settle(nearestLevel(zRef.current + dir));
-  };
 
   // The calendar fills the screen below the top bar and scrolls inside it; the dock floats over its
   // bottom, so the scroll area gets enough bottom padding for the last week to clear the dock.
@@ -330,12 +324,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
           <div className="cal-tools">
             <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
               <FilterIcon />
-            </button>
-            <button className="icon-btn" aria-label="Zoom out" disabled={level === 0} onClick={() => stepLevel(-1)}>
-              <ZoomOutIcon />
-            </button>
-            <button className="icon-btn" aria-label="Zoom in" disabled={level === MAX_ZOOM} onClick={() => stepLevel(1)}>
-              <ZoomInIcon />
             </button>
           </div>
         </div>
