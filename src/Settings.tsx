@@ -11,6 +11,7 @@ import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
 import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
+import { PerfSection } from './PerfSection';
 import { SwarmSection } from './modules/checkins/SwarmSection';
 import { StatsfmSection } from './modules/music/StatsfmSection';
 import { TraktSection } from './modules/watching/TraktSection';
@@ -202,6 +203,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       <TraktSection />
       <StatsfmSection />
       <MoveTakeoutSection />
+      <PerfSection />
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>
