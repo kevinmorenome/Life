@@ -5899,7 +5899,7 @@ a.game-row + .food-h2 {
   gap: 0.5rem;
   align-items: baseline;
   padding: 0.6rem 0;
-  border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+  border-bottom: 1px solid var(--border);
 }
 .wolt-when {
   display: flex;
@@ -6046,7 +6046,7 @@ a.game-row + .food-h2 {
   gap: 0.5rem;
   align-items: center;
   padding: 0.1rem 0;
-  border-bottom: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+  border-bottom: 1px solid var(--border);
 }
 .checkins-day li.watch-day-play,
 .widget-list li.watch-day-play {
@@ -6483,3 +6483,7 @@ a.game-row + .food-h2 {
   background: var(--accent-soft);
   color: var(--text);
 }
+
+.perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.perf-table th:first-child, .perf-table td:first-child { text-align: left; }
