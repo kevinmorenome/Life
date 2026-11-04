@@ -10,6 +10,8 @@ export interface Trip {
   id: string;
   name: string;
   destination?: string;
+  /** Cover picture: a small JPEG data URL (see `resizeImage`). */
+  photo?: string;
   /** YYYY-MM-DD */
   startDate: string;
   /** YYYY-MM-DD, inclusive */

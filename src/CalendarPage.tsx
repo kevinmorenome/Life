@@ -4,7 +4,7 @@ import { MODULES } from './modules';
 import { CalendarView } from './modules/clothes/CalendarView';
 import { ClothesRoot } from './modules/clothes/ClothesRoot';
 import type { Outfit, ClothingItem, Plan } from './modules/clothes/types';
-import type { Trip } from './modules/packing/types';
+import type { Trip } from './modules/trips/types';
 import type { CalendarLayer } from './modules/types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

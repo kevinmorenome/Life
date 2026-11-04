@@ -14,9 +14,12 @@ export const FILTER_KINDS = [
 
 const IDS: string[] = FILTER_KINDS.map((k) => k.id);
 
-/** Which filter a module's mark belongs to: office / home / day off are all "work", the rest is its own tone. */
+/**
+ * Which filter a module's mark belongs to: office / home / day off / work trip are all "work", the rest is its own tone.
+ * (The "Trips" filter is for the Trips module; a work trip is the `trip` work status, which keeps its `mark-trip` look.)
+ */
 export function kindOfTone(tone: string): string {
-  return tone === 'office' || tone === 'home' || tone === 'off' ? 'work' : tone;
+  return tone === 'office' || tone === 'home' || tone === 'off' || tone === 'trip' ? 'work' : tone;
 }
 
 /** Whether something of `kind` is shown with these filters selected. */
