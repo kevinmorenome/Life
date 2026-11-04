@@ -8,6 +8,7 @@ import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
 import { FILTER_KINDS, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
 import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
+import { collagePieces } from './collage';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
 import { plannedByDay } from './plans';
@@ -502,20 +503,12 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   const cellAt = (i: number) => (i < 6 ? { gridRow: 2 + Math.floor(i / 3), gridColumn: 1 + (i % 3) } : { gridRow: 1, gridColumn: i - 4 });
   // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
   const pills: ReactNode[] = [];
-  if (wear) {
+  const dayPieces = wear ? (wear.outfits.length ? outfitPieces(wear.outfits[0], items) : wear.items) : planned?.length ? outfitPieces(planned[0], items) : [];
+  if (wear || planned?.length) {
     pills.push(
-      <span key="outfit" className="pill pill-outfit">
-        <DayBubble wear={wear} items={items} />
-        <span className="pill-text">
-          {outfit ? outfitName(outfit) : lone?.name}
-          {extra > 0 && ` +${extra}`}
-        </span>
-      </span>,
-    );
-  } else if (planned && planned.length > 0) {
-    pills.push(
-      <span key="plan" className="pill pill-outfit planned">
-        {outfitName(planned[0])}
+      <span key="outfit" className={`pill pill-outfit pill-photo${wear ? '' : ' planned'}`} aria-label={wear ? (outfit ? outfitName(outfit) : lone?.name) : outfitName(planned![0])}>
+        <Collage pieces={dayPieces} />
+        {extra > 0 && <b className="pill-plus">+{extra}</b>}
       </span>,
     );
   }
@@ -540,10 +533,16 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
         <span className="pill-text">{text}</span>
       </span>,
     );
+  const fullTile = (key: string, name: string, pieces: ClothingItem[], isPlan = false) =>
+    full.push(
+      <span key={key} className={`pill pill-outfit pill-photo${isPlan ? ' planned' : ''}`} aria-label={name}>
+        <Collage pieces={pieces} />
+      </span>,
+    );
   if (wear) {
-    wear.outfits.forEach((o) => fullPill(`o${o.id}`, 'pill-outfit', <ShirtIcon />, outfitName(o)));
-    wear.items.forEach((i) => fullPill(`i${i.id}`, 'pill-outfit', <ShirtIcon />, i.name));
-  } else if (planned?.length) planned.forEach((o) => fullPill(`p${o.id}`, 'pill-outfit planned', <ShirtIcon />, outfitName(o)));
+    wear.outfits.forEach((o) => fullTile(`o${o.id}`, outfitName(o), outfitPieces(o, items)));
+    if (wear.items.length) fullTile('items', wear.items.map((i) => i.name).join(', '), wear.items);
+  } else if (planned?.length) planned.forEach((o) => fullTile(`p${o.id}`, outfitName(o), outfitPieces(o, items), true));
   trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', <SuitcaseIcon />, t.name));
   marks.forEach((m, i) => {
     if (m === workMark) return;
@@ -638,4 +637,10 @@ function DayBubble({ wear, planned, items }: { wear?: DayWear; planned?: Outfit[
       ))}
     </span>
   );
+}
+
+/** The pieces of an outfit as a small collage (up to four), in place of its name. */
+function Collage({ pieces }: { pieces: ClothingItem[] }) {
+  const shown = collagePieces(pieces, 3);
+  return <span className="collage">{shown.map((p) => <ItemThumb key={p.id} item={p} />)}</span>;
 }
