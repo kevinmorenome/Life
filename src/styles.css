@@ -6714,3 +6714,221 @@ a.game-row + .food-h2 {
 .cal-cells .badge-more {
   font-size: 0.5rem;
 }
+
+/* One colour per kind of entry, never shared: dots, grid icons and pills use the same one. */
+:root {
+  --c-office: var(--accent);
+  --c-home: #00a69c;
+  --c-off: #7a8794;
+  --c-trip: #4f5bd5;
+  --c-place: #1e88e5;
+  --c-games: #8a4fe0;
+  --c-wolt: #f57c00;
+  --c-food: #7fb800;
+  --c-watch: #d81b8a;
+  --c-rides: #e53935;
+  --c-music: #c79100;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-office: var(--accent);
+    --c-home: #3fd6cb;
+    --c-off: #a3afbb;
+    --c-trip: #8f9bff;
+    --c-place: #4aa8ff;
+    --c-games: #b88cff;
+    --c-wolt: #ff9a3d;
+    --c-food: #b6e83a;
+    --c-watch: #ff6ab8;
+    --c-rides: #ff7a75;
+    --c-music: #ffd24a;
+  }
+}
+:root[data-theme="dark"] {
+  --c-office: var(--accent);
+  --c-home: #3fd6cb;
+  --c-off: #a3afbb;
+  --c-trip: #8f9bff;
+  --c-place: #4aa8ff;
+  --c-games: #b88cff;
+  --c-wolt: #ff9a3d;
+  --c-food: #b6e83a;
+  --c-watch: #ff6ab8;
+  --c-rides: #ff7a75;
+  --c-music: #ffd24a;
+}
+.dot.mark-office {
+  background: var(--c-office);
+  box-shadow: none;
+}
+.day-badge.mark-office {
+  color: var(--c-office);
+  background: color-mix(in srgb, var(--c-office) 16%, var(--bg));
+}
+.dot.mark-home {
+  background: var(--c-home);
+  box-shadow: none;
+}
+.day-badge.mark-home {
+  color: var(--c-home);
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.pill.mark-home {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-home .pill-icon {
+  color: var(--c-home);
+}
+.dot.mark-off {
+  background: var(--c-off);
+  box-shadow: none;
+}
+.day-badge.mark-off {
+  color: var(--c-off);
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+}
+.pill.mark-off {
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-off .pill-icon {
+  color: var(--c-off);
+}
+.dot.mark-trip {
+  background: var(--c-trip);
+  box-shadow: none;
+}
+.day-badge.mark-trip {
+  color: var(--c-trip);
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+}
+.pill.mark-trip {
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-trip .pill-icon {
+  color: var(--c-trip);
+}
+.dot.mark-place {
+  background: var(--c-place);
+  box-shadow: none;
+}
+.day-badge.mark-place {
+  color: var(--c-place);
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+}
+.pill.mark-place {
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-place .pill-icon {
+  color: var(--c-place);
+}
+.dot.mark-games {
+  background: var(--c-games);
+  box-shadow: none;
+}
+.day-badge.mark-games {
+  color: var(--c-games);
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+}
+.pill.mark-games {
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-games .pill-icon {
+  color: var(--c-games);
+}
+.dot.mark-wolt {
+  background: var(--c-wolt);
+  box-shadow: none;
+}
+.day-badge.mark-wolt {
+  color: var(--c-wolt);
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+}
+.pill.mark-wolt {
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-wolt .pill-icon {
+  color: var(--c-wolt);
+}
+.dot.mark-food {
+  background: var(--c-food);
+  box-shadow: none;
+}
+.day-badge.mark-food {
+  color: var(--c-food);
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+}
+.pill.mark-food {
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-food .pill-icon {
+  color: var(--c-food);
+}
+.dot.mark-watch {
+  background: var(--c-watch);
+  box-shadow: none;
+}
+.day-badge.mark-watch {
+  color: var(--c-watch);
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+}
+.pill.mark-watch {
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-watch .pill-icon {
+  color: var(--c-watch);
+}
+.dot.mark-rides {
+  background: var(--c-rides);
+  box-shadow: none;
+}
+.day-badge.mark-rides {
+  color: var(--c-rides);
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+}
+.pill.mark-rides {
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-rides .pill-icon {
+  color: var(--c-rides);
+}
+.dot.mark-music {
+  background: var(--c-music);
+  box-shadow: none;
+}
+.day-badge.mark-music {
+  color: var(--c-music);
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+}
+.pill.mark-music {
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-music .pill-icon {
+  color: var(--c-music);
+}
+.dot-trip {
+  background: var(--c-trip);
+}
+.cell-slot {
+  display: grid;
+  place-items: center;
+}

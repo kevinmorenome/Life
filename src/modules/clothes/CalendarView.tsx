@@ -442,10 +442,31 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   // A day never shows more than a few things in a row: the rest is a "+N". The full list is on the day screen.
   const dotMarks = marks.slice(0, MAX_DOTS - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0));
   const dotsHidden = marks.length - dotMarks.length;
-  // The 3×3 grid: the day number, then one icon each for the outfit, trip and marks; the last cell counts the rest.
-  const iconCount = (hasOutfit ? 1 : 0) + (trips.length ? 1 : 0) + marks.length;
-  const cellMarks = iconCount > CELLS ? marks.slice(0, Math.max(0, CELLS - 1 - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0))) : marks;
-  const cellsHidden = iconCount - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0) - cellMarks.length;
+  // The 3×3 grid: the day number sits in the first cell and the first row stays empty until the six cells below
+  // it are used; then the two cells next to the number fill, and the last one counts the rest.
+  const icons: ReactNode[] = [];
+  if (hasOutfit)
+    icons.push(
+      <span className="cell">
+        <DayBubble wear={wear} planned={planned} items={items} />
+      </span>,
+    );
+  if (trips.length > 0)
+    icons.push(
+      <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
+        <SuitcaseIcon />
+      </span>,
+    );
+  marks.forEach((m) =>
+    icons.push(
+      <span className={`cell day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
+        {m.icon}
+      </span>,
+    ),
+  );
+  const iconsHidden = icons.length > CELLS ? icons.length - (CELLS - 1) : 0;
+  const shownIcons = iconsHidden ? icons.slice(0, CELLS - 1) : icons;
+  const cellAt = (i: number) => (i < 6 ? { gridRow: 2 + Math.floor(i / 3), gridColumn: 1 + (i % 3) } : { gridRow: 1, gridColumn: i - 4 });
   // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
   const pills: ReactNode[] = [];
   if (wear) {
@@ -490,24 +511,16 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
           </span>
           <span className="cal-layer cal-cells">
             <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
-            {hasOutfit && (
-              <span className="cell">
-                <DayBubble wear={wear} planned={planned} items={items} />
-              </span>
-            )}
-            {trips.length > 0 && (
-              <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
-                <SuitcaseIcon />
-              </span>
-            )}
-            {cellMarks.map((m, i) => (
-              <span key={i} className={`cell day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
-                {m.icon}
+            {shownIcons.map((el, i) => (
+              <span key={i} className="cell-slot" style={cellAt(i)}>
+                {el}
               </span>
             ))}
-            {cellsHidden > 0 && (
-              <span className="cell day-badge badge-more" role="img" aria-label={`${cellsHidden} more`}>
-                +{cellsHidden}
+            {iconsHidden > 0 && (
+              <span className="cell-slot" style={cellAt(CELLS - 1)}>
+                <span className="cell day-badge badge-more" role="img" aria-label={`${iconsHidden} more`}>
+                  +{iconsHidden}
+                </span>
               </span>
             )}
           </span>
