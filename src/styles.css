@@ -7089,21 +7089,21 @@ a.game-row + .food-h2 {
 .collage {
   display: flex;
   flex: 1;
+  align-items: center;
   gap: 2px;
   min-width: 0;
-  height: 30px;
 }
+/* Every piece gets the same square box, so tall pants don't stand out next to wide tops. */
 .collage .thumb {
   flex: 1 1 0;
-  width: auto;
+  width: 0;
   min-width: 0;
-  height: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
   border-radius: 3px;
   background: none;
   font-size: 0.7rem;
-}
-.cal-full .collage {
-  height: 42px;
 }
 .pill-plus {
   position: absolute;
