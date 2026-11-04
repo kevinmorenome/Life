@@ -3094,6 +3094,17 @@ progress {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border-top: 1px solid var(--border);
+  /* The list holds every week of the history (years of them): the browser skips layout and paint for the
+     ones off screen. The placeholder is exactly a row's height (--row-h + the 1px border), so nothing jumps
+     and the zoom / scroll code can still read any row's position. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--row-h) + 1px);
+}
+/* A week whose days aren't built yet (see WeekRow): same height as a built one. */
+.cal-week-blank {
+  display: block;
+  height: calc(var(--row-h) + 1px);
+  box-sizing: border-box;
 }
 .cal-day {
   position: relative;
