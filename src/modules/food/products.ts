@@ -96,8 +96,8 @@ export interface ProductSummary {
   /** Items in a pack (pieces only), see `FoodProduct.packSize`. */
   packSize?: number;
   packLabel?: string;
-  /** The product's picture, when it has one. */
-  photo?: string;
+  /** The product has a picture (the image itself is loaded with `useProductPhoto()`). */
+  hasPhoto: boolean;
   /** True when someone set the type/storage (there is a product record), false when they are defaults. */
   custom: boolean;
   /** Newest first. */
@@ -119,7 +119,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, photo: rec?.photo, custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }

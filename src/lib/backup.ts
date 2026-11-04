@@ -1,4 +1,4 @@
-import { STORES, getAll, replaceAll, upsertNewer, type StoreName } from './db';
+import { STORES, getAllFull, replaceAll, upsertNewer, type StoreName } from './db';
 
 interface Backup {
   app: 'life';
@@ -9,7 +9,7 @@ interface Backup {
 
 export async function exportBackup(): Promise<Blob> {
   const stores: Backup['stores'] = {};
-  for (const name of STORES) stores[name] = await getAll(name);
+  for (const name of STORES) stores[name] = await getAllFull(name);
   const backup: Backup = { app: 'life', version: 1, exportedAt: new Date().toISOString(), stores };
   return new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
 }

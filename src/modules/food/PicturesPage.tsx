@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CameraIcon, ImageIcon, SearchIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { FoodPicture, pictureClass } from './FoodPicture';
+import { FoodPicture, pictureClass, useProductPhoto } from './FoodPicture';
 import { PhotoSearch } from './PhotoSearch';
 import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
@@ -19,9 +19,10 @@ export function PicturesPage({ receipts, products, events, onProduct }: { receip
   const todo = queue.filter((e) => !skipped.includes(e.product.id));
   const current = todo[0];
   const position = total - todo.length + 1;
+  const photo = useProductPhoto(current?.product);
 
   // Saving gives the product a picture, so it leaves the queue and the next one appears by itself.
-  const picker = usePicturePicker((photo) => (current ? onProduct(productRecord(current.product, products.find((p) => p.id === current.product.id), { photo }, new Date().toISOString())) : undefined));
+  const picker = usePicturePicker((photo) => (current ? onProduct(productRecord(current.product, products.find((p) => p.id === current.product.id), { photo, hasPhoto: true }, new Date().toISOString())) : undefined));
 
   if (!current) {
     return (
@@ -53,8 +54,8 @@ export function PicturesPage({ receipts, products, events, onProduct }: { receip
       <div className="food-pass-bar" aria-hidden>
         <span style={{ width: `${Math.round(((position - 1) / total) * 100)}%` }} />
       </div>
-      <span className={`${pictureClass(p)} food-art-pass`}>
-        <FoodPicture product={p} size={84} />
+      <span className={`${pictureClass(p, photo)} food-art-pass`}>
+        <FoodPicture product={p} photo={photo} size={84} />
         {picker.busy && <span className="food-pic-busy">Working on it…</span>}
       </span>
       <h2>{p.name}</h2>

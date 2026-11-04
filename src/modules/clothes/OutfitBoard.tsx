@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePhoto } from '../../lib/usePhoto';
 import { boardLayout } from './board';
 import type { ClothingItem } from './types';
 
@@ -43,6 +44,7 @@ export function OutfitBoard({
 function Piece({ item, onRemove }: { item: ClothingItem; onRemove?: (id: string) => void }) {
   const img = useRef<HTMLImageElement>(null);
   const [inset, setInset] = useState({ top: 0, right: 0 });
+  const photo = usePhoto('clothes', item);
 
   // The photo is letterboxed (object-fit: contain) inside its box, so pin the ✕
   // to the corner of what's actually painted, not of the box.
@@ -65,10 +67,10 @@ function Piece({ item, onRemove }: { item: ClothingItem; onRemove?: (id: string)
       el.removeEventListener('load', measure);
       ro.disconnect();
     };
-  }, [item.photo, onRemove]);
+  }, [photo, onRemove]);
 
-  const body = item.photo ? (
-    <img ref={img} src={item.photo} alt={onRemove ? item.name : ''} loading="lazy" />
+  const body = photo ? (
+    <img ref={img} src={photo} alt={onRemove ? item.name : ''} loading="lazy" />
   ) : (
     <span className="board-placeholder">{item.name}</span>
   );

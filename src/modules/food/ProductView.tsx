@@ -64,7 +64,7 @@ export function ProductView({
 
   return (
     <>
-      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined })} />
+      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
       <h1 className="page-title">{product.name}</h1>
       <p className="muted small">
         Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
