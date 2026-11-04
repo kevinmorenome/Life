@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, PlusIcon, ShirtIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
+import { CalendarIcon, PlusIcon, ShirtIcon, SuitcaseIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
@@ -442,8 +442,10 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   // A day never shows more than a few things in a row: the rest is a "+N". The full list is on the day screen.
   const dotMarks = marks.slice(0, MAX_DOTS - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0));
   const dotsHidden = marks.length - dotMarks.length;
-  const badgeMarks = marks.length > MAX_BADGES ? marks.slice(0, MAX_BADGES - 1) : marks;
-  const badgesHidden = marks.length - badgeMarks.length;
+  // The 3×3 grid: the day number, then one icon each for the outfit, trip and marks; the last cell counts the rest.
+  const iconCount = (hasOutfit ? 1 : 0) + (trips.length ? 1 : 0) + marks.length;
+  const cellMarks = iconCount > CELLS ? marks.slice(0, Math.max(0, CELLS - 1 - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0))) : marks;
+  const cellsHidden = iconCount - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0) - cellMarks.length;
   // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
   const pills: ReactNode[] = [];
   if (wear) {
@@ -474,7 +476,7 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
-    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
       <span className="cal-num">{Number(date.slice(8))}</span>
       {(hasOutfit || marks.length > 0 || trips.length > 0) && (
         <>
@@ -486,22 +488,29 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
             {trips.length > 0 && <i className="dot dot-trip" />}
             {dotsHidden > 0 && <b className="more-count">+{dotsHidden}</b>}
           </span>
-          <span className="cal-layer cal-photo">
-            <DayBubble wear={wear} planned={planned} items={items} />
-          </span>
-          <span className={`cal-layer cal-badges${hasOutfit ? ' with-photo' : ''}`}>
-            {badgeMarks.map((m, i) => (
-              <span key={i} className={`day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
+          <span className="cal-layer cal-cells">
+            <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
+            {hasOutfit && (
+              <span className="cell">
+                <DayBubble wear={wear} planned={planned} items={items} />
+              </span>
+            )}
+            {trips.length > 0 && (
+              <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
+                <SuitcaseIcon />
+              </span>
+            )}
+            {cellMarks.map((m, i) => (
+              <span key={i} className={`cell day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
                 {m.icon}
               </span>
             ))}
-            {badgesHidden > 0 && (
-              <span className="day-badge badge-more" role="img" aria-label={`${badgesHidden} more`}>
-                +{badgesHidden}
+            {cellsHidden > 0 && (
+              <span className="cell day-badge badge-more" role="img" aria-label={`${cellsHidden} more`}>
+                +{cellsHidden}
               </span>
             )}
           </span>
-          {trips.length > 0 && <i className="cal-layer cal-trip" />}
           <span className="cal-layer cal-pills">
             {shownPills}
             {pillsHidden > 0 && (
@@ -516,9 +525,9 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   );
 }
 
-/** At most this many dots, icon badges (the last one a "+N" when there are more) and labelled pills fit in a day. */
+/** At most this many dots, grid icons (the last one a "+N" when there are more) and labelled pills fit in a day. */
 const MAX_DOTS = 4;
-const MAX_BADGES = 3;
+const CELLS = 8;
 const MAX_PILLS = 3;
 
 /** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
