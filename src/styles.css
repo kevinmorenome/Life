@@ -6498,3 +6498,15 @@ a.game-row + .food-h2 {
 .perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
 .perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+
+/* Shown when the local database is waiting on another open copy of the app (see DbProblemBanner). */
+.db-problem {
+  margin: 8px 16px 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.db-problem p { margin: 0 0 6px; }
+.db-problem p:last-child { margin: 0; }

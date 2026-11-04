@@ -105,3 +105,28 @@ describe('upgrade from the version with embedded pictures', () => {
     expect(await db.getMeta('syncCursor')).toBe(42);
   });
 });
+
+describe('an upgrade held up by another open copy of the app', () => {
+  it('reports it, then carries on once the other copy lets go', async () => {
+    globalThis.indexedDB = new IDBFactory();
+    // The previous version's connection, which never answers versionchange.
+    const held = await new Promise<IDBDatabase>((resolve) => {
+      const req = indexedDB.open('life', 17);
+      req.onupgradeneeded = () => {
+        for (const s of ['clothes', 'foodproducts', 'outbox', 'meta']) req.result.createObjectStore(s, { keyPath: s === 'outbox' || s === 'meta' ? 'key' : 'id' });
+      };
+      req.onsuccess = () => resolve(req.result);
+    });
+    vi.resetModules();
+    const db = await import('./db');
+    const seen = vi.fn();
+    db.onDbProblem(seen);
+    const pending = db.getAll('clothes');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(db.getDbProblem()).toBe('blocked');
+    held.close();
+    await expect(pending).resolves.toEqual([]);
+    expect(db.getDbProblem()).toBeNull();
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+});

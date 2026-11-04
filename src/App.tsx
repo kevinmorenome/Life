@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { BottomNav } from './BottomNav';
+import { DbProblemBanner } from './DbProblemBanner';
 import { CalendarPage } from './CalendarPage';
 import { Home } from './Home';
 import { Settings } from './Settings';
@@ -64,6 +65,7 @@ export function App() {
           {PREVIEW_COMMIT && <> · {PREVIEW_COMMIT}</>}
         </div>
       )}
+      <DbProblemBanner />
       <header className="topbar">
         <div className="brand-row">
           <a className="brand" href={href('/')}>

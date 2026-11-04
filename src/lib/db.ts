@@ -53,6 +53,23 @@ export function onLocalWrite(fn: Listener | null): void {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+// Why the database isn't available, if it isn't. 'blocked': another open copy of the app (an old tab, or the app
+// suspended in the background) still holds the previous version, so the upgrade waits for it to let go and every
+// read waits too. 'failed': it couldn't be opened at all. Shown by the app as a banner instead of a silent "Loading…".
+export type DbProblem = 'blocked' | 'failed' | null;
+let dbProblem: DbProblem = null;
+const problemListeners = new Set<Listener>();
+function setDbProblem(p: DbProblem): void {
+  if (p === dbProblem) return;
+  dbProblem = p;
+  problemListeners.forEach((fn) => fn());
+}
+export const getDbProblem = (): DbProblem => dbProblem;
+export function onDbProblem(fn: Listener): () => void {
+  problemListeners.add(fn);
+  return () => problemListeners.delete(fn);
+}
+
 function openDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
@@ -92,7 +109,9 @@ function openDb(): Promise<IDBDatabase> {
         // (Pulled records never overwrite local edits that haven't been pushed yet.)
         if (event.oldVersion > 0 && event.oldVersion < 17) req.transaction!.objectStore(META).delete('syncCursor');
       };
+      req.onblocked = () => setDbProblem('blocked');
       req.onsuccess = () => {
+        setDbProblem(null);
         // Let a newer build in another tab upgrade the database instead of being blocked by this one.
         req.result.onversionchange = () => {
           req.result.close();
@@ -100,7 +119,12 @@ function openDb(): Promise<IDBDatabase> {
         };
         resolve(req.result);
       };
-      req.onerror = () => reject(req.error);
+      req.onerror = () => {
+        // Forget the failure so the next call tries again.
+        dbPromise = null;
+        setDbProblem('failed');
+        reject(req.error);
+      };
     });
   }
   return dbPromise;
