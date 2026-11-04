@@ -32,6 +32,8 @@ export interface CalendarLayer {
   earliest?: string;
   /** How the day is marked: a dot when zoomed out, an icon badge by default, a labelled pill when zoomed in. */
   mark?(date: string): DayMark | null;
+  /** A short note on the month's title row, e.g. "3 wfh days left"; `month` is YYYY-MM. */
+  title?(month: string): ReactNode;
   /** Shown above the month grid; `month` is YYYY-MM. */
   header?(month: string): ReactNode;
   /** Section on the day screen. */

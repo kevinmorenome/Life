@@ -7115,3 +7115,14 @@ a.game-row + .food-h2 {
   font-size: 0.55rem;
   line-height: 1.3;
 }
+
+/* The month's note (e.g. "2 wfh days left") sits on the title row, before the filter button. */
+.cal-note {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+}

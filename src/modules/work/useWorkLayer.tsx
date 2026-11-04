@@ -3,7 +3,8 @@ import { today } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
-import { TargetCard, type Target } from './TargetCard';
+import type { Target } from './TargetCard';
+import { targetNote } from './targetNote';
 import { DEFAULT_EXTENDED, DEFAULT_TARGET, type WorkDay, type WorkEvent } from './types';
 import { REASON_LABELS, STATUS_ICONS, STATUS_LABELS, WorkDaySection } from './WorkDaySection';
 import { buildDays, monthSummary } from './work';
@@ -31,9 +32,9 @@ export function useWorkCalendarLayer(): CalendarLayer {
         detail: info.arrive || info.leave ? `${info.arrive ?? '?'} – ${info.leave ?? '?'}` : undefined,
       };
     },
-    header(month) {
+    title(month) {
       const now = today();
-      return <TargetCard summary={monthSummary(month, infos, now)} target={target} past={month < now.slice(0, 7)} />;
+      return targetNote(monthSummary(month, infos, now), target.days, target.kind, target.extended, month < now.slice(0, 7));
     },
     daySection(date) {
       return <WorkDaySection date={date} info={infos.get(date)} day={days.items.find((d) => d.id === date)} onSave={days.save} onClear={days.remove} />;

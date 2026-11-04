@@ -331,6 +331,11 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
             {monthName}
             {String(year) !== now.slice(0, 4) && <small>{year}</small>}
           </h2>
+          <div className="cal-note">
+            {layers.map((l, i) => (
+              <span key={i}>{l.title?.(visibleMonth)}</span>
+            ))}
+          </div>
           <div className="cal-tools">
             <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
               <FilterIcon />
