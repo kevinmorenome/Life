@@ -8,7 +8,7 @@ describe('pinchZoom', () => {
     expect(pinchZoom(1, 100, 100 / 1.9)).toBeCloseTo(0, 5);
     expect(pinchZoom(1, 100, 140)).toBeGreaterThan(1);
     expect(pinchZoom(1, 100, 140)).toBeLessThan(2);
-    expect(pinchZoom(1, 100, 1000)).toBe(2);
+    expect(pinchZoom(1, 100, 1000)).toBe(3);
     expect(pinchZoom(1, 100, 1)).toBe(0);
   });
 
@@ -23,7 +23,8 @@ describe('nearestLevel', () => {
     expect(nearestLevel(0.6)).toBe(1);
     expect(nearestLevel(1.4)).toBe(1);
     expect(nearestLevel(1.6)).toBe(2);
-    expect(nearestLevel(5)).toBe(2);
+    expect(nearestLevel(2.6)).toBe(3);
+    expect(nearestLevel(5)).toBe(3);
     expect(nearestLevel(-1)).toBe(0);
   });
 });

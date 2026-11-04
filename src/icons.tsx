@@ -211,6 +211,13 @@ export const MoreIcon = () => (
   </Icon>
 );
 
+/** Funnel: filters. */
+export const FilterIcon = () => (
+  <Icon>
+    <path d="M4 5h16l-6 7.5V19l-4 1.5v-8L4 5Z" />
+  </Icon>
+);
+
 export const ZoomInIcon = () => (
   <Icon>
     <circle cx="10.5" cy="10.5" r="6.5" />

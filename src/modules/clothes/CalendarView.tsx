@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, PlusIcon, ShirtIcon, SuitcaseIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
+import { FILTER_KINDS, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
 import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
@@ -25,6 +26,7 @@ interface Props {
 
 // Kept at module level so opening a day and coming back lands where you were (the view unmounts).
 const ZOOM_KEY = 'life.calendarZoom';
+const FILTER_KEY = 'life.calendarFilter';
 let savedLevel: number | undefined;
 let savedScroll: number | undefined;
 
@@ -43,6 +45,23 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   const now = today();
   const nowMonth = now.slice(0, 7);
   const [level, setLevel] = useState(loadLevel);
+  // Which kinds of entry to show (none selected = all), remembered in this browser.
+  const [filter, setFilterState] = useState<string[]>(() => {
+    try {
+      return parseFilter(localStorage.getItem(FILTER_KEY));
+    } catch {
+      return [];
+    }
+  });
+  const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
+  const setFilter = (next: string[]) => {
+    setFilterState(next);
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(next));
+    } catch {
+      // Not remembered; fine.
+    }
+  };
   const [visibleMonth, setVisibleMonth] = useState(month ?? nowMonth);
   const wearDays = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
   const planned = useMemo(() => plannedByDay(plans, outfits), [plans, outfits]);
@@ -309,6 +328,9 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
             {String(year) !== now.slice(0, 4) && <small>{year}</small>}
           </h2>
           <div className="cal-tools">
+            <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
+              <FilterIcon />
+            </button>
             <button className="icon-btn" aria-label="Zoom out" disabled={level === 0} onClick={() => stepLevel(-1)}>
               <ZoomOutIcon />
             </button>
@@ -317,6 +339,18 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
             </button>
           </div>
         </div>
+        {filtersOpen && (
+          <div className="cal-filters" role="group" aria-label="Show">
+            <button className="chip" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>
+              All
+            </button>
+            {FILTER_KINDS.map((k) => (
+              <button key={k.id} className={`chip chip-kind kind-${k.id}`} aria-pressed={filter.includes(k.id)} onClick={() => setFilter(toggleKind(filter, k.id))}>
+                {k.label}
+              </button>
+            ))}
+          </div>
+        )}
         {layers.map((l, i) => (
           <div key={i}>{l.header?.(visibleMonth)}</div>
         ))}
@@ -351,6 +385,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
                       planned={planned.get(date)}
                       trips={tripsOnDate(trips, date)}
                       layers={layers}
+                      filter={filter}
                       items={items}
                       onClick={(e) => openDay(e, date)}
                     />
@@ -392,6 +427,7 @@ interface CellProps {
   planned?: Outfit[];
   trips: Trip[];
   layers: CalendarLayer[];
+  filter: string[];
   items: ClothingItem[];
   onClick: (e: MouseEvent<HTMLAnchorElement>) => void;
 }
@@ -430,11 +466,14 @@ function WeekRow({ start, children }: { start: string; children: () => ReactNode
  * A day shows all three zoom levels at once, stacked: --z (set on the calendar) fades dots into a photo with
  * badges and then into labelled pills, so zooming can run continuously.
  */
-function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }: CellProps) {
+function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, layers, filter, items, onClick }: CellProps) {
   const marks = layers.flatMap((l) => {
     const mark = l.mark?.(date);
-    return mark ? [mark] : [];
+    return mark && isShown(filter, kindOfTone(mark.tone)) ? [mark] : [];
   });
+  const wear = isShown(filter, 'outfit') ? allWear : undefined;
+  const planned = isShown(filter, 'outfit') ? allPlanned : undefined;
+  const trips = isShown(filter, 'trip') ? allTrips : [];
   const hasOutfit = !!wear || !!planned?.length;
   const outfit = wear?.outfits[0];
   const lone = wear?.items[0];
@@ -498,6 +537,25 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   marks.forEach((m, i) => {
     if (m !== workMark) pills.push(<MarkPill key={i} mark={m} />);
   });
+  // The week zoom lists everything: each outfit, piece, trip and entry of a module on its own line.
+  const full: ReactNode[] = [];
+  const fullPill = (key: string, tone: string, icon: ReactNode, text: string) =>
+    full.push(
+      <span key={key} className={`pill ${tone}`}>
+        <span className="pill-icon">{icon}</span>
+        <span className="pill-text">{text}</span>
+      </span>,
+    );
+  if (wear) {
+    wear.outfits.forEach((o) => fullPill(`o${o.id}`, 'pill-outfit', <ShirtIcon />, outfitName(o)));
+    wear.items.forEach((i) => fullPill(`i${i.id}`, 'pill-outfit', <ShirtIcon />, i.name));
+  } else if (planned?.length) planned.forEach((o) => fullPill(`p${o.id}`, 'pill-outfit planned', <ShirtIcon />, outfitName(o)));
+  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', <SuitcaseIcon />, t.name));
+  marks.forEach((m, i) => {
+    if (m === workMark) return;
+    (m.tiles?.length ? m.tiles : [m.label]).forEach((t, j) => fullPill(`m${i}-${j}`, `mark-${m.tone}`, m.icon, t));
+  });
+  const fullHidden = full.length > MAX_FULL ? full.length - (MAX_FULL - 1) : 0;
   const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
@@ -541,6 +599,10 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
               </span>
             )}
           </span>
+          <span className="cal-layer cal-full">
+            {fullHidden ? full.slice(0, MAX_FULL - 1) : full}
+            {fullHidden > 0 && <span className="pill pill-more">+{fullHidden} more</span>}
+          </span>
         </>
       )}
     </a>
@@ -552,6 +614,7 @@ const MAX_DOTS = 4;
 const CELLS = 8;
 const WORK_TONES = ['office', 'home', 'off'];
 const MAX_PILLS = 5;
+const MAX_FULL = 10;
 
 /** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
 function MarkPill({ mark: m }: { mark: DayMark }) {
