@@ -14,7 +14,7 @@ export function TripForm({ existing, onSave }: Props) {
   const [destination, setDestination] = useState(existing?.destination ?? '');
   const [startDate, setStartDate] = useState(existing?.startDate ?? today());
   const [endDate, setEndDate] = useState(existing?.endDate ?? today());
-  const back = existing ? `/packing/${existing.id}` : '/packing';
+  const back = existing ? `/trips/${existing.id}` : '/trips';
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -34,7 +34,7 @@ export function TripForm({ existing, onSave }: Props) {
       updatedAt: now,
     };
     await onSave(trip);
-    navigate(`/packing/${trip.id}`);
+    navigate(`/trips/${trip.id}`);
   }
 
   return (

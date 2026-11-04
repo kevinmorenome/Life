@@ -37,12 +37,12 @@ describe('parentRoute', () => {
     expect(p('/clothes/today')).toBe('/calendar');
   });
   it('handles trips and settings', () => {
-    expect(p('/packing')).toBe('/more');
-    expect(p('/packing/new')).toBe('/packing');
-    expect(p('/packing/t1')).toBe('/packing');
-    expect(p('/packing/t1/outfits')).toBe('/packing');
-    expect(p('/packing/t1/edit')).toBe('/packing/t1');
-    expect(p('/packing/t1/day/2026-10-29')).toBe('/packing/t1');
+    expect(p('/trips')).toBe('/more');
+    expect(p('/trips/new')).toBe('/trips');
+    expect(p('/trips/t1')).toBe('/trips');
+    expect(p('/trips/t1/outfits')).toBe('/trips');
+    expect(p('/trips/t1/edit')).toBe('/trips/t1');
+    expect(p('/trips/t1/day/2026-10-29')).toBe('/trips/t1');
     expect(p('/settings')).toBe('/more');
     expect(p('/settings/closet-review')).toBe('/settings');
     expect(p('/settings/closet-review/season')).toBe('/settings/closet-review');

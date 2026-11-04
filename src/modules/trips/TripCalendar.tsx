@@ -57,7 +57,7 @@ export function TripCalendar({ trip, items, outfits }: Props) {
                     <a
                       key={date}
                       role="gridcell"
-                      href={href(`/packing/${trip.id}/day/${date}`)}
+                      href={href(`/trips/${trip.id}/day/${date}`)}
                       className="calendar-day in-trip"
                       aria-label={`${date}, ${planned.length} ${planned.length === 1 ? 'outfit' : 'outfits'}`}
                     >

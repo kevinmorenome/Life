@@ -10,8 +10,8 @@ import { TripCalendar } from './TripCalendar';
 import { packingList, togglePacked, unpackAll, withExtra, withoutExtra, withoutManualItem } from './packing';
 import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
-export type TripTab = 'outfits' | 'clothes' | 'other';
-const TABS: { id: TripTab; label: string }[] = [
+export type TripTab = 'outfits' | 'clothes' | 'other' | 'itinerary';
+const TABS: { id: Exclude<TripTab, 'itinerary'>; label: string }[] = [
   { id: 'clothes', label: 'Clothes' },
   { id: 'outfits', label: 'Outfits' },
   { id: 'other', label: 'Other' },
@@ -52,14 +52,14 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
   async function remove() {
     if (!confirm(`Delete “${trip.name}”? Your closet and outfits aren’t affected.`)) return;
     await onDelete(trip.id);
-    navigate('/packing');
+    navigate('/trips');
   }
 
   return (
     <article className="detail">
       <div className="title-row">
         <h1>{trip.name}</h1>
-        <a className="pack-icon" href={href(`/packing/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
+        <a className="pack-icon" href={href(`/trips/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
           <EditIcon />
         </a>
         <button className="pack-icon" onClick={remove} aria-label="Delete trip" title="Delete trip">
@@ -70,6 +70,19 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
         {[trip.destination, `${shortDate(trip.startDate)} – ${shortDate(trip.endDate)}`].filter(Boolean).join(' · ')}
       </p>
 
+      <div className="seg" role="tablist" aria-label="Trip pages" style={{ ['--tabs' as string]: 2 }}>
+        <button type="button" role="tab" aria-selected={tab !== 'itinerary'} onClick={() => tab === 'itinerary' && navigate(`/trips/${trip.id}`)}>
+          Packing
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'itinerary'} onClick={() => tab !== 'itinerary' && navigate(`/trips/${trip.id}/itinerary`)}>
+          Itinerary
+        </button>
+      </div>
+
+      {tab === 'itinerary' ? (
+        <p className="muted">Flights, stays and plans will show up here once TripIt is connected.</p>
+      ) : (
+      <>
       <div className="card pack-progress" aria-live="polite">
         <div className="progress-head">
           <strong>{done ? 'All packed 🎉' : `${list.packedCount} of ${list.total} packed`}</strong>
@@ -107,7 +120,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
                 ? `${list.extras.filter((x) => x.packed).length}/${list.extras.length}`
                 : `${Object.values(trip.outfitPlan).flat().length}`;
           return (
-            <a key={t.id} role="tab" aria-selected={tab === t.id} href={href(`/packing/${trip.id}/${t.id}`)}>
+            <a key={t.id} role="tab" aria-selected={tab === t.id} href={href(`/trips/${trip.id}/${t.id}`)}>
               {t.label} <span className="count">{count}</span>
             </a>
           );
@@ -124,7 +137,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
           <p className="muted small">
             {list.clothes.length > 0 ? 'Double-tap a piece (or tap its ✓) to mark it packed.' : ''}
           </p>
-          <a className="pack-icon" href={href(`/packing/${trip.id}/items`)} aria-label="Pick pieces" title="Pick pieces">
+          <a className="pack-icon" href={href(`/trips/${trip.id}/items`)} aria-label="Pick pieces" title="Pick pieces">
             <PlusIcon />
           </a>
         </div>
@@ -217,6 +230,8 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
         )}
       </section>
 
+      )}
+      </>
       )}
     </article>
   );
