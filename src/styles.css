@@ -7091,7 +7091,7 @@ a.game-row + .food-h2 {
   flex: 1;
   gap: 2px;
   min-width: 0;
-  height: 40px;
+  height: 30px;
 }
 .collage .thumb {
   flex: 1 1 0;
@@ -7103,7 +7103,7 @@ a.game-row + .food-h2 {
   font-size: 0.7rem;
 }
 .cal-full .collage {
-  height: 56px;
+  height: 42px;
 }
 .pill-plus {
   position: absolute;
