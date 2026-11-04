@@ -541,7 +541,7 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
 /** At most this many dots, grid icons (the last one a "+N" when there are more) and labelled pills fit in a day. */
 const MAX_DOTS = 4;
 const CELLS = 8;
-const MAX_PILLS = 3;
+const MAX_PILLS = 5;
 
 /** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
 function MarkPill({ mark: m }: { mark: DayMark }) {

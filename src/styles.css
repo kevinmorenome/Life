@@ -6932,3 +6932,23 @@ a.game-row + .food-h2 {
   display: grid;
   place-items: center;
 }
+
+/* Zoomed in: the day number slides to the left corner as --z goes from 1 to 2, and the pills start right under it,
+   so five fit before "+N more". */
+.cal-day {
+  container-type: inline-size;
+}
+.cal-num {
+  translate: calc(clamp(0, var(--z) - 1, 1) * (16px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 7px * clamp(0, var(--z) - 1, 1));
+}
+.cal-num {
+  min-width: 24px;
+  height: 24px;
+  translate: calc(clamp(0, var(--z) - 1, 1) * (15px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 4px * clamp(0, var(--z) - 1, 1));
+}
