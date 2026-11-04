@@ -8,11 +8,11 @@
 import type { Change } from '../../worker/protocol';
 import { isPhotoStore, joinPhoto, photoKey, PHOTO_STORES, splitPhoto } from './photoSplit';
 
-export const STORES = ['clothes', 'outfits', 'trips', 'plans', 'settings', 'inbox', 'workdays', 'workevents', 'checkins', 'countries', 'players', 'gametitles', 'gamenights', 'foodreceipts', 'foodproducts', 'foodstock', 'woltorders', 'watched', 'rides', 'musicdays'] as const;
+export const STORES = ['clothes', 'outfits', 'trips', 'plans', 'settings', 'inbox', 'workdays', 'workevents', 'checkins', 'countries', 'players', 'gametitles', 'gamenights', 'foodreceipts', 'foodproducts', 'foodstock', 'woltorders', 'watched', 'rides', 'musicdays', 'tripitplans'] as const;
 export type StoreName = (typeof STORES)[number];
 
 const DB_NAME = 'life';
-const DB_VERSION = 19;
+const DB_VERSION = 20;
 /** Pictures were moved out of their records at this version (local only, nothing to re-pull). */
 const PHOTOS_VERSION = 18;
 const PHOTOS = 'photos';

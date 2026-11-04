@@ -6,7 +6,10 @@ import { href, navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { outfitName } from '../clothes/outfits';
 import { label, type ClothingItem, type Outfit } from '../clothes/types';
+import type { TripitPlan } from '../../../worker/tripitTypes';
+import { Itinerary } from './Itinerary';
 import { TripCalendar } from './TripCalendar';
+import { plansOfTrip } from './tripit';
 import { packingList, togglePacked, unpackAll, withExtra, withoutExtra, withoutManualItem } from './packing';
 import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
@@ -22,11 +25,12 @@ interface Props {
   tab: TripTab;
   items: ClothingItem[];
   outfits: Outfit[];
+  plans: TripitPlan[];
   onSave: (t: Trip) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props) {
+export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }: Props) {
   const list = useMemo(() => packingList(trip, items, outfits, outfitName), [trip, items, outfits]);
   const [text, setText] = useState('');
   const [group, setGroup] = useState<string>(EXTRA_GROUPS[0]);
@@ -81,7 +85,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
       </div>
 
       {tab === 'itinerary' ? (
-        <p className="muted">Flights, stays and plans will show up here once TripIt is connected.</p>
+        <Itinerary plans={plansOfTrip(plans, trip)} startDate={trip.startDate} endDate={trip.endDate} />
       ) : (
       <>
       <div className="card pack-progress" aria-live="polite">

@@ -23,6 +23,8 @@ export interface Trip {
   extras: PackExtra[];
   /** Ids (closet item or extra) already in the bag. */
   packed: string[];
+  /** Set on trips made from TripIt: the id of the earliest plan in the group. Sync never touches a trip that has one. */
+  tripitRef?: string;
   createdAt: string;
   updatedAt: string;
 }
