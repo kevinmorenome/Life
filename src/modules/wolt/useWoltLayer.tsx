@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { DayWidget } from '../../DayWidget';
-import { CartIcon } from '../../icons';
+import { BagIcon } from '../../icons';
 import { money } from '../../lib/format';
 import type { CalendarLayer } from '../types';
 import type { WoltOrder } from './types';
@@ -19,13 +19,13 @@ export function useWoltCalendarLayer(): CalendarLayer {
       const list = days.get(date);
       if (!list) return null;
       const names = list.map((o) => placeName(o.restaurant));
-      return { tone: 'wolt', icon: <CartIcon />, label: names.length === 1 ? names[0] : `${names.length} orders`, tiles: names };
+      return { tone: 'wolt', icon: <BagIcon />, label: names.length === 1 ? names[0] : `${names.length} orders`, tiles: names };
     },
     daySection(date) {
       const list = days.get(date);
       if (!list) return null;
       return (
-        <DayWidget id="takeout" title="Takeout" icon={<CartIcon />} tone="wolt" badge={list.length > 1 ? list.length : undefined} summary={[list.map((o) => placeName(o.restaurant)).join(', '), amount(list[0])].join(' · ')}>
+        <DayWidget id="takeout" title="Takeout" icon={<BagIcon />} tone="wolt" badge={list.length > 1 ? list.length : undefined} summary={[list.map((o) => placeName(o.restaurant)).join(', '), amount(list[0])].join(' · ')}>
           <ul className="widget-list">
             {list.map((o) => (
               <li key={o.id}>

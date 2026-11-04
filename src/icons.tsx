@@ -66,6 +66,14 @@ export const CartIcon = () => (
   </Icon>
 );
 
+/** A paper shopping bag with a rope handle: takeout. */
+export const BagIcon = () => (
+  <Icon>
+    <path d="M5.5 8h13l1 12.5h-15z" />
+    <path d="M9 10.5V7a3 3 0 0 1 6 0v3.5" />
+  </Icon>
+);
+
 export const CameraIcon = () => (
   <Icon>
     <path d="M4 8h3l1.5-2.500h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
