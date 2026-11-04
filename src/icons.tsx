@@ -66,11 +66,12 @@ export const CartIcon = () => (
   </Icon>
 );
 
-/** A paper shopping bag with a rope handle: takeout. */
+/** A shopping bag with a handle and a fork and knife on it: takeout. */
 export const BagIcon = () => (
   <Icon>
-    <path d="M5.5 8h13l1 12.5h-15z" />
-    <path d="M9 10.5V7a3 3 0 0 1 6 0v3.5" />
+    <path d="M5.5 8.5h13l1 12h-15z" />
+    <path d="M9 8.5v-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v3" />
+    <path d="M9.5 12.5v2a1 1 0 0 0 2 0v-2M10.5 14.5V18M14.5 18v-5.5c-1.4 1-1.4 3.2 0 3.8" />
   </Icon>
 );
 
