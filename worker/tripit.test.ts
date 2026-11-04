@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessKind, handleTripit, plansFromFeed, validateFeedUrl, type Connection, type TripitPlan, type TripitStore } from './tripit';
+import { guessKind, handleTripit, plansFromFeed, validateFeedUrl, type TripitPlan, type TripitStore } from './tripit';
 
 const FEED = [
   'BEGIN:VCALENDAR',
@@ -8,35 +8,36 @@ const FEED = [
   'END:VCALENDAR',
 ].join('\r\n');
 
-function fakeStore(): TripitStore & { saved: TripitPlan[][]; conn: Connection | null; stored: Map<string, string> } {
+function fakeStore(): TripitStore & { saved: TripitPlan[][]; stored: Map<string, string>; last: number | null } {
   const s = {
     saved: [] as TripitPlan[][],
-    conn: null as Connection | null,
     stored: new Map<string, string>(),
-    async get() {
-      return s.conn;
-    },
-    async connect(url: string) {
-      s.conn = { url, lastSync: null };
+    last: null as number | null,
+    async lastSync() {
+      return s.last;
     },
     async existing() {
       return s.stored;
     },
-    async savePlans(plans: TripitPlan[]) {
+    async savePlans(plans: TripitPlan[], now: number) {
       s.saved.push(plans);
+      s.last = now;
       for (const p of plans) s.stored.set(p.id, JSON.stringify(p));
-    },
-    async disconnect() {
-      s.conn = null;
     },
   };
   return s;
 }
 
-const ctx = (store: TripitStore, fetchImpl: typeof fetch, readOnly = false) => ({ store, readOnly, now: new Date('2026-11-04T10:00:00Z'), fetch: fetchImpl });
+const LINK = 'https://www.tripit.com/feed/ical/private/ABC/tripit.ics';
+const ctx = (store: TripitStore, fetchImpl: typeof fetch, readOnly = false, link: string | null = LINK) => ({
+  env: { TRIPIT_FEED_URL: link ?? undefined },
+  store,
+  readOnly,
+  now: new Date('2026-11-04T10:00:00Z'),
+  fetch: fetchImpl,
+});
 const feedFetch = (body = FEED, status = 200): typeof fetch => (async () => new Response(body, { status })) as typeof fetch;
-const post = (path: string, body?: unknown) =>
-  new Request(`https://x/api/tripit/${path}`, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+const post = (path: string) => new Request(`https://x/api/tripit/${path}`, { method: 'POST' });
 
 describe('validateFeedUrl', () => {
   it('accepts TripIt feed links, including webcal', () => {
@@ -74,24 +75,16 @@ describe('plans', () => {
 });
 
 describe('handleTripit', () => {
-  it('connects with a valid link, after checking that it gives a calendar', async () => {
+  it('says whether the secret is set, never what it is', async () => {
     const store = fakeStore();
-    const res = await handleTripit(post('connect', { url: 'https://www.tripit.com/feed/ical/private/ABC/tripit.ics' }), '/api/tripit/connect', ctx(store, feedFetch()));
-    expect(res.status).toBe(200);
-    expect(store.conn?.url).toBe('https://www.tripit.com/feed/ical/private/ABC/tripit.ics');
-  });
-
-  it('refuses a link that is not TripIt, or does not give a calendar', async () => {
-    const store = fakeStore();
-    expect((await handleTripit(post('connect', { url: 'https://evil.example/feed/ical/x' }), '/api/tripit/connect', ctx(store, feedFetch()))).status).toBe(400);
-    expect((await handleTripit(post('connect', { url: 'https://www.tripit.com/feed/ical/x' }), '/api/tripit/connect', ctx(store, feedFetch('<html>'))) ).status).toBe(409);
-    expect((await handleTripit(post('connect', { url: 'https://www.tripit.com/feed/ical/x' }), '/api/tripit/connect', ctx(store, feedFetch('', 404)))).status).toBe(409);
-    expect(store.conn).toBeNull();
+    const on = await handleTripit(new Request('https://x/api/tripit/status'), '/api/tripit/status', ctx(store, feedFetch()));
+    expect(await on.json()).toEqual({ configured: true, lastSync: null });
+    const off = await handleTripit(new Request('https://x/api/tripit/status'), '/api/tripit/status', ctx(store, feedFetch(), false, null));
+    expect(await off.json()).toEqual({ configured: false, lastSync: null });
   });
 
   it('writes plans once, then only what changed', async () => {
     const store = fakeStore();
-    store.conn = { url: 'https://www.tripit.com/feed/ical/x', lastSync: null };
     const first = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json();
     expect(first).toEqual({ ok: true, plans: 2, changed: 2 });
     const second = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json();
@@ -99,24 +92,27 @@ describe('handleTripit', () => {
     const moved = FEED.replace('Hotel Avenida', 'Hotel Avenida Lisboa');
     const third = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(moved)))).json();
     expect(third).toEqual({ ok: true, plans: 2, changed: 1 });
+    expect(store.last).toBe(new Date('2026-11-04T10:00:00Z').getTime());
   });
 
-  it('needs a connection to sync, never follows redirects blindly, and is read only in previews', async () => {
+  it('asks for the secret when it is missing or is not a TripIt link', async () => {
     const store = fakeStore();
-    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).status).toBe(409);
-    store.conn = { url: 'https://www.tripit.com/feed/ical/x', lastSync: null };
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(), false, null))).status).toBe(503);
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(), false, 'https://evil.example/feed/ical/x'))).status).toBe(503);
+    expect(store.saved).toEqual([]);
+  });
+
+  it('refuses a link that does not give a calendar, and never follows redirects', async () => {
+    const store = fakeStore();
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch('<html>')))).status).toBe(409);
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch('', 404)))).status).toBe(409);
     const redirected = (async () => new Response(null, { status: 302, headers: { Location: 'https://evil.example' } })) as typeof fetch;
-    const res = await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, redirected));
-    expect(res.status).toBe(409);
-    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(), true))).status).toBe(409);
-    const status = await handleTripit(new Request('https://x/api/tripit/status'), '/api/tripit/status', ctx(store, feedFetch(), true));
-    expect(await status.json()).toEqual({ connected: true, lastSync: null });
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, redirected))).status).toBe(409);
+    expect(store.saved).toEqual([]);
   });
 
-  it('disconnects', async () => {
+  it('is read only in previews', async () => {
     const store = fakeStore();
-    store.conn = { url: 'u', lastSync: null };
-    await handleTripit(post('disconnect'), '/api/tripit/disconnect', ctx(store, feedFetch()));
-    expect(store.conn).toBeNull();
+    expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(), true))).status).toBe(409);
   });
 });

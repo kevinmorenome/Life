@@ -1,4 +1,4 @@
-// Talks to the Worker's /api/tripit routes; the feed link never reaches the browser.
+// Talks to the Worker's /api/tripit routes; the feed link is a Worker secret and never reaches the browser.
 
 import { getAll, notify, put } from '../../lib/db';
 import type { AppSettings } from '../../lib/settings';
@@ -8,7 +8,8 @@ import { newTrips } from './tripit';
 import type { Trip } from './types';
 
 export interface TripitStatus {
-  connected: boolean;
+  /** Whether the Worker has the TRIPIT_FEED_URL secret. */
+  configured: boolean;
   lastSync: number | null;
 }
 
@@ -22,23 +23,10 @@ export async function tripitStatus(): Promise<TripitStatus | null> {
   }
 }
 
-async function post(path: string, body?: unknown): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; error: string }> {
-  const res = await fetch(`/api/tripit/${path}`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
-  });
+async function post(path: string): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; error: string }> {
+  const res = await fetch(`/api/tripit/${path}`, { method: 'POST', credentials: 'same-origin' });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return res.ok ? { ok: true, data } : { ok: false, error: typeof data.error === 'string' ? data.error : `Server error ${res.status}` };
-}
-
-export async function connectTripit(url: string): Promise<{ error: string } | null> {
-  const res = await post('connect', { url });
-  return res.ok ? null : { error: res.error };
-}
-
-export async function disconnectTripit(): Promise<void> {
-  await post('disconnect');
 }
 
 /** Makes trips for plans that don't have one yet (see `newTrips`). Returns how many were added. */
@@ -71,13 +59,13 @@ export function isDue(lastSync: number | null, now: number): boolean {
 
 let fetching = false;
 
-/** Fetches quietly if TripIt is connected and a fetch is due. Safe to call often. */
+/** Fetches quietly if TripIt is set up and a fetch is due. Safe to call often. */
 export async function autoSyncTripit(): Promise<void> {
   if (fetching) return;
   fetching = true;
   try {
     const status = await tripitStatus();
-    if (status?.connected && isDue(status.lastSync, Date.now())) await syncTripit();
+    if (status?.configured && isDue(status.lastSync, Date.now())) await syncTripit();
   } finally {
     fetching = false;
   }

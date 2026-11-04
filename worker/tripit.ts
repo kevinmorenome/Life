@@ -1,7 +1,7 @@
-// TripIt trips and plans, read only. You paste your private iCal feed link once (TripIt → Settings → Calendar Feed);
-// the Worker keeps it in the `integrations` table (it is a credential: anyone with it can read your plans, so it
-// never goes in `records`, which syncs to clients) and turns the feed's events into `TripitPlan` records in the
-// `tripitplans` store. Plans can change in TripIt, so they are upserted, but only when their content changed
+// TripIt trips and plans, read only. Your private iCal feed link (TripIt → Settings → Calendar Feed) is a Worker
+// secret, `TRIPIT_FEED_URL` (it is a credential: anyone with it can read your plans, so it is set in Cloudflare and
+// never reaches the app or `records`, which syncs to clients). The Worker turns the feed's events into `TripitPlan`
+// records in the `tripitplans` store. Plans can change in TripIt, so they are upserted, but only when their content changed
 // (otherwise every fetch would make every client download every plan again). The app never edits them.
 // Behind Cloudflare Access like the other integrations.
 
@@ -11,23 +11,22 @@ import type { PlanKind, TripitPlan } from './tripitTypes';
 
 export type { PlanKind, TripitPlan };
 
-export interface Connection {
-  url: string;
-  lastSync: number | null;
+export interface TripitEnv {
+  /** The private calendar feed link, as a Worker secret. */
+  TRIPIT_FEED_URL?: string;
 }
 
-/** Where the feed link and the plans live. Faked in tests. */
+/** Where the plans and the last fetch time live. Faked in tests. */
 export interface TripitStore {
-  get(): Promise<Connection | null>;
-  connect(url: string): Promise<void>;
+  lastSync(): Promise<number | null>;
   /** The stored JSON of every plan, by id, to skip the ones that did not change. */
   existing(): Promise<Map<string, string>>;
   /** Writes the changed plans and the fetch time together. */
   savePlans(plans: TripitPlan[], now: number): Promise<void>;
-  disconnect(): Promise<void>;
 }
 
 export interface TripitContext {
+  env: TripitEnv;
   store: TripitStore;
   readOnly: boolean;
   now: Date;
@@ -117,7 +116,7 @@ async function fetchFeed(url: string, ctx: TripitContext): Promise<{ text: strin
     return { error: 'Could not reach TripIt', status: 502 };
   }
   if (res.status === 401 || res.status === 403 || res.status === 404 || (res.status >= 300 && res.status < 400)) {
-    return { error: 'TripIt did not accept the link. Copy it again from Settings → Calendar Feed (it stops working when it is reset).', status: 409 };
+    return { error: 'TripIt did not accept the link. Copy it again from TripIt → Settings → Calendar Feed and update the TRIPIT_FEED_URL secret (it stops working when the feed is reset).', status: 409 };
   }
   if (!res.ok) return { error: `TripIt answered ${res.status}`, status: 502 };
   const text = await res.text();
@@ -128,38 +127,24 @@ async function fetchFeed(url: string, ctx: TripitContext): Promise<{ text: strin
 
 export async function handleTripit(request: Request, pathname: string, ctx: TripitContext): Promise<Response> {
   const route = pathname.slice(PREFIX.length);
+  const configured = Boolean(ctx.env.TRIPIT_FEED_URL);
 
   if (route === 'status' && request.method === 'GET') {
-    const conn = await ctx.store.get();
-    return json({ connected: !!conn, lastSync: conn?.lastSync ?? null });
+    return json({ configured, lastSync: configured ? await ctx.store.lastSync() : null });
   }
   if (ctx.readOnly) return json({ error: 'This preview is read-only' }, 409);
 
-  if (route === 'connect' && request.method === 'POST') {
-    const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
-    const url = validateFeedUrl(body?.url);
-    if (!url) return json({ error: 'That is not a TripIt calendar feed link (it starts with https://www.tripit.com/feed/ical/)' }, 400);
+  if (route === 'sync' && request.method === 'POST') {
+    if (!configured) return json({ error: 'TripIt is not configured: set the TRIPIT_FEED_URL secret' }, 503);
+    const url = validateFeedUrl(ctx.env.TRIPIT_FEED_URL);
+    if (!url) return json({ error: 'TRIPIT_FEED_URL is not a TripIt calendar feed link (it starts with https://www.tripit.com/feed/ical/)' }, 503);
     const feed = await fetchFeed(url, ctx);
     if ('error' in feed) return json({ error: feed.error }, feed.status);
-    await ctx.store.connect(url);
-    return json({ ok: true });
-  }
-
-  if (route === 'sync' && request.method === 'POST') {
-    const conn = await ctx.store.get();
-    if (!conn) return json({ error: 'TripIt is not connected' }, 409);
-    const feed = await fetchFeed(conn.url, ctx);
-    if ('error' in feed) return json({ error: feed.error, ...(feed.status === 409 ? { reconnect: true } : {}) }, feed.status);
     const plans = plansFromFeed(feed.text);
     const existing = await ctx.store.existing();
     const changed = plans.filter((p) => existing.get(p.id) !== JSON.stringify(p));
     await ctx.store.savePlans(changed, ctx.now.getTime());
     return json({ ok: true, plans: plans.length, changed: changed.length });
-  }
-
-  if (route === 'disconnect' && request.method === 'POST') {
-    await ctx.store.disconnect();
-    return json({ ok: true });
   }
 
   return json({ error: 'Not found' }, 404);
@@ -171,22 +156,9 @@ function json(body: unknown, status = 200): Response {
 
 export function d1TripitStore(db: D1Database): TripitStore {
   return {
-    async get() {
-      const row = await db
-        .prepare('SELECT token, last_sync FROM integrations WHERE name = ?1')
-        .bind('tripit')
-        .first<{ token: string; last_sync: number | null }>();
-      return row ? { url: row.token, lastSync: row.last_sync } : null;
-    },
-    async connect(url) {
-      // The feed link goes in the `token` column: it is the credential.
-      await db
-        .prepare(
-          `INSERT INTO integrations (name, token, cursor) VALUES ('tripit', ?1, 0)
-           ON CONFLICT (name) DO UPDATE SET token = excluded.token`,
-        )
-        .bind(url)
-        .run();
+    async lastSync() {
+      const row = await db.prepare('SELECT last_sync FROM integrations WHERE name = ?1').bind('tripit').first<{ last_sync: number | null }>();
+      return row?.last_sync ?? null;
     },
     async existing() {
       const { results } = await db
@@ -199,11 +171,14 @@ export function d1TripitStore(db: D1Database): TripitStore {
       const stmt = upsertStatement(db);
       await db.batch([
         ...plans.map((p) => stmt.bind('tripitplans', p.id, JSON.stringify(p), now)),
-        db.prepare('UPDATE integrations SET last_sync = ?1 WHERE name = ?2').bind(now, 'tripit'),
+        // `token` is NOT NULL and there is nothing to keep here (the link is a Worker secret), so it stays empty.
+        db
+          .prepare(
+            `INSERT INTO integrations (name, token, cursor, last_sync) VALUES ('tripit', '', 0, ?1)
+             ON CONFLICT (name) DO UPDATE SET last_sync = excluded.last_sync`,
+          )
+          .bind(now),
       ]);
-    },
-    async disconnect() {
-      await db.prepare('DELETE FROM integrations WHERE name = ?1').bind('tripit').run();
     },
   };
 }
