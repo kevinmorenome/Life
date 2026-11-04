@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
 import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
@@ -106,6 +106,9 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   const setZ = useCallback((z: number) => {
     zRef.current = z;
     wrapRef.current?.style.setProperty('--z', String(z));
+    // Which looks are on screen right now (see the content-visibility rules in styles.css).
+    wrapRef.current?.setAttribute('data-lo', String(Math.floor(z)));
+    wrapRef.current?.setAttribute('data-hi', String(Math.ceil(z)));
     const f = focus.current;
     const el = scrollRef.current;
     const row = f && rowOf(f.week);
@@ -200,16 +203,22 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
     const el = scrollRef.current;
     if (!el) return;
     let frame = 0;
+    // Every week's row is in the DOM (built or not) in order, so the one at the top is found by bisection.
+    const rows = Array.from(el.querySelectorAll<HTMLElement>('[data-week]'));
     const update = () => {
       frame = 0;
       savedScroll = el.scrollTop;
-      for (const week of weeks) {
-        const row = rowOf(week);
-        if (row && row.offsetTop + row.offsetHeight > el.scrollTop) {
-          setVisibleMonth(monthOfWeek(week));
-          return;
-        }
+      let lo = 0;
+      let hi = rows.length - 1;
+      let hit = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (rows[mid].offsetTop + rows[mid].offsetHeight > el.scrollTop) {
+          hit = mid;
+          hi = mid - 1;
+        } else lo = mid + 1;
       }
+      if (hit >= 0) setVisibleMonth(monthOfWeek(rows[hit].dataset.week!));
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -314,7 +323,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   );
 
   return (
-    <div className="cal" ref={wrapRef}>
+    <div className="cal" ref={wrapRef} data-lo={Math.floor(level)} data-hi={Math.ceil(level)}>
       <div className="cal-head">
         <div className="cal-title-row">
           <h2 className="cal-title">
@@ -421,28 +430,25 @@ interface CellProps {
 }
 
 /**
- * One week of the list. The list holds every week of the history (years of them), so a week's days are only built
- * once it comes near the screen (and then stay). Until then the row is an empty box of exactly the same height
- * (CSS, from --row-h), so positions, scrolling and zooming don't depend on which weeks are built.
+ * One week of the list. The list holds every week of the history (years of them), so a week's days exist only while
+ * it is within a few screens of the view: built on the way in, dropped on the way out, which keeps the page small
+ * however far back you scroll. Otherwise the row is an empty box of exactly the same height (CSS, from --row-h), so
+ * positions, scrolling and zooming don't depend on which weeks are built.
  */
 function WeekRow({ start, children }: { start: string; children: () => ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [built, setBuilt] = useState(typeof IntersectionObserver === 'undefined');
   useEffect(() => {
     const el = ref.current;
-    if (built || !el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setBuilt(true);
-          io.disconnect();
-        }
-      },
-      { root: el.closest('.cal-scroll'), rootMargin: '900px 0px' },
-    );
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    // A low-priority update: React builds the weeks between frames instead of inside a scroll frame.
+    const io = new IntersectionObserver((entries) => startTransition(() => setBuilt(entries[entries.length - 1].isIntersecting)), {
+      root: el.closest('.cal-scroll'),
+      rootMargin: '1000px 0px',
+    });
     io.observe(el);
     return () => io.disconnect();
-  }, [built]);
+  }, []);
   return (
     <div ref={ref} className={`cal-week${built ? '' : ' cal-week-blank'}`} role="row" data-week={start}>
       {built ? children() : null}
