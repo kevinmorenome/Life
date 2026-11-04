@@ -22,6 +22,7 @@ export function CountriesStatsRoute() {
   if (checkins.loading || visits.loading) return <p className="muted">Loading…</p>;
   return (
     <>
+      <p className="muted small">From your Swarm check-ins, plus trips added by hand.</p>
       <div className="tiles">
         <Tile value={String(summary.visited)} label={summary.visited === 1 ? 'country' : 'countries'} tone={0} />
         <Tile value={`${Math.round(summary.share * 100)}%`} label="of the world" tone={1} />
