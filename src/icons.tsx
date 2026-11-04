@@ -66,6 +66,15 @@ export const CartIcon = () => (
   </Icon>
 );
 
+/** A shopping bag with a handle and a fork and knife on it: takeout. */
+export const BagIcon = () => (
+  <Icon>
+    <path d="M5.5 8.5h13l1 12h-15z" />
+    <path d="M9 8.5v-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v3" />
+    <path d="M9.5 12.5v2a1 1 0 0 0 2 0v-2M10.5 14.5V18M14.5 18v-5.5c-1.4 1-1.4 3.2 0 3.8" />
+  </Icon>
+);
+
 export const CameraIcon = () => (
   <Icon>
     <path d="M4 8h3l1.5-2.500h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
@@ -202,17 +211,10 @@ export const MoreIcon = () => (
   </Icon>
 );
 
-export const ZoomInIcon = () => (
+/** Funnel: filters. */
+export const FilterIcon = () => (
   <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
-  </Icon>
-);
-
-export const ZoomOutIcon = () => (
-  <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+    <path d="M4 5h16l-6 7.5V19l-4 1.5v-8L4 5Z" />
   </Icon>
 );
 

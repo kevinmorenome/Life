@@ -3139,15 +3139,13 @@ progress {
 /* The three looks of a day sit on top of each other and fade as --z moves between the levels. */
 /* Only the looks that are visible at the current zoom are laid out and painted (the rest are skipped by the
    browser, not removed, so the pinch can still cross-fade them). data-lo / data-hi are floor / ceil of --z,
-   set from CalendarView. Dots show for z < 1, the photo and badges for 0 < z < 2, the pills for z > 1. */
+   set from CalendarView. Dots show for z < 1, the icon grid for 0 < z < 2, the pills and the work icon for 1 < z < 3, the week list for z > 2. */
 .cal:not([data-lo="0"]) .cal-dots,
-.cal[data-hi="0"] .cal-photo,
-.cal[data-hi="0"] .cal-badges,
-.cal[data-hi="0"] .cal-trip,
-.cal[data-lo="2"] .cal-photo,
-.cal[data-lo="2"] .cal-badges,
-.cal[data-lo="2"] .cal-trip,
-.cal:not([data-hi="2"]) .cal-pills {
+.cal[data-hi="0"] .cal-cells,
+.cal:is([data-lo="2"], [data-lo="3"]) .cal-cells,
+.cal:is([data-hi="0"], [data-hi="1"], [data-lo="3"]) .cal-pills,
+.cal:is([data-hi="0"], [data-hi="1"]) .cal-work,
+.cal:not([data-hi="3"]) .cal-full {
   content-visibility: hidden;
 }
 .cal-layer {
@@ -6486,3 +6484,544 @@ a.game-row + .food-h2 {
 .perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
 .perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+
+/* ───────────── Calendar: less clutter ─────────────
+   A day shows a few things and a "+N"; the day screen has the full list. */
+.cal-head {
+  padding-bottom: 0.1rem;
+}
+.cal-title {
+  font-size: 1.4rem;
+}
+.cal-head .work-target-head {
+  font-size: 0.82rem;
+}
+.cal-head .work-target-head .small {
+  font-size: 0.75rem;
+}
+.cal-head .work-bar {
+  height: 4px;
+  margin: 0.3rem 0;
+}
+.cal-weekdays {
+  padding: 0.1rem 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.cal-month {
+  padding-top: 0.6rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.cal-week {
+  border-top-color: var(--glass-line);
+}
+.cal-num {
+  font-size: 0.9rem;
+}
+.cal-dots {
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+}
+.more-count {
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+.cal-badges {
+  gap: 2px;
+}
+.day-badge {
+  width: 16px;
+  height: 16px;
+  box-shadow: none;
+  background: color-mix(in srgb, currentColor 12%, var(--bg));
+}
+.day-badge svg {
+  width: 11px;
+  height: 11px;
+}
+.day-badge.badge-more {
+  color: var(--muted);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-soft);
+}
+.cal-badges.with-photo {
+  left: 50%;
+  margin-left: -17px;
+  width: 34px;
+  justify-content: flex-start;
+}
+.cal-pills {
+  gap: 2px;
+}
+.pill {
+  font-size: 0.6rem;
+  padding: 1px 3px;
+}
+.pill-more {
+  justify-content: center;
+  color: var(--muted);
+  background: none;
+  font-weight: 600;
+}
+.cal-today {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+/* Day screen: calmer header, work times that fit, tighter widget headers. */
+.day-head h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.work-quick-times {
+  gap: 0.3rem;
+}
+.work-quick-times input {
+  padding-left: 0.6rem;
+  padding-right: 0.5rem;
+  font-size: 0.95rem;
+}
+.work-quick-times .icon-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  box-shadow: none;
+  border-color: transparent;
+  background: none;
+}
+.widget-toggle {
+  gap: 0.4rem;
+}
+.widget-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+.widget-chevron {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.widget-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.widget-list li {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+/* Default zoom: each day is a 3×3 grid, the day number first, then one icon per entry (the last cell counts the rest). */
+.cal-cells {
+  top: 3px;
+  left: 2px;
+  right: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 21px;
+  place-items: center;
+  opacity: clamp(0, calc(1 - max(var(--z) - 1, 1 - var(--z))), 1);
+}
+.cal-day.has-cells .cal-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.cell-num {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cell-num.today {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.cell {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-badge {
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-bubble {
+  position: static;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+}
+.cal-cells .day-bubble .thumb {
+  width: 100%;
+  height: 100%;
+  font-size: 0.6rem;
+}
+.cal-cells .day-bubble.pieces-2 .thumb {
+  height: 50%;
+}
+.cal-cells {
+  left: 5px;
+  right: 5px;
+  grid-auto-rows: 19px;
+}
+.cell,
+.cal-cells .day-badge,
+.cal-cells .day-bubble {
+  width: 15px;
+  height: 15px;
+}
+.cal-cells .day-badge svg {
+  width: 10px;
+  height: 10px;
+}
+.cell-num {
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.68rem;
+}
+.cal-cells .badge-more {
+  font-size: 0.5rem;
+}
+
+/* One colour per kind of entry, never shared: dots, grid icons and pills use the same one. */
+:root {
+  --c-office: var(--accent);
+  --c-home: #00a69c;
+  --c-off: #7a8794;
+  --c-trip: #4f5bd5;
+  --c-place: #e53935;
+  --c-games: #8a4fe0;
+  --c-wolt: #f57c00;
+  --c-food: #7fb800;
+  --c-watch: #d81b8a;
+  --c-rides: #1e88e5;
+  --c-music: #1db954;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-office: var(--accent);
+    --c-home: #3fd6cb;
+    --c-off: #a3afbb;
+    --c-trip: #8f9bff;
+    --c-place: #ff7a75;
+    --c-games: #b88cff;
+    --c-wolt: #ff9a3d;
+    --c-food: #b6e83a;
+    --c-watch: #ff6ab8;
+    --c-rides: #4aa8ff;
+    --c-music: #1ed760;
+  }
+}
+:root[data-theme="dark"] {
+  --c-office: var(--accent);
+  --c-home: #3fd6cb;
+  --c-off: #a3afbb;
+  --c-trip: #8f9bff;
+  --c-place: #ff7a75;
+  --c-games: #b88cff;
+  --c-wolt: #ff9a3d;
+  --c-food: #b6e83a;
+  --c-watch: #ff6ab8;
+  --c-rides: #4aa8ff;
+  --c-music: #1ed760;
+}
+.dot.mark-office {
+  background: var(--c-office);
+  box-shadow: none;
+}
+.day-badge.mark-office {
+  color: var(--c-office);
+  background: color-mix(in srgb, var(--c-office) 16%, var(--bg));
+}
+.dot.mark-home {
+  background: var(--c-home);
+  box-shadow: none;
+}
+.day-badge.mark-home {
+  color: var(--c-home);
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.pill.mark-home {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-home .pill-icon {
+  color: var(--c-home);
+}
+.dot.mark-off {
+  background: var(--c-off);
+  box-shadow: none;
+}
+.day-badge.mark-off {
+  color: var(--c-off);
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+}
+.pill.mark-off {
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-off .pill-icon {
+  color: var(--c-off);
+}
+.dot.mark-trip {
+  background: var(--c-trip);
+  box-shadow: none;
+}
+.day-badge.mark-trip {
+  color: var(--c-trip);
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+}
+.pill.mark-trip {
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-trip .pill-icon {
+  color: var(--c-trip);
+}
+.dot.mark-place {
+  background: var(--c-place);
+  box-shadow: none;
+}
+.day-badge.mark-place {
+  color: var(--c-place);
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+}
+.pill.mark-place {
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-place .pill-icon {
+  color: var(--c-place);
+}
+.dot.mark-games {
+  background: var(--c-games);
+  box-shadow: none;
+}
+.day-badge.mark-games {
+  color: var(--c-games);
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+}
+.pill.mark-games {
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-games .pill-icon {
+  color: var(--c-games);
+}
+.dot.mark-wolt {
+  background: var(--c-wolt);
+  box-shadow: none;
+}
+.day-badge.mark-wolt {
+  color: var(--c-wolt);
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+}
+.pill.mark-wolt {
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-wolt .pill-icon {
+  color: var(--c-wolt);
+}
+.dot.mark-food {
+  background: var(--c-food);
+  box-shadow: none;
+}
+.day-badge.mark-food {
+  color: var(--c-food);
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+}
+.pill.mark-food {
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-food .pill-icon {
+  color: var(--c-food);
+}
+.dot.mark-watch {
+  background: var(--c-watch);
+  box-shadow: none;
+}
+.day-badge.mark-watch {
+  color: var(--c-watch);
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+}
+.pill.mark-watch {
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-watch .pill-icon {
+  color: var(--c-watch);
+}
+.dot.mark-rides {
+  background: var(--c-rides);
+  box-shadow: none;
+}
+.day-badge.mark-rides {
+  color: var(--c-rides);
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+}
+.pill.mark-rides {
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-rides .pill-icon {
+  color: var(--c-rides);
+}
+.dot.mark-music {
+  background: var(--c-music);
+  box-shadow: none;
+}
+.day-badge.mark-music {
+  color: var(--c-music);
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+}
+.pill.mark-music {
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-music .pill-icon {
+  color: var(--c-music);
+}
+.dot-trip {
+  background: var(--c-trip);
+}
+.cell-slot {
+  display: grid;
+  place-items: center;
+}
+
+/* Zoomed in: the day number slides to the left corner as --z goes from 1 to 2, and the pills start right under it,
+   so five fit before "+N more". */
+.cal-day {
+  container-type: inline-size;
+}
+.cal-num {
+  translate: calc(clamp(0, var(--z) - 1, 1) * (16px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 7px * clamp(0, var(--z) - 1, 1));
+}
+.cal-num {
+  min-width: 24px;
+  height: 24px;
+  translate: calc(clamp(0, var(--z) - 1, 1) * (15px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 4px * clamp(0, var(--z) - 1, 1));
+}
+
+/* Zoomed in: office / home / day off is just an icon in the top-right corner, level with the number. */
+.cal-work {
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  opacity: clamp(0, calc(var(--z) - 1), 1);
+}
+.cal-work svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ───────────── Calendar: week zoom and filters ───────────── */
+/* Row height now runs on to a whole week with every entry (--z 2 → 3). */
+.cal {
+  --row-h: calc(46px + 22px * min(var(--z), 1) + 52px * clamp(0, var(--z) - 1, 1) + 190px * clamp(0, var(--z) - 2, 1));
+}
+.cal-pills {
+  opacity: clamp(0, min(var(--z) - 1, 3 - var(--z)), 1);
+}
+.cal-full {
+  top: 27px;
+  left: 1px;
+  right: 1px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: clamp(0, var(--z) - 2, 1);
+}
+.cal-full .pill {
+  align-items: flex-start;
+  flex: none;
+  padding: 2px 3px;
+}
+.cal-full .pill-icon {
+  flex: none;
+  margin-top: 1px;
+}
+.cal-full .pill-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.cal-full .pill-more {
+  justify-content: center;
+}
+.cal-full .pill.mark-home,
+.cal-full .pill.mark-off {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.cal-tools .icon-btn.filtering {
+  color: var(--accent);
+}
+.cal-filters {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.15rem -12px 0.3rem;
+  padding: 0 12px 0.15rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cal-filters::-webkit-scrollbar {
+  display: none;
+}
+.cal-filters .chip {
+  flex: none;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+/* The week zoom gives the width to the text: the pill colour already says what kind of entry it is. */
+.cal-full .pill-icon {
+  display: none;
+}
+.cal-full .pill-text {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}

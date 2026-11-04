@@ -1,13 +1,13 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, MoreIcon, PlusIcon, ShirtIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
+import { FILTER_KINDS, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
 import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
-import { fitTiles, OUTFIT_PILL_HEIGHT, PILL_GAP, PILL_HEIGHT, slotsLeft } from './dayTiles';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
 import { plannedByDay } from './plans';
@@ -26,6 +26,7 @@ interface Props {
 
 // Kept at module level so opening a day and coming back lands where you were (the view unmounts).
 const ZOOM_KEY = 'life.calendarZoom';
+const FILTER_KEY = 'life.calendarFilter';
 let savedLevel: number | undefined;
 let savedScroll: number | undefined;
 
@@ -44,6 +45,23 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
   const now = today();
   const nowMonth = now.slice(0, 7);
   const [level, setLevel] = useState(loadLevel);
+  // Which kinds of entry to show (none selected = all), remembered in this browser.
+  const [filter, setFilterState] = useState<string[]>(() => {
+    try {
+      return parseFilter(localStorage.getItem(FILTER_KEY));
+    } catch {
+      return [];
+    }
+  });
+  const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
+  const setFilter = (next: string[]) => {
+    setFilterState(next);
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(next));
+    } catch {
+      // Not remembered; fine.
+    }
+  };
   const [visibleMonth, setVisibleMonth] = useState(month ?? nowMonth);
   const wearDays = useMemo(() => wearsByDay(items, outfits), [items, outfits]);
   const planned = useMemo(() => plannedByDay(plans, outfits), [plans, outfits]);
@@ -123,12 +141,6 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
     },
     [setZ],
   );
-
-  const stepLevel = (dir: 1 | -1) => {
-    const el = scrollRef.current;
-    pin(el ? el.clientHeight / 3 : 0);
-    settle(nearestLevel(zRef.current + dir));
-  };
 
   // The calendar fills the screen below the top bar and scrolls inside it; the dock floats over its
   // bottom, so the scroll area gets enough bottom padding for the last week to clear the dock.
@@ -319,14 +331,23 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
             {String(year) !== now.slice(0, 4) && <small>{year}</small>}
           </h2>
           <div className="cal-tools">
-            <button className="icon-btn" aria-label="Zoom out" disabled={level === 0} onClick={() => stepLevel(-1)}>
-              <ZoomOutIcon />
-            </button>
-            <button className="icon-btn" aria-label="Zoom in" disabled={level === MAX_ZOOM} onClick={() => stepLevel(1)}>
-              <ZoomInIcon />
+            <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
+              <FilterIcon />
             </button>
           </div>
         </div>
+        {filtersOpen && (
+          <div className="cal-filters" role="group" aria-label="Show">
+            <button className="chip" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>
+              All
+            </button>
+            {FILTER_KINDS.map((k) => (
+              <button key={k.id} className={`chip chip-kind kind-${k.id}`} aria-pressed={filter.includes(k.id)} onClick={() => setFilter(toggleKind(filter, k.id))}>
+                {k.label}
+              </button>
+            ))}
+          </div>
+        )}
         {layers.map((l, i) => (
           <div key={i}>{l.header?.(visibleMonth)}</div>
         ))}
@@ -361,6 +382,7 @@ export function CalendarView({ month, items, outfits, trips = [], plans = [], la
                       planned={planned.get(date)}
                       trips={tripsOnDate(trips, date)}
                       layers={layers}
+                      filter={filter}
                       items={items}
                       onClick={(e) => openDay(e, date)}
                     />
@@ -402,6 +424,7 @@ interface CellProps {
   planned?: Outfit[];
   trips: Trip[];
   layers: CalendarLayer[];
+  filter: string[];
   items: ClothingItem[];
   onClick: (e: MouseEvent<HTMLAnchorElement>) => void;
 }
@@ -437,60 +460,142 @@ function WeekRow({ start, children }: { start: string; children: () => ReactNode
  * A day shows all three zoom levels at once, stacked: --z (set on the calendar) fades dots into a photo with
  * badges and then into labelled pills, so zooming can run continuously.
  */
-function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }: CellProps) {
+function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, layers, filter, items, onClick }: CellProps) {
   const marks = layers.flatMap((l) => {
     const mark = l.mark?.(date);
-    return mark ? [mark] : [];
+    return mark && isShown(filter, kindOfTone(mark.tone)) ? [mark] : [];
   });
+  const wear = isShown(filter, 'outfit') ? allWear : undefined;
+  const planned = isShown(filter, 'outfit') ? allPlanned : undefined;
+  const trips = isShown(filter, 'trip') ? allTrips : [];
   const hasOutfit = !!wear || !!planned?.length;
   const outfit = wear?.outfits[0];
   const lone = wear?.items[0];
   const extra = wear ? wear.outfits.length + wear.items.length - 1 : 0;
-  // Text pills left for the marks that list one pill per entry, once the outfit, trips and other marks have theirs.
-  const used = (wear ? OUTFIT_PILL_HEIGHT + PILL_GAP : 0) + (!wear && planned?.length ? PILL_HEIGHT + PILL_GAP : 0) + (trips.length + marks.filter((m) => !m.tiles).length) * (PILL_HEIGHT + PILL_GAP);
-  const slots = slotsLeft(used);
+  // A day never shows more than a few things in a row: the rest is a "+N". The full list is on the day screen.
+  const dotMarks = marks.slice(0, MAX_DOTS - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0));
+  const dotsHidden = marks.length - dotMarks.length;
+  // The 3×3 grid: the day number sits in the first cell and the first row stays empty until the six cells below
+  // it are used; then the two cells next to the number fill, and the last one counts the rest.
+  const icons: ReactNode[] = [];
+  if (hasOutfit)
+    icons.push(
+      <span className="cell">
+        <DayBubble wear={wear} planned={planned} items={items} />
+      </span>,
+    );
+  if (trips.length > 0)
+    icons.push(
+      <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
+        <SuitcaseIcon />
+      </span>,
+    );
+  marks.forEach((m) =>
+    icons.push(
+      <span className={`cell day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
+        {m.icon}
+      </span>,
+    ),
+  );
+  const iconsHidden = icons.length > CELLS ? icons.length - (CELLS - 1) : 0;
+  const shownIcons = iconsHidden ? icons.slice(0, CELLS - 1) : icons;
+  const cellAt = (i: number) => (i < 6 ? { gridRow: 2 + Math.floor(i / 3), gridColumn: 1 + (i % 3) } : { gridRow: 1, gridColumn: i - 4 });
+  // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
+  const pills: ReactNode[] = [];
+  if (wear) {
+    pills.push(
+      <span key="outfit" className="pill pill-outfit">
+        <DayBubble wear={wear} items={items} />
+        <span className="pill-text">
+          {outfit ? outfitName(outfit) : lone?.name}
+          {extra > 0 && ` +${extra}`}
+        </span>
+      </span>,
+    );
+  } else if (planned && planned.length > 0) {
+    pills.push(
+      <span key="plan" className="pill pill-outfit planned">
+        {outfitName(planned[0])}
+      </span>,
+    );
+  }
+  trips.forEach((t) =>
+    pills.push(
+      <span key={t.id} className="pill pill-trip">
+        🧳 {t.name}
+      </span>,
+    ),
+  );
+  // Where you worked is only an icon, in the corner beside the number.
+  const workMark = marks.find((m) => WORK_TONES.includes(m.tone));
+  marks.forEach((m, i) => {
+    if (m !== workMark) pills.push(<MarkPill key={i} mark={m} />);
+  });
+  // The week zoom lists everything: each outfit, piece, trip and entry of a module on its own line.
+  const full: ReactNode[] = [];
+  const fullPill = (key: string, tone: string, icon: ReactNode, text: string) =>
+    full.push(
+      <span key={key} className={`pill ${tone}`}>
+        <span className="pill-icon">{icon}</span>
+        <span className="pill-text">{text}</span>
+      </span>,
+    );
+  if (wear) {
+    wear.outfits.forEach((o) => fullPill(`o${o.id}`, 'pill-outfit', <ShirtIcon />, outfitName(o)));
+    wear.items.forEach((i) => fullPill(`i${i.id}`, 'pill-outfit', <ShirtIcon />, i.name));
+  } else if (planned?.length) planned.forEach((o) => fullPill(`p${o.id}`, 'pill-outfit planned', <ShirtIcon />, outfitName(o)));
+  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', <SuitcaseIcon />, t.name));
+  marks.forEach((m, i) => {
+    if (m === workMark) return;
+    (m.tiles?.length ? m.tiles : [m.label]).forEach((t, j) => fullPill(`m${i}-${j}`, `mark-${m.tone}`, m.icon, t));
+  });
+  const fullHidden = full.length > MAX_FULL ? full.length - (MAX_FULL - 1) : 0;
+  const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
+  const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
-    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
       <span className="cal-num">{Number(date.slice(8))}</span>
       {(hasOutfit || marks.length > 0 || trips.length > 0) && (
         <>
           <span className="cal-layer cal-dots">
             {hasOutfit && <i className={`dot dot-outfit${wear ? '' : ' planned'}`} />}
-            {marks.map((m, i) => (
+            {dotMarks.map((m, i) => (
               <i key={i} className={`dot mark-${m.tone}`} title={m.label} />
             ))}
             {trips.length > 0 && <i className="dot dot-trip" />}
+            {dotsHidden > 0 && <b className="more-count">+{dotsHidden}</b>}
           </span>
-          <span className="cal-layer cal-photo">
-            <DayBubble wear={wear} planned={planned} items={items} />
-          </span>
-          <span className={`cal-layer cal-badges${hasOutfit ? ' with-photo' : ''}`}>
-            {marks.map((m, i) => (
-              <span key={i} className={`day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
-                {m.icon}
+          <span className="cal-layer cal-cells">
+            <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
+            {shownIcons.map((el, i) => (
+              <span key={i} className="cell-slot" style={cellAt(i)}>
+                {el}
               </span>
             ))}
-          </span>
-          {trips.length > 0 && <i className="cal-layer cal-trip" />}
-          <span className="cal-layer cal-pills">
-            {marks.map((m, i) => (
-              <MarkPills key={i} mark={m} slots={slots} />
-            ))}
-            {wear && (
-              <span className="pill pill-outfit">
-                <DayBubble wear={wear} items={items} />
-                <span className="pill-text">
-                  {outfit ? outfitName(outfit) : lone?.name}
-                  {extra > 0 && ` +${extra}`}
+            {iconsHidden > 0 && (
+              <span className="cell-slot" style={cellAt(CELLS - 1)}>
+                <span className="cell day-badge badge-more" role="img" aria-label={`${iconsHidden} more`}>
+                  +{iconsHidden}
                 </span>
               </span>
             )}
-            {!wear && planned && planned.length > 0 && <span className="pill pill-outfit planned">{outfitName(planned[0])}</span>}
-            {trips.map((t) => (
-              <span key={t.id} className="pill pill-trip">
-                🧳 {t.name}
+          </span>
+          {workMark && (
+            <span className={`cal-layer cal-work day-badge mark-${workMark.tone}`} role="img" aria-label={workMark.label}>
+              {workMark.icon}
+            </span>
+          )}
+          <span className="cal-layer cal-pills">
+            {shownPills}
+            {pillsHidden > 0 && (
+              <span className="pill pill-more" aria-label={`${pillsHidden} more`}>
+                +{pillsHidden} more
               </span>
-            ))}
+            )}
+          </span>
+          <span className="cal-layer cal-full">
+            {fullHidden ? full.slice(0, MAX_FULL - 1) : full}
+            {fullHidden > 0 && <span className="pill pill-more">+{fullHidden} more</span>}
           </span>
         </>
       )}
@@ -498,34 +603,21 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   );
 }
 
-/** A module's mark at full zoom: one pill, or one per entry (`tiles`) with a "more" pill for those that don't fit. */
-function MarkPills({ mark: m, slots }: { mark: DayMark; slots: number }) {
-  if (!m.tiles) {
-    return (
-      <span className={`pill mark-${m.tone}`}>
-        <span className="pill-icon">{m.icon}</span>
-        {m.detail ?? m.label}
-      </span>
-    );
-  }
-  const { shown, more } = fitTiles(m.tiles.length, slots);
+/** At most this many dots, grid icons (the last one a "+N" when there are more) and labelled pills fit in a day. */
+const MAX_DOTS = 4;
+const CELLS = 8;
+const WORK_TONES = ['office', 'home', 'off'];
+const MAX_PILLS = 5;
+const MAX_FULL = 10;
+
+/** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
+function MarkPill({ mark: m }: { mark: DayMark }) {
+  const text = m.tiles?.length ? `${m.tiles[0]}${m.tiles.length > 1 ? ` +${m.tiles.length - 1}` : ''}` : m.label;
   return (
-    <>
-      {m.tiles.slice(0, shown).map((t, i) => (
-        <span key={i} className={`pill mark-${m.tone}`}>
-          <span className="pill-icon">{m.icon}</span>
-          <span className="pill-text">{t}</span>
-        </span>
-      ))}
-      {more > 0 && (
-        <span className={`pill pill-more mark-${m.tone}`} aria-label={`${more} more`}>
-          <span className="pill-icon">
-            <MoreIcon />
-          </span>
-          +{more}
-        </span>
-      )}
-    </>
+    <span className={`pill mark-${m.tone}`}>
+      <span className="pill-icon">{m.icon}</span>
+      <span className="pill-text">{text}</span>
+    </span>
   );
 }
 
