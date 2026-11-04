@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { newId } from '../../lib/db';
 import { today } from '../../lib/format';
+import { resizeImage } from '../../lib/image';
 import { navigate } from '../../lib/router';
 import type { Trip } from './types';
 
@@ -14,7 +15,19 @@ export function TripForm({ existing, onSave }: Props) {
   const [destination, setDestination] = useState(existing?.destination ?? '');
   const [startDate, setStartDate] = useState(existing?.startDate ?? today());
   const [endDate, setEndDate] = useState(existing?.endDate ?? today());
+  const [photo, setPhoto] = useState(existing?.photo);
+  const [photoError, setPhotoError] = useState('');
   const back = existing ? `/trips/${existing.id}` : '/trips';
+
+  async function pickPhoto(file: File | undefined) {
+    if (!file) return;
+    try {
+      setPhoto(await resizeImage(file, 1000, 0.75));
+      setPhotoError('');
+    } catch {
+      setPhotoError('Couldn’t read that picture.');
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -28,6 +41,7 @@ export function TripForm({ existing, onSave }: Props) {
       id: existing?.id ?? newId(),
       name: name.trim(),
       destination: destination.trim() || undefined,
+      photo,
       startDate,
       endDate,
       createdAt: existing?.createdAt ?? now,
@@ -40,6 +54,22 @@ export function TripForm({ existing, onSave }: Props) {
   return (
     <form className="form" onSubmit={submit}>
       <h1>{existing ? 'Edit trip' : 'New trip'}</h1>
+      <div className="field trip-photo-field">
+        <span>Picture (optional)</span>
+        {photo && <img className="trip-photo" src={photo} alt="" />}
+        <div className="trip-photo-actions">
+          <label className="btn btn-ghost">
+            {photo ? 'Change picture' : 'Choose a picture'}
+            <input type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
+          </label>
+          {photo && (
+            <button type="button" className="btn btn-ghost" onClick={() => setPhoto(undefined)}>
+              Remove
+            </button>
+          )}
+        </div>
+        {photoError && <p className="muted small" role="alert">{photoError}</p>}
+      </div>
       <label className="field">
         <span>Name</span>
         <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Long weekend in Lisbon" />

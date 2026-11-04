@@ -26,7 +26,8 @@ export function TripList({ trips, items, outfits }: Props) {
             const nights = tripDays(t).length;
             return (
               <li key={t.id}>
-                <a className="card trip-card" href={href(`/trips/${t.id}`)}>
+                <a className={`card trip-card${t.photo ? ' has-photo' : ''}`} href={href(`/trips/${t.id}`)}>
+                  {t.photo && <img className="trip-cover" src={t.photo} alt="" loading="lazy" />}
                   <strong>{t.name}</strong>
                   <span className="muted small">
                     {[t.destination, `${shortDate(t.startDate)} – ${shortDate(t.endDate)}`, `${nights} ${nights === 1 ? 'day' : 'days'}`]

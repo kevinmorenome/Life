@@ -57,6 +57,7 @@ export function TripView({ trip, tab, items, outfits, onSave, onDelete }: Props)
 
   return (
     <article className="detail">
+      {trip.photo && <img className="trip-photo" src={trip.photo} alt="" />}
       <div className="title-row">
         <h1>{trip.name}</h1>
         <a className="pack-icon" href={href(`/trips/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
