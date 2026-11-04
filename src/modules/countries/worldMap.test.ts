@@ -19,4 +19,15 @@ describe('worldMap', () => {
     const polar = [[0, -70], [10, -70], [10, -80], [0, -80], [0, -70]];
     expect(geometryPath({ type: 'Polygon', coordinates: [polar] })).toBe('');
   });
+  it('does not draw a line across the map for a country that crosses 180°', () => {
+    // A Fiji-like island group: points on both sides of the antimeridian.
+    const ring = [[178, -16], [180, -16.5], [-179, -16.5], [-179, -18], [180, -18], [178, -18], [178, -16]];
+    const d = geometryPath({ type: 'Polygon', coordinates: [ring] });
+    const xs = [...d.matchAll(/[ML]([\d.]+) /g)].map((m) => Number(m[1]));
+    // Each drawn copy stays within a small stretch of the map, not spanning from one side to the other.
+    const first = d.split('Z')[0];
+    const fx = [...first.matchAll(/[ML]([\d.]+) /g)].map((m) => Number(m[1]));
+    expect(Math.max(...fx) - Math.min(...fx)).toBeLessThan(MAP_WIDTH / 10);
+    expect(xs.length).toBeGreaterThan(fx.length);
+  });
 });

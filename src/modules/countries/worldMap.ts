@@ -40,17 +40,45 @@ export type Geometry = { type: 'Polygon'; coordinates: Ring[] } | { type: 'Multi
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
+/**
+ * A ring that crosses the 180° meridian jumps from one edge of the map to the other. Make its longitudes
+ * continuous instead, so it runs past the edge; the part that sticks out is drawn again on the other side.
+ */
+function unwrap(ring: Ring): number[][] {
+  const out: number[][] = [];
+  let shift = 0;
+  ring.forEach(([lng, lat], i) => {
+    if (i > 0) {
+      const jump = lng + shift - out[i - 1][0];
+      if (jump > 180) shift -= 360;
+      else if (jump < -180) shift += 360;
+    }
+    out.push([lng + shift, lat]);
+  });
+  return out;
+}
+
+const ringPath = (ring: number[][], offset: number) =>
+  ring
+    .map(([lng, lat], i) => {
+      const [x, y] = toScreen(lng + offset, lat);
+      return `${i === 0 ? 'M' : 'L'}${r1(x)} ${r1(y)}`;
+    })
+    .join('') + 'Z';
+
 /** SVG path data for a (multi)polygon. Rings that lie entirely south of the map are dropped. */
 export function geometryPath(g: Geometry): string {
   const polygons = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
   let d = '';
   for (const rings of polygons) {
-    for (const ring of rings) {
-      if (ring.every(([, lat]) => lat < SOUTH)) continue;
-      d += ring.map(([lng, lat], i) => {
-        const [x, y] = toScreen(lng, lat);
-        return `${i === 0 ? 'M' : 'L'}${r1(x)} ${r1(y)}`;
-      }).join('') + 'Z';
+    for (const raw of rings) {
+      if (raw.every(([, lat]) => lat < SOUTH)) continue;
+      const ring = unwrap(raw);
+      d += ringPath(ring, 0);
+      const lngs = ring.map(([lng]) => lng);
+      // The map only shows -180..180: draw the copy that pokes out past one edge on the other side.
+      if (Math.max(...lngs) > 180) d += ringPath(ring, -360);
+      if (Math.min(...lngs) < -180) d += ringPath(ring, 360);
     }
   }
   return d;

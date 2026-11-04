@@ -5874,25 +5874,6 @@ a.game-row + .food-h2 {
   padding: 6%;
 }
 
-/* Countries: map and list */
-.world-map {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.wm-country {
-  fill: var(--border);
-  stroke: var(--bg);
-  stroke-width: 0.6;
-}
-.wm-visited {
-  fill: var(--accent);
-}
-.wm-dot {
-  stroke: var(--bg);
-  stroke-width: 1.5;
-}
-.country-list {
 /* Wolt orders */
 .dot.mark-wolt {
   background: var(--tone-orange);
@@ -5946,24 +5927,6 @@ a.game-row + .food-h2 {
   margin: 0;
   padding: 0;
 }
-.country-row {
-  border-top: 1px solid var(--border);
-}
-.country-head {
-  display: flex;
-  align-items: center;
-}
-.country-main {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 44px;
-  padding: 0.5rem 0;
-  background: none;
-  border: 0;
-  color: inherit;
 .shop-list li {
   display: flex;
   align-items: center;
@@ -6174,14 +6137,6 @@ a.game-row + .food-h2 {
   text-align: left;
   cursor: pointer;
 }
-.country-name {
-  font-weight: 500;
-}
-.country-detail {
-  padding: 0 0 0.75rem;
-}
-.country-detail p {
-  margin: 0 0 0.25rem;
 .widget-icon {
   display: grid;
   flex: none;
@@ -7069,4 +7024,59 @@ a.game-row + .food-h2 {
 .cal-full .pill-text {
   overflow-wrap: break-word;
   hyphens: auto;
+}
+
+/* Countries: map and list */
+.world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.wm-country {
+  fill: var(--border);
+  stroke: var(--bg);
+  stroke-width: 0.6;
+}
+.wm-visited {
+  fill: var(--accent);
+}
+.wm-dot {
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.country-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.country-row {
+  border-top: 1px solid var(--border);
+}
+.country-head {
+  display: flex;
+  align-items: center;
+}
+.country-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.country-name {
+  font-weight: 500;
+}
+.country-detail {
+  padding: 0 0 0.75rem;
+}
+.country-detail p {
+  margin: 0 0 0.25rem;
 }
