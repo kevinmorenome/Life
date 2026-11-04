@@ -30,10 +30,10 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
   const wear = wearsByDay(items, outfits).get(date) ?? { outfits: [], items: [] };
   const isFuture = date > today();
   const title = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
-    weekday: 'long',
+    weekday: 'short',
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
+    ...(date.slice(0, 4) !== today().slice(0, 4) ? { year: 'numeric' as const } : {}),
   });
 
   // Outfits packed for a trip on this day that haven't been logged yet.

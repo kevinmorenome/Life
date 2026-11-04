@@ -6498,3 +6498,144 @@ a.game-row + .food-h2 {
 .perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
 .perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+
+/* ───────────── Calendar: less clutter ─────────────
+   A day shows a few things and a "+N"; the day screen has the full list. */
+.cal-head {
+  padding-bottom: 0.1rem;
+}
+.cal-title {
+  font-size: 1.4rem;
+}
+.cal-head .work-target-head {
+  font-size: 0.82rem;
+}
+.cal-head .work-target-head .small {
+  font-size: 0.75rem;
+}
+.cal-head .work-bar {
+  height: 4px;
+  margin: 0.3rem 0;
+}
+.cal-weekdays {
+  padding: 0.1rem 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.cal-month {
+  padding-top: 0.6rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.cal-week {
+  border-top-color: var(--glass-line);
+}
+.cal-num {
+  font-size: 0.9rem;
+}
+.cal-dots {
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+}
+.more-count {
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+.cal-badges {
+  gap: 2px;
+}
+.day-badge {
+  width: 16px;
+  height: 16px;
+  box-shadow: none;
+  background: color-mix(in srgb, currentColor 12%, var(--bg));
+}
+.day-badge svg {
+  width: 11px;
+  height: 11px;
+}
+.day-badge.badge-more {
+  color: var(--muted);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-soft);
+}
+.cal-badges.with-photo {
+  left: 50%;
+  margin-left: -17px;
+  width: 34px;
+  justify-content: flex-start;
+}
+.cal-pills {
+  gap: 2px;
+}
+.pill {
+  font-size: 0.6rem;
+  padding: 1px 3px;
+}
+.pill-more {
+  justify-content: center;
+  color: var(--muted);
+  background: none;
+  font-weight: 600;
+}
+.cal-today {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+/* Day screen: calmer header, work times that fit, tighter widget headers. */
+.day-head h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.work-quick-times {
+  gap: 0.3rem;
+}
+.work-quick-times input {
+  padding-left: 0.6rem;
+  padding-right: 0.5rem;
+  font-size: 0.95rem;
+}
+.work-quick-times .icon-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  box-shadow: none;
+  border-color: transparent;
+  background: none;
+}
+.widget-toggle {
+  gap: 0.4rem;
+}
+.widget-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+.widget-chevron {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.widget-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.widget-list li {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}

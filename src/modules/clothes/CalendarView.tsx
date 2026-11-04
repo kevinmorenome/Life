@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, MoreIcon, PlusIcon, ShirtIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
+import { CalendarIcon, PlusIcon, ShirtIcon, ZoomInIcon, ZoomOutIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../packing/packing';
 import type { Trip } from '../packing/types';
 import { addMonths, wearsByDay, type DayWear } from './calendar';
 import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
-import { fitTiles, OUTFIT_PILL_HEIGHT, PILL_GAP, PILL_HEIGHT, slotsLeft } from './dayTiles';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
 import { plannedByDay } from './plans';
@@ -440,9 +439,40 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   const outfit = wear?.outfits[0];
   const lone = wear?.items[0];
   const extra = wear ? wear.outfits.length + wear.items.length - 1 : 0;
-  // Text pills left for the marks that list one pill per entry, once the outfit, trips and other marks have theirs.
-  const used = (wear ? OUTFIT_PILL_HEIGHT + PILL_GAP : 0) + (!wear && planned?.length ? PILL_HEIGHT + PILL_GAP : 0) + (trips.length + marks.filter((m) => !m.tiles).length) * (PILL_HEIGHT + PILL_GAP);
-  const slots = slotsLeft(used);
+  // A day never shows more than a few things in a row: the rest is a "+N". The full list is on the day screen.
+  const dotMarks = marks.slice(0, MAX_DOTS - (hasOutfit ? 1 : 0) - (trips.length ? 1 : 0));
+  const dotsHidden = marks.length - dotMarks.length;
+  const badgeMarks = marks.length > MAX_BADGES ? marks.slice(0, MAX_BADGES - 1) : marks;
+  const badgesHidden = marks.length - badgeMarks.length;
+  // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
+  const pills: ReactNode[] = [];
+  if (wear) {
+    pills.push(
+      <span key="outfit" className="pill pill-outfit">
+        <DayBubble wear={wear} items={items} />
+        <span className="pill-text">
+          {outfit ? outfitName(outfit) : lone?.name}
+          {extra > 0 && ` +${extra}`}
+        </span>
+      </span>,
+    );
+  } else if (planned && planned.length > 0) {
+    pills.push(
+      <span key="plan" className="pill pill-outfit planned">
+        {outfitName(planned[0])}
+      </span>,
+    );
+  }
+  trips.forEach((t) =>
+    pills.push(
+      <span key={t.id} className="pill pill-trip">
+        🧳 {t.name}
+      </span>,
+    ),
+  );
+  marks.forEach((m, i) => pills.push(<MarkPill key={i} mark={m} />));
+  const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
+  const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
     <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
       <span className="cal-num">{Number(date.slice(8))}</span>
@@ -450,41 +480,35 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
         <>
           <span className="cal-layer cal-dots">
             {hasOutfit && <i className={`dot dot-outfit${wear ? '' : ' planned'}`} />}
-            {marks.map((m, i) => (
+            {dotMarks.map((m, i) => (
               <i key={i} className={`dot mark-${m.tone}`} title={m.label} />
             ))}
             {trips.length > 0 && <i className="dot dot-trip" />}
+            {dotsHidden > 0 && <b className="more-count">+{dotsHidden}</b>}
           </span>
           <span className="cal-layer cal-photo">
             <DayBubble wear={wear} planned={planned} items={items} />
           </span>
           <span className={`cal-layer cal-badges${hasOutfit ? ' with-photo' : ''}`}>
-            {marks.map((m, i) => (
+            {badgeMarks.map((m, i) => (
               <span key={i} className={`day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
                 {m.icon}
               </span>
             ))}
+            {badgesHidden > 0 && (
+              <span className="day-badge badge-more" role="img" aria-label={`${badgesHidden} more`}>
+                +{badgesHidden}
+              </span>
+            )}
           </span>
           {trips.length > 0 && <i className="cal-layer cal-trip" />}
           <span className="cal-layer cal-pills">
-            {marks.map((m, i) => (
-              <MarkPills key={i} mark={m} slots={slots} />
-            ))}
-            {wear && (
-              <span className="pill pill-outfit">
-                <DayBubble wear={wear} items={items} />
-                <span className="pill-text">
-                  {outfit ? outfitName(outfit) : lone?.name}
-                  {extra > 0 && ` +${extra}`}
-                </span>
+            {shownPills}
+            {pillsHidden > 0 && (
+              <span className="pill pill-more" aria-label={`${pillsHidden} more`}>
+                +{pillsHidden} more
               </span>
             )}
-            {!wear && planned && planned.length > 0 && <span className="pill pill-outfit planned">{outfitName(planned[0])}</span>}
-            {trips.map((t) => (
-              <span key={t.id} className="pill pill-trip">
-                🧳 {t.name}
-              </span>
-            ))}
           </span>
         </>
       )}
@@ -492,34 +516,19 @@ function DayCell({ date, isToday, wear, planned, trips, layers, items, onClick }
   );
 }
 
-/** A module's mark at full zoom: one pill, or one per entry (`tiles`) with a "more" pill for those that don't fit. */
-function MarkPills({ mark: m, slots }: { mark: DayMark; slots: number }) {
-  if (!m.tiles) {
-    return (
-      <span className={`pill mark-${m.tone}`}>
-        <span className="pill-icon">{m.icon}</span>
-        {m.detail ?? m.label}
-      </span>
-    );
-  }
-  const { shown, more } = fitTiles(m.tiles.length, slots);
+/** At most this many dots, icon badges (the last one a "+N" when there are more) and labelled pills fit in a day. */
+const MAX_DOTS = 4;
+const MAX_BADGES = 3;
+const MAX_PILLS = 3;
+
+/** A module's mark at full zoom: one pill. Marks with several entries (`tiles`) show the first and how many more. */
+function MarkPill({ mark: m }: { mark: DayMark }) {
+  const text = m.tiles?.length ? `${m.tiles[0]}${m.tiles.length > 1 ? ` +${m.tiles.length - 1}` : ''}` : m.label;
   return (
-    <>
-      {m.tiles.slice(0, shown).map((t, i) => (
-        <span key={i} className={`pill mark-${m.tone}`}>
-          <span className="pill-icon">{m.icon}</span>
-          <span className="pill-text">{t}</span>
-        </span>
-      ))}
-      {more > 0 && (
-        <span className={`pill pill-more mark-${m.tone}`} aria-label={`${more} more`}>
-          <span className="pill-icon">
-            <MoreIcon />
-          </span>
-          +{more}
-        </span>
-      )}
-    </>
+    <span className={`pill mark-${m.tone}`}>
+      <span className="pill-icon">{m.icon}</span>
+      <span className="pill-text">{text}</span>
+    </span>
   );
 }
 
