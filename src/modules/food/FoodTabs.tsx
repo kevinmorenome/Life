@@ -1,10 +1,12 @@
 import { navigate } from '../../lib/router';
 
-/** Switches between receipts and stock; Food has one place in More. */
-export function FoodTabs({ active }: { active: 'receipts' | 'stock' }) {
+/** Switches between receipts, stock, the shopping list and the product search; Food has one place in More. */
+export function FoodTabs({ active }: { active: 'receipts' | 'stock' | 'shopping' | 'products' }) {
   const tabs = [
     { id: 'receipts', label: 'Receipts', path: '/food' },
     { id: 'stock', label: 'Stock', path: '/food/stock' },
+    { id: 'shopping', label: 'Shopping', path: '/food/shopping' },
+    { id: 'products', label: 'Products', path: '/food/products' },
   ] as const;
   return (
     <div className="seg" role="tablist" aria-label="Food sections" style={{ ['--tabs' as string]: tabs.length }}>

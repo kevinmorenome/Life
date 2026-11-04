@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { BatchList, type BatchAct } from './BatchList';
 import { PictureControl } from './PictureControl';
+import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
 import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
@@ -12,7 +14,7 @@ import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type Pr
 const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
 
 /** One product: how it is tracked, and every time you bought it. */
-const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted' } as const;
+const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by', freeze: 'Froze', thaw: 'Took out' } as const;
 
 export function ProductView({
   product,
@@ -33,6 +35,9 @@ export function ProductView({
     const n = Number((window.prompt(question, fallback) ?? '').trim().replace(',', '.'));
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
   };
+  const [note, setNote] = useState<BatchAct | null>(null);
+  const comparison = comparePrices(product, today());
+  const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
   const [pack, setPack] = useState(product.packSize ? String(product.packSize) : '');
   const [label, setLabel] = useState(product.packLabel ?? '');
@@ -59,7 +64,7 @@ export function ProductView({
 
   return (
     <>
-      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined })} />
+      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
       <h1 className="page-title">{product.name}</h1>
       <p className="muted small">
         Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
@@ -130,6 +135,37 @@ export function ProductView({
         </div>
       </section>
 
+      {stock.tracked && stock.batches.length > 0 && (
+        <>
+          <h2 className="small muted food-h2">Batches</h2>
+          <BatchList
+            product={product}
+            stock={stock}
+            onAct={(a) => {
+              onEvent(a.event);
+              setNote(a);
+            }}
+          />
+          {note && (
+            <p className="muted small food-batch-note" role="status">
+              {note.text}
+              {note.undo && (
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    for (const e of [note.undo!].flat()) onEvent(e);
+                    setNote(null);
+                  }}
+                >
+                  Undo
+                </button>
+              )}
+            </p>
+          )}
+        </>
+      )}
+
       <div className="form">
       <div className="field">
         <span>Type</span>
@@ -181,6 +217,36 @@ export function ProductView({
       </label>
       </div>
 
+      {comparison && (
+        <>
+          <h2 className="small muted food-h2">Prices</h2>
+          {comparison.cheaper && (
+            <p className="food-saving">
+              {comparison.cheaper.store} was {money(comparison.saving!)}{priceUnit(product)} cheaper ({Math.round(comparison.savingPct! * 100)}%) than {comparison.usual.store}, where you bought it last.
+            </p>
+          )}
+          <ul className="game-list">
+            {comparison.prices.map((p, i) => (
+              <li key={p.store} className="game-line">
+                <span>
+                  {p.store}
+                  {i === 0 && comparison.prices.length > 1 && <span className="muted small"> · cheapest</span>}
+                </span>
+                <span>
+                  {money(p.regular)}{priceUnit(product)}
+                  <span className="muted small">{[p.onOffer ? `paid ${money(p.paid)} on offer` : '', `${shortDate(p.date)}`, p.purchases > 1 ? `lowest ${money(p.lowestRegular)}` : ''].filter(Boolean).map((t) => ` · ${t}`).join('')}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {offers.offers > 0 && (
+            <p className="muted small">
+              On offer {offers.offers} of {offers.of} times, saving {money(offers.saved)} in all. Prices compared are shelf prices, without offers.
+            </p>
+          )}
+        </>
+      )}
+
       {events.length > 0 && (
         <>
           <h2 className="small muted food-h2">Activity</h2>
@@ -190,7 +256,7 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
+                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
                   <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}

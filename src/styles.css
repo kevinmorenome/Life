@@ -3094,6 +3094,17 @@ progress {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border-top: 1px solid var(--border);
+  /* The list holds every week of the history (years of them): the browser skips layout and paint for the
+     ones off screen. The placeholder is exactly a row's height (--row-h + the 1px border), so nothing jumps
+     and the zoom / scroll code can still read any row's position. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--row-h) + 1px);
+}
+/* A week whose days aren't built yet (see WeekRow): same height as a built one. */
+.cal-week-blank {
+  display: block;
+  height: calc(var(--row-h) + 1px);
+  box-sizing: border-box;
 }
 .cal-day {
   position: relative;
@@ -3126,6 +3137,17 @@ progress {
   font-weight: 700;
 }
 /* The three looks of a day sit on top of each other and fade as --z moves between the levels. */
+/* Only the looks that are visible at the current zoom are laid out and painted (the rest are skipped by the
+   browser, not removed, so the pinch can still cross-fade them). data-lo / data-hi are floor / ceil of --z,
+   set from CalendarView. Dots show for z < 1, the icon grid for 0 < z < 2, the pills and the work icon for 1 < z < 3, the week list for z > 2. */
+.cal:not([data-lo="0"]) .cal-dots,
+.cal[data-hi="0"] .cal-cells,
+.cal:is([data-lo="2"], [data-lo="3"]) .cal-cells,
+.cal:is([data-hi="0"], [data-hi="1"], [data-lo="3"]) .cal-pills,
+.cal:is([data-hi="0"], [data-hi="1"]) .cal-work,
+.cal:not([data-hi="3"]) .cal-full {
+  content-visibility: hidden;
+}
 .cal-layer {
   position: absolute;
   pointer-events: none;
@@ -3315,22 +3337,6 @@ progress {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
   cursor: pointer;
 }
-.work-day-section {
-  margin: 0.5rem 0 1rem;
-}
-.work-day-section .work-choices {
-  margin: 0.5rem 0;
-}
-.work-day-section .work-choice {
-  min-height: 64px;
-  flex-direction: row;
-  gap: 0.5rem;
-}
-.work-day-section .work-choice svg {
-  width: 22px;
-  height: 22px;
-}
-
 /* ───────────────────────── Liquid Glass ─────────────────────────
    Controls are a translucent material floating above the content: blurred and
    saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
@@ -3901,44 +3907,24 @@ a:focus-visible {
   backdrop-filter: none;
 }
 
-/* The dock shrinks while you scroll down and grows back when you scroll up. */
+/* The dock shrinks while you scroll down and grows back when you scroll up. It only animates `transform`, which the
+   GPU does on its own: animating width, padding or the icon sizes would re-lay-out the dock (and re-blur the glass
+   behind it) on every frame. The nested ＋ needs no blur of its own: it can only see the dock's background. */
 .bottom-nav {
-  transition: max-width 0.35s cubic-bezier(0.3, 1.2, 0.4, 1), padding 0.35s ease, border-radius 0.35s ease, bottom 0.35s ease;
-}
-.bottom-nav .tab,
-.bottom-nav .tab svg,
-.bottom-nav .tab-plus,
-.bottom-nav .tab-plus svg {
-  transition: min-height 0.35s ease, width 0.35s ease, height 0.35s ease;
+  transform-origin: 50% 100%;
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(0.3, 1.2, 0.4, 1);
 }
 .bottom-nav-compact {
-  max-width: 270px;
-  padding-top: 0.15rem;
-  padding-bottom: 0.15rem;
-  bottom: calc(6px + env(safe-area-inset-bottom));
-  border-radius: 28px;
+  transform: translateY(4px) scale(0.78);
 }
-.bottom-nav-compact .tab {
-  min-height: 38px;
-}
-.bottom-nav-compact .tab svg {
-  width: 21px;
-  height: 21px;
-}
-.bottom-nav-compact .tab-plus {
-  width: 38px;
-  height: 38px;
-}
-.bottom-nav-compact .tab-plus svg {
-  width: 20px;
-  height: 20px;
+.bottom-nav .tab-plus {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav,
-  .bottom-nav .tab,
-  .bottom-nav .tab svg,
-  .bottom-nav .tab-plus,
-  .bottom-nav .tab-plus svg {
+  .tab-lens {
     transition: none;
   }
 }
@@ -3955,11 +3941,7 @@ a:focus-visible {
   background: var(--glass-tint);
   box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 10px rgb(31 38 54 / 0.1);
   pointer-events: none;
-  transition: left 0.42s cubic-bezier(0.3, 1.25, 0.4, 1), top 0.35s ease, bottom 0.35s ease;
-}
-.bottom-nav-compact .tab-lens {
-  top: 0.15rem;
-  bottom: 0.15rem;
+  transition: transform 0.42s cubic-bezier(0.3, 1.25, 0.4, 1);
 }
 .bottom-nav .tab {
   z-index: 1;
@@ -4570,16 +4552,15 @@ button.detail-row {
 .tabs-track .tab-lens {
   top: 2px;
   bottom: 2px;
-  left: calc(var(--col, 0) * var(--tabw) + 4px);
+  left: 4px;
   width: calc(var(--tabw) - 8px);
+  /* Glides by transform (compositor), not by `left`. */
+  transform: translateX(calc(var(--col, 0) * var(--tabw)));
+  will-change: transform;
 }
 .bottom-nav .tab-plus {
   flex: none;
   margin-right: 4px;
-}
-.bottom-nav-compact .tabs-track .tab-lens {
-  top: 2px;
-  bottom: 2px;
 }
 
 /* ───────────── Games ───────────── */
@@ -5510,6 +5491,12 @@ a.game-row + .food-h2 {
   background: var(--surface);
   box-shadow: 0 -8px 32px rgb(0 0 0 / 0.2);
   outline: none;
+  /* With several batches the sheet is taller than the screen: it scrolls inside itself instead of running off the top. */
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .food-sheet {
@@ -5906,6 +5893,55 @@ a.game-row + .food-h2 {
   stroke-width: 1.5;
 }
 .country-list {
+/* Wolt orders */
+.dot.mark-wolt {
+  background: var(--tone-orange);
+}
+.day-badge.mark-wolt {
+  color: var(--tone-orange);
+}
+.pill.mark-wolt {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.wolt-orders {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.wolt-orders li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.wolt-when {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+.wolt-total {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Food: groceries on the calendar, shopping list, prices */
+.dot.mark-food {
+  background: var(--tone-lime);
+}
+.day-badge.mark-food {
+  color: var(--tone-lime);
+}
+.pill.mark-food {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.food-saving {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+.shop-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -5928,6 +5964,212 @@ a.game-row + .food-h2 {
   background: none;
   border: 0;
   color: inherit;
+.shop-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.shop-check {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.shop-check::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 2px solid var(--muted, currentColor);
+  border-radius: 50%;
+}
+.shop-check[aria-checked='true']::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.shop-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.5rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+.shop-done .shop-main {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+/* Food: batches of one product */
+.batch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.batch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.batch-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.batch-by {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.batch-by input[type='date'] {
+  font: inherit;
+  min-height: 36px;
+  padding: 0 0.5rem;
+  border-radius: 10px;
+}
+.food-batch-note {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.food-sheet .batch-list {
+  margin-bottom: 0.5rem;
+}
+.batch-tag {
+  font-weight: 500;
+  color: var(--tone-blue);
+}
+.batch-frozen .batch-main > strong {
+  color: var(--text);
+}
+.batch-tag-thawed {
+  color: var(--tone-orange);
+}
+.batch-thawed-note {
+  font-weight: 600;
+}
+
+/* Trakt plays */
+.dot.mark-watch {
+  background: var(--tone-purple);
+}
+.day-badge.mark-watch {
+  color: var(--tone-purple);
+}
+.pill.mark-watch {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.watch-plays {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.watch-plays li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.checkins-day li.watch-day-play,
+.widget-list li.watch-day-play {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.trakt-code {
+  margin: 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}
+
+/* Day screen as a dashboard: tiles in a two-column grid. A widget is a flat, lightly tinted tile whose header collapses it;
+   glass stays on the controls inside. */
+.day-head h1 {
+  font-size: 1.05rem;
+}
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  align-items: start;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.75rem;
+}
+@media (min-width: 720px) {
+  .day-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.detail .day-grid > .widget {
+  margin-top: 0;
+}
+.widget {
+  --w: var(--accent);
+  grid-column: span 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--w) 5%, var(--surface));
+  overflow: hidden;
+}
+.widget-full {
+  grid-column: 1 / -1;
+}
+.widget-work,
+.widget-clothes {
+  --w: var(--accent);
+}
+.widget-place,
+.widget-trip {
+  --w: var(--tone-blue);
+}
+.widget-games {
+  --w: var(--tone-purple);
+}
+.widget-food {
+  --w: var(--tone-lime);
+}
+.widget-wolt {
+  --w: var(--tone-orange);
+}
+.widget-watch {
+  --w: var(--tone-purple);
+}
+.widget-rides {
+  --w: var(--tone-blue);
+}
+.widget-head {
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+}
+.widget-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -5940,4 +6182,891 @@ a.game-row + .food-h2 {
 }
 .country-detail p {
   margin: 0 0 0.25rem;
+.widget-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--w) 18%, var(--surface));
+  color: var(--w);
+}
+.widget-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-badge {
+  flex: none;
+  max-width: 45%;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--w) 14%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-chevron {
+  display: grid;
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.widget-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+.widget.is-collapsed .widget-chevron {
+  transform: rotate(-90deg);
+}
+.widget-summary {
+  margin: -0.2rem 0 0;
+  padding: 0 0.75rem 0.6rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-body {
+  padding: 0 0.75rem 0.7rem;
+}
+.widget-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.widget-list li,
+.widget-link {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+.widget-list li:first-child {
+  border-top: 0;
+  padding-top: 0.1rem;
+}
+.widget-list li > li,
+.widget-list li .widget-link {
+  padding: 0;
+  border: 0;
+}
+.widget-list strong,
+.widget-list .small,
+.widget-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-link {
+  color: inherit;
+  text-decoration: none;
+}
+.widget-link strong {
+  white-space: normal;
+}
+.widget-champ {
+  font-weight: 600;
+}
+.widget-line {
+  margin: 0 0 0.4rem;
+}
+.widget .outfit-cards,
+.widget .day-items {
+  margin: 0.25rem 0 0;
+}
+.widget-head .icon-btn {
+  flex: none;
+}
+.day-empty {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+}
+.day-actions {
+  margin-top: 0.5rem;
+}
+/* Work on the day screen: one row of icon buttons; the chosen one shows its name. */
+.work-quick {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-row {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.work-quick-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.work-quick-btn[aria-pressed='true'] {
+  flex: 2.4;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.work-quick-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.work-quick-times {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-times input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* ───────────── Liquid Glass: day widgets ─────────────
+   Glass is the control layer, content is flat: a widget is a plain section on the page, separated by a hairline.
+   What floats as glass are its controls: the icon lens, the count chip and the collapse button.
+   Work is a segmented track with a raised lens, like Items | Outfits. */
+.day-grid {
+  column-gap: 1rem;
+  row-gap: 0;
+}
+.widget {
+  border: 0;
+  border-top: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  padding-top: 0.15rem;
+}
+.widget-toggle {
+  padding: 0.3rem 0;
+}
+.widget-head {
+  padding-right: 0;
+}
+.widget-body {
+  padding: 0 0 0.75rem;
+}
+.widget-summary {
+  padding: 0 0 0.75rem;
+}
+.widget-icon {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--w) 22%, var(--glass-bg-strong)), var(--glass-bg));
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-badge {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron {
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-list li {
+  border-top-color: var(--glass-line);
+}
+.work-quick {
+  margin-bottom: 0.6rem;
+}
+.work-quick-btn {
+  min-height: 44px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.work-quick-btn[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--glass-bg-strong)), color-mix(in srgb, var(--accent) 16%, var(--glass-bg)));
+  color: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+}
+.work-quick-btn:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .work-quick-btn,
+  .widget-chevron {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  }
+}
+
+.watch-search {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.watch-search .search {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+.watch-search .icon-btn[aria-pressed='true'] {
+  color: var(--accent);
+}
+.watch-plays li.is-selected {
+  background: var(--accent-soft);
+}
+.watch-select-bar {
+  top: 8px;
+  bottom: auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  border-top: 1px solid var(--glass-edge, var(--border));
+}
+.watch-select-bar .small {
+  flex: 1;
+  white-space: nowrap;
+}
+.watch-select-bar .btn {
+  white-space: nowrap;
+}
+.watch-search .icon-btn,
+.watch-select-bar .icon-btn {
+  margin-right: 0;
+}
+
+/* Rides (Bolt / Uber) */
+.dot.mark-rides {
+  background: var(--tone-blue);
+}
+.day-badge.mark-rides {
+  color: var(--tone-blue);
+}
+.pill.mark-rides {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Stats tabs: too many for one row, so the switch scrolls sideways. */
+.seg.seg-scroll {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.seg.seg-scroll::-webkit-scrollbar {
+  display: none;
+}
+.seg.seg-scroll button {
+  flex: 0 0 auto;
+  padding: 0 1rem;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+/* stats.fm listening */
+.dot.mark-music {
+  background: var(--tone-lime);
+}
+.day-badge.mark-music {
+  color: var(--tone-lime);
+}
+.pill.mark-music {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+
+/* ───────────── Calendar: less clutter ─────────────
+   A day shows a few things and a "+N"; the day screen has the full list. */
+.cal-head {
+  padding-bottom: 0.1rem;
+}
+.cal-title {
+  font-size: 1.4rem;
+}
+.cal-head .work-target-head {
+  font-size: 0.82rem;
+}
+.cal-head .work-target-head .small {
+  font-size: 0.75rem;
+}
+.cal-head .work-bar {
+  height: 4px;
+  margin: 0.3rem 0;
+}
+.cal-weekdays {
+  padding: 0.1rem 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.cal-month {
+  padding-top: 0.6rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.cal-week {
+  border-top-color: var(--glass-line);
+}
+.cal-num {
+  font-size: 0.9rem;
+}
+.cal-dots {
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+}
+.more-count {
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+.cal-badges {
+  gap: 2px;
+}
+.day-badge {
+  width: 16px;
+  height: 16px;
+  box-shadow: none;
+  background: color-mix(in srgb, currentColor 12%, var(--bg));
+}
+.day-badge svg {
+  width: 11px;
+  height: 11px;
+}
+.day-badge.badge-more {
+  color: var(--muted);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-soft);
+}
+.cal-badges.with-photo {
+  left: 50%;
+  margin-left: -17px;
+  width: 34px;
+  justify-content: flex-start;
+}
+.cal-pills {
+  gap: 2px;
+}
+.pill {
+  font-size: 0.6rem;
+  padding: 1px 3px;
+}
+.pill-more {
+  justify-content: center;
+  color: var(--muted);
+  background: none;
+  font-weight: 600;
+}
+.cal-today {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+/* Day screen: calmer header, work times that fit, tighter widget headers. */
+.day-head h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.work-quick-times {
+  gap: 0.3rem;
+}
+.work-quick-times input {
+  padding-left: 0.6rem;
+  padding-right: 0.5rem;
+  font-size: 0.95rem;
+}
+.work-quick-times .icon-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  box-shadow: none;
+  border-color: transparent;
+  background: none;
+}
+.widget-toggle {
+  gap: 0.4rem;
+}
+.widget-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+.widget-chevron {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.widget-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.widget-list li {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+/* Default zoom: each day is a 3×3 grid, the day number first, then one icon per entry (the last cell counts the rest). */
+.cal-cells {
+  top: 3px;
+  left: 2px;
+  right: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 21px;
+  place-items: center;
+  opacity: clamp(0, calc(1 - max(var(--z) - 1, 1 - var(--z))), 1);
+}
+.cal-day.has-cells .cal-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.cell-num {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cell-num.today {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.cell {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-badge {
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-bubble {
+  position: static;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+}
+.cal-cells .day-bubble .thumb {
+  width: 100%;
+  height: 100%;
+  font-size: 0.6rem;
+}
+.cal-cells .day-bubble.pieces-2 .thumb {
+  height: 50%;
+}
+.cal-cells {
+  left: 5px;
+  right: 5px;
+  grid-auto-rows: 19px;
+}
+.cell,
+.cal-cells .day-badge,
+.cal-cells .day-bubble {
+  width: 15px;
+  height: 15px;
+}
+.cal-cells .day-badge svg {
+  width: 10px;
+  height: 10px;
+}
+.cell-num {
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.68rem;
+}
+.cal-cells .badge-more {
+  font-size: 0.5rem;
+}
+
+/* One colour per kind of entry, never shared: dots, grid icons and pills use the same one. */
+:root {
+  --c-office: var(--accent);
+  --c-home: #00a69c;
+  --c-off: #7a8794;
+  --c-trip: #4f5bd5;
+  --c-place: #e53935;
+  --c-games: #8a4fe0;
+  --c-wolt: #f57c00;
+  --c-food: #7fb800;
+  --c-watch: #d81b8a;
+  --c-rides: #1e88e5;
+  --c-music: #1db954;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-office: var(--accent);
+    --c-home: #3fd6cb;
+    --c-off: #a3afbb;
+    --c-trip: #8f9bff;
+    --c-place: #ff7a75;
+    --c-games: #b88cff;
+    --c-wolt: #ff9a3d;
+    --c-food: #b6e83a;
+    --c-watch: #ff6ab8;
+    --c-rides: #4aa8ff;
+    --c-music: #1ed760;
+  }
+}
+:root[data-theme="dark"] {
+  --c-office: var(--accent);
+  --c-home: #3fd6cb;
+  --c-off: #a3afbb;
+  --c-trip: #8f9bff;
+  --c-place: #ff7a75;
+  --c-games: #b88cff;
+  --c-wolt: #ff9a3d;
+  --c-food: #b6e83a;
+  --c-watch: #ff6ab8;
+  --c-rides: #4aa8ff;
+  --c-music: #1ed760;
+}
+.dot.mark-office {
+  background: var(--c-office);
+  box-shadow: none;
+}
+.day-badge.mark-office {
+  color: var(--c-office);
+  background: color-mix(in srgb, var(--c-office) 16%, var(--bg));
+}
+.dot.mark-home {
+  background: var(--c-home);
+  box-shadow: none;
+}
+.day-badge.mark-home {
+  color: var(--c-home);
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.pill.mark-home {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-home .pill-icon {
+  color: var(--c-home);
+}
+.dot.mark-off {
+  background: var(--c-off);
+  box-shadow: none;
+}
+.day-badge.mark-off {
+  color: var(--c-off);
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+}
+.pill.mark-off {
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-off .pill-icon {
+  color: var(--c-off);
+}
+.dot.mark-trip {
+  background: var(--c-trip);
+  box-shadow: none;
+}
+.day-badge.mark-trip {
+  color: var(--c-trip);
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+}
+.pill.mark-trip {
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-trip .pill-icon {
+  color: var(--c-trip);
+}
+.dot.mark-place {
+  background: var(--c-place);
+  box-shadow: none;
+}
+.day-badge.mark-place {
+  color: var(--c-place);
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+}
+.pill.mark-place {
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-place .pill-icon {
+  color: var(--c-place);
+}
+.dot.mark-games {
+  background: var(--c-games);
+  box-shadow: none;
+}
+.day-badge.mark-games {
+  color: var(--c-games);
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+}
+.pill.mark-games {
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-games .pill-icon {
+  color: var(--c-games);
+}
+.dot.mark-wolt {
+  background: var(--c-wolt);
+  box-shadow: none;
+}
+.day-badge.mark-wolt {
+  color: var(--c-wolt);
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+}
+.pill.mark-wolt {
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-wolt .pill-icon {
+  color: var(--c-wolt);
+}
+.dot.mark-food {
+  background: var(--c-food);
+  box-shadow: none;
+}
+.day-badge.mark-food {
+  color: var(--c-food);
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+}
+.pill.mark-food {
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-food .pill-icon {
+  color: var(--c-food);
+}
+.dot.mark-watch {
+  background: var(--c-watch);
+  box-shadow: none;
+}
+.day-badge.mark-watch {
+  color: var(--c-watch);
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+}
+.pill.mark-watch {
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-watch .pill-icon {
+  color: var(--c-watch);
+}
+.dot.mark-rides {
+  background: var(--c-rides);
+  box-shadow: none;
+}
+.day-badge.mark-rides {
+  color: var(--c-rides);
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+}
+.pill.mark-rides {
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-rides .pill-icon {
+  color: var(--c-rides);
+}
+.dot.mark-music {
+  background: var(--c-music);
+  box-shadow: none;
+}
+.day-badge.mark-music {
+  color: var(--c-music);
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+}
+.pill.mark-music {
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-music .pill-icon {
+  color: var(--c-music);
+}
+.dot-trip {
+  background: var(--c-trip);
+}
+.cell-slot {
+  display: grid;
+  place-items: center;
+}
+
+/* Zoomed in: the day number slides to the left corner as --z goes from 1 to 2, and the pills start right under it,
+   so five fit before "+N more". */
+.cal-day {
+  container-type: inline-size;
+}
+.cal-num {
+  translate: calc(clamp(0, var(--z) - 1, 1) * (16px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 7px * clamp(0, var(--z) - 1, 1));
+}
+.cal-num {
+  min-width: 24px;
+  height: 24px;
+  translate: calc(clamp(0, var(--z) - 1, 1) * (15px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 4px * clamp(0, var(--z) - 1, 1));
+}
+
+/* Zoomed in: office / home / day off is just an icon in the top-right corner, level with the number. */
+.cal-work {
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  opacity: clamp(0, calc(var(--z) - 1), 1);
+}
+.cal-work svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ───────────── Calendar: week zoom and filters ───────────── */
+/* Row height now runs on to a whole week with every entry (--z 2 → 3). */
+.cal {
+  --row-h: calc(46px + 22px * min(var(--z), 1) + 52px * clamp(0, var(--z) - 1, 1) + 190px * clamp(0, var(--z) - 2, 1));
+}
+.cal-pills {
+  opacity: clamp(0, min(var(--z) - 1, 3 - var(--z)), 1);
+}
+.cal-full {
+  top: 27px;
+  left: 1px;
+  right: 1px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: clamp(0, var(--z) - 2, 1);
+}
+.cal-full .pill {
+  align-items: flex-start;
+  flex: none;
+  padding: 2px 3px;
+}
+.cal-full .pill-icon {
+  flex: none;
+  margin-top: 1px;
+}
+.cal-full .pill-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.cal-full .pill-more {
+  justify-content: center;
+}
+.cal-full .pill.mark-home,
+.cal-full .pill.mark-off {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.cal-tools .icon-btn.filtering {
+  color: var(--accent);
+}
+.cal-filters {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.15rem -12px 0.3rem;
+  padding: 0 12px 0.15rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cal-filters::-webkit-scrollbar {
+  display: none;
+}
+.cal-filters .chip {
+  flex: none;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+/* The week zoom gives the width to the text: the pill colour already says what kind of entry it is. */
+.cal-full .pill-icon {
+  display: none;
+}
+.cal-full .pill-text {
+  overflow-wrap: break-word;
+  hyphens: auto;
 }

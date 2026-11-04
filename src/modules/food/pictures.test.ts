@@ -5,7 +5,7 @@ import { stockOf } from './stock';
 import type { Entry } from './stockEntries';
 
 const entry = (name: string, over: Partial<ProductSummary> = {}, qty = 1): Entry => {
-  const product: ProductSummary = { id: `fp-${name}`, name, kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', trackAmount: true, custom: false, purchases: [{ receiptId: 'r', date: '2026-10-31', store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
+  const product: ProductSummary = { id: `fp-${name}`, name, kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', trackAmount: true, hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: '2026-10-31', store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
   return { product, stock: stockOf(product, product.purchases, [], '2026-11-02'), uses: 0 };
 };
 
@@ -15,7 +15,7 @@ describe('needsPicture', () => {
     expect(out.map((e) => e.product.name)).toEqual(['Chicken', 'Hummus', 'Beer', 'Oat drink', 'Peas']);
   });
   it('leaves out products that have a picture and ones that are used up', () => {
-    const out = needsPicture([entry('Has photo', { photo: 'data:image/webp;base64,AAAA' }), entry('Gone', {}, 0), entry('Needs one')]);
+    const out = needsPicture([entry('Has photo', { hasPhoto: true }), entry('Gone', {}, 0), entry('Needs one')]);
     expect(out.map((e) => e.product.name)).toEqual(['Needs one']);
   });
 });

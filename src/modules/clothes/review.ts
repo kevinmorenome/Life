@@ -36,9 +36,10 @@ export function reviewSummary(item: ClothingItem): string {
 
 /**
  * The item with its photo swapped for the cut-out, if that photo is still the one the cut-out was made from
- * (the owner may have changed it, or other fields, while it ran). Null means leave the item alone.
+ * (the owner may have changed it, or other fields, while it ran). `current` is the picture stored now (records read from
+ * the store don't carry it). Null means leave the item alone.
  */
-export function withCutOutPhoto(latest: ClothingItem | undefined, original: string, cutOut: string | null, now: Date): ClothingItem | null {
-  if (!cutOut || !latest || latest.photo !== original) return null;
-  return { ...latest, photo: cutOut, updatedAt: now.toISOString() };
+export function withCutOutPhoto(latest: ClothingItem | undefined, original: string, cutOut: string | null, now: Date, current: string | undefined = latest?.photo): ClothingItem | null {
+  if (!cutOut || !latest || current !== original) return null;
+  return { ...latest, photo: cutOut, hasPhoto: true, updatedAt: now.toISOString() };
 }

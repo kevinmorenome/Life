@@ -93,12 +93,14 @@ export interface FoodProduct {
   packLabel?: string;
   /** A picture of the product (small image data URL, background removed when possible); the drawn icon is used without one. */
   photo?: string;
+  /** Same as `ClothingItem.hasPhoto`: the picture sits in the local photos store. */
+  hasPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-/** What happened to some of a product: eaten/used, thrown away, or counted ("I have 3 left", 0 = finished). */
-export type StockEventType = 'use' | 'toss' | 'count';
+/** What happened to some of a product: eaten/used, thrown away, counted ("I have 3 left", 0 = finished), a use-by date set for a batch, or some of it put in the freezer or taken out again. */
+export type StockEventType = 'use' | 'toss' | 'count' | 'expiry' | 'freeze' | 'thaw';
 
 /**
  * One thing that changed what you have. Always a fresh record, never edited (a mistake is fixed with a newer
@@ -113,6 +115,14 @@ export interface StockEvent {
   /** YYYY-MM-DD */
   date: string;
   source: 'app' | 'check' | 'claude';
+  /**
+   * The batch (purchase) this is about, `Purchase.batch`. A use or throw-away then comes off that batch; a count
+   * sets that batch's amount; an `expiry` belongs to it; a `freeze` moves `quantity` of it into a new frozen batch (a `thaw` moves some of a
+   * frozen one back out, use-by two days on). Without one, the stock that expires first is used.
+   */
+  batch?: string;
+  /** For `expiry` events: the use-by date (YYYY-MM-DD) set for the batch. The newest one wins. */
+  useBy?: string;
   note?: string;
   createdAt: string;
   updatedAt: string;

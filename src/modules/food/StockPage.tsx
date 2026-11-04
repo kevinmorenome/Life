@@ -4,8 +4,8 @@ import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
 import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
-import { needsCheck } from './stock';
-import { stockEntries } from './stockEntries';
+import { batchesToCheck } from './stock';
+import { stockEntries, storageOf } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
 import { StockTile } from './StockTile';
 import { tileInfo } from './stockTiles';
@@ -15,7 +15,7 @@ const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' 
 
 interface Toast {
   text: string;
-  undo?: StockEvent;
+  undo?: StockEvent | StockEvent[];
 }
 
 /**
@@ -28,21 +28,18 @@ export function StockPage({
   events,
   onEvent,
   onProduct,
-  initialShowAll = false,
 }: {
   receipts: FoodReceipt[];
   products: FoodProduct[];
   events: StockEvent[];
   onEvent(e: StockEvent): Promise<void>;
   onProduct(p: FoodProduct): Promise<void>;
-  /** Start with the used-up products shown (the old `#/food/products` address). */
-  initialShowAll?: boolean;
 }) {
   const day = today();
   const entries = stockEntries(receipts, products, events, day);
   const [selId, setSelId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [showAll, setShowAll] = useState(initialShowAll);
+  const [showAll, setShowAll] = useState(false);
   const close = useCallback(() => setSelId(null), []);
 
   // The toast fades on its own; an undo that is not taken stays a plain count history.
@@ -55,8 +52,9 @@ export function StockPage({
   const have = entries.filter((e) => e.stock.quantity > 0);
   const out = entries.filter((e) => e.stock.quantity === 0);
   const missing = needsPicture(entries).length;
-  const toCheck = have.filter((e) => needsCheck(e.product.type, e.stock, day)).length;
+  const toCheck = have.reduce((n, e) => n + batchesToCheck(e.product.type, e.stock, day).length, 0);
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
+  const thawed = have.filter((e) => e.stock.thawedQuantity > 0);
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
 
   async function act(a: SheetAct) {
@@ -73,11 +71,17 @@ export function StockPage({
           <p className="muted">Nothing here yet. Stock is worked out from your receipts, so add one first.</p>
         </div>
       )}
+      {thawed.length > 0 && (
+        <div className="food-banner" role="status">
+          <strong>Use first: thawed</strong>
+          <span className="muted small">{thawed.map((e) => e.product.name).join(', ')}. Thawed food isn’t put back in the freezer.</span>
+        </div>
+      )}
       {toCheck > 0 && (
         <a className="food-banner" href={href('/food/check')}>
           <strong>Weekly check</strong>
           <span className="muted small">
-            {toCheck} {toCheck === 1 ? 'thing' : 'things'} to confirm
+            {toCheck} {toCheck === 1 ? 'batch' : 'batches'} to confirm
           </span>
         </a>
       )}
@@ -98,8 +102,8 @@ export function StockPage({
       )}
       {entries.length > 0 && have.length === 0 && !showAll && <p className="muted food-none">Nothing in stock right now.</p>}
       {STORAGES.map((storage) => {
-        const inStock = have.filter((e) => e.product.storage === storage).sort(bySoonest);
-        const gone = showAll ? out.filter((e) => e.product.storage === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
+        const inStock = have.filter((e) => storageOf(e) === storage).sort(bySoonest);
+        const gone = showAll ? out.filter((e) => storageOf(e) === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
         if (inStock.length + gone.length === 0) return null;
         return (
           <section key={storage} className="food-section">
@@ -123,7 +127,7 @@ export function StockPage({
           key={selected.product.id}
           entry={selected}
           onAct={act}
-          onPhoto={(photo) => onProduct(productRecord(selected.product, products.find((p) => p.id === selected.product.id), { photo: photo ?? undefined }, new Date().toISOString()))}
+          onPhoto={(photo) => onProduct(productRecord(selected.product, products.find((p) => p.id === selected.product.id), { photo: photo ?? undefined, hasPhoto: !!photo }, new Date().toISOString()))}
           onClose={close}
         />
       )}
@@ -134,7 +138,7 @@ export function StockPage({
             <button
               type="button"
               onClick={async () => {
-                if (toast.undo) await onEvent(toast.undo);
+                for (const e of [toast.undo].flat()) if (e) await onEvent(e);
                 setToast(null);
               }}
             >

@@ -3,9 +3,11 @@ import { CheckPage } from './CheckPage';
 import { PicturesPage } from './PicturesPage';
 import { ProductView } from './ProductView';
 import { productSummaries } from './products';
+import { ProductsPage } from './ProductsPage';
 import { ReceiptForm } from './ReceiptForm';
 import { ReceiptList } from './ReceiptList';
 import { ReceiptView } from './ReceiptView';
+import { ShoppingPage } from './ShoppingPage';
 import { StockPage } from './StockPage';
 import type { FoodProduct, FoodReceipt, StockEvent } from './types';
 
@@ -24,8 +26,9 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
     if (third === 'edit') return <ReceiptForm existing={receipt} receipts={receipts.items} onSave={receipts.save} />;
     return <ReceiptView receipt={receipt} onDelete={receipts.remove} />;
   }
-  // `#/food/products` was the old Products tab: it now opens the same grid with everything you ever bought.
-  if (first === 'stock' || first === 'products') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} initialShowAll={first === 'products'} />;
+  if (first === 'stock') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} />;
+  if (first === 'products') return <ProductsPage receipts={receipts.items} products={products.items} />;
+  if (first === 'shopping') return <ShoppingPage receipts={receipts.items} products={products.items} events={events.items} />;
   if (first === 'pictures') return <PicturesPage receipts={receipts.items} products={products.items} events={events.items} onProduct={products.save} />;
   if (first === 'check') return <CheckPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
   if (first === 'product' && second) {

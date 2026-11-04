@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -91,7 +91,12 @@ describe('protocol', () => {
       'add_item',
       'add_receipt_items',
       'add_grocery_receipt',
+      'add_wolt_orders',
+      'add_takeout_orders',
+      'add_rides',
       'list_stock',
+      'shopping_list',
+      'product_prices',
       'use_stock',
       'count_stock',
       'set_product_info',
@@ -660,6 +665,74 @@ describe('food stock', () => {
     return s;
   };
 
+  it('lists what to buy with the cheapest store, and compares prices per product', async () => {
+    const { ctx, data } = seed();
+    data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });
+    data.foodreceipts.set('food-3', { ...receipt('food-3', '2026-10-10', [L('Oat cookies', 1, { unitPrice: 1.5, paid: 1.5 })]), store: 'Lidl' });
+    const list = (await call(ctx, 'shopping_list', {})).json() as { name: string; why: string; cheapestStore: string; shelfPrice?: string; savesVersusLastStore?: number }[];
+    expect(list).toMatchObject([{ name: 'Oat cookies', why: 'Out', cheapestStore: 'Lidl', shelfPrice: '1.50 each', savesVersusLastStore: 0.5 }]);
+
+    const prices = (await call(ctx, 'product_prices', { product: 'cookies' })).json() as { stores: { store: string; shelfPrice: number }[]; cheaperElsewhere: { store: string; saves: number } };
+    expect(prices.stores.map((x) => [x.store, x.shelfPrice])).toEqual([['Lidl', 1.5], ['Konzum', 2]]);
+    expect(prices.cheaperElsewhere).toMatchObject({ store: 'Lidl', saves: 0.5 });
+    expect((await call(ctx, 'product_prices', { product: 'oat' })).isError).toBe(true); // oat drink and oat cookies
+  });
+
+  it('keeps purchases apart as batches and acts on one of them', async () => {
+    const { ctx, data } = seed();
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { quantity: number; batches?: { boughtOn: string; quantity: number }[] }[];
+    expect(listed[0].batches).toEqual([{ boughtOn: '2026-10-20', quantity: 3 }, { boughtOn: '2026-10-24', quantity: 1 }]);
+
+    const out = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24', action: 'toss' })).json() as { left: number; batch: string };
+    expect(out).toMatchObject({ recorded: 'toss', batch: 'bought 2026-10-24', left: 3 });
+    expect([...data.foodstock.values()][0]).toMatchObject({ type: 'toss', quantity: 1, batch: 'food-2:0' });
+
+    const used = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', quantity: 2 })).json() as { left: number };
+    expect(used.left).toBe(1);
+    const missing = await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24' });
+    expect(missing.isError).toBe(true); // that batch is gone, and the message lists what is left
+    expect(JSON.stringify(missing)).toContain('2026-10-20: 1');
+    expect((await call(ctx, 'use_stock', { product: 'hummus', boughtOn: '2026-10-20', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
+  });
+
+  it('puts part of a batch in the freezer and takes it out again', async () => {
+    const { ctx, data } = seed();
+    const frozen = (await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze', quantity: 2 })).json() as { moved: string; inFreezerNow: number; left: number };
+    expect(frozen).toMatchObject({ recorded: 'freeze', moved: '2', inFreezerNow: 2, left: 4 });
+    expect([...data.foodstock.values()][0]).toMatchObject({ type: 'freeze', quantity: 2, batch: 'food-1:1' });
+
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { inFreezer: number; batches: { frozenOn?: string; boughtOn: string; quantity: number }[] }[];
+    expect(listed[0].inFreezer).toBe(2);
+    expect(listed[0].batches.find((b) => b.frozenOn)).toMatchObject({ boughtOn: '2026-10-20', quantity: 2 });
+
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-24', action: 'thaw' })).isError).toBe(true); // that batch is not frozen
+    const out = (await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw' })).json() as { moved: string; inFreezerNow: number };
+    expect(out).toMatchObject({ moved: '2', inFreezerNow: 0 });
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw' })).isError).toBe(true); // nothing is frozen now
+    expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'freeze', quantity: 'all' })).isError).toBe(true);
+  });
+
+  it('refuses to freeze food that was thawed, and tells Claude to push using it', async () => {
+    const { ctx } = seed();
+    await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze', quantity: 2 });
+    await call(ctx, 'use_stock', { product: 'oat drink', action: 'thaw', quantity: 1 });
+    const listed = (await call(ctx, 'list_stock', { query: 'oat drink' })).json() as { thawed: number; note: string; status: string; batches: { thawedOn?: string }[] }[];
+    expect(listed[0]).toMatchObject({ thawed: 1, status: 'use-soon' });
+    expect(listed[0].note).toContain('do not refreeze');
+    expect(listed[0].batches.some((b) => b.thawedOn)).toBe(true);
+
+    // freeze the rest, take one out: now what is outside the freezer is only thawed
+    await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze' });
+    const again = await call(ctx, 'use_stock', { product: 'oat drink', boughtOn: '2026-10-20', action: 'freeze' });
+    expect(again.isError).toBe(true);
+    expect(JSON.stringify(again)).toContain('thawed');
+    // with no batch named, the other purchase that is still in the fridge is frozen (only thawed food is left out)
+    expect((await call(ctx, 'use_stock', { product: 'oat drink', action: 'freeze' })).isError).toBeFalsy();
+    const noBatch = await call(ctx, 'use_stock', { product: 'oat drink', action: 'freeze' });
+    expect(noBatch.isError).toBe(true);
+    expect(JSON.stringify(noBatch)).toContain('thawed');
+  });
+
   it('lists what is in stock with status and use-by, leaving out what is gone', async () => {
     const { ctx, data } = seed();
     data.foodstock.set('e0', { id: 'e0', productId: 'fp-oat-cookies', type: 'count', quantity: 0, date: '2026-10-25', createdAt: '2026-10-25T09:00:00Z' });
@@ -980,5 +1053,50 @@ describe('guards against splitting an item\'s history', () => {
     expect(shirt.photoNote).toMatch(/set_item_photo/);
     expect(cap).toMatchObject({ photo: true });
     expect(cap.photoNote).toBeUndefined();
+  });
+});
+
+describe('add_takeout_orders', () => {
+  it('saves Bolt and Uber orders under their own ids and refuses other services', async () => {
+    const { data, ctx } = setup();
+    const call = async (args: unknown) => JSON.parse((await rpc(ctx, 'tools/call', { name: 'add_takeout_orders', arguments: args })).result.content[0].text);
+    const order = { sourceId: 'x1', restaurant: 'Pizza', date: '2026-05-03', total: 12 };
+    expect(await call({ service: 'bolt', orders: [order] })).toMatchObject({ added: 1 });
+    expect(await call({ service: 'uber', orders: [order] })).toMatchObject({ added: 1 });
+    expect(await call({ service: 'bolt', orders: [order] })).toMatchObject({ added: 0, alreadyAdded: 1 });
+    expect(data.woltorders.get('bolt-x1')).toMatchObject({ service: 'bolt' });
+    expect(data.woltorders.get('uber-x1')).toMatchObject({ service: 'uber' });
+    const bad = (await rpc(ctx, 'tools/call', { name: 'add_takeout_orders', arguments: { service: 'wolt', orders: [order] } })).result;
+    expect(bad.isError).toBe(true);
+  });
+});
+
+describe('add_wolt_orders', () => {
+  const call = async (ctx: ToolContext, orders: unknown[]) => {
+    const r = (await rpc(ctx, 'tools/call', { name: 'add_wolt_orders', arguments: { orders } })).result;
+    return JSON.parse(r.content[0].text);
+  };
+  it('saves new orders once and never overwrites', async () => {
+    const { data, ctx } = setup();
+    const order = { sourceId: 'w1', restaurant: "McDonald's - Rotor", date: '2026-05-03', time: '22:36', total: 9.61 };
+    expect(await call(ctx, [order])).toMatchObject({ added: 1, alreadyAdded: 0 });
+    data.woltorders.set('wolt-w1', { ...data.woltorders.get('wolt-w1')!, restaurant: 'My edit' });
+    expect(await call(ctx, [order, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
+    expect(data.woltorders.get('wolt-w1')).toMatchObject({ restaurant: 'My edit', currency: 'EUR' });
+  });
+});
+
+describe('add_rides', () => {
+  const call = async (ctx: ToolContext, rides: unknown[]) => {
+    const r = (await rpc(ctx, 'tools/call', { name: 'add_rides', arguments: { rides } })).result;
+    return JSON.parse(r.content[0].text);
+  };
+  it('saves new rides once and never overwrites', async () => {
+    const { data, ctx } = setup();
+    const ride = { provider: 'bolt', sourceId: 'r1', date: '2026-05-03', time: '22:36', to: 'Ilica 12', fare: 7.4 };
+    expect(await call(ctx, [ride])).toMatchObject({ added: 1, alreadyAdded: 0 });
+    data.rides.set('ride-bolt-r1', { ...data.rides.get('ride-bolt-r1')!, to: 'My edit' });
+    expect(await call(ctx, [ride, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
+    expect(data.rides.get('ride-bolt-r1')).toMatchObject({ to: 'My edit', currency: 'EUR' });
   });
 });

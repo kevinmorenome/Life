@@ -1,7 +1,7 @@
 import { today } from '../../lib/format';
 import { productSummaries, type ProductSummary } from './products';
 import { stockOf, usesSince, type Stock } from './stock';
-import type { FoodProduct, FoodReceipt, StockEvent } from './types';
+import type { FoodProduct, FoodReceipt, StockEvent, Storage } from './types';
 
 export interface Entry {
   product: ProductSummary;
@@ -17,4 +17,9 @@ export function stockEntries(receipts: FoodReceipt[], products: FoodProduct[], e
     const stock = stockOf(product, product.purchases, mine, day);
     return { product, stock, uses: stock.tracked ? 0 : usesSince(mine, product.purchases[0]?.date) };
   });
+}
+
+/** Where a product shows in the stock grid: the freezer once everything of it is frozen, otherwise where it is normally kept. */
+export function storageOf(e: Entry): Storage {
+  return e.stock.tracked && e.stock.batches.length > 0 && e.stock.batches.every((b) => b.frozen) ? 'freezer' : e.product.storage;
 }
