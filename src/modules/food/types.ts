@@ -93,6 +93,8 @@ export interface FoodProduct {
   packLabel?: string;
   /** A picture of the product (small image data URL, background removed when possible); the drawn icon is used without one. */
   photo?: string;
+  /** Same as `ClothingItem.hasPhoto`: the picture sits in the local photos store. */
+  hasPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
 }

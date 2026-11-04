@@ -47,9 +47,9 @@ describe('withProductChanges', () => {
 describe('product pictures', () => {
   const photo = 'data:image/webp;base64,AAAA';
   it('are set, replaced and cleared like any other change', () => {
-    expect(withProductChanges(rec(), { photo }, 'now')).toMatchObject({ photo, updatedAt: 'now' });
-    expect(withProductChanges(rec({ photo }), { photo: null }, 'now').photo).toBeUndefined();
-    const same = rec({ photo });
+    expect(withProductChanges(rec(), { photo }, 'now')).toMatchObject({ photo, hasPhoto: true, updatedAt: 'now' });
+    expect(withProductChanges(rec({ photo, hasPhoto: true }), { photo: null }, 'now')).toMatchObject({ photo: undefined, hasPhoto: false });
+    const same = rec({ photo, hasPhoto: true });
     expect(withProductChanges(same, { photo }, 'now')).toBe(same);
   });
   it('are applied from a request and then dropped from the request', () => {
@@ -58,9 +58,9 @@ describe('product pictures', () => {
     expect((out.requests[0] as ProductEditRequest).changes.photo).toBeUndefined();
   });
   it('are kept when the product page saves something else', () => {
-    const product = { id: 'fp-beer', name: 'Beer', type: 'drink' as const, storage: 'pantry' as const, trackAmount: true, photo };
-    expect(productRecord(product, rec({ photo }), { storage: 'fridge' }, 'now')).toMatchObject({ photo, storage: 'fridge' });
-    expect(productRecord(product, undefined, {}, 'now')).toMatchObject({ id: 'fp-beer', name: 'Beer', photo, createdAt: 'now' });
+    const product = { id: 'fp-beer', name: 'Beer', type: 'drink' as const, storage: 'pantry' as const, trackAmount: true, hasPhoto: true };
+    expect(productRecord(product, rec({ hasPhoto: true }), { storage: 'fridge' }, 'now')).toMatchObject({ hasPhoto: true, storage: 'fridge' });
+    expect(productRecord(product, undefined, {}, 'now')).toMatchObject({ id: 'fp-beer', name: 'Beer', hasPhoto: true, createdAt: 'now' });
   });
 });
 

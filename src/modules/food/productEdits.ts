@@ -50,14 +50,17 @@ export function withProductChanges(rec: FoodProduct, c: ProductChanges, now: str
   if (c.trackAmount !== undefined) next.trackAmount = c.trackAmount ? undefined : false;
   if (c.packSize !== undefined) next.packSize = c.packSize ?? undefined;
   if (c.packLabel !== undefined) next.packLabel = c.packLabel ?? undefined;
-  if (c.photo !== undefined) next.photo = c.photo ?? undefined;
+  if (c.photo !== undefined) {
+    next.photo = c.photo ?? undefined;
+    next.hasPhoto = !!c.photo;
+  }
   const same = (Object.keys({ ...rec, ...next }) as (keyof FoodProduct)[]).every((k) => k === 'updatedAt' || rec[k] === next[k]);
   return same ? rec : { ...next, updatedAt: now };
 }
 
 /** The record to save for a product: what is already there, the product as shown (so a first change creates the record with its defaults) and the change. */
 export function productRecord(
-  product: { id: string; name: string; type: ProductType; storage: Storage; shelfLifeDays?: number; trackAmount: boolean; packSize?: number; packLabel?: string; photo?: string },
+  product: { id: string; name: string; type: ProductType; storage: Storage; shelfLifeDays?: number; trackAmount: boolean; packSize?: number; packLabel?: string; hasPhoto?: boolean },
   record: FoodProduct | undefined,
   patch: Partial<FoodProduct>,
   now: string,
@@ -72,7 +75,7 @@ export function productRecord(
     trackAmount: product.trackAmount ? undefined : false,
     packSize: product.packSize,
     packLabel: product.packLabel,
-    photo: product.photo,
+    hasPhoto: product.hasPhoto,
     createdAt: record?.createdAt ?? now,
     ...patch,
     updatedAt: now,

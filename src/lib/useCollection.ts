@@ -25,12 +25,12 @@ export function useCollection<T extends Entity>(store: StoreName) {
 
   const save = useCallback(
     async (item: T) => {
-      await put(store, item);
+      const stored = await put(store, item);
       setItems((prev) => {
         const i = prev.findIndex((p) => p.id === item.id);
-        if (i === -1) return [...prev, item];
+        if (i === -1) return [...prev, stored];
         const next = prev.slice();
-        next[i] = item;
+        next[i] = stored;
         return next;
       });
     },

@@ -67,8 +67,10 @@ export interface ClothingItem {
   /** YYYY-MM-DD the item left the closet (sold, donated, discarded). Unset for older records. */
   retiredDate?: string;
   condition?: Condition;
-  /** JPEG data URL */
+  /** JPEG data URL. Only on a record held in memory (a draft, an import, a save): records read from the store carry `hasPhoto` and the image is loaded with `usePhoto()`. */
   photo?: string;
+  /** The record has a picture in the local photos store (see lib/photoSplit.ts). Set it to false to remove the picture. */
+  hasPhoto?: boolean;
   notes?: string;
   /** Fabric or material, e.g. "Cotton, Elastane". */
   material?: string;

@@ -85,9 +85,9 @@ describe('packs', () => {
     const out = productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec]);
     expect(out[0]).toMatchObject({ packSize: 6, packLabel: 'can' });
   });
-  it('carry the product picture into the summary', () => {
-    const rec: FoodProduct = { id: 'fp-beer', name: 'Beer', type: 'drink', storage: 'pantry', photo: 'data:image/webp;base64,AAAA', createdAt: '', updatedAt: '' };
-    expect(productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec])[0].photo).toBe(rec.photo);
+  it('know that the product has a picture', () => {
+    const rec: FoodProduct = { id: 'fp-beer', name: 'Beer', type: 'drink', storage: 'pantry', hasPhoto: true, createdAt: '', updatedAt: '' };
+    expect(productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol' })] })], [rec])[0].hasPhoto).toBe(true);
   });
   it('keep the text printed on the receipt with each purchase', () => {
     const out = productSummaries([receipt({ lines: [line({ name: 'Beer', kind: 'alcohol', rawName: 'PIVO STAROPRAMEN 6PA' })] })], []);
