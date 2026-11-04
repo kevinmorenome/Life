@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, batchesToCheck, daysBetween, formatAmount, levelOptions, needsBatchCheck, needsCheck, originBatch, partLeft, stockOf, usesSince } from './stock';
 import type { StockEvent } from './types';
+import { usedEarlierEvent } from './stockActions';
 
 const buy = (date: string, quantity: number) => ({ date, quantity });
 let n = 0;
@@ -466,5 +467,15 @@ describe('weekly check, per batch', () => {
     expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', thawed: '2026-11-01', useBy: '2026-11-03' }), '2026-11-02')).toBe(false);
     expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', thawed: '2026-11-01', useBy: '2026-11-03' }), '2026-11-04')).toBe(true); // past its date
     expect(needsBatchCheck('fresh', { date: '2026-10-01', quantity: 0 }, '2026-11-02')).toBe(false);
+  });
+});
+
+describe('used earlier (undated)', () => {
+  it('takes the product out of stock but is not a use on any day', () => {
+    const e = usedEarlierEvent('fp-chicken', undefined, 'app');
+    expect(e.undated).toBe(true);
+    expect(e.type).toBe('count');
+    expect(e.quantity).toBe(0);
+    expect(usesSince([{ ...e, type: 'use', quantity: 1 }])).toBe(0);
   });
 });

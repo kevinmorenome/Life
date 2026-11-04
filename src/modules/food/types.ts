@@ -124,6 +124,11 @@ export interface StockEvent {
   /** For `expiry` events: the use-by date (YYYY-MM-DD) set for the batch. The newest one wins. */
   useBy?: string;
   note?: string;
+  /**
+   * Used up at some unknown time before (an old receipt, "I ate it, no idea when"). `date` is only when it was logged, to keep the
+   * order of events right; the app shows "date unknown" and no stat reads it as a day something happened.
+   */
+  undated?: boolean;
   createdAt: string;
   updatedAt: string;
 }

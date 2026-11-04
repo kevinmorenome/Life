@@ -5556,6 +5556,10 @@ a.game-row + .food-h2 {
   gap: 10px;
   margin-top: 18px;
 }
+.food-action-wide {
+  grid-column: 1 / -1;
+  order: 5;
+}
 .food-action {
   display: flex;
   align-items: center;

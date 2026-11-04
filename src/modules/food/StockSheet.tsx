@@ -7,7 +7,7 @@ import { PictureControl } from './PictureControl';
 import { unitLabel } from './products';
 import { dayText, tileInfo } from './stockTiles';
 import { formatAmount, levelOptions } from './stock';
-import { partLeftEvent, stockEvent } from './stockActions';
+import { partLeftEvent, stockEvent, usedEarlierEvent } from './stockActions';
 import type { Entry } from './stockEntries';
 import type { StockEvent } from './types';
 
@@ -86,6 +86,10 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
           <button type="button" className="food-action" disabled={s.quantity <= 0} onClick={() => onAct({ event: stockEvent(p.id, 'count', 0, 'app'), text: `${p.name} finished`, undo: restore(), done: true })}>
             <CheckIcon />
             Finished
+          </button>
+          <button type="button" className="food-action food-action-wide" disabled={s.quantity <= 0} onClick={() => onAct({ event: usedEarlierEvent(p.id, undefined, 'app'), text: `${p.name}: used earlier, no date`, undo: restore(), done: true })}>
+            <CheckIcon />
+            Used earlier, date unknown
           </button>
           <button type="button" className="food-action food-action-danger" disabled={s.quantity <= 0} onClick={() => onAct({ event: stockEvent(p.id, 'toss', s.quantity, 'app'), text: `${p.name} thrown out`, undo: restore(), done: true })}>
             <TrashIcon />
