@@ -641,6 +641,6 @@ function DayBubble({ wear, planned, items }: { wear?: DayWear; planned?: Outfit[
 
 /** The pieces of an outfit as a small collage (up to four), in place of its name. */
 function Collage({ pieces }: { pieces: ClothingItem[] }) {
-  const shown = collagePieces(pieces);
-  return <span className={`collage pieces-${Math.max(1, shown.length)}`}>{shown.map((p) => <ItemThumb key={p.id} item={p} />)}</span>;
+  const shown = collagePieces(pieces, 3);
+  return <span className="collage">{shown.map((p) => <ItemThumb key={p.id} item={p} />)}</span>;
 }

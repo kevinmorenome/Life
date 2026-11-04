@@ -7081,34 +7081,29 @@ a.game-row + .food-h2 {
   margin: 0 0 0.25rem;
 }
 
-/* Outfit tiles in the calendar show what was worn, not its name: a collage of the pieces (two columns, up to four). */
+/* Outfit tiles in the calendar show what was worn, not its name: the pieces side by side across the tile (up to three). */
 .pill-photo {
   position: relative;
   padding: 2px;
 }
 .collage {
-  display: grid;
+  display: flex;
   flex: 1;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px 2px;
+  gap: 2px;
   min-width: 0;
-  height: 46px;
-}
-.collage.pieces-1 {
-  grid-template-columns: 1fr;
-}
-.collage.pieces-3 .thumb:first-child {
-  grid-column: 1 / -1;
+  height: 40px;
 }
 .collage .thumb {
-  width: 100%;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
   height: 100%;
   border-radius: 3px;
   background: none;
   font-size: 0.7rem;
 }
 .cal-full .collage {
-  height: 62px;
+  height: 56px;
 }
 .pill-plus {
   position: absolute;
