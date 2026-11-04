@@ -10,6 +10,7 @@
   /* Neutral tile behind photos, so cut-out clothes aren't tinted. */
   --photo-bg: #efefed;
   --danger: #b4382f;
+  --warn: #b7791f;
   --radius: 12px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   color-scheme: light;
@@ -27,6 +28,7 @@
     --accent-soft: #23332e;
     --photo-bg: #2a2b30;
     --danger: #e0685f;
+    --warn: #e0a84f;
     --shadow: none;
     color-scheme: dark;
   }
@@ -7125,4 +7127,13 @@ a.game-row + .food-h2 {
   font-size: 0.85rem;
   text-align: right;
   white-space: nowrap;
+}
+.cal-note .note-plenty {
+  color: var(--accent);
+}
+.cal-note .note-low {
+  color: var(--warn);
+}
+.cal-note .note-out {
+  color: var(--danger);
 }
