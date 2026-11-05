@@ -10,6 +10,8 @@ export interface Trip {
   id: string;
   name: string;
   destination?: string;
+  /** Where the trip went, as an ISO 3166-1 alpha-2 code ("HR"). Counts towards Stats → Countries once the trip has started. */
+  country?: string;
   /** Cover picture: a small JPEG data URL (see `resizeImage`). */
   photo?: string;
   /** YYYY-MM-DD */
