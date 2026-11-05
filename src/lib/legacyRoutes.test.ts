@@ -19,6 +19,7 @@ describe('legacyRedirect', () => {
     expect(go('/clothes/stats')).toBe('/stats/clothes');
     expect(go('/clothes/stats/spending')).toBe('/stats/clothes/spending');
     expect(go('/work/stats')).toBe('/stats/work');
+    expect(go('/stats/countries')).toBe('/stats/checkins/countries');
   });
 
   it('folds the office pages into the calendar', () => {

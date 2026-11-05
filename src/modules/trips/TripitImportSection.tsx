@@ -63,7 +63,7 @@ export function TripitImportSection() {
       <h2>Past TripIt trips</h2>
       <p className="muted small">
         TripIt’s calendar feed only lists upcoming trips. To bring in older ones, sign in at tripit.com, open its trip list, run the snippet below in the
-        browser console (it only reads your own list), and paste the result here. Their countries count in Stats → Countries.
+        browser console (it only reads your own list), and paste the result here. Their countries count in Stats → Places → Countries.
       </p>
       <details>
         <summary className="small">Show the snippet</summary>

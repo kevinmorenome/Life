@@ -13,6 +13,7 @@ export function legacyRedirect(route: string[]): string | null {
     if (MONTH.test(c) || DATE.test(c)) return `/calendar/${c}`;
   }
   if (a === 'clothes' && b === 'stats') return `/stats/clothes${c ? `/${c}` : ''}`;
+  if (a === 'stats' && b === 'countries') return '/stats/checkins/countries';
   if (a === 'work') {
     if (b === 'stats') return '/stats/work';
     if (b === 'day' && c && DATE.test(c)) return `/calendar/${c}`;
