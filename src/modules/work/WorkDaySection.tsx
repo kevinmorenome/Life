@@ -10,7 +10,7 @@ export const STATUS_ICONS: Record<WorkStatus, ReactNode> = {
   off: <PalmIcon />,
   trip: <SuitcaseIcon />,
 };
-export const STATUS_LABELS: Record<WorkStatus, string> = { office: 'Office', home: 'Home', off: 'Day off', trip: 'Trip' };
+export const STATUS_LABELS: Record<WorkStatus, string> = { office: 'Office', home: 'Home', off: 'Day off', trip: 'Work trip' };
 export const REASON_LABELS: Record<OffReason, string> = { holiday: 'Holiday', leave: 'Leave', absence: 'Absence' };
 const ORDER: WorkStatus[] = ['office', 'home', 'trip', 'off'];
 

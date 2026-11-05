@@ -40,9 +40,12 @@ export function weekDays(start: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
-/** The month a week belongs to for the title: the one its Thursday is in (as ISO weeks do). */
+/**
+ * The month a week belongs to for the title: the one its last day (Sunday) is in. A week that holds the 1st has the
+ * new month's label right above it, so the title changes together with the label you see.
+ */
 export function monthOfWeek(start: string): string {
-  return addDays(start, 3).slice(0, 7);
+  return addDays(start, 6).slice(0, 7);
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { Checkin } from '../checkins/types';
+import type { Trip } from '../trips/types';
 import { COUNTRY_ROWS } from './countryData';
 import type { CountryVisit } from './types';
 
@@ -91,7 +92,7 @@ export function parseCountryList(text: string): { found: Country[]; unknown: str
   return { found: [...found.values()], unknown };
 }
 
-export type Source = 'swarm' | 'list' | 'manual';
+export type Source = 'swarm' | 'list' | 'manual' | 'trip';
 
 export interface CountryEntry {
   country: Country;
@@ -107,8 +108,11 @@ export interface CountryEntry {
 
 const earliest = (a?: string, b?: string) => (a && b ? (a < b ? a : b) : (a ?? b));
 
-/** Every country you've been to: Swarm check-ins (by country name) merged with the stored list. */
-export function visitedCountries(checkins: Checkin[], visits: CountryVisit[]): CountryEntry[] {
+/**
+ * Every country you've been to: Swarm check-ins (by country name), the stored list, and trips that name a country
+ * (`Trip.country`). A trip only counts once it has started (`today`), so a planned one isn't "visited" yet.
+ */
+export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = ''): CountryEntry[] {
   const out = new Map<string, CountryEntry>();
   const entry = (country: Country) => {
     let e = out.get(country.code);
@@ -131,6 +135,15 @@ export function visitedCountries(checkins: Checkin[], visits: CountryVisit[]): C
     e.visit = v;
     e.first = earliest(e.first, v.firstVisit);
     if (!e.sources.includes(v.source)) e.sources.push(v.source);
+  }
+  for (const t of trips) {
+    const country = t.country ? byCode.get(t.country.toUpperCase()) : undefined;
+    if (!country || !today || t.startDate > today) continue;
+    const e = entry(country);
+    e.first = earliest(e.first, t.startDate);
+    const end = t.endDate < today ? t.endDate : today;
+    e.last = e.last && e.last > end ? e.last : end;
+    if (!e.sources.includes('trip')) e.sources.push('trip');
   }
   return sortEntries([...out.values()]);
 }

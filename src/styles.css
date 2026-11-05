@@ -10,6 +10,7 @@
   /* Neutral tile behind photos, so cut-out clothes aren't tinted. */
   --photo-bg: #efefed;
   --danger: #b4382f;
+  --warn: #b7791f;
   --radius: 12px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   color-scheme: light;
@@ -27,6 +28,7 @@
     --accent-soft: #23332e;
     --photo-bg: #2a2b30;
     --danger: #e0685f;
+    --warn: #e0a84f;
     --shadow: none;
     color-scheme: dark;
   }
@@ -1481,6 +1483,27 @@ a:focus-visible {
   margin: 0;
   color: var(--text);
   text-decoration: none;
+}
+/* Trip pictures: a soft-cornered cover, flat on the page (content gets no plate). */
+.trip-photo {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin: 0 0 0.75rem;
+}
+.trip-cover {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 0.4rem;
+}
+.trip-photo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 progress {
   width: 100%;
@@ -7079,4 +7102,59 @@ a.game-row + .food-h2 {
 }
 .country-detail p {
   margin: 0 0 0.25rem;
+}
+
+/* Outfit tiles in the calendar show what was worn, not its name: the pieces side by side across the tile (up to three). */
+.pill-photo {
+  position: relative;
+  padding: 2px;
+}
+.collage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+/* Every piece gets the same square box, so tall pants don't stand out next to wide tops. */
+.collage .thumb {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 3px;
+  background: none;
+  font-size: 0.7rem;
+}
+.pill-plus {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+/* The month's note (e.g. "2 wfh days left") sits on the title row, before the filter button. */
+.cal-note {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.cal-note .note-plenty {
+  color: var(--accent);
+}
+.cal-note .note-low {
+  color: var(--warn);
+}
+.cal-note .note-out {
+  color: var(--danger);
 }

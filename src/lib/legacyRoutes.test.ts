@@ -28,8 +28,14 @@ describe('legacyRedirect', () => {
     expect(go('/work/day/2026-10-07')).toBe('/calendar/2026-10-07');
   });
 
+  it('moves packing under trips', () => {
+    expect(go('/packing')).toBe('/trips');
+    expect(go('/packing/t1')).toBe('/trips/t1');
+    expect(go('/packing/t1/day/2026-10-29')).toBe('/trips/t1/day/2026-10-29');
+  });
+
   it('ignores current routes', () => {
-    for (const path of ['/', '/calendar', '/stats/clothes', '/clothes', '/clothes/outfits', '/packing/abc', '/settings']) {
+    for (const path of ['/', '/calendar', '/stats/clothes', '/clothes', '/clothes/outfits', '/trips/abc', '/settings']) {
       expect(go(path)).toBeNull();
     }
   });

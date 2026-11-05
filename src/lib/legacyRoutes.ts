@@ -6,6 +6,8 @@ const MONTH = /^\d{4}-\d{2}$/;
 
 export function legacyRedirect(route: string[]): string | null {
   const [a, b, c] = route;
+  // Packing became part of the Trips module.
+  if (a === 'packing') return `/trips${route.slice(1).map((part) => `/${part}`).join('')}`;
   if (a === 'clothes' && b === 'calendar' && route.length <= 3) {
     if (!c) return '/calendar';
     if (MONTH.test(c) || DATE.test(c)) return `/calendar/${c}`;

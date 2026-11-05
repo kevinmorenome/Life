@@ -44,9 +44,10 @@ describe('weeks', () => {
     expect(weekDays('2026-10-26')).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01']);
   });
 
-  it('titles a week by the month of its Thursday', () => {
+  it('titles a week by the month of its last day, matching the month label drawn above it', () => {
     expect(monthOfWeek('2026-09-28')).toBe('2026-10');
-    expect(monthOfWeek('2026-10-26')).toBe('2026-10');
+    expect(monthOfWeek('2026-10-26')).toBe('2026-11');
+    expect(monthOfWeek('2026-10-19')).toBe('2026-10');
     expect(monthOfWeek('2026-08-31')).toBe('2026-09');
   });
 });

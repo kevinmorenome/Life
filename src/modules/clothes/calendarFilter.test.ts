@@ -7,8 +7,8 @@ describe('calendar filter', () => {
     expect(isShown(['place'], 'music')).toBe(false);
     expect(isShown(['place', 'music'], 'music')).toBe(true);
   });
-  it('groups office, home and day off as work', () => {
-    expect(['office', 'home', 'off'].map(kindOfTone)).toEqual(['work', 'work', 'work']);
+  it('groups office, home, day off and work trip as work', () => {
+    expect(['office', 'home', 'off', 'trip'].map(kindOfTone)).toEqual(['work', 'work', 'work', 'work']);
     expect(kindOfTone('music')).toBe('music');
   });
   it('toggles a kind', () => {

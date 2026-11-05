@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { DayWidget } from '../../DayWidget';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { tripsOnDate } from '../packing/packing';
-import type { Trip } from '../packing/types';
+import { tripsOnDate } from '../trips/packing';
+import type { Trip } from '../trips/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
 import { CheckIcon, HangerIcon, ShirtIcon, SuitcaseIcon, TrashIcon } from '../../icons';
@@ -93,7 +93,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
           >
             {dayTrips.map((t) => (
               <p key={t.id} className="widget-line">
-                <a href={href(`/packing/${t.id}`)}>{t.name}</a>
+                <a href={href(`/trips/${t.id}`)}>{t.name}</a>
               </p>
             ))}
             {planned.length > 0 && (

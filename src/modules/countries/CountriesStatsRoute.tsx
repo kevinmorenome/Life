@@ -4,25 +4,27 @@ import { shortDate, today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, Section, Tile } from '../clothes/charts';
 import type { Checkin } from '../checkins/types';
+import type { Trip } from '../trips/types';
 import { COUNTRIES, newVisit, parseCountryList, summarize, visitedCountries, visitsToImport, type CountryEntry } from './countries';
 import type { CountryVisit } from './types';
 import { WorldMap } from './WorldMap';
 
-const SOURCE_LABEL = { swarm: 'Swarm', list: 'List', manual: 'Added by hand' } as const;
+const SOURCE_LABEL = { swarm: 'Swarm', list: 'List', manual: 'Added by hand', trip: 'Trips' } as const;
 
 const years = (e: CountryEntry) => (e.first && e.last && e.first.slice(0, 4) !== e.last.slice(0, 4) ? `${e.first.slice(0, 4)}–${e.last.slice(0, 4)}` : e.first?.slice(0, 4));
 
 export function CountriesStatsRoute() {
   const checkins = useCollection<Checkin>('checkins');
   const visits = useCollection<CountryVisit>('countries');
-  const entries = useMemo(() => visitedCountries(checkins.items, visits.items), [checkins.items, visits.items]);
+  const trips = useCollection<Trip>('trips');
+  const entries = useMemo(() => visitedCountries(checkins.items, visits.items, trips.items, today()), [checkins.items, visits.items, trips.items]);
   const summary = useMemo(() => summarize(entries), [entries]);
   const thisYear = today().slice(0, 4);
 
-  if (checkins.loading || visits.loading) return <p className="muted">Loading…</p>;
+  if (checkins.loading || visits.loading || trips.loading) return <p className="muted">Loading…</p>;
   return (
     <>
-      <p className="muted small">From your Swarm check-ins, plus trips added by hand.</p>
+      <p className="muted small">From your Swarm check-ins and trips, plus countries added by hand.</p>
       <div className="tiles">
         <Tile value={String(summary.visited)} label={summary.visited === 1 ? 'country' : 'countries'} tone={0} />
         <Tile value={`${Math.round(summary.share * 100)}%`} label="of the world" tone={1} />
