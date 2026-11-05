@@ -74,6 +74,19 @@ export function TripitImportSection() {
         <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder='[{"id":"…","name":"…","start":"2024-05-10", …}]' spellCheck={false} />
       </label>
       <div className="form-actions start">
+        <label className="btn">
+          Choose file
+          <input
+            type="file"
+            accept=".json,application/json,text/plain"
+            hidden
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) setText(await file.text());
+              e.target.value = '';
+            }}
+          />
+        </label>
         <button className="btn btn-primary" disabled={busy || !text.trim()} onClick={run}>
           {busy ? 'Importing…' : 'Import trips'}
         </button>

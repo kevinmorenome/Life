@@ -56,7 +56,9 @@ export function parseTripList(text: string): { trips: ImportedTrip[]; skipped: n
   } catch {
     return { error: 'That is not JSON. Paste what the snippet copied.' };
   }
-  const list = Array.isArray(data) ? data : isObject(data) && 'Trip' in data ? (Array.isArray(data.Trip) ? data.Trip : [data.Trip]) : isObject(data) ? [data] : [];
+  // A list of trips, one answer ({ Trip }), or several answers saved one after the other.
+  const expand = (v: unknown): unknown[] => (isObject(v) && 'Trip' in v ? [v.Trip].flat() : [v]);
+  const list = Array.isArray(data) ? data.flatMap(expand) : isObject(data) ? expand(data) : [];
   const seen = new Set<string>();
   const trips: ImportedTrip[] = [];
   for (const raw of list) {

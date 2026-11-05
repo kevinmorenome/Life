@@ -18,7 +18,8 @@ const NOW = '2026-11-05T10:00:00.000Z';
 describe('parseTripList', () => {
   it('reads TripIt\'s own shape, as an array, a { Trip } answer or a single trip', () => {
     const one = { id: '111', name: 'Lisbon, Portugal, May 2024', start: '2024-05-10', end: '2024-05-13', place: 'Lisbon, Portugal', country: 'PT' };
-    for (const input of [[raw()], { Trip: [raw()] }, { Trip: raw() }, raw()]) {
+    // Several saved answers in one file work too.
+    for (const input of [[raw()], { Trip: [raw()] }, { Trip: raw() }, raw(), [{ Trip: [raw()] }, { Trip: [] }]]) {
       expect(parseTripList(JSON.stringify(input))).toEqual({ trips: [one], skipped: 0 });
     }
   });
