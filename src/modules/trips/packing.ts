@@ -1,20 +1,8 @@
-import type { ClothingItem, Outfit } from '../clothes/types';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
+import { tripOutfitsByDay, tripWornItemsByDay } from './tripPlans';
 import type { PackExtra, Trip } from './types';
 
-/** Longest trip we lay out day by day. */
-const MAX_DAYS = 90;
-
-/** Every YYYY-MM-DD from start to end inclusive (empty if end is before start). */
-export function tripDays(trip: Pick<Trip, 'startDate' | 'endDate'>): string[] {
-  const days: string[] = [];
-  const d = new Date(trip.startDate + 'T00:00:00Z');
-  const end = new Date(trip.endDate + 'T00:00:00Z');
-  while (d <= end && days.length < MAX_DAYS) {
-    days.push(d.toISOString().slice(0, 10));
-    d.setUTCDate(d.getUTCDate() + 1);
-  }
-  return days;
-}
+export { tripDays } from './tripDays';
 
 export function tripsOnDate(trips: Trip[], date: string): Trip[] {
   return trips.filter((t) => t.startDate <= date && date <= t.endDate);
@@ -26,6 +14,8 @@ export interface PackClothes {
   viaOutfits: string[];
   /** Added by hand, so it can be removed from the list directly. */
   manual: boolean;
+  /** Worn on its own on a day of the trip (the calendar has it), outside any outfit. */
+  worn: boolean;
   packed: boolean;
 }
 
@@ -37,7 +27,7 @@ export interface PackingList {
 }
 
 /**
- * The checklist: pieces from every planned outfit plus hand-picked ones
+ * The checklist: pieces from the trip's outfits (the calendar's plans and worn outfits on its days) plus hand-picked ones
  * (each listed once), then the extras. Derived, so editing an outfit or
  * the plan updates the list; only `packed` ids are stored.
  */
@@ -46,16 +36,16 @@ export function packingList(
   items: ClothingItem[],
   outfits: Outfit[],
   outfitLabel: (o: Outfit) => string,
+  plans: Plan[] = [],
 ): PackingList {
   const itemById = new Map(items.map((i) => [i.id, i]));
-  const outfitById = new Map(outfits.map((o) => [o.id, o]));
   const packedIds = new Set(trip.packed);
   const entries = new Map<string, PackClothes>();
   const entry = (id: string) => {
     const item = itemById.get(id);
     if (!item) return undefined;
     let e = entries.get(id);
-    if (!e) entries.set(id, (e = { item, viaOutfits: [], manual: false, packed: packedIds.has(id) }));
+    if (!e) entries.set(id, (e = { item, viaOutfits: [], manual: false, worn: false, packed: packedIds.has(id) }));
     return e;
   };
 
@@ -63,15 +53,21 @@ export function packingList(
     const e = entry(id);
     if (e) e.manual = true;
   }
-  for (const date of Object.keys(trip.outfitPlan).sort()) {
-    for (const oid of trip.outfitPlan[date]) {
-      const o = outfitById.get(oid);
-      if (!o) continue;
+  for (const [, dayOutfits] of [...tripOutfitsByDay(trip, plans, outfits)].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const o of dayOutfits) {
       const name = outfitLabel(o);
       for (const iid of o.itemIds) {
         const e = entry(iid);
         if (e && !e.viaOutfits.includes(name)) e.viaOutfits.push(name);
       }
+    }
+  }
+
+  // Pieces worn on their own on the trip's days count too, the same as the calendar shows them.
+  for (const day of tripWornItemsByDay(trip, items, outfits).values()) {
+    for (const i of day) {
+      const e = entry(i.id);
+      if (e) e.worn = true;
     }
   }
 
@@ -90,14 +86,6 @@ export function togglePacked(trip: Trip, id: string): Trip {
 
 export function unpackAll(trip: Trip): Trip {
   return { ...trip, packed: [], updatedAt: new Date().toISOString() };
-}
-
-/** Sets the outfits planned for one day (an empty list clears the day). */
-export function withDayOutfits(trip: Trip, date: string, outfitIds: string[]): Trip {
-  const outfitPlan = { ...trip.outfitPlan };
-  if (outfitIds.length) outfitPlan[date] = outfitIds;
-  else delete outfitPlan[date];
-  return { ...trip, outfitPlan, updatedAt: new Date().toISOString() };
 }
 
 export function withExtra(trip: Trip, extra: PackExtra): Trip {

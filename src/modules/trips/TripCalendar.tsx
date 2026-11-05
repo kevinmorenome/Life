@@ -3,13 +3,15 @@ import { href } from '../../lib/router';
 import { addMonths, monthGrid } from '../clothes/calendar';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { outfitPieces } from '../clothes/outfits';
-import type { ClothingItem, Outfit } from '../clothes/types';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
+import { tripOutfitsByDay, tripWornItemsByDay } from './tripPlans';
 import type { Trip } from './types';
 
 interface Props {
   trip: Trip;
   items: ClothingItem[];
   outfits: Outfit[];
+  plans: Plan[];
 }
 
 // Monday-first weekday names in the viewer's language (Jan 5, 2026 was a Monday).
@@ -18,8 +20,10 @@ const WEEKDAYS = Array.from({ length: 7 }, (_, i) =>
 );
 
 /** A month calendar (one per month the trip touches) where only the trip's dates are tappable. */
-export function TripCalendar({ trip, items, outfits }: Props) {
-  const outfitById = useMemo(() => new Map(outfits.map((o) => [o.id, o])), [outfits]);
+export function TripCalendar({ trip, items, outfits, plans }: Props) {
+  // The same outfits the calendar shows for these days.
+  const byDay = useMemo(() => tripOutfitsByDay(trip, plans, outfits), [trip, plans, outfits]);
+  const wornByDay = useMemo(() => tripWornItemsByDay(trip, items, outfits), [trip, items, outfits]);
   const months: string[] = [];
   for (let m = trip.startDate.slice(0, 7); m <= trip.endDate.slice(0, 7) && months.length < 4; m = addMonths(m, 1)) {
     months.push(m);
@@ -51,17 +55,19 @@ export function TripCalendar({ trip, items, outfits }: Props) {
               <div key={week[0].date} className="calendar-row" role="row">
                 {week.map(({ date, inMonth }) => {
                   if (!inMonth || !inTrip(date)) return <span key={date} role="gridcell" aria-hidden />;
-                  const planned = (trip.outfitPlan[date] ?? []).map((id) => outfitById.get(id)).filter((o): o is Outfit => !!o);
-                  const pieces = planned[0] ? outfitPieces(planned[0], items).slice(0, 2) : [];
+                  const planned = byDay.get(date) ?? [];
+                  // A day with no outfit shows the single pieces worn that day instead.
+                  const singles = wornByDay.get(date) ?? [];
+                  const pieces = planned[0] ? outfitPieces(planned[0], items).slice(0, 2) : singles.slice(0, 2);
                   return (
                     <a
                       key={date}
                       role="gridcell"
                       href={href(`/trips/${trip.id}/day/${date}`)}
                       className="calendar-day in-trip"
-                      aria-label={`${date}, ${planned.length} ${planned.length === 1 ? 'outfit' : 'outfits'}`}
+                      aria-label={`${date}, ${planned.length} ${planned.length === 1 ? 'outfit' : 'outfits'}${singles.length ? `, ${singles.length} single ${singles.length === 1 ? 'piece' : 'pieces'} worn` : ''}`}
                     >
-                      {planned.length > 0 && (
+                      {pieces.length > 0 && (
                         <span className={`day-bubble pieces-${pieces.length}`}>
                           {pieces.map((p) => (
                             <ItemThumb key={p.id} item={p} />
@@ -69,7 +75,7 @@ export function TripCalendar({ trip, items, outfits }: Props) {
                         </span>
                       )}
                       <span className="day-num">{Number(date.slice(8))}</span>
-                      {planned.length > 1 && <span className="day-count">{planned.length}</span>}
+                      {(planned.length || singles.length) > 1 && <span className="day-count">{planned.length || singles.length}</span>}
                     </a>
                   );
                 })}

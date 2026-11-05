@@ -5,11 +5,12 @@ import { shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { outfitName } from '../clothes/outfits';
-import { label, type ClothingItem, type Outfit } from '../clothes/types';
+import { label, type ClothingItem, type Outfit, type Plan } from '../clothes/types';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import { Itinerary } from './Itinerary';
 import { TripCalendar } from './TripCalendar';
 import { plansOfTrip } from './tripit';
+import { tripOutfitsByDay } from './tripPlans';
 import { packingList, togglePacked, unpackAll, withExtra, withoutExtra, withoutManualItem } from './packing';
 import { EXTRA_GROUPS, SUGGESTED_EXTRAS, type Trip } from './types';
 
@@ -25,13 +26,15 @@ interface Props {
   tab: TripTab;
   items: ClothingItem[];
   outfits: Outfit[];
-  plans: TripitPlan[];
+  plans: Plan[];
+  tripitPlans: TripitPlan[];
   onSave: (t: Trip) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }: Props) {
-  const list = useMemo(() => packingList(trip, items, outfits, outfitName), [trip, items, outfits]);
+export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSave, onDelete }: Props) {
+  const list = useMemo(() => packingList(trip, items, outfits, outfitName, plans), [trip, items, outfits, plans]);
+  const outfitCount = useMemo(() => [...tripOutfitsByDay(trip, plans, outfits).values()].reduce((n, day) => n + day.length, 0), [trip, plans, outfits]);
   const [text, setText] = useState('');
   const [group, setGroup] = useState<string>(EXTRA_GROUPS[0]);
   const [showPacked, setShowPacked] = useState(true);
@@ -85,7 +88,7 @@ export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }:
       </div>
 
       {tab === 'itinerary' ? (
-        <Itinerary plans={plansOfTrip(plans, trip)} startDate={trip.startDate} endDate={trip.endDate} />
+        <Itinerary plans={plansOfTrip(tripitPlans, trip)} startDate={trip.startDate} endDate={trip.endDate} />
       ) : (
       <>
       <div className="card pack-progress" aria-live="polite">
@@ -123,7 +126,7 @@ export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }:
               ? `${list.clothes.filter((c) => c.packed).length}/${list.clothes.length}`
               : t.id === 'other'
                 ? `${list.extras.filter((x) => x.packed).length}/${list.extras.length}`
-                : `${Object.values(trip.outfitPlan).flat().length}`;
+                : `${outfitCount}`;
           return (
             <a key={t.id} role="tab" aria-selected={tab === t.id} href={href(`/trips/${trip.id}/${t.id}`)}>
               {t.label} <span className="count">{count}</span>
@@ -132,7 +135,7 @@ export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }:
         })}
       </nav>
 
-      {tab === 'outfits' && <TripCalendar trip={trip} items={items} outfits={outfits} />}
+      {tab === 'outfits' && <TripCalendar trip={trip} items={items} outfits={outfits} plans={plans} />}
       {tab === 'clothes' && (
       <section>
         {list.clothes.length === 0 && (
@@ -158,7 +161,7 @@ export function TripView({ trip, tab, items, outfits, plans, onSave, onDelete }:
               >
                 <ItemThumb item={c.item} />
                 <span className="tile-name">{c.item.name}</span>
-                <span className="tile-meta">{c.viaOutfits.length ? `For ${c.viaOutfits.join(', ')}` : label(c.item.category)}</span>
+                <span className="tile-meta">{c.viaOutfits.length ? `For ${c.viaOutfits.join(', ')}` : c.worn ? 'Worn on this trip' : label(c.item.category)}</span>
               </button>
               <button
                 type="button"

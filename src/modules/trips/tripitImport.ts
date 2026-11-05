@@ -83,7 +83,6 @@ export function tripsToImport(imported: ImportedTrip[], existing: Pick<Trip, 'id
       ...(t.country ? { country: t.country } : {}),
       startDate: t.start,
       endDate: t.end,
-      outfitPlan: {},
       itemIds: [],
       extras: [],
       packed: [],

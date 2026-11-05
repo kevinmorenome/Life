@@ -7158,3 +7158,12 @@ a.game-row + .food-h2 {
 .cal-note .note-out {
   color: var(--danger);
 }
+
+/* A planned outfit sits among the worn ones in the day's Outfits card: lighter, and tagged in words. */
+.outfit-cards li.planned .card-cover {
+  opacity: 0.7;
+}
+.planned-tag {
+  display: block;
+  text-align: center;
+}
