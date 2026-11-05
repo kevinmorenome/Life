@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PREVIEW_LABEL } from '../../lib/preview';
-import { syncTripit, tripitStatus, type TripitStatus } from './tripitClient';
+import { describeFeed, syncTripit, tripitStatus, type TripitStatus } from './tripitClient';
 
 /** Fetch TripIt trips, in Settings. The feed link is the Worker secret TRIPIT_FEED_URL; hidden until it is set, and in PR previews, which never write. */
 export function TripitSection() {
@@ -15,7 +15,7 @@ export function TripitSection() {
   async function fetchNow() {
     setBusy(true);
     const res = await syncTripit();
-    setMessage('error' in res ? res.error : `Found ${res.plans} plans. ${res.trips} new ${res.trips === 1 ? 'trip' : 'trips'} added.`);
+    setMessage('error' in res ? res.error : `Found ${res.plans} plans. ${res.trips} new ${res.trips === 1 ? 'trip' : 'trips'} added.${res.plans === 0 ? describeFeed(res.feed) : ''}`);
     setStatus(await tripitStatus());
     setBusy(false);
   }

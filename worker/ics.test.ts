@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIcs } from './ics';
+import { parseIcs, reportIcs } from './ics';
 
 const wrap = (...events: string[]) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${events.join('\r\n')}\r\nEND:VCALENDAR\r\n`;
 
@@ -60,5 +60,23 @@ describe('parseIcs', () => {
 
   it('returns nothing for text that is not a calendar', () => {
     expect(parseIcs('<html>nope</html>')).toEqual([]);
+  });
+});
+
+describe('reportIcs', () => {
+  it('counts what is in a feed and what is unusable', () => {
+    const r = reportIcs(
+      wrap(
+        'BEGIN:VEVENT', 'UID:a', 'SUMMARY:Ok', 'DTSTART;VALUE=DATE:20261105', 'END:VEVENT',
+        'BEGIN:VEVENT', 'UID:b', 'SUMMARY:Gone', 'DTSTART:20261105', 'STATUS:CANCELLED', 'END:VEVENT',
+        'BEGIN:VEVENT', 'UID:c', 'SUMMARY:No start', 'END:VEVENT',
+      ),
+    );
+    expect(r).toMatchObject({ components: { VCALENDAR: 1, VEVENT: 3 }, events: 3, usable: 1, cancelled: 1, unreadable: 1 });
+    expect(r.firstEventProps).toEqual(['UID', 'SUMMARY', 'DTSTART;VALUE']);
+  });
+
+  it('reports an empty calendar', () => {
+    expect(reportIcs(wrap())).toMatchObject({ events: 0, usable: 0, firstEventProps: [] });
   });
 });
