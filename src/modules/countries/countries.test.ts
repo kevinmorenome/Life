@@ -97,3 +97,23 @@ describe('visitsToImport', () => {
     expect(out).toEqual([{ id: 'CA', source: 'list', createdAt: '2026-11-04T00:00:00Z', updatedAt: '2026-11-04T00:00:00Z' }]);
   });
 });
+
+describe('visitedCountries with trips', () => {
+  const trip = (country: string | undefined, startDate: string, endDate: string) => ({ country, startDate, endDate });
+
+  it('counts a trip that has started, with its dates', () => {
+    const [e] = visitedCountries([], [], [trip('PT', '2024-05-10', '2024-05-13')], '2026-11-05');
+    expect(e).toMatchObject({ first: '2024-05-10', last: '2024-05-13', checkins: 0, sources: ['trip'] });
+    expect(e.country.code).toBe('PT');
+  });
+
+  it('does not count a trip that has not started, or one without a country', () => {
+    expect(visitedCountries([], [], [trip('PT', '2027-01-01', '2027-01-05'), trip(undefined, '2024-01-01', '2024-01-02'), trip('ZZ', '2024-01-01', '2024-01-02')], '2026-11-05')).toEqual([]);
+  });
+
+  it('keeps the earliest day across sources and stops a running trip at today', () => {
+    const [e] = visitedCountries([ci('Croatia', '2023-07-02')], [], [trip('HR', '2019-08-01', '2019-08-05'), trip('HR', '2026-11-03', '2026-11-20')], '2026-11-05');
+    expect(e).toMatchObject({ first: '2019-08-01', last: '2026-11-05', checkins: 1 });
+    expect(e.sources).toEqual(['swarm', 'trip']);
+  });
+});

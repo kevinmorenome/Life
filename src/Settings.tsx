@@ -14,6 +14,7 @@ import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { PerfSection } from './PerfSection';
 import { SwarmSection } from './modules/checkins/SwarmSection';
 import { StatsfmSection } from './modules/music/StatsfmSection';
+import { TripitImportSection } from './modules/trips/TripitImportSection';
 import { TripitSection } from './modules/trips/TripitSection';
 import { TraktSection } from './modules/watching/TraktSection';
 import { MoveTakeoutSection } from './modules/wolt/MoveTakeoutSection';
@@ -203,6 +204,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       <OfficeFromSwarm />
       <TraktSection />
       <TripitSection />
+      <TripitImportSection />
       <StatsfmSection />
       <MoveTakeoutSection />
       <PerfSection />
