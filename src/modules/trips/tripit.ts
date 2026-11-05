@@ -55,7 +55,6 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
     ...(stay?.location ? { destination: stay.location.slice(0, 80) } : {}),
     startDate: group.start,
     endDate: group.end,
-    outfitPlan: {},
     itemIds: [],
     extras: [],
     packed: [],

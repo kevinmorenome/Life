@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ClothingItem, Outfit } from '../clothes/types';
-import { packingList, togglePacked, tripDays, tripsOnDate, withDayOutfits, withExtra, withoutExtra } from './packing';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
+import { packingList, togglePacked, tripDays, tripsOnDate, withExtra, withoutExtra } from './packing';
 import type { Trip } from './types';
 
 const stamp = '2026-01-01T00:00:00Z';
@@ -21,7 +21,6 @@ const trip = (over: Partial<Trip> = {}): Trip => ({
   name: 'Lisbon',
   startDate: '2026-11-01',
   endDate: '2026-11-03',
-  outfitPlan: {},
   itemIds: [],
   extras: [],
   packed: [],
@@ -30,6 +29,7 @@ const trip = (over: Partial<Trip> = {}): Trip => ({
   ...over,
 });
 const label = (o: Outfit) => o.id;
+const plan = (outfitId: string, date: string): Plan => ({ id: `${outfitId}_${date}`, date, outfitId, createdAt: stamp, updatedAt: stamp });
 
 describe('packing', () => {
   it('lists each day of the trip, inclusive, across month ends', () => {
@@ -47,8 +47,8 @@ describe('packing', () => {
   it('merges outfit pieces and hand-picked items without duplicates', () => {
     const items = [item('shirt'), item('jeans', { category: 'bottoms' }), item('hat', { category: 'accessories' })];
     const outfits = [outfit('a', ['shirt', 'jeans']), outfit('b', ['shirt'])];
-    const t = trip({ outfitPlan: { '2026-11-01': ['a'], '2026-11-02': ['b'] }, itemIds: ['hat', 'shirt'] });
-    const list = packingList(t, items, outfits, label);
+    const t = trip({ itemIds: ['hat', 'shirt'] });
+    const list = packingList(t, items, outfits, label, [plan('a', '2026-11-01'), plan('b', '2026-11-02')]);
     expect(list.clothes.map((c) => c.item.id)).toEqual(['hat', 'jeans', 'shirt']);
     const shirt = list.clothes.find((c) => c.item.id === 'shirt')!;
     expect(shirt.viaOutfits).toEqual(['a', 'b']);
@@ -57,8 +57,8 @@ describe('packing', () => {
   });
 
   it('skips deleted outfits and items', () => {
-    const t = trip({ outfitPlan: { '2026-11-01': ['gone', 'a'] }, itemIds: ['missing'] });
-    const list = packingList(t, [item('shirt')], [outfit('a', ['shirt', 'ghost'])], label);
+    const t = trip({ itemIds: ['missing'] });
+    const list = packingList(t, [item('shirt')], [outfit('a', ['shirt', 'ghost'])], label, [plan('gone', '2026-11-01'), plan('a', '2026-11-01')]);
     expect(list.clothes.map((c) => c.item.id)).toEqual(['shirt']);
   });
 
@@ -75,10 +75,14 @@ describe('packing', () => {
     expect(togglePacked(t, 'shirt').packed).toEqual([]);
   });
 
-  it('sets and clears a day’s outfits', () => {
-    const t = withDayOutfits(trip(), '2026-11-01', ['a']);
-    expect(t.outfitPlan).toEqual({ '2026-11-01': ['a'] });
-    expect(withDayOutfits(t, '2026-11-01', []).outfitPlan).toEqual({});
+  it('takes the pieces from the calendar\'s plans on the trip days', () => {
+    const items = [item('shirt'), item('jeans', { category: 'bottoms' })];
+    const outfits = [outfit('a', ['shirt']), outfit('b', ['jeans'])];
+    const plans = [plan('a', '2026-11-02'), plan('b', '2026-12-25')];
+    const list = packingList(trip(), items, outfits, label, plans);
+    // b is planned, but on a day outside the trip.
+    expect(list.clothes.map((c) => c.item.id)).toEqual(['shirt']);
+    expect(list.clothes[0].viaOutfits).toEqual(['a']);
   });
 
   it('ignores duplicate extras and forgets packed state when one is removed', () => {

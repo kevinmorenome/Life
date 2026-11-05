@@ -18,8 +18,11 @@ export interface Trip {
   startDate: string;
   /** YYYY-MM-DD, inclusive */
   endDate: string;
-  /** Outfit ids planned for each YYYY-MM-DD of the trip. */
-  outfitPlan: Record<string, string[]>;
+  /**
+   * Legacy: outfit ids planned for each YYYY-MM-DD of the trip, from before trips used the calendar's own plans.
+   * New trips don't set it; `migrateTripPlans()` turns what is there into plans and empties it.
+   */
+  outfitPlan?: Record<string, string[]>;
   /** Closet items added by hand, on top of those from planned outfits. */
   itemIds: string[];
   extras: PackExtra[];

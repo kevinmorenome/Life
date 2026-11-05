@@ -3,13 +3,15 @@ import { href } from '../../lib/router';
 import { addMonths, monthGrid } from '../clothes/calendar';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { outfitPieces } from '../clothes/outfits';
-import type { ClothingItem, Outfit } from '../clothes/types';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
+import { tripOutfitsByDay } from './tripPlans';
 import type { Trip } from './types';
 
 interface Props {
   trip: Trip;
   items: ClothingItem[];
   outfits: Outfit[];
+  plans: Plan[];
 }
 
 // Monday-first weekday names in the viewer's language (Jan 5, 2026 was a Monday).
@@ -18,8 +20,9 @@ const WEEKDAYS = Array.from({ length: 7 }, (_, i) =>
 );
 
 /** A month calendar (one per month the trip touches) where only the trip's dates are tappable. */
-export function TripCalendar({ trip, items, outfits }: Props) {
-  const outfitById = useMemo(() => new Map(outfits.map((o) => [o.id, o])), [outfits]);
+export function TripCalendar({ trip, items, outfits, plans }: Props) {
+  // The same outfits the calendar shows for these days.
+  const byDay = useMemo(() => tripOutfitsByDay(trip, plans, outfits), [trip, plans, outfits]);
   const months: string[] = [];
   for (let m = trip.startDate.slice(0, 7); m <= trip.endDate.slice(0, 7) && months.length < 4; m = addMonths(m, 1)) {
     months.push(m);
@@ -51,7 +54,7 @@ export function TripCalendar({ trip, items, outfits }: Props) {
               <div key={week[0].date} className="calendar-row" role="row">
                 {week.map(({ date, inMonth }) => {
                   if (!inMonth || !inTrip(date)) return <span key={date} role="gridcell" aria-hidden />;
-                  const planned = (trip.outfitPlan[date] ?? []).map((id) => outfitById.get(id)).filter((o): o is Outfit => !!o);
+                  const planned = byDay.get(date) ?? [];
                   const pieces = planned[0] ? outfitPieces(planned[0], items).slice(0, 2) : [];
                   return (
                     <a

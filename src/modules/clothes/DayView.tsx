@@ -36,15 +36,8 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
     ...(date.slice(0, 4) !== today().slice(0, 4) ? { year: 'numeric' as const } : {}),
   });
 
-  // Outfits packed for a trip on this day that haven't been logged yet.
+  // The outfits for a trip day are the calendar's own plans (the Planned widget below), not a copy.
   const dayTrips = tripsOnDate(trips, date);
-  const outfitById = new Map(outfits.map((o) => [o.id, o]));
-  const planned = dayTrips.flatMap((t) =>
-    (t.outfitPlan[date] ?? [])
-      .map((id) => outfitById.get(id))
-      .filter((o): o is Outfit => !!o && !o.wears.includes(date))
-      .map((o) => ({ trip: t, outfit: o })),
-  );
 
   const scheduled = pendingPlans(plans, outfits, date);
 
@@ -87,7 +80,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
             title="Trip"
             icon={<SuitcaseIcon />}
             tone="trip"
-            size={planned.length ? 'full' : 'half'}
+            size="half"
             badge={dayTrips.length > 1 ? dayTrips.length : undefined}
             summary={dayTrips.map((t) => t.name).join(', ')}
           >
@@ -96,19 +89,6 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
                 <a href={href(`/trips/${t.id}`)}>{t.name}</a>
               </p>
             ))}
-            {planned.length > 0 && (
-              <ul className="outfit-cards">
-                {planned.map(({ trip, outfit }) => (
-                  <li key={trip.id + outfit.id}>
-                    <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
-                      <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn, planned for ${trip.name}`} onClick={() => wearPlanned(outfit)}>
-                        <CheckIcon />
-                      </button>
-                    </OutfitCard>
-                  </li>
-                ))}
-              </ul>
-            )}
           </DayWidget>
         )}
 
@@ -189,7 +169,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
         )}
       </div>
 
-      {wear.outfits.length === 0 && wear.items.length === 0 && scheduled.length === 0 && planned.length === 0 && (
+      {wear.outfits.length === 0 && wear.items.length === 0 && scheduled.length === 0 && (
         <p className="muted center day-empty">{isFuture ? 'No outfit planned for this day.' : 'No outfit logged for this day.'}</p>
       )}
 

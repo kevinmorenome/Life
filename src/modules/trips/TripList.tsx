@@ -1,7 +1,7 @@
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { outfitName } from '../clothes/outfits';
-import type { ClothingItem, Outfit } from '../clothes/types';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { packingList, tripDays } from './packing';
 import type { Trip } from './types';
 
@@ -9,9 +9,10 @@ interface Props {
   trips: Trip[];
   items: ClothingItem[];
   outfits: Outfit[];
+  plans: Plan[];
 }
 
-export function TripList({ trips, items, outfits }: Props) {
+export function TripList({ trips, items, outfits, plans }: Props) {
   const now = today();
   const upcoming = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const past = trips.filter((t) => t.endDate < now).sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -22,7 +23,7 @@ export function TripList({ trips, items, outfits }: Props) {
         <h2>{title}</h2>
         <ul className="trip-list">
           {list.map((t) => {
-            const { total, packedCount } = packingList(t, items, outfits, outfitName);
+            const { total, packedCount } = packingList(t, items, outfits, outfitName, plans);
             const nights = tripDays(t).length;
             return (
               <li key={t.id}>

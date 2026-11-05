@@ -33,7 +33,6 @@ export function TripForm({ existing, onSave }: Props) {
     e.preventDefault();
     const now = new Date().toISOString();
     const trip: Trip = {
-      outfitPlan: {},
       itemIds: [],
       extras: [],
       packed: [],

@@ -3,8 +3,8 @@ import { navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { OutfitCard } from '../clothes/OutfitCard';
 import { outfitName } from '../clothes/outfits';
-import type { ClothingItem, Outfit } from '../clothes/types';
-import { withDayOutfits } from './packing';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
+import { dayChanges, tripOutfitsByDay } from './tripPlans';
 import type { Trip } from './types';
 
 interface Props {
@@ -14,11 +14,20 @@ interface Props {
   onSave: (t: Trip) => Promise<void>;
 }
 
+interface PlanProps {
+  plans: Plan[];
+  onSavePlan: (p: Plan) => Promise<void>;
+  onRemovePlan: (id: string) => Promise<void>;
+}
+
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
-/** Choose which outfits you'll wear on one day of the trip. */
-export function DayOutfitPicker({ trip, date, items, outfits, onSave }: Props & { date: string }) {
-  const [selected, setSelected] = useState<string[]>(trip.outfitPlan[date] ?? []);
+/**
+ * Choose which outfits you'll wear on one day of the trip. These are the calendar's own plans for that day:
+ * what is chosen here shows on the calendar, and what is planned there shows here.
+ */
+export function DayOutfitPicker({ trip, date, items, outfits, plans, onSave, onSavePlan, onRemovePlan }: Props & PlanProps & { date: string }) {
+  const [selected, setSelected] = useState<string[]>(() => (tripOutfitsByDay(trip, plans, outfits).get(date) ?? []).map((o) => o.id));
   const [query, setQuery] = useState('');
   const back = `/trips/${trip.id}/outfits`;
   const list = useMemo(() => {
@@ -27,7 +36,10 @@ export function DayOutfitPicker({ trip, date, items, outfits, onSave }: Props & 
   }, [outfits, query]);
 
   async function save() {
-    await onSave(withDayOutfits(trip, date, selected));
+    const change = dayChanges(trip, plans, outfits, date, selected);
+    for (const p of change.add) await onSavePlan(p);
+    for (const id of change.remove) await onRemovePlan(id);
+    if (change.trip !== trip) await onSave(change.trip);
     navigate(back);
   }
 

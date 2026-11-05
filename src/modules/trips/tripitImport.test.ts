@@ -61,7 +61,6 @@ describe('tripsToImport', () => {
         country: 'PT',
         startDate: '2024-05-10',
         endDate: '2024-05-13',
-        outfitPlan: {},
         itemIds: [],
         extras: [],
         packed: [],
