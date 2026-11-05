@@ -562,7 +562,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   return (
     <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${trip ? ' in-trip' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
       {/* The same line and flag for the zoomed-out and zoomed-in looks, where the number is not in the grid. */}
-      {shape && shape.line !== 'none' && <i className={`trip-line trip-line-num ${shape.line}`} aria-hidden />}
+      {shape && <i className={`trip-line trip-line-num ${shape.line}`} aria-hidden />}
       <span className="cal-num">{Number(date.slice(8))}</span>
       {trip && shape?.flag && (
         <span className="trip-flag trip-flag-num" role="img" aria-label={`Trip: ${trip.name}`}>
@@ -580,7 +580,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
             {dotsHidden > 0 && <b className="more-count">+{dotsHidden}</b>}
           </span>
           <span className="cal-layer cal-cells">
-            {shape && shape.line !== 'none' && <i className={`trip-line ${shape.line}`} aria-hidden />}
+            {shape && <i className={`trip-line ${shape.line}`} aria-hidden />}
             <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
             {trip && shape?.flag && (
               <span className="cell-slot trip-flag" style={{ gridRow: 1, gridColumn: 2 }} role="img" aria-label={`Trip: ${trip.name}`}>

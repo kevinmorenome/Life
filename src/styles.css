@@ -7207,11 +7207,6 @@ a.game-row + .food-h2 {
   left: 16.67%;
   border-radius: 2px 0 0 2px;
 }
-.trip-line.to {
-  right: auto;
-  width: calc(16.67% + 5px);
-  border-radius: 0 2px 2px 0;
-}
 .cal-day.in-trip .cell-num {
   position: relative;
   z-index: 1;
@@ -7247,10 +7242,6 @@ a.game-row + .food-h2 {
 .trip-line-num.from {
   left: var(--num-x);
   right: 0;
-}
-.trip-line-num.to {
-  right: auto;
-  width: var(--num-x);
 }
 .trip-flag-num {
   position: absolute;
