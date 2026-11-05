@@ -16,7 +16,7 @@ export function HomeCountrySection() {
   return (
     <section className="card">
       <h2>Home country</h2>
-      <p className="muted small">Days with check-ins in another country show that country’s flag on the calendar.</p>
+      <p className="muted small">Time abroad that isn’t one of your trips is drawn like one on the calendar, with that country’s flag, from your check-ins.</p>
       <select
         className="input"
         aria-label="Home country"
