@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Outfit, Plan } from '../clothes/types';
-import { dayChanges, legacyPlans, tripOutfitsByDay, tripsWithLegacyOutfits } from './tripPlans';
+import type { ClothingItem } from '../clothes/types';
+import { dayChanges, legacyPlans, tripOutfitsByDay, tripsWithLegacyOutfits, tripWornItemsByDay } from './tripPlans';
 import type { Trip } from './types';
 
 const stamp = '2026-01-01T00:00:00Z';
@@ -18,6 +19,7 @@ const trip = (over: Partial<Trip> = {}): Trip => ({
   updatedAt: stamp,
   ...over,
 });
+const piece = (id: string, wears: string[]): ClothingItem => ({ id, name: id, category: 'tops', seasons: [], status: 'active', wears, createdAt: stamp, updatedAt: stamp });
 const ids = (m: Map<string, Outfit[]>, date: string) => (m.get(date) ?? []).map((o) => o.id);
 
 describe('tripOutfitsByDay', () => {
@@ -85,5 +87,18 @@ describe('dayChanges', () => {
   it('does not change the trip when it has no entry for the day', () => {
     const t = trip();
     expect(dayChanges(t, [], outfits, '2026-11-01', ['a']).trip).toBe(t);
+  });
+});
+
+describe('tripWornItemsByDay', () => {
+  it('lists pieces worn on their own on the trip days, as the calendar does', () => {
+    const items = [piece('shirt', ['2026-11-02', '2026-12-01']), piece('hat', ['2026-11-02', '2026-11-03']), piece('jeans', ['2026-11-02'])];
+    // The jeans were worn on 2 Nov as part of an outfit worn that day, so they come with the outfit.
+    const outfits = [{ ...outfit('a', ['2026-11-02']), itemIds: ['jeans'] }];
+    const m = tripWornItemsByDay(trip(), items, outfits);
+    expect(m.get('2026-11-02')?.map((i) => i.id)).toEqual(['shirt', 'hat']);
+    expect(m.get('2026-11-03')?.map((i) => i.id)).toEqual(['hat']);
+    // Days outside the trip are left out.
+    expect([...m.keys()]).toEqual(['2026-11-02', '2026-11-03']);
   });
 });

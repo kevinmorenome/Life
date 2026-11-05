@@ -3,8 +3,9 @@
 // them in `Trip.outfitPlan`; those entries still count until `legacyPlans()` has turned them into real plans.
 // Pure.
 
+import { wearsByDay } from '../clothes/calendar';
 import { newPlan } from '../clothes/plans';
-import type { Outfit, Plan } from '../clothes/types';
+import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { tripDays } from './tripDays';
 import type { Trip } from './types';
 
@@ -27,6 +28,20 @@ export function tripOutfitsByDay(trip: Trip, plans: Plan[], outfits: Outfit[]): 
     if (inTrip.has(date)) for (const id of ids) add(date, byId.get(id));
   }
   for (const date of days) for (const o of outfits) if (o.wears.includes(date)) add(date, o);
+  return out;
+}
+
+/**
+ * Single pieces worn on each trip day, as the calendar groups them: worn on their own, not as part of an outfit
+ * worn that day (those come with the outfit). Days with none are left out.
+ */
+export function tripWornItemsByDay(trip: Pick<Trip, 'startDate' | 'endDate'>, items: ClothingItem[], outfits: Outfit[]): Map<string, ClothingItem[]> {
+  const worn = wearsByDay(items, outfits);
+  const out = new Map<string, ClothingItem[]>();
+  for (const date of tripDays(trip)) {
+    const singles = worn.get(date)?.items ?? [];
+    if (singles.length) out.set(date, singles);
+  }
   return out;
 }
 

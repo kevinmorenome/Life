@@ -1,5 +1,5 @@
 import type { ClothingItem, Outfit, Plan } from '../clothes/types';
-import { tripOutfitsByDay } from './tripPlans';
+import { tripOutfitsByDay, tripWornItemsByDay } from './tripPlans';
 import type { PackExtra, Trip } from './types';
 
 export { tripDays } from './tripDays';
@@ -14,6 +14,8 @@ export interface PackClothes {
   viaOutfits: string[];
   /** Added by hand, so it can be removed from the list directly. */
   manual: boolean;
+  /** Worn on its own on a day of the trip (the calendar has it), outside any outfit. */
+  worn: boolean;
   packed: boolean;
 }
 
@@ -43,7 +45,7 @@ export function packingList(
     const item = itemById.get(id);
     if (!item) return undefined;
     let e = entries.get(id);
-    if (!e) entries.set(id, (e = { item, viaOutfits: [], manual: false, packed: packedIds.has(id) }));
+    if (!e) entries.set(id, (e = { item, viaOutfits: [], manual: false, worn: false, packed: packedIds.has(id) }));
     return e;
   };
 
@@ -58,6 +60,14 @@ export function packingList(
         const e = entry(iid);
         if (e && !e.viaOutfits.includes(name)) e.viaOutfits.push(name);
       }
+    }
+  }
+
+  // Pieces worn on their own on the trip's days count too, the same as the calendar shows them.
+  for (const day of tripWornItemsByDay(trip, items, outfits).values()) {
+    for (const i of day) {
+      const e = entry(i.id);
+      if (e) e.worn = true;
     }
   }
 

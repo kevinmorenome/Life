@@ -161,7 +161,7 @@ export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSave
               >
                 <ItemThumb item={c.item} />
                 <span className="tile-name">{c.item.name}</span>
-                <span className="tile-meta">{c.viaOutfits.length ? `For ${c.viaOutfits.join(', ')}` : label(c.item.category)}</span>
+                <span className="tile-meta">{c.viaOutfits.length ? `For ${c.viaOutfits.join(', ')}` : c.worn ? 'Worn on this trip' : label(c.item.category)}</span>
               </button>
               <button
                 type="button"

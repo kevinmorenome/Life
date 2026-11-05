@@ -56,6 +56,16 @@ describe('packing', () => {
     expect(list.clothes.find((c) => c.item.id === 'jeans')!.manual).toBe(false);
   });
 
+  it('includes pieces worn on their own during the trip', () => {
+    const items = [item('shirt', { wears: ['2026-11-02'] }), item('jeans', { wears: ['2026-10-01'] }), item('hat', { wears: ['2026-11-03'] })];
+    const list = packingList(trip({ itemIds: ['hat'] }), items, [], label);
+    // jeans were worn before the trip; hat is on the list by hand and also worn on a trip day.
+    expect(list.clothes.map((c) => [c.item.id, c.worn, c.manual])).toEqual([
+      ['hat', true, true],
+      ['shirt', true, false],
+    ]);
+  });
+
   it('skips deleted outfits and items', () => {
     const t = trip({ itemIds: ['missing'] });
     const list = packingList(t, [item('shirt')], [outfit('a', ['shirt', 'ghost'])], label, [plan('gone', '2026-11-01'), plan('a', '2026-11-01')]);
