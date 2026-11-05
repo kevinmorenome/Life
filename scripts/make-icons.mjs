@@ -1,11 +1,11 @@
 // Regenerates the app icons in public/: the "Life" wordmark (Bricolage Grotesque ExtraBold outlines,
-// stored in scripts/icon-wordmark.json) on the navy tile, with the dot of the i in yellow.
+// stored in scripts/icon-wordmark.json) on the olive tile, with the dot of the i in yellow.
 //   node scripts/make-icons.mjs
 import sharp from 'sharp';
 import { readFileSync } from 'node:fs';
 
 const { white, green, width, upm } = JSON.parse(readFileSync('scripts/icon-wordmark.json', 'utf8'));
-const BG = '#14122b', INK = '#f3f1fb', DOT = '#ffc928';
+const BG = '#5b6a2b', INK = '#f3f1fb', DOT = '#ffc928';
 
 // Full-bleed square (the OS applies its own mask). The wordmark takes ~64% of the width, inside the
 // maskable safe zone. Glyph y points up, so the path is flipped by the font transform baked into the JSON.
