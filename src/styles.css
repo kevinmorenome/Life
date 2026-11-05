@@ -7189,3 +7189,42 @@ a.game-row + .food-h2 {
   font-size: 1.7rem;
   margin: 0.25rem 0 0.75rem;
 }
+
+/* A trip on the calendar: a line through the row of day numbers (the numbers sit on it like beads) with the flag
+   on the line where it starts and at the start of each week. It lives in the day's grid look (the 3×3 grid). */
+.trip-line {
+  position: absolute;
+  top: 8.5px;
+  height: 2px;
+  left: -5px;
+  right: -5px;
+  background: var(--c-trip);
+  pointer-events: none;
+}
+/* The number is the middle of the first column: a sixth of the grid's width. */
+.trip-line.from {
+  left: 16.67%;
+  border-radius: 2px 0 0 2px;
+}
+.trip-line.to {
+  right: auto;
+  width: calc(16.67% + 5px);
+  border-radius: 0 2px 2px 0;
+}
+.cal-day.in-trip .cell-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cell-num:not(.today) {
+  background: var(--bg);
+}
+.trip-flag {
+  position: relative;
+  z-index: 1;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1;
+}
