@@ -6,10 +6,11 @@ import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
 import { d1StatsfmStore, handleStatsfm, isStatsfmPath } from './statsfm';
 import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
+import { d1TripitStore, handleTripit, isTripitPath, type TripitEnv } from './tripit';
 import { d1TraktStore, handleTrakt, isTraktPath, type TraktEnv } from './trakt';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
-interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv, TraktEnv {
+interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv, TraktEnv, TripitEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   /** Set on PR preview versions: they read real data but never write it. */
@@ -77,6 +78,16 @@ export default {
       return handleTrakt(request, url.pathname, {
         env,
         store: d1TraktStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (isTripitPath(url.pathname)) {
+      return handleTripit(request, url.pathname, {
+        env,
+        store: d1TripitStore(env.DB),
         readOnly: env.READ_ONLY === 'true',
         now: new Date(),
         fetch: (input, init) => fetch(input, init),

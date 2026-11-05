@@ -16,6 +16,8 @@ export interface AppSettings {
   officeVenue?: string;
   /** Music module: your stats.fm custom ID (the last part of your profile link). */
   statsfmUser?: string;
+  /** Trips module: TripIt trips you deleted (`Trip.tripitRef`), so a later fetch doesn't make them again. */
+  tripitDismissed?: string[];
   updatedAt: string;
 }
 

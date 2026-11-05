@@ -4,6 +4,8 @@ MCP_TOKEN=local-dev-token-0123456789abcdef
 # Swarm check-ins (optional): from your Foursquare app; its redirect URL must be http://localhost:8787/api/swarm/callback
 # FOURSQUARE_CLIENT_ID=
 # FOURSQUARE_CLIENT_SECRET=
+# TripIt trips (optional): your private calendar feed link (TripIt → Settings → Calendar Feed). It is a credential: a Worker secret in production.
+# TRIPIT_FEED_URL=
 # Trakt watch history (optional): from your Trakt API app. You connect with a device code, so a development
 # app is enough. New Trakt apps get no client secret (they use PKCE); set TRAKT_CLIENT_SECRET only if you have one.
 # TRAKT_CLIENT_ID=
