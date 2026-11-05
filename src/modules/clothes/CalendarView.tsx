@@ -1,10 +1,9 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { Flag } from '../countries/Flag';
 import { flagEmoji } from '../countries/flag';
 import { tripCountry } from '../countries/countries';
 import { tripDayShape } from '../trips/tripLine';
-import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../trips/packing';
@@ -520,13 +519,6 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
       </span>,
     );
   }
-  trips.forEach((t) =>
-    pills.push(
-      <span key={t.id} className="pill pill-trip">
-        {flagEmoji(tripCountry(t)) ?? '🧳'} {t.name}
-      </span>,
-    ),
-  );
   // Where you worked is only an icon, in the corner beside the number.
   const workMark = marks.find((m) => WORK_TONES.includes(m.tone));
   marks.forEach((m, i) => {
@@ -551,7 +543,6 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
     wear.outfits.forEach((o) => fullTile(`o${o.id}`, outfitName(o), outfitPieces(o, items)));
     if (wear.items.length) fullTile('items', wear.items.map((i) => i.name).join(', '), wear.items);
   } else if (planned?.length) planned.forEach((o) => fullTile(`p${o.id}`, outfitName(o), outfitPieces(o, items), true));
-  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', tripCountry(t) ? <Flag code={tripCountry(t)} /> : <SuitcaseIcon />, t.name));
   marks.forEach((m, i) => {
     if (m === workMark) return;
     (m.tiles?.length ? m.tiles : [m.label]).forEach((t, j) => fullPill(`m${i}-${j}`, `mark-${m.tone}`, m.icon, t));
