@@ -3,9 +3,13 @@
 import { getAll, notify, put } from '../../lib/db';
 import type { AppSettings } from '../../lib/settings';
 import { syncNow } from '../../lib/sync';
+import type { IcsReport } from '../../../worker/icsTypes';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import { newTrips } from './tripit';
 import type { Trip } from './types';
+
+/** What the feed held (counts and property names, no content); see `reportIcs` in the Worker. */
+export type FeedReport = IcsReport;
 
 export interface TripitStatus {
   /** Whether the Worker has the TRIPIT_FEED_URL secret. */
@@ -29,6 +33,16 @@ async function post(path: string): Promise<{ ok: true; data: Record<string, unkn
   return res.ok ? { ok: true, data } : { ok: false, error: typeof data.error === 'string' ? data.error : `Server error ${res.status}` };
 }
 
+/** One sentence on what the feed held, for when it gave no plans. */
+export function describeFeed(feed: FeedReport | undefined): string {
+  if (!feed) return '';
+  const range = feed.earliest && feed.latest ? ` It covers ${feed.earliest} to ${feed.latest}.` : '';
+  if (feed.events === 0) return ` The feed has no events at all (it holds: ${Object.entries(feed.components).map(([k, n]) => `${k} ${n}`).join(', ') || 'nothing'}). Check that TripIt has trips with plans.`;
+  if (feed.usable === feed.events) return range.trimEnd();
+  const parts = [`${feed.events} events`, `${feed.usable} usable`, feed.cancelled ? `${feed.cancelled} cancelled` : '', feed.unreadable ? `${feed.unreadable} unreadable` : ''].filter(Boolean);
+  return ` The feed has ${parts.join(', ')}. First event fields: ${feed.firstEventProps.join(', ')}.${range}`;
+}
+
 /** Makes trips for plans that don't have one yet (see `newTrips`). Returns how many were added. */
 export async function createTripsFromPlans(): Promise<number> {
   const [plans, trips, settings] = await Promise.all([getAll<TripitPlan>('tripitplans'), getAll<Trip>('trips'), getAll<AppSettings>('settings')]);
@@ -40,14 +54,14 @@ export async function createTripsFromPlans(): Promise<number> {
 }
 
 /** Fetches the feed, pulls the plans in, and makes trips for new ones. */
-export async function syncTripit(): Promise<{ plans: number; trips: number } | { error: string }> {
+export async function syncTripit(): Promise<{ plans: number; trips: number; feed?: FeedReport } | { error: string }> {
   const res = await post('sync');
   if (!res.ok) return { error: res.error };
   await syncNow();
   const trips = await createTripsFromPlans();
   // New trips are local writes: send them up now rather than at the next change.
   if (trips > 0) await syncNow();
-  return { plans: Number(res.data.plans ?? 0), trips };
+  return { plans: Number(res.data.plans ?? 0), trips, feed: res.data.feed as FeedReport | undefined };
 }
 
 /** How long after a fetch before the next quiet one. TripIt plans change rarely. */
