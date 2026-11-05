@@ -99,10 +99,16 @@ ul {
   color: var(--muted);
 }
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--text);
   text-decoration: none;
+}
+.brand-mark {
+  height: 1.3rem;
+  width: auto;
+  display: block;
 }
 .container {
   max-width: 960px;
