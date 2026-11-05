@@ -7173,3 +7173,19 @@ a.game-row + .food-h2 {
   display: block;
   text-align: center;
 }
+
+/* Country flags (emoji). */
+.flag {
+  font-style: normal;
+  line-height: 1;
+}
+.day-badge .flag {
+  font-size: 0.95em;
+}
+.flag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 1.7rem;
+  margin: 0.25rem 0 0.75rem;
+}

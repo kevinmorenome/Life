@@ -1,5 +1,7 @@
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { Flag } from '../countries/Flag';
+import { tripCountry } from '../countries/countries';
 import { outfitName } from '../clothes/outfits';
 import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { packingList, tripDays } from './packing';
@@ -29,7 +31,9 @@ export function TripList({ trips, items, outfits, plans }: Props) {
               <li key={t.id}>
                 <a className={`card trip-card${t.photo ? ' has-photo' : ''}`} href={href(`/trips/${t.id}`)}>
                   {t.photo && <img className="trip-cover" src={t.photo} alt="" loading="lazy" />}
-                  <strong>{t.name}</strong>
+                  <strong>
+                    <Flag code={tripCountry(t)} /> {t.name}
+                  </strong>
                   <span className="muted small">
                     {[t.destination, `${shortDate(t.startDate)} – ${shortDate(t.endDate)}`, `${nights} ${nights === 1 ? 'day' : 'days'}`]
                       .filter(Boolean)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { findCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, homeCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -115,5 +115,32 @@ describe('visitedCountries with trips', () => {
     const [e] = visitedCountries([ci('Croatia', '2023-07-02')], [], [trip('HR', '2019-08-01', '2019-08-05'), trip('HR', '2026-11-03', '2026-11-20')], '2026-11-05');
     expect(e).toMatchObject({ first: '2019-08-01', last: '2026-11-05', checkins: 1 });
     expect(e.sources).toEqual(['swarm', 'trip']);
+  });
+});
+
+describe('tripCountry', () => {
+  it('uses the country the trip names, else the last word of its destination', () => {
+    expect(tripCountry({ country: 'pt', destination: 'Somewhere' })).toBe('PT');
+    expect(tripCountry({ destination: 'Zadar, Croatia' })).toBe('HR');
+    expect(tripCountry({ country: 'ZZ', destination: 'Vienna, Austria' })).toBe('AT');
+  });
+  it('gives nothing when neither says', () => {
+    expect(tripCountry({})).toBeUndefined();
+    expect(tripCountry({ destination: 'Atlantis' })).toBeUndefined();
+  });
+});
+
+describe('homeCountry', () => {
+  const at = (country: string | undefined) => ({ country });
+  it('is the one you chose, else the country with most check-ins', () => {
+    const list = [at('Croatia'), at('Croatia'), at('Austria'), at(undefined), at('Atlantis')];
+    expect(homeCountry(list)).toBe('HR');
+    expect(homeCountry(list, 'at')).toBe('AT');
+    // A chosen code that is not a country is ignored.
+    expect(homeCountry(list, 'ZZ')).toBe('HR');
+  });
+  it('gives nothing without check-ins in a known country', () => {
+    expect(homeCountry([])).toBeUndefined();
+    expect(checkinCountry(at('Croatia'))).toBe('HR');
   });
 });

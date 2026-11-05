@@ -1,5 +1,8 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
+import { Flag } from '../countries/Flag';
+import { flagEmoji } from '../countries/flag';
+import { tripCountry } from '../countries/countries';
 import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
@@ -493,7 +496,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   if (trips.length > 0)
     icons.push(
       <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
-        <SuitcaseIcon />
+        {tripCountry(trips[0]) ? <Flag code={tripCountry(trips[0])} /> : <SuitcaseIcon />}
       </span>,
     );
   marks.forEach((m) =>
@@ -520,7 +523,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   trips.forEach((t) =>
     pills.push(
       <span key={t.id} className="pill pill-trip">
-        🧳 {t.name}
+        {flagEmoji(tripCountry(t)) ?? '🧳'} {t.name}
       </span>,
     ),
   );
@@ -548,7 +551,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
     wear.outfits.forEach((o) => fullTile(`o${o.id}`, outfitName(o), outfitPieces(o, items)));
     if (wear.items.length) fullTile('items', wear.items.map((i) => i.name).join(', '), wear.items);
   } else if (planned?.length) planned.forEach((o) => fullTile(`p${o.id}`, outfitName(o), outfitPieces(o, items), true));
-  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', <SuitcaseIcon />, t.name));
+  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', tripCountry(t) ? <Flag code={tripCountry(t)} /> : <SuitcaseIcon />, t.name));
   marks.forEach((m, i) => {
     if (m === workMark) return;
     (m.tiles?.length ? m.tiles : [m.label]).forEach((t, j) => fullPill(`m${i}-${j}`, `mark-${m.tone}`, m.icon, t));

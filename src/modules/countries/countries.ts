@@ -92,6 +92,28 @@ export function parseCountryList(text: string): { found: Country[]; unknown: str
   return { found: [...found.values()], unknown };
 }
 
+/** The country of a trip as an ISO code: the one it names, else the one in the last word of its destination ("Porto, Portugal"). */
+export function tripCountry(trip: Pick<Trip, 'country' | 'destination'>): string | undefined {
+  const named = trip.country ? byCode.get(trip.country.toUpperCase()) : undefined;
+  if (named) return named.code;
+  return findCountry(trip.destination?.split(',').pop())?.code;
+}
+
+/** The country a check-in was made in, as an ISO code. */
+export const checkinCountry = (c: Pick<Checkin, 'country'>): string | undefined => findCountry(c.country)?.code;
+
+/** Your home country: the one you chose, else the one most of your check-ins are in. */
+export function homeCountry(checkins: Pick<Checkin, 'country'>[], chosen?: string): string | undefined {
+  const picked = chosen ? byCode.get(chosen.toUpperCase()) : undefined;
+  if (picked) return picked.code;
+  const counts = new Map<string, number>();
+  for (const c of checkins) {
+    const code = checkinCountry(c);
+    if (code) counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+}
+
 export type Source = 'swarm' | 'list' | 'manual' | 'trip';
 
 export interface CountryEntry {

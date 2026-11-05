@@ -11,6 +11,7 @@ import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
 import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
+import { HomeCountrySection } from './modules/countries/HomeCountrySection';
 import { PerfSection } from './PerfSection';
 import { SwarmSection } from './modules/checkins/SwarmSection';
 import { StatsfmSection } from './modules/music/StatsfmSection';
@@ -202,6 +203,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       </section>
       <SwarmSection />
       <OfficeFromSwarm />
+      <HomeCountrySection />
       <TraktSection />
       <TripitSection />
       <TripitImportSection />
