@@ -2,7 +2,7 @@
 // stored in scripts/icon-wordmark.json) on the brown tile, with the dot of the i in yellow.
 //   node scripts/make-icons.mjs
 import sharp from 'sharp';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const { white, green, width, upm } = JSON.parse(readFileSync('scripts/icon-wordmark.json', 'utf8'));
 const BG = '#6b4226', INK = '#f3f1fb', DOT = '#ffc928';
@@ -30,3 +30,15 @@ for (const [file, size] of out) {
   await sharp(svg(size), { density: 300 }).resize(size, size).png().toFile(file);
   console.log('wrote', file);
 }
+
+// The app sits behind Cloudflare Access, and iOS fetches the home-screen icon without the login
+// cookie (it gets the Access login page and draws a plain letter instead). So the touch icon and
+// favicon are inlined in index.html as data URLs; rewrite them there too.
+const indexPath = 'index.html';
+const dataUrl = (f) => `data:image/png;base64,${readFileSync(f).toString('base64')}`;
+let html = readFileSync(indexPath, 'utf8');
+html = html
+  .replace(/(<link rel="apple-touch-icon" href=")[^"]*(")/, `$1${dataUrl('public/apple-touch-icon.png')}$2`)
+  .replace(/(<link rel="icon" type="image\/png" href=")[^"]*(")/, `$1${dataUrl('public/icon-192.png')}$2`);
+writeFileSync(indexPath, html);
+console.log('inlined icons in', indexPath);
