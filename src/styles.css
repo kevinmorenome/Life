@@ -7198,7 +7198,8 @@ a.game-row + .food-h2 {
   height: 2px;
   left: -5px;
   right: -5px;
-  background: var(--c-trip);
+  /* A subtle gray: the flag says where, the line only connects the days. */
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
   pointer-events: none;
 }
 /* The number is the middle of the first column: a sixth of the grid's width. */
