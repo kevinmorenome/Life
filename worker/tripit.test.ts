@@ -75,6 +75,22 @@ describe('plans', () => {
 });
 
 describe('handleTripit', () => {
+  it('reports what the feed holds, without its content', async () => {
+    const store = fakeStore();
+    const body = (await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json()) as { feed: unknown };
+    expect(body.feed).toEqual({
+      components: { VCALENDAR: 1, VEVENT: 2 },
+      events: 2,
+      earliest: '2026-11-05',
+      latest: '2026-11-07',
+      usable: 2,
+      cancelled: 0,
+      unreadable: 0,
+      firstEventProps: ['UID', 'SUMMARY', 'DTSTART;TZID', 'DTEND;TZID', 'LOCATION', 'DESCRIPTION'],
+    });
+    expect(JSON.stringify(body.feed)).not.toContain('Lisbon');
+  });
+
   it('says whether the secret is set, never what it is', async () => {
     const store = fakeStore();
     const on = await handleTripit(new Request('https://x/api/tripit/status'), '/api/tripit/status', ctx(store, feedFetch()));
@@ -86,12 +102,12 @@ describe('handleTripit', () => {
   it('writes plans once, then only what changed', async () => {
     const store = fakeStore();
     const first = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json();
-    expect(first).toEqual({ ok: true, plans: 2, changed: 2 });
+    expect(first).toMatchObject({ ok: true, plans: 2, changed: 2 });
     const second = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json();
-    expect(second).toEqual({ ok: true, plans: 2, changed: 0 });
+    expect(second).toMatchObject({ ok: true, plans: 2, changed: 0 });
     const moved = FEED.replace('Hotel Avenida', 'Hotel Avenida Lisboa');
     const third = await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(moved)))).json();
-    expect(third).toEqual({ ok: true, plans: 2, changed: 1 });
+    expect(third).toMatchObject({ ok: true, plans: 2, changed: 1 });
     expect(store.last).toBe(new Date('2026-11-04T10:00:00Z').getTime());
   });
 

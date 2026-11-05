@@ -5,7 +5,7 @@
 // (otherwise every fetch would make every client download every plan again). The app never edits them.
 // Behind Cloudflare Access like the other integrations.
 
-import { parseIcs, type IcsEvent } from './ics';
+import { parseIcs, reportIcs, type IcsEvent, type IcsReport } from './ics';
 import { upsertStatement } from './records';
 import type { PlanKind, TripitPlan } from './tripitTypes';
 
@@ -144,7 +144,8 @@ export async function handleTripit(request: Request, pathname: string, ctx: Trip
     const existing = await ctx.store.existing();
     const changed = plans.filter((p) => existing.get(p.id) !== JSON.stringify(p));
     await ctx.store.savePlans(changed, ctx.now.getTime());
-    return json({ ok: true, plans: plans.length, changed: changed.length });
+    // The report holds counts and property names only, so the app can say why a feed gave nothing without showing its content.
+    return json({ ok: true, plans: plans.length, changed: changed.length, feed: reportIcs(feed.text) satisfies IcsReport });
   }
 
   return json({ error: 'Not found' }, 404);

@@ -1,6 +1,8 @@
 // A small iCalendar (.ics) reader for the TripIt feed. Pure: text in, events out. Only what we need: VEVENTs with a
 // UID, SUMMARY, start/end, LOCATION, DESCRIPTION and URL. Everything else is ignored.
 
+import type { IcsReport } from './icsTypes';
+
 export interface IcsEvent {
   uid: string;
   summary: string;
@@ -82,24 +84,56 @@ function dayBefore(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Every VEVENT in the text that has a UID, a summary and a start. Cancelled events are left out. */
-export function parseIcs(text: string): IcsEvent[] {
-  const events: IcsEvent[] = [];
+/** The properties of every VEVENT, in order, plus how many of each component the text has. */
+function scan(text: string): { blocks: Prop[][]; components: Record<string, number> } {
+  const blocks: Prop[][] = [];
+  const components: Record<string, number> = {};
   let current: Prop[] | null = null;
   for (const line of unfold(text)) {
-    if (line === 'BEGIN:VEVENT') current = [];
-    else if (line === 'END:VEVENT') {
-      if (current) {
-        const e = toEvent(current);
-        if (e) events.push(e);
-      }
+    const begin = /^BEGIN:([A-Za-z0-9-]+)$/i.exec(line);
+    if (begin) {
+      const name = begin[1].toUpperCase();
+      components[name] = (components[name] ?? 0) + 1;
+      if (name === 'VEVENT') current = [];
+    } else if (line.toUpperCase() === 'END:VEVENT') {
+      if (current) blocks.push(current);
       current = null;
     } else if (current) {
       const prop = parseLine(line);
       if (prop) current.push(prop);
     }
   }
-  return events;
+  return { blocks, components };
+}
+
+/** Every VEVENT in the text that has a UID, a summary and a start. Cancelled events are left out. */
+export function parseIcs(text: string): IcsEvent[] {
+  return scan(text)
+    .blocks.map(toEvent)
+    .filter((e): e is IcsEvent => e !== null);
+}
+
+export type { IcsReport };
+
+/** What is in a feed, without any of its content: counts and property names, safe to show and to share. */
+export function reportIcs(text: string): IcsReport {
+  const { blocks, components } = scan(text);
+  const cancelled = blocks.filter((b) => b.some((p) => p.name === 'STATUS' && p.value.trim().toUpperCase() === 'CANCELLED')).length;
+  const parsed = blocks.map(toEvent).filter((e): e is IcsEvent => e !== null);
+  const usable = parsed.length;
+  const earliest = parsed.reduce<string | undefined>((m, e) => (m === undefined || e.start < m ? e.start : m), undefined);
+  const latest = parsed.reduce<string | undefined>((m, e) => (m === undefined || e.end > m ? e.end : m), undefined);
+  const first = blocks[0] ?? [];
+  return {
+    components,
+    events: blocks.length,
+    ...(earliest ? { earliest } : {}),
+    ...(latest ? { latest } : {}),
+    usable,
+    cancelled,
+    unreadable: blocks.length - usable - cancelled,
+    firstEventProps: first.map((p) => [p.name, ...Object.keys(p.params)].join(';')),
+  };
 }
 
 function toEvent(props: Prop[]): IcsEvent | null {
