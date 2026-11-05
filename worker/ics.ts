@@ -119,11 +119,16 @@ export type { IcsReport };
 export function reportIcs(text: string): IcsReport {
   const { blocks, components } = scan(text);
   const cancelled = blocks.filter((b) => b.some((p) => p.name === 'STATUS' && p.value.trim().toUpperCase() === 'CANCELLED')).length;
-  const usable = blocks.filter((b) => toEvent(b)).length;
+  const parsed = blocks.map(toEvent).filter((e): e is IcsEvent => e !== null);
+  const usable = parsed.length;
+  const earliest = parsed.reduce<string | undefined>((m, e) => (m === undefined || e.start < m ? e.start : m), undefined);
+  const latest = parsed.reduce<string | undefined>((m, e) => (m === undefined || e.end > m ? e.end : m), undefined);
   const first = blocks[0] ?? [];
   return {
     components,
     events: blocks.length,
+    ...(earliest ? { earliest } : {}),
+    ...(latest ? { latest } : {}),
     usable,
     cancelled,
     unreadable: blocks.length - usable - cancelled,

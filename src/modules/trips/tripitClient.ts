@@ -36,9 +36,11 @@ async function post(path: string): Promise<{ ok: true; data: Record<string, unkn
 /** One sentence on what the feed held, for when it gave no plans. */
 export function describeFeed(feed: FeedReport | undefined): string {
   if (!feed) return '';
+  const range = feed.earliest && feed.latest ? ` It covers ${feed.earliest} to ${feed.latest}.` : '';
   if (feed.events === 0) return ` The feed has no events at all (it holds: ${Object.entries(feed.components).map(([k, n]) => `${k} ${n}`).join(', ') || 'nothing'}). Check that TripIt has trips with plans.`;
+  if (feed.usable === feed.events) return range.trimEnd();
   const parts = [`${feed.events} events`, `${feed.usable} usable`, feed.cancelled ? `${feed.cancelled} cancelled` : '', feed.unreadable ? `${feed.unreadable} unreadable` : ''].filter(Boolean);
-  return ` The feed has ${parts.join(', ')}. First event fields: ${feed.firstEventProps.join(', ')}.`;
+  return ` The feed has ${parts.join(', ')}. First event fields: ${feed.firstEventProps.join(', ')}.${range}`;
 }
 
 /** Makes trips for plans that don't have one yet (see `newTrips`). Returns how many were added. */

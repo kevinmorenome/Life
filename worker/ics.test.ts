@@ -72,7 +72,7 @@ describe('reportIcs', () => {
         'BEGIN:VEVENT', 'UID:c', 'SUMMARY:No start', 'END:VEVENT',
       ),
     );
-    expect(r).toMatchObject({ components: { VCALENDAR: 1, VEVENT: 3 }, events: 3, usable: 1, cancelled: 1, unreadable: 1 });
+    expect(r).toMatchObject({ components: { VCALENDAR: 1, VEVENT: 3 }, events: 3, usable: 1, cancelled: 1, unreadable: 1, earliest: '2026-11-05', latest: '2026-11-05' });
     expect(r.firstEventProps).toEqual(['UID', 'SUMMARY', 'DTSTART;VALUE']);
   });
 

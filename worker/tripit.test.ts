@@ -81,6 +81,8 @@ describe('handleTripit', () => {
     expect(body.feed).toEqual({
       components: { VCALENDAR: 1, VEVENT: 2 },
       events: 2,
+      earliest: '2026-11-05',
+      latest: '2026-11-07',
       usable: 2,
       cancelled: 0,
       unreadable: 0,
