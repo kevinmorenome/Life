@@ -561,7 +561,14 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
     <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${trip ? ' in-trip' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+      {/* The same line and flag for the zoomed-out and zoomed-in looks, where the number is not in the grid. */}
+      {shape && shape.line !== 'none' && <i className={`trip-line trip-line-num ${shape.line}`} aria-hidden />}
       <span className="cal-num">{Number(date.slice(8))}</span>
+      {trip && shape?.flag && (
+        <span className="trip-flag trip-flag-num" role="img" aria-label={`Trip: ${trip.name}`}>
+          {flagEmoji(tripCountry(trip)) ?? '🧳'}
+        </span>
+      )}
       {(hasOutfit || marks.length > 0 || trips.length > 0) && (
         <>
           <span className="cal-layer cal-dots">

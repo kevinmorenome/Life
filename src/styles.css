@@ -7229,3 +7229,44 @@ a.game-row + .food-h2 {
   font-size: 12px;
   line-height: 1;
 }
+
+/* The same trip line at the other zoom levels (the grid look above fades out): level with the big number, which sits
+   in the middle when zoomed out and slides to the left corner when zoomed in. --num-x is where its middle is. */
+.cal-day.in-trip {
+  --num-x: calc(50cqw + clamp(0, var(--z) - 1, 1) * (15px - 50cqw));
+}
+.trip-line-num,
+.trip-flag-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.trip-line-num {
+  top: 14px;
+  left: 0;
+  right: 0;
+}
+.trip-line-num.from {
+  left: var(--num-x);
+  right: 0;
+}
+.trip-line-num.to {
+  right: auto;
+  width: var(--num-x);
+}
+.trip-flag-num {
+  position: absolute;
+  top: 8px;
+  left: calc(var(--num-x) + 18px);
+  translate: -50% 0;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+}
+.cal-day.in-trip .cal-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cal-num:not(.today) {
+  background: var(--bg);
+}
