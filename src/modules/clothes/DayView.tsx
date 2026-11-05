@@ -59,6 +59,32 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
     await onSaveOutfit(outfitFromItems(wear.items, date));
   }
 
+  // The calendar's plans for this day. On a trip day they sit in the Trip card, otherwise in their own Planned card.
+  const plannedCards = (
+    <ul className="outfit-cards">
+      {scheduled.map(({ plan, outfit }) => (
+        <li key={plan.id}>
+          <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
+            {isFuture ? (
+              <button className="card-fab" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+                <TrashIcon />
+              </button>
+            ) : (
+              <>
+                <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
+                  <CheckIcon />
+                </button>
+                <button className="card-fab card-fab-left" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+                  <TrashIcon />
+                </button>
+              </>
+            )}
+          </OutfitCard>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <article className="detail">
       <div className="day-head">
@@ -80,7 +106,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
             title="Trip"
             icon={<SuitcaseIcon />}
             tone="trip"
-            size="half"
+            size={scheduled.length ? 'full' : 'half'}
             badge={dayTrips.length > 1 ? dayTrips.length : undefined}
             summary={dayTrips.map((t) => t.name).join(', ')}
           >
@@ -89,33 +115,13 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
                 <a href={href(`/trips/${t.id}`)}>{t.name}</a>
               </p>
             ))}
+            {scheduled.length > 0 && plannedCards}
           </DayWidget>
         )}
 
-        {scheduled.length > 0 && (
+        {dayTrips.length === 0 && scheduled.length > 0 && (
           <DayWidget id="planned" title="Planned" icon={<HangerIcon />} tone="clothes" size="full" badge={scheduled.length} summary={scheduled.map(({ outfit }) => outfitName(outfit)).join(', ')}>
-            <ul className="outfit-cards">
-              {scheduled.map(({ plan, outfit }) => (
-                <li key={plan.id}>
-                  <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
-                    {isFuture ? (
-                      <button className="card-fab" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
-                        <TrashIcon />
-                      </button>
-                    ) : (
-                      <>
-                        <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
-                          <CheckIcon />
-                        </button>
-                        <button className="card-fab card-fab-left" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
-                          <TrashIcon />
-                        </button>
-                      </>
-                    )}
-                  </OutfitCard>
-                </li>
-              ))}
-            </ul>
+            {plannedCards}
           </DayWidget>
         )}
 
