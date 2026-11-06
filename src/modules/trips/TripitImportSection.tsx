@@ -19,11 +19,15 @@ export const BROWSER_SNIPPET = `(async () => {
   const trips = [];
   for (let page = 1; page <= 100; page++) {
     const res = await fetch('/api/v2/list/trip?exclude_types=weather&page_size=10&past=true&should_sort_trips_by_date=true&traveler=all&trip_permission_filter=all&page_num=' + page + '&isPast=true', { headers });
-    if (!res.ok) { console.log('Stopped at page', page, 'status', res.status); break; }
-    const list = [].concat((await res.json()).Trip ?? []);
+    // A 404 just means there is no such page: the list has ended.
+    if (!res.ok) { if (res.status !== 404) console.log('Stopped at page', page, 'status', res.status); break; }
+    const body = await res.json();
+    const list = [].concat(body.Trip ?? []);
     if (list.length === 0) break;
     trips.push(...list.map((t) => ({ id: t.id, uuid: t.uuid })));
+    if (page >= Number(body.max_page || 0)) break;
   }
+  console.log(trips.length + ' trips found');
   const out = [];
   for (const t of trips) {
     const res = await fetch('/api/v2/get/trip/uuid/' + t.uuid + '/include_objects/true?exclude_types=weather&should_get_new_seat_tracker_subscriptions=true', { headers });
@@ -35,8 +39,16 @@ export const BROWSER_SNIPPET = `(async () => {
     console.log(out.length + ' of ' + trips.length);
     await new Promise((r) => setTimeout(r, 150));
   }
-  copy(JSON.stringify(out));
-  console.log(out.length + ' trips with their plans copied');
+  // A file, because copy() is not there in every console: choose it with Choose file in Life.
+  const json = JSON.stringify(out);
+  try { copy(json); } catch (e) { /* not available here */ }
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  link.download = 'tripit-trips.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  console.log(out.length + ' trips with their plans: tripit-trips.json downloaded');
 })();`;
 
 export function TripitImportSection() {
@@ -82,7 +94,7 @@ export function TripitImportSection() {
       <p className="muted small">
         TripIt’s calendar feed only lists upcoming trips. To bring in older ones with their plans (flights, stays, activities), sign in at tripit.com and run
         the snippet below in the browser console. It reads only your own trips and keeps just dates, places and countries (no names, emails or booking
-        numbers). Then choose the file or paste the result here. Every plan’s country counts in Stats → Places → Countries like a check-in, and the plans fill
+        numbers). Then choose the downloaded file (tripit-trips.json) or paste the result here. Every plan’s country counts in Stats → Places → Countries like a check-in, and the plans fill
         each trip’s Itinerary.
       </p>
       <details>
