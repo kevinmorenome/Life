@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessKind, handleTripit, plansFromFeed, validateFeedUrl, type TripitPlan, type TripitStore } from './tripit';
+import { guessKind, handleTripit, isRemoved, plansFromFeed, validateFeedUrl, type TripitPlan, type TripitStore } from './tripit';
 
 const FEED = [
   'BEGIN:VCALENDAR',
@@ -130,5 +130,24 @@ describe('handleTripit', () => {
   it('is read only in previews', async () => {
     const store = fakeStore();
     expect((await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch(), true))).status).toBe(409);
+  });
+});
+
+describe('a plan you removed', () => {
+  it('is recognised in its stored copy', () => {
+    expect(isRemoved(JSON.stringify({ id: 'x', removed: true }))).toBe(true);
+    expect(isRemoved(JSON.stringify({ id: 'x' }))).toBe(false);
+    expect(isRemoved(undefined)).toBe(false);
+    expect(isRemoved('not json')).toBe(false);
+  });
+
+  it('is not written again by a fetch, while the others are', async () => {
+    const store = fakeStore();
+    const [hotel] = plansFromFeed(FEED);
+    // The hotel was removed in the app (its stored copy differs from the feed's), the flight is new.
+    store.stored.set(hotel.id, JSON.stringify({ ...hotel, removed: true }));
+    const body = (await (await handleTripit(post('sync'), '/api/tripit/sync', ctx(store, feedFetch()))).json()) as { changed: number };
+    expect(body.changed).toBe(1);
+    expect(store.saved[0].map((p) => p.id)).not.toContain(hotel.id);
   });
 });

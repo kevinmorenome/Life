@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TripitPlan } from '../../../worker/tripitTypes';
-import { groupPlans, newTrips, plansOfTrip } from './tripit';
+import { groupCountry, groupPlans, newTrips, planCountry, plansOfTrip } from './tripit';
 import type { Trip } from './types';
 
 const plan = (id: string, start: string, end = start, extra: Partial<TripitPlan> = {}): TripitPlan => ({
@@ -80,6 +80,53 @@ describe('newTrips', () => {
 describe('plansOfTrip', () => {
   it('lists the plans on the trip days in order', () => {
     const plans = [plan('after', '2026-11-20'), plan('b', '2026-11-06', '2026-11-06', { startTime: '10:00' }), plan('a', '2026-11-06', '2026-11-06', { startTime: '08:00' }), plan('stay', '2026-11-04', '2026-11-08')];
-    expect(plansOfTrip(plans, { startDate: '2026-11-05', endDate: '2026-11-07' }).map((p) => p.id)).toEqual(['stay', 'a', 'b']);
+    expect(plansOfTrip(plans, { id: 't', startDate: '2026-11-05', endDate: '2026-11-07' }).map((p) => p.id)).toEqual(['stay', 'a', 'b']);
+  });
+
+  it('lists the plans that were imported with a trip by the trip, wherever their days fall', () => {
+    const plans = [plan('mine', '2022-10-02', '2022-10-02', { tripRef: 't' }), plan('other', '2022-10-02', '2022-10-02', { tripRef: 'u' }), plan('feed', '2022-10-03')];
+    expect(plansOfTrip(plans, { id: 't', startDate: '2022-10-01', endDate: '2022-10-04' }).map((p) => p.id)).toEqual(['mine', 'feed']);
+  });
+});
+
+describe('plans you removed', () => {
+  it('make no trip', () => {
+    expect(newTrips([plan('a', '2026-12-02', '2026-12-05', { removed: true })], [], [], NOW)).toEqual([]);
+  });
+});
+
+describe('plans imported with a past trip', () => {
+  it('never make a trip of their own', () => {
+    expect(newTrips([plan('a', '2022-10-02', '2022-10-05', { tripRef: 'trip-tripit-1' })], [], [], NOW)).toEqual([]);
+  });
+});
+
+describe('countries from plans', () => {
+  it('takes the country from the last part of a location that names one', () => {
+    expect(planCountry({ location: 'Hotel Avenida, 1050 Lisboa, Portugal' })).toBe('PT');
+    expect(planCountry({ location: 'Zagreb Airport, Croatia' })).toBe('HR');
+    expect(planCountry({ location: '350 5th Ave, New York, NY 10118, USA' })).toBe('US');
+  });
+
+  it('is nothing when no part is a country, never a guess from a city', () => {
+    expect(planCountry({ location: 'Lisbon' })).toBeUndefined();
+    expect(planCountry({ location: 'Hotel Avenida, Lisboa' })).toBeUndefined();
+    expect(planCountry({})).toBeUndefined();
+  });
+
+  it('is the country of most of the stays, else of most plans', () => {
+    const stay = (id: string, location: string) => plan(id, '2026-11-05', '2026-11-07', { kind: 'lodging', location });
+    const flight = (id: string, location: string) => plan(id, '2026-11-05', '2026-11-05', { kind: 'flight', location });
+    // The flights start at home, but the stay is where the trip went.
+    expect(groupCountry([flight('f', 'Zagreb Airport, Croatia'), flight('g', 'Zagreb Airport, Croatia'), stay('s', 'Hotel, Lisboa, Portugal')])).toBe('PT');
+    expect(groupCountry([flight('f', 'Zagreb Airport, Croatia')])).toBe('HR');
+    expect(groupCountry([plan('x', '2026-11-05')])).toBeUndefined();
+  });
+
+  it('puts the country on a trip made from plans', () => {
+    const [t] = newTrips([plan('a', '2026-11-05', '2026-11-07', { kind: 'lodging', location: 'Hotel, Lisboa, Portugal' })], [], [], NOW);
+    expect(t.country).toBe('PT');
+    const [none] = newTrips([plan('b', '2026-12-05', '2026-12-07', { kind: 'lodging', location: 'Somewhere' })], [], [], NOW);
+    expect(none.country).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, homeCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, homeCountry, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -142,5 +142,77 @@ describe('homeCountry', () => {
   it('gives nothing without check-ins in a known country', () => {
     expect(homeCountry([])).toBeUndefined();
     expect(checkinCountry(at('Croatia'))).toBe('HR');
+  });
+});
+
+describe('visitedCountries with TripIt plans', () => {
+  const plan = (location: string | undefined, start: string, end = start) => ({ location, start, end });
+
+  it('counts a plan\'s country like a check-in: first and last day there', () => {
+    const entries = visitedCountries([], [], [], '2026-11-05', [
+      plan('Hotel, Roma, Italy', '2022-10-02', '2022-10-04'),
+      plan('Airport, Roma, Italy', '2022-10-09'),
+      plan('Hotel, Wien, Austria', '2022-10-05', '2022-10-08'),
+    ]);
+    const it = entries.find((e) => e.country.code === 'IT')!;
+    expect(it).toMatchObject({ first: '2022-10-02', last: '2022-10-09', sources: ['tripit'] });
+    expect(entries.map((e) => e.country.code).sort()).toEqual(['AT', 'IT']);
+  });
+
+  it('merges with Swarm and keeps the earliest day', () => {
+    const [e] = visitedCountries([ci('Italy', '2025-05-03')], [], [], '2026-11-05', [plan('Hotel, Roma, Italy', '2022-10-02')]);
+    expect(e).toMatchObject({ first: '2022-10-02', checkins: 1 });
+    expect(e.sources).toEqual(['swarm', 'tripit']);
+  });
+
+  it('skips plans that have not started, and ones with no country in their location', () => {
+    expect(visitedCountries([], [], [], '2026-11-05', [plan('Hotel, Roma, Italy', '2027-01-01'), plan('Roma', '2022-10-02'), plan(undefined, '2022-10-02')])).toEqual([]);
+  });
+
+  it('stops a plan that is still running at today', () => {
+    const [e] = visitedCountries([], [], [], '2026-11-05', [plan('Hotel, Roma, Italy', '2026-11-03', '2026-11-20')]);
+    expect(e).toMatchObject({ first: '2026-11-03', last: '2026-11-05' });
+  });
+});
+
+describe('visitedCountries with plan stops', () => {
+  const stop = (country: string, date: string) => ({ country, date });
+  const plan = (stops: { country: string; date: string }[], location?: string) => ({ location, start: stops[0]?.date ?? '2022-10-01', end: stops[stops.length - 1]?.date ?? '2022-10-01', stops });
+
+  it('counts each stop of a plan on its day, a layover included, like a check-in', () => {
+    const entries = visitedCountries([], [], [], '2026-11-05', [plan([stop('MX', '2022-09-23'), stop('DE', '2022-09-23')]), plan([stop('DE', '2022-09-23'), stop('HR', '2022-09-24')])]);
+    expect(entries.map((e) => [e.country.code, e.first, e.last]).sort()).toEqual([
+      ['DE', '2022-09-23', '2022-09-23'],
+      ['HR', '2022-09-24', '2022-09-24'],
+      ['MX', '2022-09-23', '2022-09-23'],
+    ]);
+    expect(entries[0].sources).toEqual(['tripit']);
+  });
+
+  it('uses the stops, not the location text, when a plan has them', () => {
+    const entries = visitedCountries([], [], [], '2026-11-05', [{ location: 'Hotel, Roma, Italy', start: '2022-10-02', end: '2022-10-05', stops: [stop('AT', '2022-10-02')] }]);
+    expect(entries.map((e) => e.country.code)).toEqual(['AT']);
+  });
+
+  it('leaves out stops in the future and unknown countries', () => {
+    expect(visitedCountries([], [], [], '2026-11-05', [plan([stop('IT', '2027-01-01'), stop('ZZ', '2022-10-01')])])).toEqual([]);
+  });
+});
+
+describe('plans you removed', () => {
+  const stop = (country: string, date: string) => ({ country, date });
+  const plan = (id: string, country: string, date: string, removed?: boolean) => ({ id, location: undefined, start: date, end: date, stops: [stop(country, date)], ...(removed ? { removed } : {}) });
+
+  it('count for nothing in the stats', () => {
+    expect(visitedCountries([], [], [], '2026-11-05', [plan('a', 'RS', '2023-10-13', true), plan('b', 'HR', '2023-10-14')]).map((e) => e.country.code)).toEqual(['HR']);
+  });
+
+  it('are not listed as what puts a country there; the others are, in date order', () => {
+    const plans = [plan('late', 'RS', '2024-01-01'), plan('gone', 'RS', '2023-10-13', true), plan('early', 'RS', '2023-10-13'), plan('other', 'HR', '2023-10-13'), plan('future', 'RS', '2030-01-01')];
+    expect(plansInCountry(plans, 'RS', '2026-11-05').map((p) => p.id)).toEqual(['early', 'late']);
+  });
+
+  it('falls back to the location text for a plan with no stops', () => {
+    expect(plansInCountry([{ id: 'x', location: 'Beograd, Serbia', start: '2023-10-13', end: '2023-10-13' }], 'RS', '2026-11-05')).toHaveLength(1);
   });
 });

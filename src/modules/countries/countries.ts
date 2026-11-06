@@ -1,4 +1,5 @@
 import type { Checkin } from '../checkins/types';
+import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Trip } from '../trips/types';
 import { COUNTRY_ROWS } from './countryData';
 import type { CountryVisit } from './types';
@@ -114,7 +115,20 @@ export function homeCountry(checkins: Pick<Checkin, 'country'>[], chosen?: strin
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
 }
 
-export type Source = 'swarm' | 'list' | 'manual' | 'trip';
+/**
+ * The country a location text is in, as an ISO code: the last comma-separated part that is a country's name
+ * ("Hotel Avenida, 1050 Lisboa, Portugal"). Nothing when no part is one: never a guess from a city.
+ */
+export function locationCountry(location: string | undefined): string | undefined {
+  const parts = (location ?? '').split(',').map((s) => s.trim());
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const found = findCountry(parts[i]);
+    if (found) return found.code;
+  }
+  return undefined;
+}
+
+export type Source = 'swarm' | 'list' | 'manual' | 'trip' | 'tripit';
 
 export interface CountryEntry {
   country: Country;
@@ -132,9 +146,11 @@ const earliest = (a?: string, b?: string) => (a && b ? (a < b ? a : b) : (a ?? b
 
 /**
  * Every country you've been to: Swarm check-ins (by country name), the stored list, and trips that name a country
- * (`Trip.country`). A trip only counts once it has started (`today`), so a planned one isn't "visited" yet.
+ * (`Trip.country`), and TripIt plans whose location names a country, which count like check-ins: the first plan there
+ * gives the first visit and the last one the last visit. A trip or a plan only counts once it has started (`today`), so
+ * a planned one isn't "visited" yet.
  */
-export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = ''): CountryEntry[] {
+export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = '', plans: Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops' | 'removed'>[] = []): CountryEntry[] {
   const out = new Map<string, CountryEntry>();
   const entry = (country: Country) => {
     let e = out.get(country.code);
@@ -167,7 +183,34 @@ export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], tr
     e.last = e.last && e.last > end ? e.last : end;
     if (!e.sources.includes('trip')) e.sources.push('trip');
   }
+  // A plan is where it took you: the countries and days in its `stops` (a flight: where it left and where it landed),
+  // else the country in its location text over its days.
+  const seen = (code: string | undefined, first: string, last: string) => {
+    const country = byCode.get(code ?? '');
+    if (!country || !today || first > today) return;
+    const e = entry(country);
+    e.first = earliest(e.first, first);
+    const end = last < today ? last : today;
+    e.last = e.last && e.last > end ? e.last : end;
+    if (!e.sources.includes('tripit')) e.sources.push('tripit');
+  };
+  for (const p of plans) {
+    if (p.removed) continue;
+    if (p.stops?.length) for (const s of p.stops) seen(s.country, s.date, s.date);
+    else seen(locationCountry(p.location), p.start, p.end);
+  }
   return sortEntries([...out.values()]);
+}
+
+/** The plans that put a country in your list, in date order: the ones whose stops (or location) are there and have started. */
+export function plansInCountry<P extends Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops' | 'removed'>>(plans: P[], code: string, today: string): P[] {
+  return plans
+    .filter((p) => {
+      if (p.removed) return false;
+      if (p.stops?.length) return p.stops.some((s) => s.country === code && s.date <= today);
+      return locationCountry(p.location) === code && p.start <= today;
+    })
+    .sort((a, b) => a.start.localeCompare(b.start));
 }
 
 /** Oldest first visit first; countries with no known date after those, by name. */

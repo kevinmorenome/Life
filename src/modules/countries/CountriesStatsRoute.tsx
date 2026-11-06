@@ -5,12 +5,13 @@ import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, Section, Tile } from '../clothes/charts';
 import type { Checkin } from '../checkins/types';
 import type { Trip } from '../trips/types';
+import type { TripitPlan } from '../../../worker/tripitTypes';
 import { Flag } from './Flag';
-import { COUNTRIES, newVisit, parseCountryList, summarize, visitedCountries, visitsToImport, type CountryEntry } from './countries';
+import { COUNTRIES, newVisit, parseCountryList, plansInCountry, summarize, visitedCountries, visitsToImport, type CountryEntry } from './countries';
 import type { CountryVisit } from './types';
 import { WorldMap } from './WorldMap';
 
-const SOURCE_LABEL = { swarm: 'Swarm', list: 'List', manual: 'Added by hand', trip: 'Trips' } as const;
+const SOURCE_LABEL = { swarm: 'Swarm', list: 'List', manual: 'Added by hand', trip: 'Trips', tripit: 'TripIt plans' } as const;
 
 const years = (e: CountryEntry) => (e.first && e.last && e.first.slice(0, 4) !== e.last.slice(0, 4) ? `${e.first.slice(0, 4)}–${e.last.slice(0, 4)}` : e.first?.slice(0, 4));
 
@@ -18,11 +19,12 @@ export function CountriesStatsRoute() {
   const checkins = useCollection<Checkin>('checkins');
   const visits = useCollection<CountryVisit>('countries');
   const trips = useCollection<Trip>('trips');
-  const entries = useMemo(() => visitedCountries(checkins.items, visits.items, trips.items, today()), [checkins.items, visits.items, trips.items]);
+  const plans = useCollection<TripitPlan>('tripitplans');
+  const entries = useMemo(() => visitedCountries(checkins.items, visits.items, trips.items, today(), plans.items), [checkins.items, visits.items, trips.items, plans.items]);
   const summary = useMemo(() => summarize(entries), [entries]);
   const thisYear = today().slice(0, 4);
 
-  if (checkins.loading || visits.loading || trips.loading) return <p className="muted">Loading…</p>;
+  if (checkins.loading || visits.loading || trips.loading || plans.loading) return <p className="muted">Loading…</p>;
   return (
     <>
       <p className="muted small">From your Swarm check-ins and trips, plus countries added by hand.</p>
@@ -58,7 +60,7 @@ export function CountriesStatsRoute() {
         ) : (
           <ul className="country-list">
             {entries.map((e) => (
-              <CountryRow key={e.country.code} entry={e} onRemove={e.visit ? () => void visits.remove(e.visit!.id) : undefined} onDate={(d) => e.visit && void visits.save({ ...e.visit, firstVisit: d || undefined, updatedAt: new Date().toISOString() })} />
+              <CountryRow key={e.country.code} entry={e} plans={plansInCountry(plans.items, e.country.code, today())} tripName={(id) => trips.items.find((t) => t.id === id)?.name} onRemovePlan={(p) => plans.save({ ...p, removed: true })} onRemove={e.visit ? () => void visits.remove(e.visit!.id) : undefined} onDate={(d) => e.visit && void visits.save({ ...e.visit, firstVisit: d || undefined, updatedAt: new Date().toISOString() })} />
             ))}
           </ul>
         )}
@@ -73,7 +75,21 @@ export function CountriesStatsRoute() {
   );
 }
 
-function CountryRow({ entry: e, onRemove, onDate }: { entry: CountryEntry; onRemove?: () => void; onDate: (date: string) => void }) {
+function CountryRow({
+  entry: e,
+  plans,
+  tripName,
+  onRemovePlan,
+  onRemove,
+  onDate,
+}: {
+  entry: CountryEntry;
+  plans: TripitPlan[];
+  tripName: (tripRef: string) => string | undefined;
+  onRemovePlan: (p: TripitPlan) => Promise<void>;
+  onRemove?: () => void;
+  onDate: (date: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const detail = [
     e.country.continent,
@@ -100,6 +116,25 @@ function CountryRow({ entry: e, onRemove, onDate }: { entry: CountryEntry; onRem
           <p>{detail.join(' · ')}</p>
           {e.last && e.last !== e.first && <p>Last check-in {shortDate(e.last)}</p>}
           <p>From: {e.sources.map((s) => SOURCE_LABEL[s]).join(', ')}</p>
+          {plans.length > 0 && (
+            <details>
+              <summary>TripIt plans here ({plans.length})</summary>
+              <p>Not right? Remove a plan you didn’t do, and it stops counting everywhere.</p>
+              <ul className="pack-list">
+                {plans.map((p) => (
+                  <li key={p.id} className="pack-row">
+                    <span className="pack-text">
+                      <strong>{p.title}</strong>
+                      <span className="muted small">{[shortDate(p.start), p.tripRef ? tripName(p.tripRef) : undefined].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <button type="button" className="icon-btn" aria-label={`Remove ${p.title}, so it stops counting`} title="Remove" onClick={() => void onRemovePlan(p)}>
+                      <TrashIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           {e.visit && (
             <label className="field">
               <span>First visit (optional)</span>

@@ -50,7 +50,7 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
     if (second === 'day' && third && /^\d{4}-\d{2}-\d{2}$/.test(third)) return <DayOutfitPicker date={third} {...props} {...planProps} />;
     const tab: TripTab =
       second === 'outfits' || second === 'other' || second === 'itinerary' ? second : 'clothes';
-    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onDelete={onDelete} />;
+    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onSavePlan={tripitPlans.save} onDelete={onDelete} />;
   }
   return (
     <TripList

@@ -7324,3 +7324,14 @@ a.game-row + .food-h2 {
 .trip-line-num.end {
   right: 6.5px;
 }
+
+/* Itinerary rows: the text takes the width, the remove / restore button sits at the edge. */
+.itinerary .pack-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.itinerary .pack-text {
+  flex: 1;
+  min-width: 0;
+}

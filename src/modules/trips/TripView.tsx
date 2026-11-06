@@ -30,11 +30,12 @@ interface Props {
   outfits: Outfit[];
   plans: Plan[];
   tripitPlans: TripitPlan[];
+  onSavePlan: (p: TripitPlan) => Promise<void>;
   onSave: (t: Trip) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSave, onDelete }: Props) {
+export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSavePlan, onSave, onDelete }: Props) {
   const list = useMemo(() => packingList(trip, items, outfits, outfitName, plans), [trip, items, outfits, plans]);
   const outfitCount = useMemo(() => [...tripOutfitsByDay(trip, plans, outfits).values()].reduce((n, day) => n + day.length, 0), [trip, plans, outfits]);
   const [text, setText] = useState('');
@@ -92,7 +93,16 @@ export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSave
       </div>
 
       {tab === 'itinerary' ? (
-        <Itinerary plans={plansOfTrip(tripitPlans, trip)} startDate={trip.startDate} endDate={trip.endDate} />
+        <Itinerary
+          plans={plansOfTrip(tripitPlans, trip)}
+          startDate={trip.startDate}
+          endDate={trip.endDate}
+          onRemove={(p) => onSavePlan({ ...p, removed: true })}
+          onRestore={(p) => {
+            const { removed: _removed, ...rest } = p;
+            return onSavePlan(rest);
+          }}
+        />
       ) : (
       <>
       <div className="card pack-progress" aria-live="polite">
