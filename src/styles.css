@@ -1506,6 +1506,14 @@ a:focus-visible {
   flex: 1;
   min-width: 0;
 }
+/* .icon-btn pulls its right neighbour over it (margin-right: -10px); here the two buttons sit side by side. */
+.suggest-row .icon-btn {
+  flex: none;
+  margin-right: 0;
+}
+.suggest-row {
+  gap: 0.5rem;
+}
 .suggest-hidden {
   margin-top: 1rem;
 }
