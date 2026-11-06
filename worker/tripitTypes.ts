@@ -32,4 +32,6 @@ export interface TripitPlan {
   stops?: PlanStop[];
   /** The id of the trip record this plan belongs to, for plans imported with a past trip. */
   tripRef?: string;
+  /** You removed it (a plan you didn't do, or a wrong one). Kept, not deleted, so a fetch or an import doesn't bring it back; it counts for nothing. */
+  removed?: boolean;
 }
