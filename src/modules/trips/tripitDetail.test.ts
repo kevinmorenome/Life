@@ -75,3 +75,25 @@ describe('plansFromDetail', () => {
     expect(one).toEqual(many);
   });
 });
+
+describe('a restaurant', () => {
+  // TripIt gives a restaurant one DateTime (no start and end) and an Address; made up, in that shape.
+  const restaurant = {
+    id: 'r1',
+    display_name: 'Cafe Example Lisboa',
+    supplier_name: 'Cafe Example Lisboa',
+    DateTime: { date: '2026-05-10', time: '10:00:00', timezone: 'Europe/Lisbon' },
+    Address: { city: 'Lisboa', country: 'PT', zip: '1100-585' },
+  };
+
+  it('is a meal at its time, in its country on that day', () => {
+    const [p] = plansFromDetail({ Trip: { id: '5' }, RestaurantObject: restaurant }, 't');
+    expect(p).toMatchObject({ kind: 'meal', title: 'Cafe Example Lisboa', location: 'Lisboa, Portugal', start: '2026-05-10', startTime: '10:00', end: '2026-05-10', allDay: false });
+    expect(p.stops).toEqual([{ country: 'PT', date: '2026-05-10' }]);
+  });
+
+  it('reads several restaurants in an array', () => {
+    const plans = plansFromDetail({ Trip: { id: '5' }, RestaurantObject: [restaurant, { ...restaurant, id: 'r2', DateTime: { date: '2026-05-11', time: '20:30:00' } }] }, 't');
+    expect(plans.map((p) => p.start)).toEqual(['2026-05-10', '2026-05-11']);
+  });
+});
