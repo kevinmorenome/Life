@@ -1,6 +1,7 @@
 // Turns TripIt plans (the `tripitplans` store, written by the Worker) into trips. Pure.
 
 import type { TripitPlan } from '../../../worker/tripitTypes';
+import { locationCountry } from '../countries/countries';
 import type { Trip } from './types';
 
 export interface PlanGroup {
@@ -46,6 +47,15 @@ function mostCommon(values: string[]): string | undefined {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+/** The country a plan's location is in (see `locationCountry`). */
+export const planCountry = (plan: Pick<TripitPlan, 'location'>): string | undefined => locationCountry(plan.location);
+
+/** Where a group of plans went: the country of most of its stays, else of most of its plans of any kind. */
+export function groupCountry(plans: TripitPlan[]): string | undefined {
+  const tally = (list: TripitPlan[]) => mostCommon(list.flatMap((p) => planCountry(p) ?? []));
+  return tally(plans.filter((p) => p.kind === 'lodging')) ?? tally(plans);
+}
+
 /** A new trip for a group: the trip name TripIt gave, else "Trip · Month Year". The place comes from the first stay. */
 export function tripFromGroup(group: PlanGroup, now: string): Trip {
   const stay = group.plans.find((p) => p.kind === 'lodging' && p.location);
@@ -53,6 +63,7 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
     id: `trip-${group.ref}`,
     name: group.tripName ?? `Trip · ${MONTHS[Number(group.start.slice(5, 7)) - 1]} ${group.start.slice(0, 4)}`,
     ...(stay?.location ? { destination: stay.location.slice(0, 80) } : {}),
+    ...(groupCountry(group.plans) ? { country: groupCountry(group.plans) } : {}),
     startDate: group.start,
     endDate: group.end,
     itemIds: [],
@@ -71,7 +82,8 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
  */
 export function newTrips(plans: TripitPlan[], trips: Trip[], dismissed: readonly string[], now: string): Trip[] {
   const out: Trip[] = [];
-  for (const g of groupPlans(plans)) {
+  // Plans imported with a past trip already have their trip.
+  for (const g of groupPlans(plans.filter((p) => !p.tripRef))) {
     const ids = new Set(g.plans.map((p) => p.id));
     const known = trips.some((t) => t.tripitRef && ids.has(t.tripitRef));
     const wasDeleted = dismissed.some((d) => ids.has(d));
@@ -82,8 +94,9 @@ export function newTrips(plans: TripitPlan[], trips: Trip[], dismissed: readonly
 }
 
 /** The plans that fall on a trip's days, in order (all-day ones first on each day). */
-export function plansOfTrip(plans: TripitPlan[], trip: Pick<Trip, 'startDate' | 'endDate'>): TripitPlan[] {
+export function plansOfTrip(plans: TripitPlan[], trip: Pick<Trip, 'id' | 'startDate' | 'endDate'>): TripitPlan[] {
   return plans
-    .filter((p) => p.start <= trip.endDate && p.end >= trip.startDate)
+    // Plans imported with a trip belong to it; feed plans belong to whichever trip covers their days.
+    .filter((p) => (p.tripRef ? p.tripRef === trip.id : p.start <= trip.endDate && p.end >= trip.startDate))
     .sort((a, b) => a.start.localeCompare(b.start) || (a.startTime ?? '').localeCompare(b.startTime ?? '') || a.id.localeCompare(b.id));
 }
