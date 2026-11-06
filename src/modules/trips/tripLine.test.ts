@@ -6,21 +6,27 @@ const trip = { startDate: '2026-11-04', endDate: '2026-11-11' };
 
 describe('tripDayShape', () => {
   it('starts at the number on the first day, and has the line all day after that, the last day too', () => {
-    expect(tripDayShape(trip, '2026-11-04')).toEqual({ line: 'from', flag: true });
-    expect(tripDayShape(trip, '2026-11-05')).toEqual({ line: 'through', flag: false });
-    expect(tripDayShape(trip, '2026-11-11')).toEqual({ line: 'through', flag: false });
+    expect(tripDayShape(trip, '2026-11-04')).toMatchObject({ line: 'from', flag: true });
+    expect(tripDayShape(trip, '2026-11-05')).toMatchObject({ line: 'through', flag: false });
+    expect(tripDayShape(trip, '2026-11-11')).toMatchObject({ line: 'through', flag: false });
   });
 
   it('shows the flag again on the Monday where the next week\'s line begins', () => {
-    expect(tripDayShape(trip, '2026-11-09')).toEqual({ line: 'through', flag: true });
+    expect(tripDayShape(trip, '2026-11-09')).toMatchObject({ line: 'through', flag: true });
     expect(tripDayShape(trip, '2026-11-08').flag).toBe(false);
   });
 
-  it('gives a one-day trip its line and flag too', () => {
-    expect(tripDayShape({ startDate: '2026-11-04', endDate: '2026-11-04' }, '2026-11-04')).toEqual({ line: 'from', flag: true });
+  it('has a dot behind the number on the first day and a dot at the end of the line on the last', () => {
+    expect(tripDayShape(trip, '2026-11-04')).toMatchObject({ start: true, end: false });
+    expect(tripDayShape(trip, '2026-11-07')).toMatchObject({ start: false, end: false });
+    expect(tripDayShape(trip, '2026-11-11')).toMatchObject({ start: false, end: true });
+  });
+
+  it('gives a one-day trip its line, flag and both dots', () => {
+    expect(tripDayShape({ startDate: '2026-11-04', endDate: '2026-11-04' }, '2026-11-04')).toEqual({ line: 'from', flag: true, start: true, end: true });
   });
 
   it('puts the flag on the last day when it is a Monday', () => {
-    expect(tripDayShape({ startDate: '2026-11-07', endDate: '2026-11-09' }, '2026-11-09')).toEqual({ line: 'through', flag: true });
+    expect(tripDayShape({ startDate: '2026-11-07', endDate: '2026-11-09' }, '2026-11-09')).toMatchObject({ line: 'through', flag: true, end: true });
   });
 });

@@ -7232,7 +7232,7 @@ a.game-row + .food-h2 {
   left: -5px;
   right: -5px;
   /* A subtle gray: the flag says where, the line only connects the days. */
-  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  background: var(--trip-line);
   pointer-events: none;
 }
 /* The number is the middle of the first column: a sixth of the grid's width. */
@@ -7261,6 +7261,7 @@ a.game-row + .food-h2 {
 /* The same trip line at the other zoom levels (the grid look above fades out): level with the big number, which sits
    in the middle when zoomed out and slides to the left corner when zoomed in. --num-x is where its middle is. */
 .cal-day.in-trip {
+  --trip-line: color-mix(in srgb, var(--muted) 45%, var(--bg));
   --num-x: calc(50cqw + clamp(0, var(--z) - 1, 1) * (15px - 50cqw));
 }
 .trip-line-num,
@@ -7293,4 +7294,33 @@ a.game-row + .food-h2 {
 }
 .cal-day.in-trip .cal-num:not(.today) {
   background: var(--bg);
+}
+
+/* The two ends of a trip: its first day's number sits on a dot, and the line ends in a dot on the last day. */
+.cal-day.in-trip .cell-num.trip-start:not(.today),
+.cal-day.in-trip .cal-num.trip-start:not(.today) {
+  background: var(--trip-line);
+}
+.trip-end-dot {
+  position: absolute;
+  top: 6px;
+  right: -2px;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--trip-line);
+  pointer-events: none;
+}
+/* The line stops at the middle of the dot. */
+.trip-line.end {
+  right: 1.5px;
+}
+.trip-end-dot-num {
+  top: 11px;
+  right: 3px;
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.trip-line-num.end {
+  right: 6.5px;
 }
