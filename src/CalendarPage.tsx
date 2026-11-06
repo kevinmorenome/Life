@@ -9,6 +9,7 @@ import type { Outfit, ClothingItem, Plan } from './modules/clothes/types';
 import type { Checkin } from './modules/checkins/types';
 import { homeCountry } from './modules/countries/countries';
 import { abroadStays, calendarTrips, withoutHidden } from './modules/trips/abroadStays';
+import { checkinCountriesByDay } from './modules/trips/tripLine';
 import { hiddenSwarmTrips } from './modules/trips/swarmTrips';
 import type { Trip } from './modules/trips/types';
 import type { CalendarLayer } from './modules/types';
@@ -39,6 +40,8 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
     return calendarTrips(trips.items, withoutHidden(stays, hidden));
   }, [trips.items, checkins.items, settings.homeCountry, settings.swarmTripsDismissed]);
 
+  const dayCountries = useMemo(() => checkinCountriesByDay(checkins.items), [checkins.items]);
+
   if (first && DATE.test(first)) {
     const sections: ReactNode[] = layers.map((l, i) => <Fragment key={i}>{l.daySection?.(first)}</Fragment>);
     return <ClothesRoot subroute={['calendar', first]} dayExtras={sections} />;
@@ -50,6 +53,7 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
       items={clothes.items}
       outfits={outfits.items}
       trips={drawnTrips}
+      dayCountries={dayCountries}
       plans={plans.items}
       layers={layers}
     />
