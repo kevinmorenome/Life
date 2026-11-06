@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abroadStays, calendarTrips } from './abroadStays';
+import { abroadStays, calendarTrips, withoutHidden } from './abroadStays';
 import type { Trip } from './types';
 
 const ci = (date: string, country: string | undefined) => ({ date, country });
@@ -46,5 +46,18 @@ describe('calendarTrips', () => {
 
   it('leaves out a stay that shares any day with a recorded trip', () => {
     expect(calendarTrips([trip({})], [{ country: 'MX', startDate: '2026-10-04', endDate: '2026-10-08' }])).toHaveLength(1);
+  });
+});
+
+describe('withoutHidden', () => {
+  const stays = [
+    { country: 'MX', startDate: '2026-10-10', endDate: '2026-10-14' },
+    { country: 'AT', startDate: '2026-10-20', endDate: '2026-10-22' },
+  ];
+  it('drops stays that share a day with a suggestion you hid', () => {
+    expect(withoutHidden(stays, [{ startDate: '2026-10-13', endDate: '2026-10-16' }])).toEqual([stays[1]]);
+  });
+  it('keeps everything when nothing is hidden', () => {
+    expect(withoutHidden(stays, [])).toEqual(stays);
   });
 });

@@ -54,6 +54,11 @@ export function abroadStays(checkins: Pick<Checkin, 'country' | 'date'>[], home:
   return stays;
 }
 
+/** Leaves out stays that share a day with a Swarm suggestion you hid, so a trip you said is not one isn't drawn. */
+export function withoutHidden(stays: Stay[], hidden: Pick<Trip, 'startDate' | 'endDate'>[]): Stay[] {
+  return stays.filter((s) => !hidden.some((h) => h.startDate <= s.endDate && h.endDate >= s.startDate));
+}
+
 /**
  * The trips the calendar draws: your own, plus the stays abroad that no trip of yours covers (a stay that shares
  * any day with a recorded trip is left out: the trip is the one you wrote down). Stays become trip-shaped entries

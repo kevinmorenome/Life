@@ -20,6 +20,8 @@ export interface AppSettings {
   statsfmUser?: string;
   /** Trips module: TripIt trips you deleted (`Trip.tripitRef`), so a later fetch doesn't make them again. */
   tripitDismissed?: string[];
+  /** Trips module: Swarm trips you deleted (`Trip.swarmRef`), so they aren't made again. */
+  swarmTripsDismissed?: string[];
   updatedAt: string;
 }
 

@@ -1,4 +1,5 @@
 import { Fragment, useMemo, type ReactNode } from 'react';
+import { today } from './lib/format';
 import { useSettings } from './lib/settings';
 import { useCollection } from './lib/useCollection';
 import { MODULES } from './modules';
@@ -7,7 +8,8 @@ import { ClothesRoot } from './modules/clothes/ClothesRoot';
 import type { Outfit, ClothingItem, Plan } from './modules/clothes/types';
 import type { Checkin } from './modules/checkins/types';
 import { homeCountry } from './modules/countries/countries';
-import { abroadStays, calendarTrips } from './modules/trips/abroadStays';
+import { abroadStays, calendarTrips, withoutHidden } from './modules/trips/abroadStays';
+import { hiddenSwarmTrips } from './modules/trips/swarmTrips';
 import type { Trip } from './modules/trips/types';
 import type { CalendarLayer } from './modules/types';
 
@@ -30,10 +32,12 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
   const checkins = useCollection<Checkin>('checkins');
   const { settings } = useSettings();
   // Time abroad that isn't one of your trips is drawn like one (a line and the flag), from your check-ins.
-  const drawnTrips = useMemo(
-    () => calendarTrips(trips.items, abroadStays(checkins.items, homeCountry(checkins.items, settings.homeCountry))),
-    [trips.items, checkins.items, settings.homeCountry],
-  );
+  // A suggestion you hid on the Trips page (not a trip) is not drawn either.
+  const drawnTrips = useMemo(() => {
+    const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString());
+    const stays = abroadStays(checkins.items, homeCountry(checkins.items, settings.homeCountry));
+    return calendarTrips(trips.items, withoutHidden(stays, hidden));
+  }, [trips.items, checkins.items, settings.homeCountry, settings.swarmTripsDismissed]);
 
   if (first && DATE.test(first)) {
     const sections: ReactNode[] = layers.map((l, i) => <Fragment key={i}>{l.daySection?.(first)}</Fragment>);
