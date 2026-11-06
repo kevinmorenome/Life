@@ -1,6 +1,7 @@
 // Turns TripIt plans (the `tripitplans` store, written by the Worker) into trips. Pure.
 
 import type { TripitPlan } from '../../../worker/tripitTypes';
+import { findCountry } from '../countries/countries';
 import type { Trip } from './types';
 
 export interface PlanGroup {
@@ -46,6 +47,25 @@ function mostCommon(values: string[]): string | undefined {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+/**
+ * The country a plan's location is in, as an ISO code: the last comma-separated part that is a country's name
+ * ("Hotel Avenida, 1050 Lisboa, Portugal"). Nothing when no part is one: it is never guessed from a city.
+ */
+export function planCountry(plan: Pick<TripitPlan, 'location'>): string | undefined {
+  const parts = (plan.location ?? '').split(',').map((s) => s.trim());
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const found = findCountry(parts[i]);
+    if (found) return found.code;
+  }
+  return undefined;
+}
+
+/** Where a group of plans went: the country of most of its stays, else of most of its plans of any kind. */
+export function groupCountry(plans: TripitPlan[]): string | undefined {
+  const tally = (list: TripitPlan[]) => mostCommon(list.flatMap((p) => planCountry(p) ?? []));
+  return tally(plans.filter((p) => p.kind === 'lodging')) ?? tally(plans);
+}
+
 /** A new trip for a group: the trip name TripIt gave, else "Trip · Month Year". The place comes from the first stay. */
 export function tripFromGroup(group: PlanGroup, now: string): Trip {
   const stay = group.plans.find((p) => p.kind === 'lodging' && p.location);
@@ -53,6 +73,7 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
     id: `trip-${group.ref}`,
     name: group.tripName ?? `Trip · ${MONTHS[Number(group.start.slice(5, 7)) - 1]} ${group.start.slice(0, 4)}`,
     ...(stay?.location ? { destination: stay.location.slice(0, 80) } : {}),
+    ...(groupCountry(group.plans) ? { country: groupCountry(group.plans) } : {}),
     startDate: group.start,
     endDate: group.end,
     itemIds: [],
