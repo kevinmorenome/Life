@@ -2,7 +2,7 @@ import { CheckIcon, MinusIcon, TrashIcon } from '../../icons';
 import { money, shortDate, today } from '../../lib/format';
 import { IconMenu } from '../clothes/IconMenu';
 import { THAW_DAYS, daysBetween, formatAmount, originBatch, type Batch, type Stock } from './stock';
-import { batchEvent, expiryEvent, moveEvent } from './stockActions';
+import { batchEvent, expiryEvent, moveEvent, usedEarlierEvent } from './stockActions';
 import { dayText, freshnessLevel } from './stockTiles';
 import { unitLabel, type ProductSummary } from './products';
 import type { StockEvent } from './types';
@@ -67,6 +67,7 @@ export function BatchList({ product, stock, onAct }: { product: ProductSummary; 
               // Food that was thawed is not frozen again: it is there to be used.
               ...(b.frozen ? [{ label: 'Take out of freezer…', icon: <MinusIcon />, onSelect: () => move(b, false) }] : b.thawed ? [] : [{ label: 'Put in freezer…', icon: <MinusIcon />, onSelect: () => move(b, true) }]),
               { label: 'Finished', icon: <CheckIcon />, onSelect: () => onAct({ event: batchEvent(product.id, b.id!, 'count', 0, 'app'), text: `${product.name}: batch finished`, undo: batchEvent(product.id, b.id!, 'count', b.quantity, 'app') }) },
+              { label: 'Used earlier (no date)', icon: <CheckIcon />, onSelect: () => onAct({ event: usedEarlierEvent(product.id, b.id!, 'app'), text: `${product.name}: batch used earlier`, undo: batchEvent(product.id, b.id!, 'count', b.quantity, 'app') }) },
               { label: 'Threw out', icon: <TrashIcon />, onSelect: () => onAct({ event: batchEvent(product.id, b.id!, 'toss', b.quantity, 'app'), text: `${product.name}: batch thrown out`, undo: batchEvent(product.id, b.id!, 'count', b.quantity, 'app') }) },
             ]
           : [];

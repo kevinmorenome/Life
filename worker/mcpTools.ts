@@ -368,6 +368,7 @@ export const TOOLS = [
         fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
+        dateUnknown: { type: 'boolean', description: 'With action "finish": it was used up at some unknown earlier time ("I already ate that chicken, no idea when"). Stores no date, so no stat treats it as a day it was used.' },
         note: { type: 'string' },
       },
       required: ['product'],
@@ -1204,7 +1205,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   }
 
   const stamp = now.toISOString();
-  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
+  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), ...(action === 'finish' && args.dateUnknown === true ? { undated: true } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
   if (untracked) {
