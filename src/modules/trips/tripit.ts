@@ -1,7 +1,7 @@
 // Turns TripIt plans (the `tripitplans` store, written by the Worker) into trips. Pure.
 
 import type { TripitPlan } from '../../../worker/tripitTypes';
-import { findCountry } from '../countries/countries';
+import { locationCountry } from '../countries/countries';
 import type { Trip } from './types';
 
 export interface PlanGroup {
@@ -47,18 +47,8 @@ function mostCommon(values: string[]): string | undefined {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/**
- * The country a plan's location is in, as an ISO code: the last comma-separated part that is a country's name
- * ("Hotel Avenida, 1050 Lisboa, Portugal"). Nothing when no part is one: it is never guessed from a city.
- */
-export function planCountry(plan: Pick<TripitPlan, 'location'>): string | undefined {
-  const parts = (plan.location ?? '').split(',').map((s) => s.trim());
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const found = findCountry(parts[i]);
-    if (found) return found.code;
-  }
-  return undefined;
-}
+/** The country a plan's location is in (see `locationCountry`). */
+export const planCountry = (plan: Pick<TripitPlan, 'location'>): string | undefined => locationCountry(plan.location);
 
 /** Where a group of plans went: the country of most of its stays, else of most of its plans of any kind. */
 export function groupCountry(plans: TripitPlan[]): string | undefined {
