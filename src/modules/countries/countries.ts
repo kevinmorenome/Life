@@ -150,7 +150,7 @@ const earliest = (a?: string, b?: string) => (a && b ? (a < b ? a : b) : (a ?? b
  * gives the first visit and the last one the last visit. A trip or a plan only counts once it has started (`today`), so
  * a planned one isn't "visited" yet.
  */
-export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = '', plans: Pick<TripitPlan, 'location' | 'start' | 'end'>[] = []): CountryEntry[] {
+export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = '', plans: Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops'>[] = []): CountryEntry[] {
   const out = new Map<string, CountryEntry>();
   const entry = (country: Country) => {
     let e = out.get(country.code);
@@ -183,14 +183,20 @@ export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], tr
     e.last = e.last && e.last > end ? e.last : end;
     if (!e.sources.includes('trip')) e.sources.push('trip');
   }
-  for (const p of plans) {
-    const country = byCode.get(locationCountry(p.location) ?? '');
-    if (!country || !today || p.start > today) continue;
+  // A plan is where it took you: the countries and days in its `stops` (a flight: where it left and where it landed),
+  // else the country in its location text over its days.
+  const seen = (code: string | undefined, first: string, last: string) => {
+    const country = byCode.get(code ?? '');
+    if (!country || !today || first > today) return;
     const e = entry(country);
-    e.first = earliest(e.first, p.start);
-    const end = p.end < today ? p.end : today;
+    e.first = earliest(e.first, first);
+    const end = last < today ? last : today;
     e.last = e.last && e.last > end ? e.last : end;
     if (!e.sources.includes('tripit')) e.sources.push('tripit');
+  };
+  for (const p of plans) {
+    if (p.stops?.length) for (const s of p.stops) seen(s.country, s.date, s.date);
+    else seen(locationCountry(p.location), p.start, p.end);
   }
   return sortEntries([...out.values()]);
 }

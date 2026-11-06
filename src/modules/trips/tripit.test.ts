@@ -80,7 +80,18 @@ describe('newTrips', () => {
 describe('plansOfTrip', () => {
   it('lists the plans on the trip days in order', () => {
     const plans = [plan('after', '2026-11-20'), plan('b', '2026-11-06', '2026-11-06', { startTime: '10:00' }), plan('a', '2026-11-06', '2026-11-06', { startTime: '08:00' }), plan('stay', '2026-11-04', '2026-11-08')];
-    expect(plansOfTrip(plans, { startDate: '2026-11-05', endDate: '2026-11-07' }).map((p) => p.id)).toEqual(['stay', 'a', 'b']);
+    expect(plansOfTrip(plans, { id: 't', startDate: '2026-11-05', endDate: '2026-11-07' }).map((p) => p.id)).toEqual(['stay', 'a', 'b']);
+  });
+
+  it('lists the plans that were imported with a trip by the trip, wherever their days fall', () => {
+    const plans = [plan('mine', '2022-10-02', '2022-10-02', { tripRef: 't' }), plan('other', '2022-10-02', '2022-10-02', { tripRef: 'u' }), plan('feed', '2022-10-03')];
+    expect(plansOfTrip(plans, { id: 't', startDate: '2022-10-01', endDate: '2022-10-04' }).map((p) => p.id)).toEqual(['mine', 'feed']);
+  });
+});
+
+describe('plans imported with a past trip', () => {
+  it('never make a trip of their own', () => {
+    expect(newTrips([plan('a', '2022-10-02', '2022-10-05', { tripRef: 'trip-tripit-1' })], [], [], NOW)).toEqual([]);
   });
 });
 

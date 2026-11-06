@@ -3,6 +3,8 @@
 // Pure: text in, trips out.
 
 import { countryByCode, findCountry } from '../countries/countries';
+import type { TripitPlan } from '../../../worker/tripitTypes';
+import { plansFromDetail } from './tripitDetail';
 import type { Trip } from './types';
 
 export interface ImportedTrip {
@@ -48,28 +50,45 @@ function toTrip(raw: unknown): ImportedTrip | null {
   return { id, name: name.slice(0, 120), start, end, ...(place ? { place: place.slice(0, 120) } : {}), ...(country ? { country } : {}) };
 }
 
-/** The trips in pasted text: a JSON array, or TripIt's answer ({ "Trip": [...] }, a single trip too). */
-export function parseTripList(text: string): { trips: ImportedTrip[]; skipped: number } | { error: string } {
+/**
+ * The trips in pasted text: a JSON array, TripIt's answer ({ "Trip": [...] }, a single trip too), or its answer for one
+ * trip with the plans in it ({ Trip, AirObject, LodgingObject, … }), one or several. Plans come with their trip.
+ */
+export function parseTripList(text: string): { trips: ImportedTrip[]; plans: TripitPlan[]; skipped: number } | { error: string } {
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
     return { error: 'That is not JSON. Paste what the snippet copied.' };
   }
-  // A list of trips, one answer ({ Trip }), or several answers saved one after the other.
-  const expand = (v: unknown): unknown[] => (isObject(v) && 'Trip' in v ? [v.Trip].flat() : [v]);
-  const list = Array.isArray(data) ? data.flatMap(expand) : isObject(data) ? expand(data) : [];
+  const items: { trip: unknown; detail?: Raw }[] = [];
+  const visit = (v: unknown) => {
+    if (!isObject(v)) return items.push({ trip: v });
+    if (!('Trip' in v)) return items.push({ trip: v });
+    // One trip's answer with its plans, or a list answer holding the trips.
+    if (isObject(v.Trip) && Object.keys(v).some((k) => k.endsWith('Object'))) return items.push({ trip: v.Trip, detail: v });
+    for (const t of [v.Trip].flat()) items.push({ trip: t });
+  };
+  if (Array.isArray(data)) data.forEach(visit);
+  else visit(data);
   const seen = new Set<string>();
   const trips: ImportedTrip[] = [];
-  for (const raw of list) {
+  const plans: TripitPlan[] = [];
+  for (const { trip: raw, detail } of items) {
     const t = toTrip(raw);
-    if (t && !seen.has(t.id)) {
-      seen.add(t.id);
-      trips.push(t);
-    }
+    if (!t || seen.has(t.id)) continue;
+    seen.add(t.id);
+    trips.push(t);
+    if (detail) plans.push(...plansFromDetail(detail, `trip-tripit-${t.id}`));
   }
-  if (list.length > 0 && trips.length === 0) return { error: 'No trips found in that: each needs an id, a name and start and end dates.' };
-  return { trips, skipped: list.length - trips.length };
+  if (items.length > 0 && trips.length === 0) return { error: 'No trips found in that: each needs an id, a name and start and end dates.' };
+  return { trips, plans, skipped: items.length - trips.length };
+}
+
+/** The plans to add: ones that are not there yet (same id). */
+export function plansToImport(plans: TripitPlan[], existing: Pick<TripitPlan, 'id'>[]): TripitPlan[] {
+  const have = new Set(existing.map((p) => p.id));
+  return plans.filter((p) => !have.has(p.id));
 }
 
 /** The Trip records to add: one per imported trip, never one that is already there (same id). */

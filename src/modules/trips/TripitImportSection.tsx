@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { getAll, notify, put } from '../../lib/db';
 import { PREVIEW_LABEL } from '../../lib/preview';
 import { syncNow } from '../../lib/sync';
-import { parseTripList, tripsToImport } from './tripitImport';
+import { parseTripList, plansToImport, tripsToImport } from './tripitImport';
+import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Trip } from './types';
 
 /**
@@ -10,20 +11,32 @@ import type { Trip } from './types';
  * browser (the snippet below, run in the console while signed in) and pasted here. Hidden in PR previews, which never write.
  */
 export const BROWSER_SNIPPET = `(async () => {
+  // Only these fields are kept: no names, emails, birthdays, booking numbers or links ever leave this tab.
+  const KEEP = new Set(['id', 'display_name', 'start_date', 'end_date', 'primary_location', 'PrimaryLocationAddress', 'country', 'city', 'supplier_name', 'StartDateTime', 'EndDateTime', 'DateTime', 'date', 'time', 'Address', 'StartLocationAddress', 'EndLocationAddress', 'StartStationAddress', 'EndStationAddress', 'Segment', 'start_airport_code', 'end_airport_code', 'start_city_name', 'end_city_name', 'start_country_code', 'end_country_code', 'marketing_airline_code', 'marketing_flight_number']);
+  const pick = (v) => Array.isArray(v) ? v.map(pick) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => KEEP.has(k)).map(([k, x]) => [k, pick(x)])) : v;
   const csrf = document.cookie.match(/it_wa_csrf=([^;]+)/)?.[1] ?? '';
-  const out = [];
+  const headers = { accept: 'application/json', 'x-requested-with': 'XMLHttpRequest', 'x-csrf-token-wa': csrf, 'x-tripit-app-info': 'web/0.0.2' };
+  const trips = [];
   for (let page = 1; page <= 100; page++) {
-    const res = await fetch('/api/v2/list/trip?exclude_types=weather&page_size=10&past=true&should_sort_trips_by_date=true&traveler=all&trip_permission_filter=all&page_num=' + page + '&isPast=true', {
-      headers: { accept: 'application/json', 'x-requested-with': 'XMLHttpRequest', 'x-csrf-token-wa': csrf, 'x-tripit-app-info': 'web/0.0.2' },
-    });
+    const res = await fetch('/api/v2/list/trip?exclude_types=weather&page_size=10&past=true&should_sort_trips_by_date=true&traveler=all&trip_permission_filter=all&page_num=' + page + '&isPast=true', { headers });
     if (!res.ok) { console.log('Stopped at page', page, 'status', res.status); break; }
-    const data = await res.json();
-    const trips = [].concat(data.Trip ?? []);
-    if (trips.length === 0) break;
-    for (const t of trips) out.push({ id: t.id, name: t.display_name, start: t.start_date, end: t.end_date, place: t.primary_location, country: t.PrimaryLocationAddress?.country });
+    const list = [].concat((await res.json()).Trip ?? []);
+    if (list.length === 0) break;
+    trips.push(...list.map((t) => ({ id: t.id, uuid: t.uuid })));
+  }
+  const out = [];
+  for (const t of trips) {
+    const res = await fetch('/api/v2/get/trip/uuid/' + t.uuid + '/include_objects/true?exclude_types=weather&should_get_new_seat_tracker_subscriptions=true', { headers });
+    if (!res.ok) { console.log('Skipped trip', t.id, 'status', res.status); continue; }
+    const detail = await res.json();
+    const kept = {};
+    for (const k of Object.keys(detail)) if (k === 'Trip' || k.endsWith('Object')) kept[k] = pick(detail[k]);
+    out.push(kept);
+    console.log(out.length + ' of ' + trips.length);
+    await new Promise((r) => setTimeout(r, 150));
   }
   copy(JSON.stringify(out));
-  console.log(out.length + ' trips copied');
+  console.log(out.length + ' trips with their plans copied');
 })();`;
 
 export function TripitImportSection() {
@@ -41,13 +54,18 @@ export function TripitImportSection() {
     }
     const fresh = tripsToImport(parsed.trips, await getAll<Trip>('trips'), new Date().toISOString());
     for (const t of fresh) await put('trips', t);
-    if (fresh.length) {
+    // The plans of each trip (flights, stays, activities) go in the same store as the calendar feed's plans.
+    const freshPlans = plansToImport(parsed.plans, await getAll<TripitPlan>('tripitplans'));
+    for (const p of freshPlans) await put('tripitplans', p);
+    if (fresh.length || freshPlans.length) {
       notify('trips');
+      notify('tripitplans');
       await syncNow();
     }
     const there = parsed.trips.length - fresh.length;
     setMessage(
       `Added ${fresh.length} ${fresh.length === 1 ? 'trip' : 'trips'}` +
+        (freshPlans.length ? ` and ${freshPlans.length} ${freshPlans.length === 1 ? 'plan' : 'plans'}` : '') +
         (there ? `, ${there} already there` : '') +
         (parsed.skipped ? `, ${parsed.skipped} skipped (missing dates, or listed twice)` : '') +
         '.',
@@ -62,8 +80,10 @@ export function TripitImportSection() {
     <section className="card">
       <h2>Past TripIt trips</h2>
       <p className="muted small">
-        TripIt’s calendar feed only lists upcoming trips. To bring in older ones, sign in at tripit.com, open its trip list, run the snippet below in the
-        browser console (it only reads your own list), and paste the result here. Their countries count in Stats → Places → Countries.
+        TripIt’s calendar feed only lists upcoming trips. To bring in older ones with their plans (flights, stays, activities), sign in at tripit.com and run
+        the snippet below in the browser console. It reads only your own trips and keeps just dates, places and countries (no names, emails or booking
+        numbers). Then choose the file or paste the result here. Every plan’s country counts in Stats → Places → Countries like a check-in, and the plans fill
+        each trip’s Itinerary.
       </p>
       <details>
         <summary className="small">Show the snippet</summary>

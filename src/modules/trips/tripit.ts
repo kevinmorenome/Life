@@ -82,7 +82,8 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
  */
 export function newTrips(plans: TripitPlan[], trips: Trip[], dismissed: readonly string[], now: string): Trip[] {
   const out: Trip[] = [];
-  for (const g of groupPlans(plans)) {
+  // Plans imported with a past trip already have their trip.
+  for (const g of groupPlans(plans.filter((p) => !p.tripRef))) {
     const ids = new Set(g.plans.map((p) => p.id));
     const known = trips.some((t) => t.tripitRef && ids.has(t.tripitRef));
     const wasDeleted = dismissed.some((d) => ids.has(d));
@@ -93,8 +94,9 @@ export function newTrips(plans: TripitPlan[], trips: Trip[], dismissed: readonly
 }
 
 /** The plans that fall on a trip's days, in order (all-day ones first on each day). */
-export function plansOfTrip(plans: TripitPlan[], trip: Pick<Trip, 'startDate' | 'endDate'>): TripitPlan[] {
+export function plansOfTrip(plans: TripitPlan[], trip: Pick<Trip, 'id' | 'startDate' | 'endDate'>): TripitPlan[] {
   return plans
-    .filter((p) => p.start <= trip.endDate && p.end >= trip.startDate)
+    // Plans imported with a trip belong to it; feed plans belong to whichever trip covers their days.
+    .filter((p) => (p.tripRef ? p.tripRef === trip.id : p.start <= trip.endDate && p.end >= trip.startDate))
     .sort((a, b) => a.start.localeCompare(b.start) || (a.startTime ?? '').localeCompare(b.startTime ?? '') || a.id.localeCompare(b.id));
 }
