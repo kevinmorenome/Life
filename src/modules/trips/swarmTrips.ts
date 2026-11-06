@@ -1,4 +1,5 @@
-// Turns Swarm check-ins into trips: a run of days checked in outside your home country is a trip. Pure.
+// Turns Swarm check-ins into trips: a run of days checked in outside your home country is a trip.
+// Check-ins at airports don't count. Pure.
 
 import { findCountry } from '../countries/countries';
 import type { Checkin } from '../checkins/types';
@@ -10,6 +11,27 @@ export const MAX_GAP_DAYS = 4;
 export const MAX_TRIP_DAYS = 60;
 /** Too few days of history to tell where home is. */
 const MIN_DAYS_FOR_HOME = 10;
+
+const AIRPORT = /airport|aeroport|aeropuerto|aeroporto|flughafen|zra[cč]na luka|aerodrom/i;
+/** Things inside an airport (a shop, a gate) have no airport word of their own, so anything this close to one counts. */
+const AIRPORT_RADIUS_KM = 1.5;
+
+const km = (a: Checkin, b: Checkin): number => {
+  const rad = Math.PI / 180;
+  const h = Math.sin(((b.lat! - a.lat!) * rad) / 2) ** 2 + Math.cos(a.lat! * rad) * Math.cos(b.lat! * rad) * Math.sin(((b.lng! - a.lng!) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+
+const isAirportCheckin = (c: Checkin): boolean => AIRPORT.test(`${c.category ?? ''} ${c.venue}`);
+
+/**
+ * Check-ins that say nothing about being on a trip: at an airport (the airport, a terminal, a gate, a lounge, by its
+ * category or name) or within `AIRPORT_RADIUS_KM` of one (the café past security). A layover is not a trip.
+ */
+export function withoutAirports(checkins: Checkin[]): Checkin[] {
+  const airports = checkins.filter((c) => isAirportCheckin(c) && c.lat !== undefined && c.lng !== undefined);
+  return checkins.filter((c) => !isAirportCheckin(c) && !(c.lat !== undefined && c.lng !== undefined && airports.some((a) => km(a, c) <= AIRPORT_RADIUS_KM)));
+}
 
 const day = (date: string): number => Date.parse(`${date}T00:00:00Z`) / 86_400_000;
 
@@ -37,7 +59,7 @@ export interface SwarmRun {
 /** One entry per day you checked in (the first check-in of the day decides the country). */
 function stops(checkins: Checkin[]): Stop[] {
   const byDay = new Map<string, Stop>();
-  const sorted = [...checkins].filter((c) => c.country?.trim()).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+  const sorted = withoutAirports(checkins).filter((c) => c.country?.trim()).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
   for (const c of sorted) {
     if (byDay.has(c.date)) continue;
     const country = findCountry(c.country);

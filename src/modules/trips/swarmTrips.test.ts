@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { awayRuns, homeCountry, newSwarmTrips } from './swarmTrips';
+import { awayRuns, homeCountry, newSwarmTrips, withoutAirports } from './swarmTrips';
 import type { Trip } from './types';
 
 let n = 0;
@@ -72,5 +72,24 @@ describe('newSwarmTrips', () => {
     expect(newSwarmTrips(checkins, [t], [], TODAY, NOW)).toEqual([]);
     expect(newSwarmTrips(checkins, [], [t.swarmRef!], TODAY, NOW)).toEqual([]);
     expect(newSwarmTrips(checkins, [trip({ startDate: '2026-03-11', endDate: '2026-03-20' })], [], TODAY, NOW)).toEqual([]);
+  });
+});
+
+describe('airports', () => {
+  const at = (c: Checkin, category: string, venue: string, lat: number, lng: number): Checkin => ({ ...c, category, venue, lat, lng });
+  it('drops airports, gates and lounges, and anything right next to an airport', () => {
+    const airport = at(ci('2026-03-10', 'Mexico'), 'Airport', 'Cancún International Airport', 21.0365, -86.8771);
+    const gate = at(ci('2026-03-10', 'Mexico'), 'Airport Gate', 'Gate 12', 21.0372, -86.8765);
+    const cafe = at(ci('2026-03-10', 'Mexico'), 'Coffee Shop', 'Starbucks', 21.038, -86.878);
+    const beach = at(ci('2026-03-11', 'Mexico'), 'Beach', 'Playa Delfines', 21.0586, -86.7897);
+    expect(withoutAirports([airport, gate, cafe, beach])).toEqual([beach]);
+  });
+  it('does not make a trip out of a layover', () => {
+    const layover = [at(ci('2026-03-10', 'Netherlands'), 'Airport Terminal', 'Schiphol Terminal 2', 52.31, 4.76), at(ci('2026-03-10', 'Netherlands'), 'Coffee Shop', 'Starbucks', 52.311, 4.761)];
+    expect(awayRuns([...home, ...layover], TODAY)).toEqual([]);
+  });
+  it('still makes the trip when there are other check-ins', () => {
+    const run = awayRuns([...home, at(ci('2026-03-10', 'Mexico'), 'Airport', 'Airport', 21.03, -86.87), ci('2026-03-11', 'Mexico')], TODAY);
+    expect(run.map((r) => [r.start, r.end])).toEqual([['2026-03-11', '2026-03-11']]);
   });
 });
