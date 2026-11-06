@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tripDayShape } from './tripLine';
+import { checkinCountriesByDay, countryChangedOn, countryOnDay, tripDayShape } from './tripLine';
 
 // 2026-11-04 is a Wednesday, so the 9th is the next Monday.
 const trip = { startDate: '2026-11-04', endDate: '2026-11-11' };
@@ -28,5 +28,37 @@ describe('tripDayShape', () => {
 
   it('puts the flag on the last day when it is a Monday', () => {
     expect(tripDayShape({ startDate: '2026-11-07', endDate: '2026-11-09' }, '2026-11-09')).toMatchObject({ line: 'through', flag: true, end: true });
+  });
+});
+
+// Mexico from the 18th to the 30th of September 2026, ending with a layover in Amsterdam.
+const mexico = { startDate: '2026-09-18', endDate: '2026-09-30', country: 'MX', destination: 'Tulum' };
+const ci = (date: string, country: string) => ({ date, country });
+
+describe('checkinCountriesByDay', () => {
+  it('takes the country with most check-ins that day, airports included', () => {
+    const byDay = checkinCountriesByDay([ci('2026-09-30', 'Netherlands'), ci('2026-09-20', 'Mexico'), ci('2026-09-20', 'Mexico'), ci('2026-09-20', 'United States'), ci('2026-09-21', 'Nowhereland')]);
+    expect(byDay.get('2026-09-30')).toBe('NL');
+    expect(byDay.get('2026-09-20')).toBe('MX');
+    expect(byDay.has('2026-09-21')).toBe(false);
+  });
+});
+
+describe('the country of a trip day', () => {
+  const byDay = checkinCountriesByDay([ci('2026-09-19', 'Mexico'), ci('2026-09-30', 'Netherlands')]);
+  it("is where you checked in, else where the day before was, else the trip's own country", () => {
+    expect(countryOnDay(mexico, '2026-09-18', byDay)).toBe('MX');
+    expect(countryOnDay(mexico, '2026-09-25', byDay)).toBe('MX');
+    expect(countryOnDay(mexico, '2026-09-30', byDay)).toBe('NL');
+  });
+  it('puts the flag on the first day you are somewhere else', () => {
+    expect(countryChangedOn(mexico, '2026-09-30', byDay)).toBe(true);
+    expect(tripDayShape(mexico, '2026-09-30', true).flag).toBe(true);
+    expect(countryChangedOn(mexico, '2026-09-29', byDay)).toBe(false);
+    expect(countryChangedOn(mexico, '2026-09-18', byDay)).toBe(false);
+  });
+  it("shows no change when the check-ins are all in the trip's country", () => {
+    const same = checkinCountriesByDay([ci('2026-09-20', 'Mexico'), ci('2026-09-24', 'Mexico')]);
+    expect(Array.from({ length: 13 }, (_, i) => countryChangedOn(mexico, `2026-09-${18 + i}`, same)).some(Boolean)).toBe(false);
   });
 });
