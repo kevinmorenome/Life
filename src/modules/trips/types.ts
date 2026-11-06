@@ -30,6 +30,8 @@ export interface Trip {
   packed: string[];
   /** Set on trips made from TripIt: the id of the earliest plan in the group. Sync never touches a trip that has one. */
   tripitRef?: string;
+  /** Set on trips made from Swarm check-ins abroad: the id of the first check-in. Sync never touches a trip that has one. */
+  swarmRef?: string;
   createdAt: string;
   updatedAt: string;
 }

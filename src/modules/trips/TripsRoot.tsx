@@ -23,9 +23,10 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
   if (first) {
     const trip = trips.items.find((t) => t.id === first);
     if (!trip) return <p className="muted">That trip doesn’t exist anymore.</p>;
-    // A trip made from TripIt that you delete is remembered, so the next fetch doesn't make it again.
+    // A trip made from TripIt or Swarm that you delete is remembered, so the next fetch doesn't make it again.
     const onDelete = async (id: string) => {
       if (trip.tripitRef) await update({ tripitDismissed: [...(settings.tripitDismissed ?? []), trip.tripitRef] });
+      if (trip.swarmRef) await update({ swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), trip.swarmRef] });
       await trips.remove(id);
     };
     const props = { trip, items: clothes.items, outfits: outfits.items, plans: plans.items, onSave: trips.save };
