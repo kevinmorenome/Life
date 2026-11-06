@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
+import { today } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { useCollection } from '../../lib/useCollection';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { DayOutfitPicker, TripItemsPicker } from './Pickers';
 import { TripForm } from './TripForm';
+import type { Checkin } from '../checkins/types';
+import { newSwarmTrips } from './swarmTrips';
 import { TripList } from './TripList';
 import { TripView, type TripTab } from './TripView';
 import type { Trip } from './types';
@@ -15,17 +19,24 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
   const tripitPlans = useCollection<TripitPlan>('tripitplans');
   const plans = useCollection<Plan>('plans');
   const { settings, update } = useSettings();
+  const checkins = useCollection<Checkin>('checkins');
   const [first, second, third] = subroute;
+  // Trips Swarm suggests (see swarmTrips.ts): nothing is made until you add one.
+  const suggestions = useMemo(
+    () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString()),
+    [checkins.items, trips.items, settings.swarmTripsDismissed],
+  );
 
-  if (trips.loading || clothes.loading || outfits.loading || tripitPlans.loading || plans.loading) return <p className="muted">Loading…</p>;
+  if (trips.loading || clothes.loading || outfits.loading || tripitPlans.loading || plans.loading || checkins.loading) return <p className="muted">Loading…</p>;
 
   if (first === 'new') return <TripForm onSave={trips.save} />;
   if (first) {
     const trip = trips.items.find((t) => t.id === first);
     if (!trip) return <p className="muted">That trip doesn’t exist anymore.</p>;
-    // A trip made from TripIt that you delete is remembered, so the next fetch doesn't make it again.
+    // A trip made from TripIt or Swarm that you delete is remembered, so the next fetch doesn't make it again.
     const onDelete = async (id: string) => {
       if (trip.tripitRef) await update({ tripitDismissed: [...(settings.tripitDismissed ?? []), trip.tripitRef] });
+      if (trip.swarmRef) await update({ swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), trip.swarmRef] });
       await trips.remove(id);
     };
     const props = { trip, items: clothes.items, outfits: outfits.items, plans: plans.items, onSave: trips.save };
@@ -37,5 +48,15 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
       second === 'outfits' || second === 'other' || second === 'itinerary' ? second : 'clothes';
     return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onDelete={onDelete} />;
   }
-  return <TripList trips={trips.items} items={clothes.items} outfits={outfits.items} plans={plans.items} />;
+  return (
+    <TripList
+      trips={trips.items}
+      items={clothes.items}
+      outfits={outfits.items}
+      plans={plans.items}
+      suggestions={suggestions}
+      onAddSuggestion={trips.save}
+      onDismissSuggestion={(t) => update({ swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), t.swarmRef!] })}
+    />
+  );
 }

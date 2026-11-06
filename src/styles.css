@@ -1490,6 +1490,22 @@ a:focus-visible {
   color: var(--text);
   text-decoration: none;
 }
+/* Trips found in Swarm check-ins: a flat hairline list with icon buttons. */
+.suggest-list {
+  display: grid;
+}
+.suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--hairline, var(--border));
+}
+.suggest-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
 /* Trip pictures: a soft-cornered cover, flat on the page (content gets no plate). */
 .trip-photo {
   display: block;
