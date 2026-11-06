@@ -5,6 +5,7 @@ import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, Section, Tile } from '../clothes/charts';
 import type { Checkin } from '../checkins/types';
 import type { Trip } from '../trips/types';
+import { Flag } from './Flag';
 import { COUNTRIES, newVisit, parseCountryList, summarize, visitedCountries, visitsToImport, type CountryEntry } from './countries';
 import type { CountryVisit } from './types';
 import { WorldMap } from './WorldMap';
@@ -31,6 +32,13 @@ export function CountriesStatsRoute() {
         <Tile value={String(summary.continents.filter((c) => c.visited > 0).length)} label="of 7 continents" tone={2} />
         <Tile value={String(entries.filter((e) => e.last?.startsWith(thisYear)).length)} label={`visited in ${thisYear}`} tone={3} />
       </div>
+      {entries.some((e) => e.last?.startsWith(thisYear)) && (
+        <div className="flag-strip" aria-label={`Countries visited in ${thisYear}`}>
+          {entries.filter((e) => e.last?.startsWith(thisYear)).map((e) => (
+            <Flag key={e.country.code} code={e.country.code} />
+          ))}
+        </div>
+      )}
       <Section title="Map">
         <WorldMap entries={entries} />
       </Section>
@@ -76,7 +84,9 @@ function CountryRow({ entry: e, onRemove, onDate }: { entry: CountryEntry; onRem
     <li className="country-row">
       <div className="country-head">
         <button type="button" className="country-main" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          <span className="country-name">{e.country.name}</span>
+          <span className="country-name">
+            <Flag code={e.country.code} /> {e.country.name}
+          </span>
           <span className="muted small">{years(e) ?? ''}</span>
         </button>
         {onRemove && (

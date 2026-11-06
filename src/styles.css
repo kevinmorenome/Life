@@ -7206,3 +7206,91 @@ a.game-row + .food-h2 {
   display: block;
   text-align: center;
 }
+
+/* Country flags (emoji). */
+.flag {
+  font-style: normal;
+  line-height: 1;
+}
+.day-badge .flag {
+  font-size: 0.95em;
+}
+.flag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 1.7rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* A trip on the calendar: a line through the row of day numbers (the numbers sit on it like beads) with the flag
+   on the line where it starts and at the start of each week. It lives in the day's grid look (the 3×3 grid). */
+.trip-line {
+  position: absolute;
+  top: 8.5px;
+  height: 2px;
+  left: -5px;
+  right: -5px;
+  /* A subtle gray: the flag says where, the line only connects the days. */
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  pointer-events: none;
+}
+/* The number is the middle of the first column: a sixth of the grid's width. */
+.trip-line.from {
+  left: 16.67%;
+  border-radius: 2px 0 0 2px;
+}
+.cal-day.in-trip .cell-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cell-num:not(.today) {
+  background: var(--bg);
+}
+.trip-flag {
+  position: relative;
+  z-index: 1;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* The same trip line at the other zoom levels (the grid look above fades out): level with the big number, which sits
+   in the middle when zoomed out and slides to the left corner when zoomed in. --num-x is where its middle is. */
+.cal-day.in-trip {
+  --num-x: calc(50cqw + clamp(0, var(--z) - 1, 1) * (15px - 50cqw));
+}
+.trip-line-num,
+.trip-flag-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.trip-line-num {
+  top: 14px;
+  left: 0;
+  right: 0;
+}
+.trip-line-num.from {
+  left: var(--num-x);
+  right: 0;
+}
+.trip-flag-num {
+  position: absolute;
+  top: 8px;
+  left: calc(var(--num-x) + 18px);
+  translate: -50% 0;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+}
+.cal-day.in-trip .cal-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cal-num:not(.today) {
+  background: var(--bg);
+}

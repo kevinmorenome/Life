@@ -2,6 +2,8 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { EditIcon, EyeIcon, EyeOffIcon, PlusIcon, TrashIcon, UndoIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { shortDate } from '../../lib/format';
+import { Flag } from '../countries/Flag';
+import { tripCountry } from '../countries/countries';
 import { href, navigate } from '../../lib/router';
 import { ItemThumb } from '../clothes/ItemThumb';
 import { outfitName } from '../clothes/outfits';
@@ -66,7 +68,9 @@ export function TripView({ trip, tab, items, outfits, plans, tripitPlans, onSave
     <article className="detail">
       {trip.photo && <img className="trip-photo" src={trip.photo} alt="" />}
       <div className="title-row">
-        <h1>{trip.name}</h1>
+        <h1>
+          <Flag code={tripCountry(trip)} /> {trip.name}
+        </h1>
         <a className="pack-icon" href={href(`/trips/${trip.id}/edit`)} aria-label="Edit trip" title="Edit trip">
           <EditIcon />
         </a>

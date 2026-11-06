@@ -1,6 +1,9 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
-import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon, SuitcaseIcon } from '../../icons';
+import { flagEmoji } from '../countries/flag';
+import { tripCountry } from '../countries/countries';
+import { tripDayShape } from '../trips/tripLine';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../trips/packing';
@@ -490,12 +493,6 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
         <DayBubble wear={wear} planned={planned} items={items} />
       </span>,
     );
-  if (trips.length > 0)
-    icons.push(
-      <span className="cell day-badge mark-trip" role="img" aria-label="Trip">
-        <SuitcaseIcon />
-      </span>,
-    );
   marks.forEach((m) =>
     icons.push(
       <span className={`cell day-badge mark-${m.tone}`} role="img" aria-label={m.label}>
@@ -503,8 +500,13 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
       </span>,
     ),
   );
-  const iconsHidden = icons.length > CELLS ? icons.length - (CELLS - 1) : 0;
-  const shownIcons = iconsHidden ? icons.slice(0, CELLS - 1) : icons;
+  // A trip is a line through the day numbers with its flag on it, in the row beside the number, so the icons keep to
+  // the two rows below it (six cells) on those days.
+  const trip = trips[0];
+  const shape = trip ? tripDayShape(trip, date) : undefined;
+  const capacity = trip ? 6 : CELLS;
+  const iconsHidden = icons.length > capacity ? icons.length - (capacity - 1) : 0;
+  const shownIcons = iconsHidden ? icons.slice(0, capacity - 1) : icons;
   const cellAt = (i: number) => (i < 6 ? { gridRow: 2 + Math.floor(i / 3), gridColumn: 1 + (i % 3) } : { gridRow: 1, gridColumn: i - 4 });
   // Pills, outfit first: at most MAX_PILLS, then one that counts the rest.
   const pills: ReactNode[] = [];
@@ -517,13 +519,6 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
       </span>,
     );
   }
-  trips.forEach((t) =>
-    pills.push(
-      <span key={t.id} className="pill pill-trip">
-        🧳 {t.name}
-      </span>,
-    ),
-  );
   // Where you worked is only an icon, in the corner beside the number.
   const workMark = marks.find((m) => WORK_TONES.includes(m.tone));
   marks.forEach((m, i) => {
@@ -548,7 +543,6 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
     wear.outfits.forEach((o) => fullTile(`o${o.id}`, outfitName(o), outfitPieces(o, items)));
     if (wear.items.length) fullTile('items', wear.items.map((i) => i.name).join(', '), wear.items);
   } else if (planned?.length) planned.forEach((o) => fullTile(`p${o.id}`, outfitName(o), outfitPieces(o, items), true));
-  trips.forEach((t) => fullPill(`t${t.id}`, 'pill-trip', <SuitcaseIcon />, t.name));
   marks.forEach((m, i) => {
     if (m === workMark) return;
     (m.tiles?.length ? m.tiles : [m.label]).forEach((t, j) => fullPill(`m${i}-${j}`, `mark-${m.tone}`, m.icon, t));
@@ -557,8 +551,15 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
-    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${trip ? ' in-trip' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+      {/* The same line and flag for the zoomed-out and zoomed-in looks, where the number is not in the grid. */}
+      {shape && <i className={`trip-line trip-line-num ${shape.line}`} aria-hidden />}
       <span className="cal-num">{Number(date.slice(8))}</span>
+      {trip && shape?.flag && (
+        <span className="trip-flag trip-flag-num" role="img" aria-label={`Trip: ${trip.name}`}>
+          {flagEmoji(tripCountry(trip)) ?? '🧳'}
+        </span>
+      )}
       {(hasOutfit || marks.length > 0 || trips.length > 0) && (
         <>
           <span className="cal-layer cal-dots">
@@ -570,14 +571,20 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
             {dotsHidden > 0 && <b className="more-count">+{dotsHidden}</b>}
           </span>
           <span className="cal-layer cal-cells">
+            {shape && <i className={`trip-line ${shape.line}`} aria-hidden />}
             <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
+            {trip && shape?.flag && (
+              <span className="cell-slot trip-flag" style={{ gridRow: 1, gridColumn: 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
+                {flagEmoji(tripCountry(trip)) ?? '🧳'}
+              </span>
+            )}
             {shownIcons.map((el, i) => (
               <span key={i} className="cell-slot" style={cellAt(i)}>
                 {el}
               </span>
             ))}
             {iconsHidden > 0 && (
-              <span className="cell-slot" style={cellAt(CELLS - 1)}>
+              <span className="cell-slot" style={cellAt(capacity - 1)}>
                 <span className="cell day-badge badge-more" role="img" aria-label={`${iconsHidden} more`}>
                   +{iconsHidden}
                 </span>
