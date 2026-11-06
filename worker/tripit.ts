@@ -107,6 +107,16 @@ export function plansFromFeed(text: string): TripitPlan[] {
     .sort((a, b) => (a.start + (a.startTime ?? '')).localeCompare(b.start + (b.startTime ?? '')) || a.id.localeCompare(b.id));
 }
 
+/** Whether a stored plan's JSON says the user removed it. */
+export function isRemoved(stored: string | undefined): boolean {
+  if (!stored) return false;
+  try {
+    return (JSON.parse(stored) as { removed?: unknown }).removed === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Downloads the feed. Redirects are not followed: the link is a fixed address and a redirect would be somewhere else. */
 async function fetchFeed(url: string, ctx: TripitContext): Promise<{ text: string } | { error: string; status: number }> {
   let res: Response;
@@ -142,7 +152,8 @@ export async function handleTripit(request: Request, pathname: string, ctx: Trip
     if ('error' in feed) return json({ error: feed.error }, feed.status);
     const plans = plansFromFeed(feed.text);
     const existing = await ctx.store.existing();
-    const changed = plans.filter((p) => existing.get(p.id) !== JSON.stringify(p));
+    // A plan you removed in the app stays removed: its stored copy says so.
+    const changed = plans.filter((p) => existing.get(p.id) !== JSON.stringify(p) && !isRemoved(existing.get(p.id)));
     await ctx.store.savePlans(changed, ctx.now.getTime());
     // The report holds counts and property names only, so the app can say why a feed gave nothing without showing its content.
     return json({ ok: true, plans: plans.length, changed: changed.length, feed: reportIcs(feed.text) satisfies IcsReport });

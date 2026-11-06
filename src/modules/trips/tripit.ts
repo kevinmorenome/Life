@@ -83,7 +83,7 @@ export function tripFromGroup(group: PlanGroup, now: string): Trip {
 export function newTrips(plans: TripitPlan[], trips: Trip[], dismissed: readonly string[], now: string): Trip[] {
   const out: Trip[] = [];
   // Plans imported with a past trip already have their trip.
-  for (const g of groupPlans(plans.filter((p) => !p.tripRef))) {
+  for (const g of groupPlans(plans.filter((p) => !p.tripRef && !p.removed))) {
     const ids = new Set(g.plans.map((p) => p.id));
     const known = trips.some((t) => t.tripitRef && ids.has(t.tripitRef));
     const wasDeleted = dismissed.some((d) => ids.has(d));

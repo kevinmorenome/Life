@@ -89,6 +89,12 @@ describe('plansOfTrip', () => {
   });
 });
 
+describe('plans you removed', () => {
+  it('make no trip', () => {
+    expect(newTrips([plan('a', '2026-12-02', '2026-12-05', { removed: true })], [], [], NOW)).toEqual([]);
+  });
+});
+
 describe('plans imported with a past trip', () => {
   it('never make a trip of their own', () => {
     expect(newTrips([plan('a', '2022-10-02', '2022-10-05', { tripRef: 'trip-tripit-1' })], [], [], NOW)).toEqual([]);

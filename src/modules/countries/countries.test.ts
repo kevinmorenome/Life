@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, homeCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, homeCountry, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -196,5 +196,23 @@ describe('visitedCountries with plan stops', () => {
 
   it('leaves out stops in the future and unknown countries', () => {
     expect(visitedCountries([], [], [], '2026-11-05', [plan([stop('IT', '2027-01-01'), stop('ZZ', '2022-10-01')])])).toEqual([]);
+  });
+});
+
+describe('plans you removed', () => {
+  const stop = (country: string, date: string) => ({ country, date });
+  const plan = (id: string, country: string, date: string, removed?: boolean) => ({ id, location: undefined, start: date, end: date, stops: [stop(country, date)], ...(removed ? { removed } : {}) });
+
+  it('count for nothing in the stats', () => {
+    expect(visitedCountries([], [], [], '2026-11-05', [plan('a', 'RS', '2023-10-13', true), plan('b', 'HR', '2023-10-14')]).map((e) => e.country.code)).toEqual(['HR']);
+  });
+
+  it('are not listed as what puts a country there; the others are, in date order', () => {
+    const plans = [plan('late', 'RS', '2024-01-01'), plan('gone', 'RS', '2023-10-13', true), plan('early', 'RS', '2023-10-13'), plan('other', 'HR', '2023-10-13'), plan('future', 'RS', '2030-01-01')];
+    expect(plansInCountry(plans, 'RS', '2026-11-05').map((p) => p.id)).toEqual(['early', 'late']);
+  });
+
+  it('falls back to the location text for a plan with no stops', () => {
+    expect(plansInCountry([{ id: 'x', location: 'Beograd, Serbia', start: '2023-10-13', end: '2023-10-13' }], 'RS', '2026-11-05')).toHaveLength(1);
   });
 });

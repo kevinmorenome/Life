@@ -150,7 +150,7 @@ const earliest = (a?: string, b?: string) => (a && b ? (a < b ? a : b) : (a ?? b
  * gives the first visit and the last one the last visit. A trip or a plan only counts once it has started (`today`), so
  * a planned one isn't "visited" yet.
  */
-export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = '', plans: Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops'>[] = []): CountryEntry[] {
+export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], trips: Pick<Trip, 'country' | 'startDate' | 'endDate'>[] = [], today = '', plans: Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops' | 'removed'>[] = []): CountryEntry[] {
   const out = new Map<string, CountryEntry>();
   const entry = (country: Country) => {
     let e = out.get(country.code);
@@ -195,10 +195,22 @@ export function visitedCountries(checkins: Checkin[], visits: CountryVisit[], tr
     if (!e.sources.includes('tripit')) e.sources.push('tripit');
   };
   for (const p of plans) {
+    if (p.removed) continue;
     if (p.stops?.length) for (const s of p.stops) seen(s.country, s.date, s.date);
     else seen(locationCountry(p.location), p.start, p.end);
   }
   return sortEntries([...out.values()]);
+}
+
+/** The plans that put a country in your list, in date order: the ones whose stops (or location) are there and have started. */
+export function plansInCountry<P extends Pick<TripitPlan, 'location' | 'start' | 'end' | 'stops' | 'removed'>>(plans: P[], code: string, today: string): P[] {
+  return plans
+    .filter((p) => {
+      if (p.removed) return false;
+      if (p.stops?.length) return p.stops.some((s) => s.country === code && s.date <= today);
+      return locationCountry(p.location) === code && p.start <= today;
+    })
+    .sort((a, b) => a.start.localeCompare(b.start));
 }
 
 /** Oldest first visit first; countries with no known date after those, by name. */
