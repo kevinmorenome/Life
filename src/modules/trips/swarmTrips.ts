@@ -143,11 +143,21 @@ export function tripFromRun(run: SwarmRun, now: string): Trip {
  * already covers some of its days.
  */
 export function newSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
-  const out: Trip[] = [];
-  for (const run of awayRuns(checkins, today)) {
-    const known = trips.some((t) => t.swarmRef === run.ref);
-    const overlaps = trips.some((t) => t.startDate <= run.end && t.endDate >= run.start);
-    if (!known && !dismissed.includes(run.ref) && !overlaps) out.push(tripFromRun(run, now));
-  }
-  return out;
+  return openRuns(checkins, trips, today)
+    .filter((run) => !dismissed.includes(run.ref))
+    .map((run) => tripFromRun(run, now));
+}
+
+/** The suggestions you hid (or whose trip you deleted), so a mistake can be undone. */
+export function hiddenSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
+  return openRuns(checkins, trips, today)
+    .filter((run) => dismissed.includes(run.ref))
+    .map((run) => tripFromRun(run, now));
+}
+
+/** Runs with no trip yet: not already added and not overlapping a trip of yours. */
+function openRuns(checkins: Checkin[], trips: Trip[], today: string): SwarmRun[] {
+  return awayRuns(checkins, today).filter(
+    (run) => !trips.some((t) => t.swarmRef === run.ref) && !trips.some((t) => t.startDate <= run.end && t.endDate >= run.start),
+  );
 }

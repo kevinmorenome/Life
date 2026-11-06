@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { awayRuns, homeCountry, newSwarmTrips, withoutAirports } from './swarmTrips';
+import { awayRuns, hiddenSwarmTrips, homeCountry, newSwarmTrips, withoutAirports } from './swarmTrips';
 import type { Trip } from './types';
 
 let n = 0;
@@ -72,6 +72,17 @@ describe('newSwarmTrips', () => {
     expect(newSwarmTrips(checkins, [t], [], TODAY, NOW)).toEqual([]);
     expect(newSwarmTrips(checkins, [], [t.swarmRef!], TODAY, NOW)).toEqual([]);
     expect(newSwarmTrips(checkins, [trip({ startDate: '2026-03-11', endDate: '2026-03-20' })], [], TODAY, NOW)).toEqual([]);
+  });
+});
+
+describe('hiddenSwarmTrips', () => {
+  const checkins = [...home, ci('2026-03-10', 'Mexico'), ci('2026-03-12', 'Mexico')];
+  it('lists what you hid, so it can be brought back', () => {
+    const [t] = newSwarmTrips(checkins, [], [], TODAY, NOW);
+    expect(hiddenSwarmTrips(checkins, [], [], TODAY, NOW)).toEqual([]);
+    expect(hiddenSwarmTrips(checkins, [], [t.swarmRef!], TODAY, NOW).map((x) => x.swarmRef)).toEqual([t.swarmRef]);
+    expect(newSwarmTrips(checkins, [], [t.swarmRef!], TODAY, NOW)).toEqual([]);
+    expect(hiddenSwarmTrips(checkins, [t], [t.swarmRef!], TODAY, NOW)).toEqual([]);
   });
 });
 

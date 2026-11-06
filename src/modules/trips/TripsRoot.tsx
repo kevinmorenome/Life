@@ -7,7 +7,7 @@ import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { DayOutfitPicker, TripItemsPicker } from './Pickers';
 import { TripForm } from './TripForm';
 import type { Checkin } from '../checkins/types';
-import { newSwarmTrips } from './swarmTrips';
+import { hiddenSwarmTrips, newSwarmTrips } from './swarmTrips';
 import { TripList } from './TripList';
 import { TripView, type TripTab } from './TripView';
 import type { Trip } from './types';
@@ -21,6 +21,10 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
   const { settings, update } = useSettings();
   const checkins = useCollection<Checkin>('checkins');
   const [first, second, third] = subroute;
+  const hidden = useMemo(
+    () => hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString()),
+    [checkins.items, trips.items, settings.swarmTripsDismissed],
+  );
   // Trips Swarm suggests (see swarmTrips.ts): nothing is made until you add one.
   const suggestions = useMemo(
     () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString()),
@@ -55,8 +59,10 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
       outfits={outfits.items}
       plans={plans.items}
       suggestions={suggestions}
+      hidden={hidden}
       onAddSuggestion={trips.save}
       onDismissSuggestion={(t) => update({ swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), t.swarmRef!] })}
+      onRestoreSuggestion={(t) => update({ swarmTripsDismissed: (settings.swarmTripsDismissed ?? []).filter((r) => r !== t.swarmRef) })}
     />
   );
 }
