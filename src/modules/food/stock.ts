@@ -309,7 +309,7 @@ function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: St
 
 /** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
 export function usesSince(events: StockEvent[], since?: string): number {
-  return events.filter((e) => e.type === 'use' && !e.untracked && (!since || e.date >= since)).length;
+  return events.filter((e) => e.type === 'use' && !e.undated && !e.untracked && (!since || e.date >= since)).length;
 }
 
 /**

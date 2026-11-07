@@ -15,7 +15,7 @@ import { newPlan } from './plans';
 import { ReviewFlow } from './ReviewFlow';
 import { today } from '../../lib/format';
 import { TodayView } from './TodayView';
-import type { Trip } from '../packing/types';
+import type { Trip } from '../trips/types';
 import type { ClothingItem, Outfit, Plan } from './types';
 
 /** `dayExtras` is what other modules add to a day screen (see CalendarLayer). */

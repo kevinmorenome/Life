@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { PinIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
@@ -21,18 +22,17 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
       const list = days.get(date);
       if (!list) return null;
       return (
-        <section className="checkins-day">
-          <h2>Places</h2>
-          <ul>
+        <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" badge={list.length > 1 ? list.length : undefined} summary={list.map((c) => c.venue).join(', ')}>
+          <ul className="widget-list">
             {list.map((c) => (
               <li key={c.id}>
-                <span className="muted small">{c.time}</span> <strong>{c.venue}</strong>
-                {place(c) && <div className="muted small">{place(c)}</div>}
-                {c.shout && <div className="small">{c.shout}</div>}
+                <strong>{c.venue}</strong>
+                <span className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</span>
+                {c.shout && <span className="small">{c.shout}</span>}
               </li>
             ))}
           </ul>
-        </section>
+        </DayWidget>
       );
     },
   };

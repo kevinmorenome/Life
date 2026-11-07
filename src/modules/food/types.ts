@@ -93,6 +93,8 @@ export interface FoodProduct {
   packLabel?: string;
   /** A picture of the product (small image data URL, background removed when possible); the drawn icon is used without one. */
   photo?: string;
+  /** Same as `ClothingItem.hasPhoto`: the picture sits in the local photos store. */
+  hasPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -127,6 +129,11 @@ export interface StockEvent {
   /** For `expiry` events: the use-by date (YYYY-MM-DD) set for the batch. The newest one wins. */
   useBy?: string;
   note?: string;
+  /**
+   * Used up at some unknown time before (an old receipt, "I ate it, no idea when"). `date` is only when it was logged, to keep the
+   * order of events right; the app shows "date unknown" and no stat reads it as a day something happened.
+   */
+  undated?: boolean;
   createdAt: string;
   updatedAt: string;
 }

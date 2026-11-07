@@ -21,11 +21,11 @@ export function parentRoute(route: string[]): string | undefined {
     if (b === 'check' || b === 'pictures') return '/food/stock';
     return b === 'new' ? '/food' : '/more';
   }
-  if (a === 'packing') {
+  if (a === 'trips') {
     if (!b) return '/more';
-    if (b === 'new') return '/packing';
-    if (c === 'edit' || c === 'items' || c === 'day') return `/packing/${b}`;
-    return '/packing';
+    if (b === 'new') return '/trips';
+    if (c === 'edit' || c === 'items' || c === 'day') return `/trips/${b}`;
+    return '/trips';
   }
   if (a !== 'clothes') return undefined;
   if (!b) return undefined;

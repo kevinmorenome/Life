@@ -15,7 +15,9 @@ import { REASON_LABELS, shoppingList } from '../src/modules/food/shopping';
 import { formatQty, originBatch, partLeft, stockOf, type Batch, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
+import { parseRides } from './rides';
 import { parseWoltOrders } from './wolt';
+import type { TakeoutService } from '../src/modules/wolt/types';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
@@ -261,6 +263,69 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_takeout_orders',
+    description:
+      'Save Bolt Food or Uber Eats TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log, the same log Wolt orders go to (use add_wolt_orders for Wolt). Bolt and Uber also deliver groceries (shops, supermarkets): those are NOT takeout, add them with add_grocery_receipt instead. Bolt rides and Uber rides are not orders: skip them. Find the emails by searching Gmail (Bolt Food: sender bolt.eu; Uber Eats: sender uber.com, "Your order with ..."), read each one and pass every order here with `service` = "bolt" or "uber", as many as you like per call. Per order give sourceId = a unique id for it (the order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as the app writes it, date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR by default; do not convert). Item lines are not tracked. Orders are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        service: { type: 'string', enum: ['bolt', 'uber'], description: 'bolt = Bolt Food, uber = Uber Eats' },
+        orders: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              sourceId: { type: 'string', description: 'Order id / receipt number, or the email message id' },
+              restaurant: { type: 'string', description: 'Venue as the app names it, with the branch' },
+              date: { type: 'string', description: 'YYYY-MM-DD' },
+              time: { type: 'string', description: 'HH:MM, 24 hour' },
+              total: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              city: { type: 'string' },
+            },
+            required: ['sourceId', 'restaurant', 'date', 'total'],
+          },
+        },
+      },
+      required: ['service', 'orders'],
+    },
+  },
+  {
+    name: 'add_rides',
+    description:
+      'Save Bolt and Uber taxi rides in the rides log. Find the receipts by searching Gmail for Bolt ("Your Bolt ride", sender bolt.eu) and Uber ("Your trip with Uber", sender uber.com) ride receipt emails, read each one and pass every ride here, as many as you like per call. Food deliveries (Uber Eats, Bolt Food) are NOT rides: skip them (Wolt-style takeout goes to add_wolt_orders). Per ride give provider = "bolt" or "uber", sourceId = a unique id for it (the trip/order id or receipt number in the email, otherwise the email message id) so the same ride is never added twice: adding again is safe and skips ones already saved. date and time = when the ride STARTED (pickup time, YYYY-MM-DD and HH:MM 24 hour, local), not when the email was sent; from and to = the pickup and drop-off addresses as printed; fare = what was paid in total including tip as the email states it; currency = ISO code (EUR by default; do not convert); distanceKm and durationMin if the receipt shows them; city if clear. Cancelled rides with no charge are skipped. Rides are never edited afterwards from here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rides: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              provider: { type: 'string', enum: ['bolt', 'uber'] },
+              sourceId: { type: 'string', description: 'Trip / order id or receipt number, or the email message id' },
+              date: { type: 'string', description: 'YYYY-MM-DD, the day the ride started' },
+              time: { type: 'string', description: 'HH:MM, 24 hour, pickup time' },
+              from: { type: 'string', description: 'Pickup address as printed' },
+              to: { type: 'string', description: 'Drop-off address as printed' },
+              fare: { type: 'number', minimum: 0 },
+              currency: { type: 'string', description: 'ISO code, default EUR' },
+              distanceKm: { type: 'number', minimum: 0 },
+              durationMin: { type: 'number', minimum: 0 },
+              city: { type: 'string' },
+            },
+            required: ['provider', 'sourceId', 'date', 'fare'],
+          },
+        },
+      },
+      required: ['rides'],
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -304,6 +369,7 @@ export const TOOLS = [
         fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
+        dateUnknown: { type: 'boolean', description: 'With action "finish": it was used up at some unknown earlier time ("I already ate that chicken, no idea when"). Stores no date, so no stat treats it as a day it was used.' },
         note: { type: 'string' },
       },
       required: ['product'],
@@ -460,7 +526,11 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
     case 'add_wolt_orders':
-      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx);
+      return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx, 'wolt');
+    case 'add_takeout_orders':
+      return ctx.readOnly ? fail(READ_ONLY) : args.service === 'bolt' || args.service === 'uber' ? addWoltOrders(args, ctx, args.service) : fail('service must be "bolt" or "uber"');
+    case 'add_rides':
+      return ctx.readOnly ? fail(READ_ONLY) : addRides(args, ctx);
     case 'shopping_list':
       return shoppingListTool(ctx);
     case 'product_prices':
@@ -918,8 +988,8 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
 
 // ---- Wolt ----
 
-async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
-  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now));
+async function addWoltOrders(args: Args, { store, now }: ToolContext, service: TakeoutService): Promise<ToolResult> {
+  const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now), service);
   const known = new Set((await store.list('woltorders')).map((r) => r.id));
   const stamp = now.toISOString();
   let added = 0;
@@ -932,6 +1002,25 @@ async function addWoltOrders(args: Args, { store, now }: ToolContext): Promise<T
     added,
     alreadyAdded: orders.length - added,
     ...(rejected.length ? { rejected, warning: 'Some orders were left out: fix them from the emails and add them again.' } : {}),
+  });
+}
+
+// ---- rides ----
+
+async function addRides(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { rides, rejected } = parseRides(args.rides, utcToday(now));
+  const known = new Set((await store.list('rides')).map((r) => r.id));
+  const stamp = now.toISOString();
+  let added = 0;
+  for (const r of rides) {
+    if (known.has(r.id)) continue; // already saved: rides are never overwritten
+    await store.put('rides', r.id, { ...r, createdAt: stamp, updatedAt: stamp });
+    added++;
+  }
+  return ok({
+    added,
+    alreadyAdded: rides.length - added,
+    ...(rejected.length ? { rejected, warning: 'Some rides were left out: fix them from the emails and add them again.' } : {}),
   });
 }
 
@@ -1118,7 +1207,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   }
 
   const stamp = now.toISOString();
-  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), ...(args.notInStats === true ? { untracked: true } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
+  const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), ...(action === 'finish' && args.dateUnknown === true ? { undated: true } : {}), ...(args.notInStats === true ? { untracked: true } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
   const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
   if (untracked) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getPhoto } from '../../lib/db';
 import { cutOutImage, resizeImage } from '../../lib/image';
 import { withCutOutPhoto } from './review';
 import type { ClothingItem } from './types';
@@ -25,19 +26,19 @@ export function useCutOutOnOpen(
   onSaveRef.current = onSave;
   const [busyId, setBusyId] = useState<string>();
 
-  const id = enabled && item?.photo ? item.id : undefined;
+  const id = enabled && (item?.photo || item?.hasPhoto) ? item.id : undefined;
   useEffect(() => {
     if (!id || tried.has(id)) return;
     tried.add(id);
-    const original = latestRef.current(id)?.photo;
-    if (!original) return;
     setBusyId(id);
     (async () => {
       try {
+        const original = latestRef.current(id)?.photo ?? (await getPhoto('clothes', id));
+        if (!original) return;
         const blob = await (await fetch(original)).blob();
         let better: string | null = await cutOutImage(blob).catch(() => null);
         if (!better && original.length > HEAVY_PHOTO) better = await resizeImage(blob);
-        const next = withCutOutPhoto(latestRef.current(id), original, better, new Date());
+        const next = withCutOutPhoto(latestRef.current(id), original, better, new Date(), await getPhoto('clothes', id));
         if (next) await onSaveRef.current(next);
       } catch {
         // Offline the first time, or nothing found: the original photo stays.

@@ -68,7 +68,7 @@ export function ProductView({
 
   return (
     <>
-      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined })} />
+      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
       <h1 className="page-title">{product.name}</h1>
       <p className="muted small">
         Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
@@ -262,8 +262,8 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? '→ finished' : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
-                  <span className="muted small">{[shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean).join(' · ')}</span>
+                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? (e.undated ? '→ used earlier' : '→ finished') : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
+                  <span className="muted small">{[e.undated ? 'date unknown' : shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}
           </ul>

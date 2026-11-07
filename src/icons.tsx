@@ -66,6 +66,15 @@ export const CartIcon = () => (
   </Icon>
 );
 
+/** A shopping bag with a handle and a fork and knife on it: takeout. */
+export const BagIcon = () => (
+  <Icon>
+    <path d="M5.5 8.5h13l1 12h-15z" />
+    <path d="M9 8.5v-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v3" />
+    <path d="M9.5 12.5v2a1 1 0 0 0 2 0v-2M10.5 14.5V18M14.5 18v-5.5c-1.4 1-1.4 3.2 0 3.8" />
+  </Icon>
+);
+
 export const CameraIcon = () => (
   <Icon>
     <path d="M4 8h3l1.5-2.500h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
@@ -202,17 +211,10 @@ export const MoreIcon = () => (
   </Icon>
 );
 
-export const ZoomInIcon = () => (
+/** Funnel: filters. */
+export const FilterIcon = () => (
   <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
-  </Icon>
-);
-
-export const ZoomOutIcon = () => (
-  <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+    <path d="M4 5h16l-6 7.5V19l-4 1.5v-8L4 5Z" />
   </Icon>
 );
 
@@ -220,6 +222,13 @@ export const PinIcon = () => (
   <Icon>
     <path d="M12 21s6.5-5.800 6.500-11a6.500 6.500 0 0 0-13 0c0 5.200 6.500 11 6.500 11Z" />
     <circle cx="12" cy="10" r="2.300" />
+  </Icon>
+);
+
+export const FilmIcon = () => (
+  <Icon>
+    <rect x="4" y="4" width="16" height="16" rx="2.500" />
+    <path d="M8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4" />
   </Icon>
 );
 
@@ -246,4 +255,27 @@ export const SkullIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
     <path d="M12 0C18.4 0 22.6 5.2 22.6 11c0 2.6-1.2 3.6-2.4 4.3-1 .6-1.5 1.1-1.5 2.3v3c0 2.1-2.7 3.4-6.7 3.4s-6.7-1.3-6.7-3.4v-3c0-1.2-.5-1.7-1.5-2.3C2.6 14.6 1.4 13.6 1.4 11 1.4 5.2 5.6 0 12 0Z" />
   </svg>
+);
+
+export const ChevronIcon = () => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
+export const CarIcon = () => (
+  <Icon>
+    <path d="M5 16.5V11l1.7-4.5a1 1 0 0 1 .9-.6h8.8a1 1 0 0 1 .9.6L19 11v5.500M4 16.500h16v2H4z" />
+    <path d="M5 11h14" />
+    <circle cx="8" cy="14" r=".6" />
+    <circle cx="16" cy="14" r=".6" />
+  </Icon>
+);
+
+export const MusicIcon = () => (
+  <Icon>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6.500" cy="18" r="2.500" />
+    <circle cx="17.500" cy="16" r="2.500" />
+  </Icon>
 );

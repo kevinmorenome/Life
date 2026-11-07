@@ -1,6 +1,7 @@
 import type { WorkTargetKind } from './types';
 import { targetProgress, type MonthSummary } from './work';
 
+
 export interface Target {
   days: number;
   kind: WorkTargetKind;
@@ -35,7 +36,7 @@ export function TargetCard({ summary, target, past }: { summary: MonthSummary; t
       </div>
       <p className="small muted work-counts">
         Office {summary.office} · Home {summary.home}
-        {summary.trip > 0 && ` · Trip ${summary.trip}`}
+        {summary.trip > 0 && ` · Work trip ${summary.trip}`}
         {summary.off > 0 && ` · Off ${summary.off}`}
       </p>
     </section>

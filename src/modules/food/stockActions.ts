@@ -20,6 +20,11 @@ export function batchEvent(productId: string, batch: string, type: 'use' | 'toss
   return { ...stockEvent(productId, type, quantity, source), batch };
 }
 
+/** The product (or one batch of it) is all gone, but nobody knows when it was used: a count of 0 flagged `undated`, which no stat treats as a day. */
+export function usedEarlierEvent(productId: string, batch: string | undefined, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, 'count', 0, source), ...(batch ? { batch } : {}), undated: true };
+}
+
 /** Sets the use-by date of a batch; the newest one wins, so changing it again is just another event. */
 export function expiryEvent(productId: string, batch: string, useBy: string, source: StockEvent['source']): StockEvent {
   return { ...stockEvent(productId, 'expiry', 0, source), batch, useBy };

@@ -1,7 +1,7 @@
-// Turns the Wolt delivery emails Claude read into WoltOrders (see the `add_wolt_orders` tool).
+// Turns the Wolt, Bolt Food and Uber Eats delivery emails Claude read into WoltOrders (see the `add_wolt_orders` tool).
 // The input is untrusted: every field is validated and anything off-schema is dropped.
 import { round2 } from '../src/modules/wolt/wolt';
-import type { WoltOrder } from '../src/modules/wolt/types';
+import type { TakeoutService, WoltOrder } from '../src/modules/wolt/types';
 import { isRealDate } from './groceries';
 
 const MAX_ORDERS = 100;
@@ -21,7 +21,7 @@ export interface ParsedWolt {
   rejected: string[];
 }
 
-export function parseWoltOrders(input: unknown, today: string): ParsedWolt {
+export function parseWoltOrders(input: unknown, today: string, service: TakeoutService = 'wolt'): ParsedWolt {
   const out: ParsedWolt = { orders: [], rejected: [] };
   if (!Array.isArray(input)) return out;
   const seen = new Set<string>();
@@ -35,7 +35,7 @@ export function parseWoltOrders(input: unknown, today: string): ParsedWolt {
       out.rejected.push(`#${i + 1}: needs sourceId, restaurant, total and a real past date`);
       continue;
     }
-    const id = `wolt-${sourceId}`;
+    const id = `${service}-${sourceId}`;
     if (seen.has(id)) continue;
     seen.add(id);
     const currency = typeof r.currency === 'string' && /^[A-Za-z]{3}$/.test(r.currency) ? r.currency.toUpperCase() : 'EUR';
@@ -47,6 +47,7 @@ export function parseWoltOrders(input: unknown, today: string): ParsedWolt {
       total,
       currency,
       city: str(r.city, 60),
+      ...(service === 'wolt' ? {} : { service }),
     });
   }
   return out;

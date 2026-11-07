@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WoltOrder } from './types';
-import { byDate, hourCounts, monthlySpend, otherCurrencies, placeName, searchOrders, summarize, topPlaces } from './wolt';
+import { byDate, byService, hourCounts, monthlySpend, otherCurrencies, placeName, searchOrders, summarize, topPlaces } from './wolt';
 
 const o = (id: string, restaurant: string, date: string, total: number, extra: Partial<WoltOrder> = {}): WoltOrder => ({
   id, restaurant, date, time: '20:15', total, currency: 'EUR', createdAt: '', updatedAt: '', ...extra,
@@ -67,5 +67,15 @@ describe('hourCounts / otherCurrencies / byDate / search', () => {
     expect(searchOrders(orders, '2026-01 umami').length).toBe(1);
     expect(searchOrders(orders, 'january 2026').length).toBe(2);
     expect(searchOrders(orders, '').length).toBe(4);
+  });
+});
+
+describe('byService', () => {
+  it('counts per app, treating a missing service as Wolt', () => {
+    const s = (id: string, service: 'bolt' | 'uber' | undefined, total: number) => o(id, 'X', '2026-05-01', total, { service });
+    expect(byService([s('a', undefined, 10), s('b', 'bolt', 5), s('c', undefined, 20)])).toEqual([
+      { service: 'wolt', orders: 2, spent: 30 },
+      { service: 'bolt', orders: 1, spent: 5 },
+    ]);
   });
 });

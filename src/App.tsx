@@ -5,6 +5,7 @@ import { Home } from './Home';
 import { Settings } from './Settings';
 import { StatsPage } from './StatsPage';
 import { SyncBadge } from './SyncBadge';
+import { Wordmark } from './Wordmark';
 import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
@@ -66,8 +67,8 @@ export function App() {
       )}
       <header className="topbar">
         <div className="brand-row">
-          <a className="brand" href={href('/')}>
-            Life
+          <a className="brand" href={href('/')} aria-label="Life">
+            <Wordmark className="brand-mark" />
           </a>
           <SyncBadge />
           {title && <h1 className="brand-page">{title}</h1>}

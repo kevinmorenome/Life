@@ -1,3 +1,4 @@
+import { usePhoto } from '../../lib/usePhoto';
 import type { ClothingItem } from './types';
 
 const ICONS: Record<string, string> = {
@@ -18,7 +19,8 @@ const ICONS: Record<string, string> = {
 
 export function ItemThumb({ item, large = false }: { item: ClothingItem; large?: boolean }) {
   const cls = large ? 'thumb thumb-large' : 'thumb';
-  if (item.photo) return <img className={cls} src={item.photo} alt="" />;
+  const photo = usePhoto('clothes', item);
+  if (photo) return <img className={cls} src={photo} alt="" />;
   return (
     <div className={`${cls} thumb-empty`} aria-hidden>
       {ICONS[item.category]}
