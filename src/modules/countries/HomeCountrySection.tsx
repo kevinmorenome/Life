@@ -36,13 +36,14 @@ export function HomeCountrySection() {
       </select>
 
       <h3 className="small">Lived somewhere else before?</h3>
-      <p className="muted small">Add a period for each place you called home: it lasts until the next one starts. Leave the date empty for “from the beginning”. For example Mexico with no date, then Croatia from 1 July 2023. Days no period covers use the country above.</p>
+      <p className="muted small">Add a period for each place you called home: it lasts until the next one starts. Leave the date empty for “from the beginning”. Add a city if home is a city: a trip to another city of the same country is then a trip, with its flag; without one the whole country is home. For example Mexico with no date, then Croatia from 1 July 2023. Days no period covers use the country above.</p>
       <ul className="home-periods">
         {periods.map((p, i) => (
           <li key={i}>
             <select className="input" aria-label="Country" value={p.country} onChange={(e) => edit(i, { country: e.target.value })}>
               {options}
             </select>
+            <input className="input" type="text" placeholder="City (optional)" aria-label="City (empty = the whole country)" value={p.city ?? ''} onChange={(e) => edit(i, { city: e.target.value || undefined })} />
             <input className="input" type="date" aria-label="From (empty = from the beginning)" value={p.from ?? ''} onChange={(e) => edit(i, { from: e.target.value || undefined })} />
             <button type="button" className="icon-btn" aria-label="Remove this period" onClick={() => setPeriods(periods.filter((_, j) => j !== i))}>
               ✕

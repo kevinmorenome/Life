@@ -22,16 +22,16 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
   const plans = useCollection<Plan>('plans');
   const { settings, update } = useSettings();
   const checkins = useCollection<Checkin>('checkins');
-  const homeOn = useHomeOn(checkins.items);
+  const { homeOn, placeOn } = useHomeOn(checkins.items);
   const [first, second, third] = subroute;
   const hidden = useMemo(
-    () => hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn),
-    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn],
+    () => hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, placeOn),
+    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn, placeOn],
   );
   // Trips Swarm suggests (see swarmTrips.ts): nothing is made until you add one.
   const suggestions = useMemo(
-    () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn),
-    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn],
+    () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, placeOn),
+    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn, placeOn],
   );
 
   if (trips.loading || clothes.loading || outfits.loading || tripitPlans.loading || plans.loading || checkins.loading) return <p className="muted">Loading…</p>;

@@ -94,3 +94,11 @@ describe('flagsToShow', () => {
     expect(flagsToShow({ startDate: '2026-09-18', endDate: '2026-09-20' }, '2026-09-18', new Map())).toEqual({ codes: [], unknown: true });
   });
 });
+
+describe('checkinCountriesByDay with a skip', () => {
+  it('leaves out the check-ins it is told to (those at home)', () => {
+    const c = [{ date: '2026-09-30', country: 'Croatia', city: 'Zagreb', at: 2 }, { date: '2026-09-30', country: 'Croatia', city: 'Split', at: 1 }];
+    expect(checkinCountriesByDay(c, (x) => x.city === 'Zagreb').get('2026-09-30')).toEqual(['HR']);
+    expect(checkinCountriesByDay([c[0]], (x) => x.city === 'Zagreb').has('2026-09-30')).toBe(false);
+  });
+});

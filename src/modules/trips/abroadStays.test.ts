@@ -73,3 +73,20 @@ describe('abroadStays with a home that changes', () => {
     expect(abroadStays(c, home).map((s) => [s.country, s.startDate, s.endDate])).toEqual([['MX', '2023-08-01', '2023-08-03']]);
   });
 });
+
+describe('abroadStays with a home city', () => {
+  const place = () => ({ country: 'HR', city: 'Zagreb' });
+  const c = [
+    { date: '2026-05-01', country: 'Croatia', city: 'Zagreb' },
+    { date: '2026-05-02', country: 'Croatia', city: 'Split' },
+    { date: '2026-05-03', country: 'Croatia', city: 'Split' },
+    { date: '2026-05-04', country: 'Croatia', city: 'Zagreb' },
+    { date: '2026-05-05', country: 'Croatia', city: 'Velika Gorica', category: 'Airport', venue: 'Zagreb Airport' },
+  ];
+  it('counts another city of the home country as a stay, ended by a day at home', () => {
+    expect(abroadStays(c, 'HR', 3, place).map((s) => [s.country, s.startDate, s.endDate])).toEqual([['HR', '2026-05-02', '2026-05-03']]);
+  });
+  it('is no stay at all when home is the country', () => {
+    expect(abroadStays(c, 'HR')).toEqual([]);
+  });
+});

@@ -120,25 +120,62 @@ export interface HomePeriod {
   from?: string;
   /** ISO alpha-2 */
   country: string;
+  /** The city, when home is a city and not the whole country: a trip to another city of the country is then a trip. */
+  city?: string;
 }
 
 /** Your home country on a day, or nothing when it isn't known. */
 export type HomeOn = (date: string) => string | undefined;
 
+/** Your home on a day: the country, and the city when you gave one. */
+export interface HomePlace {
+  country?: string;
+  city?: string;
+}
+export type HomePlaceOn = (date: string) => HomePlace;
+
 /**
- * Your home country on each day: the period that started last on or before the day; days no period covers (before
- * the first one starts, or no periods at all) use `chosen` (Settings → Home country), else `auto` (the country of most
- * of your check-ins).
+ * Your home on each day: the period that started last on or before the day; days no period covers (before the first
+ * one starts, or no periods at all) use `chosen` (Settings → Home country), else `auto` (the country of most of your
+ * check-ins), without a city.
  */
-export function homeOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomeOn {
+export function homePlaceOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomePlaceOn {
   const valid = (periods ?? []).filter((p) => byCode.has(p.country.toUpperCase())).sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''));
   const fallback = (chosen ? byCode.get(chosen.toUpperCase())?.code : undefined) ?? auto;
   return (date) => {
     let found: HomePeriod | undefined;
     for (const p of valid) if ((p.from ?? '') <= date) found = p;
-    return found ? byCode.get(found.country.toUpperCase())!.code : fallback;
+    if (!found) return { country: fallback };
+    const city = found.city?.trim();
+    return { country: byCode.get(found.country.toUpperCase())!.code, ...(city ? { city } : {}) };
   };
 }
+
+/** Your home country on each day (see `homePlaceOnDate`). */
+export function homeOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomeOn {
+  const place = homePlaceOnDate(periods, chosen, auto);
+  return (date) => place(date).country;
+}
+
+/** Two city names for the same place: "Zagreb" and "City of Zagreb", with or without accents. */
+export function sameCity(a: string | undefined, b: string | undefined): boolean {
+  const x = normalizeName(a ?? '');
+  const y = normalizeName(b ?? '');
+  if (!x || !y) return false;
+  return x === y || ` ${x} `.includes(` ${y} `) || ` ${y} `.includes(` ${x} `);
+}
+
+/**
+ * Whether a check-in was at home: in the home country and, when home is a city, in that city. Without a home city
+ * the whole country is home.
+ */
+export function atHome(place: HomePlace, c: Pick<Checkin, 'country' | 'city'>): boolean {
+  if (!place.country || checkinCountry(c) !== place.country) return false;
+  return !place.city || sameCity(c.city, place.city);
+}
+
+/** Like `atHome`, but only for a home that is a city: a stay in another city of your home country is not at home. */
+export const atHomeCity = (place: HomePlace, c: Pick<Checkin, 'country' | 'city'>): boolean => !!place.city && atHome(place, c);
 
 /**
  * The country a location text is in, as an ISO code: the last comma-separated part that is a country's name

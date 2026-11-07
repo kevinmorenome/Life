@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, homeCountry, homeOnDate, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, atHome, atHomeCity, homeCountry, homeOnDate, homePlaceOnDate, sameCity, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -236,5 +236,25 @@ describe('homeOnDate', () => {
   });
   it('ignores a period with an unknown country', () => {
     expect(homeOnDate([{ country: 'ZZ' }], undefined, 'US')('2024-01-01')).toBe('US');
+  });
+});
+
+describe('home as a city', () => {
+  const place = homePlaceOnDate([{ country: 'HR', city: 'Zagreb' }], undefined, 'US');
+  it('gives the city of the period, and no city for the fallback', () => {
+    expect(place('2024-01-01')).toEqual({ country: 'HR', city: 'Zagreb' });
+    expect(homePlaceOnDate(undefined, 'PT', undefined)('2024-01-01')).toEqual({ country: 'PT' });
+  });
+  it('matches city names with or without accents and extra words', () => {
+    expect(sameCity('Zagreb', 'City of Zagreb')).toBe(true);
+    expect(sameCity('Mérida', 'merida')).toBe(true);
+    expect(sameCity('Split', 'Zagreb')).toBe(false);
+    expect(sameCity(undefined, 'Zagreb')).toBe(false);
+  });
+  it('is at home only in the home city, or anywhere in the country when there is no city', () => {
+    expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Zagreb' })).toBe(true);
+    expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Split' })).toBe(false);
+    expect(atHome({ country: 'HR' }, { country: 'Croatia', city: 'Split' })).toBe(true);
+    expect(atHomeCity({ country: 'HR' }, { country: 'Croatia', city: 'Split' })).toBe(false);
   });
 });

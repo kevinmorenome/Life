@@ -2,7 +2,8 @@
 // another country than home, drawn as a line with that country's flag, like a recorded trip. Pure.
 
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, countryByCode, type HomeOn } from '../countries/countries';
+import { atHome, checkinCountry, countryByCode, type HomeOn, type HomePlaceOn } from '../countries/countries';
+import { isAirportCheckin } from './swarmTrips';
 import type { Trip } from './types';
 
 export interface Stay {
@@ -17,10 +18,10 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00
 
 /**
  * Runs of days abroad: check-ins in the same foreign country up to `maxGap` days apart belong to one stay (you don't
- * check in every day), and a check-in at home in between ends it. A day with check-ins in several countries counts
+ * check in every day), and a check-in at home in between ends it. When home is a city, other cities of the home country are stays too. A day with check-ins in several countries counts
  * for the one with most of them.
  */
-export function abroadStays(checkins: Pick<Checkin, 'country' | 'date'>[], home: string | undefined | HomeOn, maxGap = 3): Stay[] {
+export function abroadStays(checkins: (Pick<Checkin, 'country' | 'date'> & Partial<Pick<Checkin, 'city' | 'venue' | 'category'>>)[], home: string | undefined | HomeOn, maxGap = 3, placeOn?: HomePlaceOn): Stay[] {
   if (!home) return [];
   const homeAt: HomeOn = typeof home === 'function' ? home : () => home;
   const homeDays = new Set<string>();
@@ -28,12 +29,14 @@ export function abroadStays(checkins: Pick<Checkin, 'country' | 'date'>[], home:
   for (const c of checkins) {
     const code = checkinCountry(c);
     if (!code) continue;
-    const homeThen = homeAt(c.date);
-    if (!homeThen) continue;
-    if (code === homeThen) {
+    const place = placeOn?.(c.date) ?? { country: homeAt(c.date) };
+    if (!place.country) continue;
+    if (atHome(place, c)) {
       homeDays.add(c.date);
       continue;
     }
+    // Another city of your home country is a stay too, but the airport you fly from is not.
+    if (code === place.country && isAirportCheckin(c)) continue;
     const day = foreign.get(c.date) ?? new Map<string, number>();
     day.set(code, (day.get(code) ?? 0) + 1);
     foreign.set(c.date, day);

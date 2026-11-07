@@ -41,13 +41,14 @@ const addDays = (date: string, n: number): string => {
 /**
  * The countries you checked in from on each day, as ISO codes in the order you were there (check-ins are real Swarm
  * ones and the ones made from itinerary plans). Airports count: a layover in Amsterdam is a day in the Netherlands.
+ * `skip` leaves some out (check-ins in your home city: being home is no flag).
  */
-export function checkinCountriesByDay(checkins: (Pick<Checkin, 'country' | 'date'> & { at?: number })[]): Map<string, string[]> {
+export function checkinCountriesByDay(checkins: (Pick<Checkin, 'country' | 'date'> & { at?: number; city?: string })[], skip?: (c: Pick<Checkin, 'country' | 'date'> & { city?: string }) => boolean): Map<string, string[]> {
   const sorted = [...checkins].sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   const out = new Map<string, string[]>();
   for (const c of sorted) {
     const code = checkinCountry(c);
-    if (!code) continue;
+    if (!code || skip?.(c)) continue;
     const day = out.get(c.date) ?? [];
     if (day[day.length - 1] !== code) day.push(code);
     out.set(c.date, day);
