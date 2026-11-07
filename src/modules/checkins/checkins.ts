@@ -37,3 +37,12 @@ export function moveCheckin(c: Checkin, date: string, time: string, now: string)
   if (!Number.isFinite(shift)) return c;
   return { ...c, date, time, at: c.at + shift, updatedAt: now };
 }
+
+/** The check-ins with these ids moved to `date`, each keeping its own time. Only the ones that actually change are returned. */
+export function moveCheckins(checkins: Checkin[], ids: ReadonlySet<string>, date: string, now: string): Checkin[] {
+  return checkins
+    .filter((c) => ids.has(c.id) && c.source === 'swarm')
+    .map((c) => ({ before: c, after: moveCheckin(c, date, c.time, now) }))
+    .filter((m) => m.after !== m.before)
+    .map((m) => m.after);
+}

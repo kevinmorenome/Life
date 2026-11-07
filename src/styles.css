@@ -7511,3 +7511,11 @@ a.game-row + .food-h2 {
   min-height: 44px;
   max-width: 9.5rem;
 }
+
+.checkin-select-bar {
+  flex-wrap: wrap;
+}
+.checkin-select-bar input[type='date'] {
+  min-height: 44px;
+  max-width: 9.5rem;
+}

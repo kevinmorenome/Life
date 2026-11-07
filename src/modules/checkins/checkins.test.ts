@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDue, REFRESH_AFTER_MS } from './swarmClient';
-import { byDate, dayLabel, moveCheckin, place } from './checkins';
+import { byDate, dayLabel, moveCheckin, moveCheckins, place } from './checkins';
 import type { Checkin } from './types';
 
 const at = (id: string, date: string, time: string, secs: number, extra: Partial<Checkin> = {}): Checkin => ({
@@ -65,5 +65,16 @@ describe('moveCheckin', () => {
     expect([none.time, none.at - c.at]).toEqual(['', 150 * 60]);
     const back = moveCheckin(none, '2026-10-01', '09:30', 'now');
     expect([back.time, back.at]).toEqual([c.time, c.at]);
+  });
+});
+
+describe('moveCheckins', () => {
+  const list = [at('a', '2026-10-01', '09:00', 100), at('b', '2026-10-01', '18:30', 200), at('c', '2026-10-01', '10:00', 300), at('p', '2026-10-01', '11:00', 400, { source: 'plan' })];
+  it('moves the ticked Swarm check-ins to one day and keeps each time', () => {
+    const moved = moveCheckins(list, new Set(['a', 'b', 'p']), '2026-10-05', 'now');
+    expect(moved.map((m) => [m.id, m.date, m.time])).toEqual([['a', '2026-10-05', '09:00'], ['b', '2026-10-05', '18:30']]);
+  });
+  it('skips the ones already on that day', () => {
+    expect(moveCheckins(list, new Set(['a']), '2026-10-01', 'now')).toEqual([]);
   });
 });
