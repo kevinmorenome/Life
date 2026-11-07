@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { planCheckinChanges } from './planCheckins';
+import { planCheckinChanges, plannedOnDay } from './planCheckins';
 
 const flight = {
   id: 'tripit-t1-a-1',
@@ -49,5 +49,15 @@ describe('planCheckinChanges', () => {
     expect(planCheckinChanges([hotel], [], '2026-09-19').add).toEqual([]);
     expect(planCheckinChanges([hotel], [], '2026-09-18').add).toEqual([]);
     expect(planCheckinChanges([hotel], [], '2026-09-20').add).toHaveLength(1);
+  });
+});
+
+describe('plannedOnDay', () => {
+  it('lists the plans of today and later, not days that are over', () => {
+    expect(plannedOnDay([hotel], [], '2026-09-19', '2026-09-19').map((d) => d.venue)).toEqual(['Hotel Sol']);
+    expect(plannedOnDay([hotel], [], '2026-09-19', '2026-09-20')).toEqual([]);
+  });
+  it('leaves out what Swarm already has, so nothing shows twice', () => {
+    expect(plannedOnDay([hotel], [swarm({ country: 'Mexico' })], '2026-09-19', '2026-09-19')).toEqual([]);
   });
 });

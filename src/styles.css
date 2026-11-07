@@ -7255,6 +7255,13 @@ a.game-row + .food-h2 {
   display: block;
   text-align: center;
 }
+.widget-list li.planned {
+  opacity: 0.65;
+  font-style: italic;
+}
+.widget-list li.planned .planned-tag {
+  text-align: left;
+}
 
 /* Country flags (emoji). */
 .flag {
