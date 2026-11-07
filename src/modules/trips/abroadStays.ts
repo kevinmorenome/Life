@@ -2,7 +2,7 @@
 // another country than home, drawn as a line with that country's flag, like a recorded trip. Pure.
 
 import type { Checkin } from '../checkins/types';
-import { atHome, checkinCountry, countryByCode, type HomeOn, type HomePlaceOn } from '../countries/countries';
+import { checkinCountry, countryByCode, type AwayOf, type HomeOn } from '../countries/countries';
 import { isAirportCheckin } from './swarmTrips';
 import type { Trip } from './types';
 
@@ -18,25 +18,38 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00
 
 /**
  * Runs of days abroad: check-ins in the same foreign country up to `maxGap` days apart belong to one stay (you don't
- * check in every day), and a check-in at home in between ends it. When home is a city, other cities of the home country are stays too. A day with check-ins in several countries counts
- * for the one with most of them.
+ * check in every day), and a check-in at home in between ends it. A day with check-ins in several countries counts
+ * for the one with most of them. With `awayOf` (home as a city) days in another town of the home country are stays
+ * too: far from home (see `FAR_KM`) even for a single day, nearer only when they last at least two days; the
+ * airport you fly from is not a stay.
  */
-export function abroadStays(checkins: (Pick<Checkin, 'country' | 'date'> & Partial<Pick<Checkin, 'city' | 'venue' | 'category'>>)[], home: string | undefined | HomeOn, maxGap = 3, placeOn?: HomePlaceOn): Stay[] {
-  if (!home) return [];
+export function abroadStays(
+  checkins: (Pick<Checkin, 'country' | 'date'> & Partial<Pick<Checkin, 'city' | 'venue' | 'category' | 'lat' | 'lng'>>)[],
+  home: string | undefined | HomeOn,
+  maxGap = 3,
+  awayOf?: AwayOf,
+): Stay[] {
+  if (!home && !awayOf) return [];
   const homeAt: HomeOn = typeof home === 'function' ? home : () => home;
   const homeDays = new Set<string>();
   const foreign = new Map<string, Map<string, number>>();
+  const domesticFar = new Set<string>();
+  const domesticDays = new Set<string>();
   for (const c of checkins) {
     const code = checkinCountry(c);
     if (!code) continue;
-    const place = placeOn?.(c.date) ?? { country: homeAt(c.date) };
-    if (!place.country) continue;
-    if (atHome(place, c)) {
+    const homeCountry = homeAt(c.date);
+    const away = awayOf ? awayOf(c) : homeCountry ? (code === homeCountry ? 'home' : 'far') : undefined;
+    if (!away) continue;
+    if (away === 'home') {
       homeDays.add(c.date);
       continue;
     }
-    // Another city of your home country is a stay too, but the airport you fly from is not.
-    if (code === place.country && isAirportCheckin(c)) continue;
+    if (code === homeCountry) {
+      if (isAirportCheckin(c)) continue;
+      domesticDays.add(c.date);
+      if (away === 'far') domesticFar.add(c.date);
+    }
     const day = foreign.get(c.date) ?? new Map<string, number>();
     day.set(code, (day.get(code) ?? 0) + 1);
     foreign.set(c.date, day);
@@ -57,7 +70,12 @@ export function abroadStays(checkins: (Pick<Checkin, 'country' | 'date'> & Parti
     }
   }
   if (current) stays.push(current);
-  return stays;
+  // A stay of days in your own country needs two days, unless it was far away.
+  return stays.filter((s) => {
+    const days = [...domesticDays].filter((d) => d >= s.startDate && d <= s.endDate);
+    const abroad = [...foreign.keys()].some((d) => d >= s.startDate && d <= s.endDate && !domesticDays.has(d));
+    return abroad || days.length >= 2 || days.some((d) => domesticFar.has(d));
+  });
 }
 
 /** Leaves out stays that share a day with a Swarm suggestion you hid, so a trip you said is not one isn't drawn. */

@@ -174,8 +174,51 @@ export function atHome(place: HomePlace, c: Pick<Checkin, 'country' | 'city'>): 
   return !place.city || sameCity(c.city, place.city);
 }
 
-/** Like `atHome`, but only for a home that is a city: a stay in another city of your home country is not at home. */
-export const atHomeCity = (place: HomePlace, c: Pick<Checkin, 'country' | 'city'>): boolean => !!place.city && atHome(place, c);
+/** How far from home a check-in was: at home, near it (another town) or far (another country, or a long way). */
+export type Away = 'home' | 'near' | 'far';
+export type AwayOf = (c: Pick<Checkin, 'country' | 'city' | 'lat' | 'lng' | 'date'>) => Away | undefined;
+
+/** A check-in within this many km of your home city is at home, whatever its city name says (suburbs, missing city). */
+export const HOME_RADIUS_KM = 15;
+/** Beyond this many km a single day away is a trip; closer places need two days. */
+export const FAR_KM = 50;
+
+const rad = Math.PI / 180;
+const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  const h = Math.sin(((bLat - aLat) * rad) / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(((bLng - aLng) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+/**
+ * Where each check-in stands against your home: `home` in the home city (by its name, or within `HOME_RADIUS_KM` of
+ * where you usually check in there), `far` in another country or more than `FAR_KM` from it, else `near`. A check-in
+ * with no city and no position can't be told apart from home. With a country as home (no city) every check-in in it is
+ * `home`. Nothing when no home is known on that day.
+ */
+export function makeAwayOf(placeOn: HomePlaceOn, checkins: Pick<Checkin, 'country' | 'city' | 'lat' | 'lng'>[]): AwayOf {
+  const centres = new Map<string, { lat: number; lng: number } | null>();
+  const centre = (place: HomePlace): { lat: number; lng: number } | null => {
+    const key = `${place.country}|${normalizeName(place.city ?? '')}`;
+    if (!centres.has(key)) {
+      const pts = checkins.filter((c) => c.lat !== undefined && c.lng !== undefined && atHome(place, c));
+      centres.set(key, pts.length ? { lat: median(pts.map((p) => p.lat!)), lng: median(pts.map((p) => p.lng!)) } : null);
+    }
+    return centres.get(key)!;
+  };
+  return (c) => {
+    const place = placeOn(c.date);
+    if (!place.country) return undefined;
+    if (checkinCountry(c) !== place.country) return 'far';
+    if (!place.city || sameCity(c.city, place.city)) return 'home';
+    const middle = centre(place);
+    if (middle && c.lat !== undefined && c.lng !== undefined) {
+      const d = distanceKm(middle.lat, middle.lng, c.lat, c.lng);
+      return d <= HOME_RADIUS_KM ? 'home' : d <= FAR_KM ? 'near' : 'far';
+    }
+    return c.city?.trim() ? 'near' : 'home';
+  };
+}
 
 /**
  * The country a location text is in, as an ISO code: the last comma-separated part that is a country's name

@@ -7,7 +7,6 @@ import { CalendarView } from './modules/clothes/CalendarView';
 import { ClothesRoot } from './modules/clothes/ClothesRoot';
 import type { Outfit, ClothingItem, Plan } from './modules/clothes/types';
 import type { Checkin } from './modules/checkins/types';
-import { atHomeCity } from './modules/countries/countries';
 import { useHomeOn } from './modules/countries/useHomeOn';
 import { abroadStays, calendarTrips, withoutHidden } from './modules/trips/abroadStays';
 import { checkinCountriesByDay } from './modules/trips/tripLine';
@@ -33,16 +32,16 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
   const plans = useCollection<Plan>('plans');
   const checkins = useCollection<Checkin>('checkins');
   const { settings } = useSettings();
-  const { homeOn, placeOn } = useHomeOn(checkins.items);
+  const { homeOn, placeOn, awayOf } = useHomeOn(checkins.items);
   // Time abroad that isn't one of your trips is drawn like one (a line and the flag), from your check-ins.
   // A suggestion you hid on the Trips page (not a trip) is not drawn either.
   const drawnTrips = useMemo(() => {
-    const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, placeOn);
-    const stays = abroadStays(checkins.items, homeOn, 3, placeOn);
+    const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, awayOf);
+    const stays = abroadStays(checkins.items, homeOn, 3, awayOf);
     return calendarTrips(trips.items, withoutHidden(stays, hidden));
-  }, [trips.items, checkins.items, homeOn, placeOn, settings.swarmTripsDismissed]);
+  }, [trips.items, checkins.items, homeOn, awayOf, settings.swarmTripsDismissed]);
 
-  const dayCountries = useMemo(() => checkinCountriesByDay(checkins.items, (c) => atHomeCity(placeOn(c.date), c)), [checkins.items, placeOn]);
+  const dayCountries = useMemo(() => checkinCountriesByDay(checkins.items, (c) => !!placeOn(c.date).city && awayOf(c) === 'home'), [checkins.items, placeOn, awayOf]);
 
   if (first && DATE.test(first)) {
     const sections: ReactNode[] = layers.map((l, i) => <Fragment key={i}>{l.daySection?.(first)}</Fragment>);

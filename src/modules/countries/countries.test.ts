@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, atHome, atHomeCity, homeCountry, homeOnDate, homePlaceOnDate, sameCity, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, atHome, homeCountry, homeOnDate, homePlaceOnDate, makeAwayOf, sameCity, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -255,6 +255,25 @@ describe('home as a city', () => {
     expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Zagreb' })).toBe(true);
     expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Split' })).toBe(false);
     expect(atHome({ country: 'HR' }, { country: 'Croatia', city: 'Split' })).toBe(true);
-    expect(atHomeCity({ country: 'HR' }, { country: 'Croatia', city: 'Split' })).toBe(false);
+  });
+});
+
+describe('makeAwayOf', () => {
+  const zagreb = { country: 'Croatia', city: 'Zagreb', lat: 45.81, lng: 15.98 };
+  const awayOf = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), [zagreb, { ...zagreb, lat: 45.8, lng: 16 }, { ...zagreb, lat: 45.82, lng: 15.97 }]);
+  const at = (c: object) => awayOf({ date: '2026-09-06', country: 'Croatia', ...c });
+  it('is home in the home city, and for a check-in with no city that is in it', () => {
+    expect(at({ city: 'Zagreb' })).toBe('home');
+    expect(at({ lat: 45.81, lng: 15.99 })).toBe('home');
+    expect(at({ city: 'Sesvete', lat: 45.83, lng: 16.12 })).toBe('home');
+  });
+  it('is near another town not far off, and far a long way off or abroad', () => {
+    expect(at({ city: 'Samobor', lat: 45.8, lng: 15.71 })).toBe('near');
+    expect(at({ city: 'Split', lat: 43.51, lng: 16.44 })).toBe('far');
+    expect(awayOf({ date: '2026-09-06', country: 'Italy', city: 'Rome' })).toBe('far');
+  });
+  it("can't tell a check-in with neither city nor position from home, and names another city near", () => {
+    expect(at({})).toBe('home');
+    expect(at({ city: 'Split' })).toBe('near');
   });
 });
