@@ -12,6 +12,11 @@ describe('pendingOnDate', () => {
   it('lists a suggestion once, not also the stay drawn for the same days', () => {
     expect(pendingOnDate('2026-05-03', [suggestion], [stay, mine]).map((t) => t.id)).toEqual(['trip-s1']);
   });
+  it('still lists the stay on a day it covers that the suggestion does not (the airport day)', () => {
+    const early = trip('stay-MX-2026-04-30', '2026-04-30', '2026-05-05');
+    expect(pendingOnDate('2026-04-30', [suggestion], [early]).map((t) => t.id)).toEqual(['stay-MX-2026-04-30']);
+    expect(pendingOnDate('2026-05-01', [suggestion], [early]).map((t) => t.id)).toEqual(['trip-s1']);
+  });
   it('lists a drawn stay with no suggestion, and never a trip of yours', () => {
     expect(pendingOnDate('2026-06-01', [suggestion], [stay, lone, mine]).map((t) => t.id)).toEqual(['stay-IT-2026-06-01']);
     expect(pendingOnDate('2026-07-02', [suggestion], [stay, lone, mine])).toEqual([]);

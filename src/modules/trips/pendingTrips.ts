@@ -5,16 +5,16 @@ import type { Trip } from './types';
 /** A trip the calendar drew from check-ins (see `calendarTrips`), never saved: it still needs your word. */
 export const isUnconfirmedTrip = (trip: Pick<Trip, 'id'>): boolean => trip.id.startsWith('stay-');
 
-const overlaps = (a: Pick<Trip, 'startDate' | 'endDate'>, b: Pick<Trip, 'startDate' | 'endDate'>) => a.startDate <= b.endDate && a.endDate >= b.startDate;
-
 /**
- * The trips to confirm on a day: the Swarm suggestions that cover it, and the stays the calendar drew that cover it and
- * no suggestion does (the suggestion is the same trip, with a name and the buttons to add or hide it).
+ * The trips to confirm on a day: the Swarm suggestions that cover it, and the stays the calendar drew that cover it
+ * when no suggestion does (a suggestion is the same trip with a name and the buttons to add or hide it). A stay can run
+ * a day longer than its suggestion (a flight's airport check-ins count for the stay, not for the suggestion), so that
+ * day still gets the stay.
  */
 export function pendingOnDate(date: string, suggestions: Trip[], drawn: Trip[]): Trip[] {
   const on = (t: Trip) => t.startDate <= date && date <= t.endDate;
   const sug = suggestions.filter(on);
-  const stays = drawn.filter((t) => isUnconfirmedTrip(t) && on(t) && !suggestions.some((s) => overlaps(s, t)));
+  const stays = sug.length ? [] : drawn.filter((t) => isUnconfirmedTrip(t) && on(t));
   return [...sug, ...stays];
 }
 
