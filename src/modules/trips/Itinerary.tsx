@@ -60,30 +60,37 @@ export function Itinerary({
           <ul className="pack-list">
             {shown
               .filter((p) => p.start <= day && p.end >= day)
-              .map((p) => (
-                <li key={p.id} className="pack-row">
-                  <span className="pack-text">
-                    <strong>{p.title}</strong>
-                    <span className="muted small">
-                      {[KIND_LABEL[p.kind], p.start === day && p.startTime ? p.startTime : p.start < day ? 'continues' : '', p.location].filter(Boolean).join(' · ')} <SourceLogos sources={matched.get(p.id)?.date === day ? ['tripit', 'swarm'] : ['tripit']} />
+              .map((p) => {
+                const seen = matched.get(p.id);
+                const here = seen?.date === day ? seen : undefined;
+                const planTime = p.start === day && p.startTime ? p.startTime : '';
+                // A plan you also checked in at keeps both times: when it was planned and when you were there.
+                const times = here ? [planTime && `planned ${planTime}`, here.time && `checked in ${here.time}`] : [planTime];
+                return (
+                  <li key={p.id} className="pack-row">
+                    <span className="pack-text">
+                      <strong>{p.title}</strong>
+                      <span className="muted small">
+                        {[KIND_LABEL[p.kind], ...times, !planTime && p.start < day ? 'continues' : '', p.location].filter(Boolean).join(' · ')} <SourceLogos sources={here ? ['tripit', 'swarm'] : ['tripit']} />
+                      </span>
                     </span>
-                  </span>
-                  {onRemove && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-label={`Remove ${p.title} from this trip`}
-                      title="Remove"
-                      onClick={async () => {
-                        await onRemove(p);
-                        setToast(p);
-                      }}
-                    >
-                      <TrashIcon />
-                    </button>
-                  )}
-                </li>
-              ))}
+                    {onRemove && (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label={`Remove ${p.title} from this trip`}
+                        title="Remove"
+                        onClick={async () => {
+                          await onRemove(p);
+                          setToast(p);
+                        }}
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             {(extra.get(day) ?? []).map((c) => (
               <li key={c.id} className="pack-row">
                 <span className="pack-text">
