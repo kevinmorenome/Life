@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarStart, monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
+import { calendarStart, clampToWeeks, monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
 
 describe('pinchZoom', () => {
   it('follows the fingers continuously and stays within the levels', () => {
@@ -62,5 +62,20 @@ describe('calendarStart', () => {
   });
   it('still includes a month asked for further back', () => {
     expect(calendarStart('2026-10', '2015-01', ['2019-05-20'])).toBe('2015-01');
+  });
+});
+
+describe('clampToWeeks', () => {
+  const weeks = weekStarts('2026-01', '2026-02');
+  it('keeps a date inside the range', () => {
+    expect(clampToWeeks('2026-01-15', weeks)).toBe('2026-01-15');
+  });
+  it('limits dates outside the range to its ends', () => {
+    expect(clampToWeeks('2020-01-01', weeks)).toBe(weeks[0]);
+    expect(clampToWeeks('2030-01-01', weeks)).toBe('2026-03-01');
+  });
+  it('ignores things that are not dates', () => {
+    expect(clampToWeeks('', weeks)).toBeUndefined();
+    expect(clampToWeeks('2026-13-45', weeks)).toBeUndefined();
   });
 });
