@@ -75,7 +75,7 @@ export function TodayView({ items, outfits, onSaveItem, onSaveOutfit }: Props) {
           entries={[
             { label: 'Log items', icon: <PlusIcon />, path: `/clothes/calendar/${date}/items` },
             { label: 'New outfit', icon: <ShirtIcon />, path: '/clothes/outfits/new' },
-            { label: 'Edit this day', icon: <PencilIcon />, path: `/clothes/calendar/${date}` },
+            { label: 'Edit this day', icon: <PencilIcon />, path: `/calendar/${date}` },
           ]}
         />
       </header>
@@ -150,7 +150,7 @@ export function TodayView({ items, outfits, onSaveItem, onSaveOutfit }: Props) {
             {missed.map((day) => (
               <li key={day}>
                 <span>{dayLabel(day, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
-                <a className="icon-action" href={href(`/clothes/calendar/${day}`)} aria-label={`Log ${day}`}>
+                <a className="icon-action" href={href(`/calendar/${day}`)} aria-label={`Log ${day}`}>
                   <PencilIcon />
                 </a>
                 <button className="icon-action" aria-label={`Skip ${day}`} onClick={() => skip(day)}>

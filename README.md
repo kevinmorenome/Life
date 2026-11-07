@@ -14,6 +14,11 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
 - Stats: closet value, total spent, wears in the last 30 days, items per category, most worn, best cost per wear, never worn
 - Import from Whering (see below)
 
+### 🏢 Office
+- Office, home and days off show as a small badge on the shared calendar; open a day to set it by hand
+- Check-ins from an Apple Shortcut (arrive, leave, end of day) fill the days in automatically and give arrival, leaving and time-on-site stats (setup in `docs/work-checkin.md`)
+- Monthly target (default 7 days) with progress, history by month and by weekday
+
 ### Importing from Whering
 
 1. Export your wardrobe from Whering's website to a JSON file shaped like `{ "items": [...] }` (category, brand, colors, size, price, currency, tags, timesWorn, imageUrls).
@@ -23,12 +28,14 @@ A personal, mobile-friendly web app for logs, inventories and stats about your l
    (behind an HTTP proxy, prefix with `NODE_USE_ENV_PROXY=1`)
 3. In the app: **Settings → Import items** → pick `life-import-whering.json`. It adds new records and updates ones from an earlier import (the newer copy wins), so re-running is safe.
 
-Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
+Whering's "date added" becomes the item's purchase date (dropped if it is in the future). Whering only stores each item's *last* wear date, so an item gets that one dated wear plus the rest of its count as undated `priorWears`; earlier dates are never invented. Archived Whering items are imported with status *storage*.
+
+If you've already used the app since importing, don't re-run the full import (it replaces each imported item with Whering's copy). To add only purchase dates, export a backup from Settings and run `node --experimental-strip-types scripts/patch-purchase-dates.ts whering-details.json life-backup.json out.json`, then import `out.json`. Only items without a purchase date are touched, and every other field stays as in the backup.
 
 Neither file is committed (see `.gitignore`); they contain your personal data.
 
 ### App shell
-- Bottom tab bar (Closet · Outfits · ＋ · Calendar · Stats); ＋ opens quick actions: log today, add an item, new outfit
+- Bottom tab bar (Calendar · Closet · ＋ · Stats · More); the calendar shows what you wore and whether you were at the office or home; ＋ opens quick actions from every module; Stats has a section per module
 - Installable: add it to your home screen for a full-screen app with its own icon
 
 ## Data and privacy
@@ -53,6 +60,16 @@ One-time setup:
    - Claude Code: `claude mcp add --transport http life https://life.<your-subdomain>.workers.dev/mcp --header "Authorization: Bearer <token>"`.
 
 Treat the URL like a password: anyone with it can read your closet and queue wears (not delete anything). To rotate, set a new `MCP_TOKEN` and update the connector. PR previews are read-only, so their write tools refuse.
+
+## Receipts from Gmail
+
+Claude can read your order emails through the Gmail connector and add the clothes to your closet with the `add_receipt_items` MCP tool. Each item arrives with everything the email says (brand, colours, size, material, price, order date, notes) and its product photo, and is marked **needs review**: a sparkle on its tile, a "N new items to review" banner on the closet (and a **Needs review** filter), and a **To review** page (`#/clothes/review`) that opens as a drawer from the bottom and walks you through them one at a time: it shows how many are left, each item is the normal item page (everything editable in place), **Save** marks it reviewed and slides to the next, and **Check later** keeps it flagged so it comes back next time. Swiping the page left does the same as Check later. The item page has a ✓ too. Until then it works like any other item, so it can go into outfits and wears.
+
+When an order confirmation has no product images, the tools tell Claude to look in the other emails about the same order (the shipping or delivery notification usually shows the products) and to use `set_item_photo` for the image rather than adding the item again.
+
+Claude can also give an existing item a photo from an image URL (`set_item_photo`) without recreating it, and the tools refuse to create a same-name duplicate of an item you already have or to retire an item without your say-so, so wear history and stats stay on one record.
+
+Setup: connect Gmail in Claude (Settings → Connectors) and have the Life MCP connector set up (above). Then ask Claude to "check my email for clothing orders", or run it on a schedule. Each item's id comes from the email's message id, so the same receipt is never added twice (and never overwrites your edits); Claude should also label processed threads in Gmail so later runs skip them. The Worker downloads the product image as is (it can't resize), so images over about 700 KB are skipped and the item has no photo. When an item comes up in the review drawer its photo's background is removed on your device (the first time needs a connection to download the model; if it can't run, the original stays), and changing a photo from the item page removes the background too.
 
 ## Development
 

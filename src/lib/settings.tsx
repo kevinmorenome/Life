@@ -7,6 +7,21 @@ export interface AppSettings {
   id: 'app';
   /** ISO 4217 code used to display all prices. */
   currency: string;
+  /** Work module: the monthly number of days (default 7) and whether it is a minimum of office days or a cap on home days. */
+  workTarget?: number;
+  workTargetKind?: 'min-office' | 'max-home';
+  /** With 'max-home': the higher number of home days you can request (default 10). */
+  workExtended?: number;
+  /** Checkins module: the venue (`venueKey`) of your office, used to mark office days from Swarm. */
+  officeVenue?: string;
+  /** Places: your home country (ISO alpha-2), so days abroad get a flag on the calendar. Missing = the country of most of your check-ins. */
+  homeCountry?: string;
+  /** Music module: your stats.fm custom ID (the last part of your profile link). */
+  statsfmUser?: string;
+  /** Trips module: TripIt trips you deleted (`Trip.tripitRef`), so a later fetch doesn't make them again. */
+  tripitDismissed?: string[];
+  /** Trips module: Swarm trips you deleted (`Trip.swarmRef`), so they aren't made again. */
+  swarmTripsDismissed?: string[];
   updatedAt: string;
 }
 

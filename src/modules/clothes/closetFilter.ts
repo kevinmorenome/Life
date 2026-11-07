@@ -13,6 +13,8 @@ export interface ClosetFilters {
   status: Status | 'all';
   sort: Sort;
   favoritesOnly: boolean;
+  /** Only items added automatically (e.g. from receipts) that haven't been checked yet. */
+  reviewOnly: boolean;
 }
 
 export const DEFAULT_FILTERS: ClosetFilters = {
@@ -23,6 +25,7 @@ export const DEFAULT_FILTERS: ClosetFilters = {
   status: 'active',
   sort: 'recent',
   favoritesOnly: false,
+  reviewOnly: false,
 };
 
 export const SORTS: { value: Sort; label: string }[] = [
@@ -39,6 +42,7 @@ function baseMatches(items: ClothingItem[], f: ClosetFilters): ClothingItem[] {
     (i) =>
       (f.status === 'all' || i.status === f.status) &&
       (!f.favoritesOnly || i.favorite) &&
+      (!f.reviewOnly || i.needsReview) &&
       (!q || [i.name, i.brand, i.color, i.subcategory, i.notes, ...(i.tags ?? [])].some((v) => v?.toLowerCase().includes(q))),
   );
 }
@@ -111,5 +115,6 @@ export function activeFilterCount(f: ClosetFilters): number {
     f.status !== DEFAULT_FILTERS.status,
     f.sort !== DEFAULT_FILTERS.sort,
     f.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly,
+    f.reviewOnly !== DEFAULT_FILTERS.reviewOnly,
   ].filter(Boolean).length;
 }

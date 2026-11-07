@@ -16,12 +16,25 @@ export function upsertStatement(db: D1Database): D1PreparedStatement {
   );
 }
 
+/**
+ * Inserts a record only when there is no row for it yet, a deletion marker (NULL data) included, so
+ * a record the user removed doesn't come back. For immutable records written from outside the app
+ * (Swarm, Trakt), where a re-fetched copy must never undo a deletion or bump the sequence again.
+ */
+export function insertIfMissingStatement(db: D1Database): D1PreparedStatement {
+  return db.prepare(
+    `INSERT INTO records (store, id, data, client_updated_at, server_seq)
+     VALUES (?1, ?2, ?3, ?4, (SELECT COALESCE(MAX(server_seq), 0) + 1 FROM records))
+     ON CONFLICT (store, id) DO NOTHING`,
+  );
+}
+
 export type Row = { id: string } & Record<string, unknown>;
 
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
-  list(store: 'clothes' | 'outfits' | 'inbox'): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox', id: string, record: object): Promise<void>;
+  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides'): Promise<Row[]>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -32,14 +45,21 @@ const FIELDS = {
   clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears'],
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
   inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
+  foodreceipts: ['store', 'date', 'total', 'lines'],
+  foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
+  foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
+  woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
+  rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
 } as const;
 
-const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds']);
+const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
 
 export function d1Store(db: D1Database): RecordStore {
   return {
     async list(store) {
-      const columns = FIELDS[store].map((f) => `json_extract(data, '$.${f}') AS ${f}`).join(', ');
+      // Aliases are quoted: a field can be an SQL keyword (a ride's `from`).
+      // `hasPhoto` says whether a product has a picture without loading the picture itself.
+      const columns = FIELDS[store].map((f) => (f === 'hasPhoto' ? `(json_extract(data, '$.photo') IS NOT NULL) AS "hasPhoto"` : `json_extract(data, '$.${f}') AS "${f}"`)).join(', ');
       const { results } = await db
         .prepare(`SELECT id, ${columns} FROM records WHERE store = ?1 AND data IS NOT NULL`)
         .bind(store)

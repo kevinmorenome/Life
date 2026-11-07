@@ -30,6 +30,7 @@ describe('closet filters', () => {
     expect(filterItems(all, { ...DEFAULT_FILTERS, category: 'bottoms' })).toEqual([jeans]);
     expect(filterItems(all, { ...DEFAULT_FILTERS, category: 'tops', subcategory: 'T-shirt' })).toEqual([tee]);
     expect(filterItems(all, { ...DEFAULT_FILTERS, favoritesOnly: true })).toEqual([jeans]);
+    expect(filterItems([jeans, { ...jeans, id: 'new', needsReview: true }], { ...DEFAULT_FILTERS, reviewOnly: true }).map((i) => i.id)).toEqual(['new']);
     expect(filterItems(all, { ...DEFAULT_FILTERS, status: 'all' })).toHaveLength(3);
   });
 

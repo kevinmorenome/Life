@@ -11,9 +11,14 @@ export interface MenuEntry {
 }
 
 /** A round ⋮ button that opens a small floating menu; closes on outside tap or Escape. */
-export function IconMenu({ entries, label = 'More' }: { entries: MenuEntry[]; label?: string }) {
+export function IconMenu({ entries, label = 'More', icon, triggerClassName = 'icon-action' }: { entries: MenuEntry[]; label?: string; icon?: ReactNode; triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+
+  // A menu near the bottom of a scrolling sheet or page would be cut off: bring it into view when it opens.
+  useEffect(() => {
+    if (open) box.current?.querySelector('.menu')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -30,8 +35,8 @@ export function IconMenu({ entries, label = 'More' }: { entries: MenuEntry[]; la
 
   return (
     <div className="menu-wrap" ref={box}>
-      <button className="icon-action" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <DotsIcon />
+      <button className={triggerClassName} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {icon ?? <DotsIcon />}
       </button>
       {open && (
         <div className="menu menu-end" role="menu">

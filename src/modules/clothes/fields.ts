@@ -1,3 +1,5 @@
+import { today } from '../../lib/format';
+import { withStatus } from './lifecycle';
 import { CATEGORIES, CONDITIONS, STATUSES, type Category, type ClothingItem, type Condition, type Status } from './types';
 
 export type FieldKey =
@@ -26,7 +28,7 @@ export function withField(item: ClothingItem, key: FieldKey, raw: string): Cloth
     case 'category':
       return (CATEGORIES as readonly string[]).includes(v) ? { ...next, category: v as Category } : null;
     case 'status':
-      return (STATUSES as readonly string[]).includes(v) ? { ...next, status: v as Status } : null;
+      return (STATUSES as readonly string[]).includes(v) ? withStatus(next, v as Status, today()) : null;
     case 'condition':
       if (!v) return { ...next, condition: undefined };
       return (CONDITIONS as readonly string[]).includes(v) ? { ...next, condition: v as Condition } : null;

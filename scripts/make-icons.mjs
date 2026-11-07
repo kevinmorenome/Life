@@ -1,19 +1,44 @@
-// Regenerates the app icons in public/ from scripts/icon-source.png (the rounded "L" tile).
+// Regenerates the app icons in public/: the "Life" wordmark (Bricolage Grotesque ExtraBold outlines,
+// stored in scripts/icon-wordmark.json) on the brown tile, with the dot of the i in yellow.
 //   node scripts/make-icons.mjs
-// The source has white corners, so crop inside the tile and let iOS/Android apply their own mask.
 import sharp from 'sharp';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const src = 'scripts/icon-source.png';
-const crop = { left: 170, top: 170, width: 920, height: 920 };
+const { white, green, width, upm } = JSON.parse(readFileSync('scripts/icon-wordmark.json', 'utf8'));
+const BG = '#6b4226', INK = '#f3f1fb', DOT = '#ffc928';
+
+// Full-bleed square (the OS applies its own mask). The wordmark takes ~64% of the width, inside the
+// maskable safe zone. Glyph y points up, so the path is flipped by the font transform baked into the JSON.
+function svg(size, scale = 0.64) {
+  const s = (size * scale) / width;
+  const x = (size - width * s) / 2;
+  const y = size / 2 + upm * 0.36 * s; // baseline so the x-height/ascender block is centred
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+      `<rect width="${size}" height="${size}" fill="${BG}"/>` +
+      `<g transform="translate(${x} ${y}) scale(${s})"><path d="${white}" fill="${INK}"/><path d="${green}" fill="${DOT}"/></g></svg>`,
+  );
+}
 
 const out = [
   ['public/icon-192.png', 192],
   ['public/icon-512.png', 512],
   ['public/apple-touch-icon.png', 180],
-  // The L sits well inside the central 80% safe zone, so the same art works maskable.
   ['public/icon-maskable-512.png', 512],
 ];
 for (const [file, size] of out) {
-  await sharp(src).extract(crop).resize(size, size).png().toFile(file);
+  await sharp(svg(size), { density: 300 }).resize(size, size).png().toFile(file);
   console.log('wrote', file);
 }
+
+// The app sits behind Cloudflare Access, and iOS fetches the home-screen icon without the login
+// cookie (it gets the Access login page and draws a plain letter instead). So the touch icon and
+// favicon are inlined in index.html as data URLs; rewrite them there too.
+const indexPath = 'index.html';
+const dataUrl = (f) => `data:image/png;base64,${readFileSync(f).toString('base64')}`;
+let html = readFileSync(indexPath, 'utf8');
+html = html
+  .replace(/(<link rel="apple-touch-icon" href=")[^"]*(")/, `$1${dataUrl('public/apple-touch-icon.png')}$2`)
+  .replace(/(<link rel="icon" type="image\/png" href=")[^"]*(")/, `$1${dataUrl('public/icon-192.png')}$2`);
+writeFileSync(indexPath, html);
+console.log('inlined icons in', indexPath);
