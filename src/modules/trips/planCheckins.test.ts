@@ -61,11 +61,3 @@ describe('plannedOnDay', () => {
     expect(plannedOnDay([hotel], [swarm({ country: 'Mexico' })], '2026-09-19', '2026-09-19')).toEqual([]);
   });
 });
-
-describe('a Swarm check-in with the same name', () => {
-  it('covers the plan even when its country is missing, and its time is not needed', () => {
-    const lunch = { ...hotel, id: 'l', title: 'Curry Bowl', location: 'Zagreb, Croatia' };
-    const sw = swarm({ venue: 'curry bowl ', country: undefined, time: '' });
-    expect(plannedOnDay([lunch], [sw], '2026-09-19', '2026-09-19')).toEqual([]);
-  });
-});

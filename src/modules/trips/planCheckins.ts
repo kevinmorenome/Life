@@ -83,17 +83,10 @@ export function draftsOfPlan(plan: PlanLike): Draft[] {
 
 const norm = (s: string | undefined) => (s ?? '').trim().toLowerCase();
 
-/**
- * Whether a Swarm check-in already covers the same place that day: one with the same name (whatever else it says), or
- * one in the same country (and city, when both say).
- */
-export function coveredBySwarm(d: Draft, swarm: Pick<Checkin, 'date' | 'country' | 'city' | 'venue'>[]): boolean {
-  return swarm.some(
-    (c) =>
-      c.date === d.date &&
-      ((norm(c.venue) !== '' && norm(c.venue) === norm(d.venue)) ||
-        (!!d.country && norm(c.country) === norm(d.country) && (!c.city || !d.city || norm(c.city) === norm(d.city)))),
-  );
+/** Whether a Swarm check-in already covers the same place that day. */
+export function coveredBySwarm(d: Draft, swarm: Pick<Checkin, 'date' | 'country' | 'city'>[]): boolean {
+  if (!d.country) return false;
+  return swarm.some((c) => c.date === d.date && norm(c.country) === norm(d.country) && (!c.city || !d.city || norm(c.city) === norm(d.city)));
 }
 
 /**
@@ -122,7 +115,7 @@ export function planCheckinChanges(plans: PlanLike[], checkins: Checkin[], today
  * The plans still ahead on one day (today or later; earlier days have real check-ins), as check-in-shaped drafts for the
  * day screen. Left out when Swarm already has a check-in for the place that day, so nothing shows twice.
  */
-export function plannedOnDay(plans: PlanLike[], checkins: Pick<Checkin, 'date' | 'country' | 'city' | 'venue' | 'source'>[], date: string, today: string): Draft[] {
+export function plannedOnDay(plans: PlanLike[], checkins: Pick<Checkin, 'date' | 'country' | 'city' | 'source'>[], date: string, today: string): Draft[] {
   if (date < today) return [];
   const swarm = checkins.filter((c) => c.source !== 'plan');
   return plans.flatMap(draftsOfPlan).filter((d) => d.date === date && !coveredBySwarm(d, swarm)).sort((a, b) => a.at - b.at);
