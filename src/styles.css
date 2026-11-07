@@ -7545,41 +7545,58 @@ a.game-row + .food-h2 {
   opacity: 0.5;
 }
 
-/* Small glass buttons in a widget's header, drawn like the count and the chevron (the button keeps a 44px touch area). */
-.widget-minis {
-  display: inline-flex;
-  flex: none;
+/* Place rows (day screen and Itinerary): the whole row is the button that opens the sheet. */
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.widget-mini {
-  display: grid;
-  place-items: center;
-  width: 36px;
+.place-main {
+  flex: 1;
+  min-width: 0;
   min-height: 44px;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--muted);
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.widget-mini-dot {
+.place-row.is-selected {
+  background: var(--accent-soft);
+}
+.place-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.place-when input {
+  min-height: 44px;
+}
+.place-merge ul {
   display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--glass-edge);
-  border-radius: 50%;
-  background: var(--plate);
-  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  gap: 10px;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
 }
-.widget-mini-dot svg {
-  width: 14px;
-  height: 14px;
+.place-merge .food-action {
+  width: 100%;
+  min-height: 56px;
+  text-align: left;
 }
-.widget-mini[aria-pressed='true'] {
-  color: var(--accent);
+.place-merge-text {
+  display: grid;
+  min-width: 0;
 }
-.widget-mini[aria-pressed='true'] .widget-mini-dot {
-  border-color: var(--accent);
+.place-main .small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.place-sheet .food-action {
+  text-align: left;
 }

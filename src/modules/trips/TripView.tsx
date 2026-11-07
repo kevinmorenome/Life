@@ -32,12 +32,11 @@ interface Props {
   plans: Plan[];
   tripitPlans: TripitPlan[];
   checkins?: Checkin[];
-  onSavePlan: (p: TripitPlan) => Promise<void>;
   onSave: (t: Trip) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TripView({ trip, tab, items, outfits, plans, tripitPlans, checkins, onSavePlan, onSave, onDelete }: Props) {
+export function TripView({ trip, tab, items, outfits, plans, tripitPlans, checkins, onSave, onDelete }: Props) {
   const list = useMemo(() => packingList(trip, items, outfits, outfitName, plans), [trip, items, outfits, plans]);
   const outfitCount = useMemo(() => [...tripOutfitsByDay(trip, plans, outfits).values()].reduce((n, day) => n + day.length, 0), [trip, plans, outfits]);
   const [text, setText] = useState('');
@@ -100,11 +99,6 @@ export function TripView({ trip, tab, items, outfits, plans, tripitPlans, checki
           checkins={checkins}
           startDate={trip.startDate}
           endDate={trip.endDate}
-          onRemove={(p) => onSavePlan({ ...p, removed: true })}
-          onRestore={(p) => {
-            const { removed: _removed, ...rest } = p;
-            return onSavePlan(rest);
-          }}
         />
       ) : (
       <>

@@ -1,90 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { shortDate } from '../../lib/format';
-import { TrashIcon, UndoIcon } from '../../icons';
+import { UndoIcon } from '../../icons';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Checkin } from '../checkins/types';
 import { itineraryCheckins, matchKey } from './itineraryCheckins';
-import { today } from '../../lib/format';
-import { CheckinText, isUpcoming, nowTime, PlanText } from './placeRows';
+import { usePlaceUi } from './PlaceUi';
+import type { PlaceRef } from './placeActions';
 
 /**
  * What TripIt has for the days of a trip, day by day, with your Swarm check-ins of those days (a check-in that is the
- * same place as a plan is shown on that plan, not twice). A plan that spans days is listed on each. A plan that is wrong
- * (or one you never did) can be removed: it then counts for nothing, anywhere, and can be restored from the end of the list.
+ * same place as a plan is shown on that plan, not twice). A plan that spans days is listed on each. Tap a place to change,
+ * merge or remove it (see PlaceUi): a plan that is wrong (or one you never did) can be removed, it then counts for nothing,
+ * anywhere, and can be restored from the end of the list.
  */
-export function Itinerary({
-  plans,
-  checkins = [],
-  startDate,
-  endDate,
-  onRemove,
-  onRestore,
-}: {
-  plans: TripitPlan[];
-  checkins?: Checkin[];
-  startDate: string;
-  endDate: string;
-  onRemove?: (p: TripitPlan) => Promise<void> | void;
-  onRestore?: (p: TripitPlan) => Promise<void> | void;
-}) {
-  const [toast, setToast] = useState<TripitPlan | null>(null);
-  // The Undo toast goes away by itself.
-  useEffect(() => {
-    if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 6000);
-    return () => window.clearTimeout(id);
-  }, [toast]);
-
-  const todayStr = today();
-  const now = nowTime();
-  const shown = plans.filter((p) => !p.removed);
+export function Itinerary({ plans, checkins = [], startDate, endDate }: { plans: TripitPlan[]; checkins?: Checkin[]; startDate: string; endDate: string }) {
+  const shown = useMemo(() => plans.filter((p) => !p.removed), [plans]);
   const removed = plans.filter((p) => p.removed);
-  const { extra, matched } = itineraryCheckins(shown, checkins, startDate, endDate);
-  if (plans.length === 0 && extra.size === 0) {
+  // The rows of each day: the plans, each with its check-in folded in, then the other check-ins.
+  const dayRows = useMemo(() => {
+    const { extra, matched } = itineraryCheckins(shown, checkins, startDate, endDate);
+    const days = [...new Set([...shown.flatMap((p) => daysOf(p, startDate, endDate)), ...extra.keys()])].sort();
+    const rows = new Map<string, PlaceRef[]>();
+    for (const day of days) {
+      rows.set(day, [
+        ...shown.filter((p) => p.start <= day && p.end >= day).map((p): PlaceRef => ({ kind: 'plan', day, plan: p, here: matched.get(matchKey(p, day)) })),
+        ...(extra.get(day) ?? []).map((c): PlaceRef => ({ kind: 'checkin', day, checkin: c })),
+      ]);
+    }
+    return rows;
+  }, [shown, checkins, startDate, endDate]);
+  const ui = usePlaceUi(dayRows);
+
+  if (plans.length === 0 && dayRows.size === 0) {
     return <p className="muted">Nothing from TripIt for these days yet. Connect TripIt in Settings, or add plans in TripIt and fetch again.</p>;
   }
-  const days = [...new Set([...shown.flatMap((p) => daysOf(p, startDate, endDate)), ...extra.keys()])].sort();
   return (
     <section className="itinerary">
-      {days.length === 0 && <p className="muted">Every plan of this trip is removed.</p>}
-      {days.map((day) => (
+      {dayRows.size === 0 && <p className="muted">Every plan of this trip is removed.</p>}
+      {ui.bar}
+      {[...dayRows].map(([day, rows]) => (
         <div key={day} className="pack-group">
           <h3>{shortDate(day)}</h3>
-          <ul className="pack-list">
-            {shown
-              .filter((p) => p.start <= day && p.end >= day)
-              .map((p) => (
-                  <li key={p.id} className={`pack-row${isUpcoming(p, day, matched.get(matchKey(p, day)), todayStr, now) ? ' is-upcoming' : ''}`}>
-                    <span className="pack-text">
-                      <PlanText plan={p} day={day} here={matched.get(matchKey(p, day))} />
-                    </span>
-                    {onRemove && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label={`Remove ${p.title} from this trip`}
-                        title="Remove"
-                        onClick={async () => {
-                          await onRemove(p);
-                          setToast(p);
-                        }}
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </li>
-              ))}
-            {(extra.get(day) ?? []).map((c) => (
-              <li key={c.id} className="pack-row">
-                <span className="pack-text">
-                  <CheckinText checkin={c} />
-                </span>
-              </li>
-            ))}
-          </ul>
+          <ul className="pack-list">{rows.map((r) => ui.row(r))}</ul>
         </div>
       ))}
-      {removed.length > 0 && onRestore && (
+      {removed.length > 0 && (
         <details>
           <summary className="small">Removed ({removed.length})</summary>
           <ul className="pack-list">
@@ -94,7 +54,7 @@ export function Itinerary({
                   <strong>{p.title}</strong>
                   <span className="muted small">{[shortDate(p.start), p.location].filter(Boolean).join(' · ')}</span>
                 </span>
-                <button type="button" className="icon-btn" aria-label={`Restore ${p.title}`} title="Restore" onClick={() => void onRestore(p)}>
+                <button type="button" className="icon-btn" aria-label={`Restore ${p.title}`} title="Restore" onClick={() => void ui.edits.restorePlan(p)}>
                   <UndoIcon />
                 </button>
               </li>
@@ -102,20 +62,7 @@ export function Itinerary({
           </ul>
         </details>
       )}
-      {toast && onRestore && (
-        <div className="food-toast" role="status">
-          <span>Removed {toast.title}</span>
-          <button
-            type="button"
-            onClick={async () => {
-              await onRestore(toast);
-              setToast(null);
-            }}
-          >
-            Undo
-          </button>
-        </div>
-      )}
+      {ui.sheet}
     </section>
   );
 }

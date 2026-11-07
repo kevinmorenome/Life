@@ -26,18 +26,22 @@ export function isUpcoming(plan: Pick<TripitPlan, 'start' | 'startTime'>, day: s
 }
 
 /**
- * The text of a TripIt plan on one day, the same in the trip's Itinerary and on the day screen. A plan you also checked in
- * at keeps both times (when it was planned, when you were there) and shows both logos.
+ * The line under a plan's title on one day: kind, times, place. A plan you also checked in at keeps both times (when it
+ * was planned, when you were there).
  */
-export function PlanText({ plan, day, here }: { plan: TripitPlan; day: string; here?: Checkin }) {
+export function planMeta(plan: TripitPlan, day: string, here?: Checkin): string {
   const planTime = plan.start === day && plan.startTime ? plan.startTime : '';
   const times = here ? [planTime && `planned ${planTime}`, here.time && `checked in ${here.time}`] : [planTime];
+  return [KIND_LABEL[plan.kind], ...times, !planTime && plan.start < day ? 'continues' : '', plan.location].filter(Boolean).join(' · ');
+}
+
+/** The text of a TripIt plan on one day, the same in the trip's Itinerary and on the day screen; both logos when you also checked in. */
+export function PlanText({ plan, day, here }: { plan: TripitPlan; day: string; here?: Checkin }) {
   return (
     <>
       <strong>{plan.title}</strong>
       <span className="muted small">
-        {[KIND_LABEL[plan.kind], ...times, !planTime && plan.start < day ? 'continues' : '', plan.location].filter(Boolean).join(' · ')}{' '}
-        <SourceLogos sources={here ? ['tripit', 'swarm'] : ['tripit']} />
+        {planMeta(plan, day, here)} <SourceLogos sources={here ? ['tripit', 'swarm'] : ['tripit']} />
       </span>
     </>
   );
