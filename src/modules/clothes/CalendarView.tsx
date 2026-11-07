@@ -4,7 +4,7 @@ import { flagEmoji } from '../countries/flag';
 import type { HomeOn } from '../countries/countries';
 import { isUnconfirmedTrip } from '../trips/pendingTrips';
 import { flagsToShow, tripDayShape } from '../trips/tripLine';
-import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
+import { CalendarIcon, CheckIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../trips/packing';
@@ -65,6 +65,8 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
     }
   });
   const [jumpOpen, setJumpOpen] = useState(false);
+  // The date picked in the jump menu; the calendar only moves when it is confirmed with the check button.
+  const [jumpDate, setJumpDate] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
   const setFilter = (next: string[]) => {
     setFilterState(next);
@@ -368,22 +370,30 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
           </div>
           <div className="cal-tools">
             <span className="menu-wrap">
-              <button className="icon-btn" aria-label="Jump to a date" aria-expanded={jumpOpen} onClick={() => setJumpOpen((o) => !o)}>
+              <button className="icon-btn" aria-label="Jump to a date" aria-expanded={jumpOpen} onClick={() => {
+                  setJumpDate(visibleMonth + '-01');
+                  setJumpOpen((o) => !o);
+                }}>
                 <CalendarIcon />
               </button>
               {jumpOpen && (
                 <div className="menu cal-jump" role="dialog" aria-label="Jump to a date">
-                  <label className="cal-jump-field">
-                    <span>Go to</span>
-                    <input
-                      type="date"
-                      autoFocus
-                      value={visibleMonth + '-01'}
-                      min={weeks[0]}
-                      max={addDays(weeks[weeks.length - 1], 6)}
-                      onChange={(e) => jumpTo(e.target.value)}
-                    />
-                  </label>
+                  <div className="cal-jump-row">
+                    <label className="cal-jump-field">
+                      <span>Go to</span>
+                      <input
+                        type="date"
+                        autoFocus
+                        value={jumpDate}
+                        min={weeks[0]}
+                        max={addDays(weeks[weeks.length - 1], 6)}
+                        onChange={(e) => setJumpDate(e.target.value)}
+                      />
+                    </label>
+                    <button className="icon-btn" aria-label="Go to this date" disabled={!clampToWeeks(jumpDate, weeks)} onClick={() => jumpTo(jumpDate)}>
+                      <CheckIcon />
+                    </button>
+                  </div>
                   <button
                     className="menu-item"
                     onClick={() => {

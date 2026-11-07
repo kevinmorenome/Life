@@ -7494,3 +7494,11 @@ a.game-row + .food-h2 {
     animation-duration: 0.01s;
   }
 }
+.cal-jump-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+.cal-jump-row .cal-jump-field {
+  flex: 1;
+}
