@@ -6,7 +6,7 @@ import type { Checkin } from './types';
 
 /**
  * Edit and remove for one Swarm check-in, in the app only: Swarm is not touched. The day and time can be changed
- * (a check-in made on the wrong day); the place can't. Neither is undone by a later fetch: the Worker never
+ * (a check-in made on the wrong day); the time can be left empty; the place can't. Neither is undone by a later fetch: the Worker never
  * overwrites a record that already exists, edited or deleted.
  */
 export function CheckinActions({ checkin }: { checkin: Checkin }) {
@@ -20,7 +20,12 @@ export function CheckinActions({ checkin }: { checkin: Checkin }) {
     return (
       <span className="checkin-edit">
         <input type="date" required aria-label="Day" value={date} onChange={(e) => setDate(e.target.value)} />
-        <input type="time" required aria-label="Time" value={time} onChange={(e) => setTime(e.target.value)} />
+        <input type="time" aria-label="Time" value={time} onChange={(e) => setTime(e.target.value)} />
+        {time && (
+          <button type="button" className="chip" onClick={() => setTime('')}>
+            No time
+          </button>
+        )}
         <button
           type="button"
           className="icon-btn"

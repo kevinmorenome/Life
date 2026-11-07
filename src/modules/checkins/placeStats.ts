@@ -89,7 +89,7 @@ export function weekdayCounts(checkins: Checkin[], prefix = ''): number[] {
 export function hourCounts(checkins: Checkin[], prefix = ''): number[] {
   const counts = Array<number>(24).fill(0);
   for (const c of checkins) {
-    const h = Number(c.time.slice(0, 2));
+    const h = c.time ? Number(c.time.slice(0, 2)) : -1; // a check-in with no time has no hour
     if (inPeriod(c, prefix) && h >= 0 && h < 24) counts[h]++;
   }
   return counts;

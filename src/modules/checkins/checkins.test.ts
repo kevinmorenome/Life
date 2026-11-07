@@ -58,6 +58,12 @@ describe('moveCheckin', () => {
   it('leaves the record alone when nothing changed or the input is not valid', () => {
     expect(moveCheckin(c, '2026-10-01', '09:30', 'now')).toBe(c);
     expect(moveCheckin(c, '', '09:30', 'now')).toBe(c);
-    expect(moveCheckin(c, '2026-10-02', '', 'now')).toBe(c);
+    expect(moveCheckin(c, '2026-10-02', '9am', 'now')).toBe(c);
+  });
+  it('can leave the time out, and put one back', () => {
+    const none = moveCheckin(c, '2026-10-01', '', 'now');
+    expect([none.time, none.at - c.at]).toEqual(['', 150 * 60]);
+    const back = moveCheckin(none, '2026-10-01', '09:30', 'now');
+    expect([back.time, back.at]).toEqual([c.time, c.at]);
   });
 });
