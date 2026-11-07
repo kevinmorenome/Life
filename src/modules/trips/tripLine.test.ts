@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkinCountriesByDay, countryChangedOn, countryOnDay, tripDayShape } from './tripLine';
+import { checkinCountriesByDay, flagsOnDay, tripDayShape } from './tripLine';
 
 // 2026-11-04 is a Wednesday, so the 9th is the next Monday.
 const trip = { startDate: '2026-11-04', endDate: '2026-11-11' };
@@ -31,34 +31,38 @@ describe('tripDayShape', () => {
   });
 });
 
-// Mexico from the 18th to the 30th of September 2026, ending with a layover in Amsterdam.
+// Mexico from the 18th to the 30th of September 2026 (a Friday to a Wednesday), ending with a layover in Amsterdam.
 const mexico = { startDate: '2026-09-18', endDate: '2026-09-30', country: 'MX', destination: 'Tulum' };
-const ci = (date: string, country: string) => ({ date, country });
+const ci = (date: string, country: string, at = 0) => ({ date, country, at });
 
 describe('checkinCountriesByDay', () => {
-  it('takes the country with most check-ins that day, airports included', () => {
-    const byDay = checkinCountriesByDay([ci('2026-09-30', 'Netherlands'), ci('2026-09-20', 'Mexico'), ci('2026-09-20', 'Mexico'), ci('2026-09-20', 'United States'), ci('2026-09-21', 'Nowhereland')]);
-    expect(byDay.get('2026-09-30')).toBe('NL');
-    expect(byDay.get('2026-09-20')).toBe('MX');
+  it('lists the countries of the day in the order you were there, airports included', () => {
+    const byDay = checkinCountriesByDay([ci('2026-09-30', 'Netherlands', 2), ci('2026-09-30', 'Mexico', 1), ci('2026-09-30', 'Mexico', 0), ci('2026-09-21', 'Nowhereland')]);
+    expect(byDay.get('2026-09-30')).toEqual(['MX', 'NL']);
     expect(byDay.has('2026-09-21')).toBe(false);
   });
 });
 
-describe('the country of a trip day', () => {
-  const byDay = checkinCountriesByDay([ci('2026-09-19', 'Mexico'), ci('2026-09-30', 'Netherlands')]);
-  it("is where you checked in, else where the day before was, else the trip's own country", () => {
-    expect(countryOnDay(mexico, '2026-09-18', byDay)).toBe('MX');
-    expect(countryOnDay(mexico, '2026-09-25', byDay)).toBe('MX');
-    expect(countryOnDay(mexico, '2026-09-30', byDay)).toBe('NL');
+describe('flagsOnDay', () => {
+  const byDay = checkinCountriesByDay([ci('2026-09-18', 'Mexico'), ci('2026-09-30', 'Mexico', 1), ci('2026-09-30', 'Netherlands', 2)]);
+  it('shows the country on the first day', () => {
+    expect(flagsOnDay(mexico, '2026-09-18', byDay)).toEqual(['MX']);
+    expect(flagsOnDay(mexico, '2026-09-18', new Map())).toEqual(['MX']);
   });
-  it('puts the flag on the first day you are somewhere else', () => {
-    expect(countryChangedOn(mexico, '2026-09-30', byDay)).toBe(true);
-    expect(tripDayShape(mexico, '2026-09-30', true).flag).toBe(true);
-    expect(countryChangedOn(mexico, '2026-09-29', byDay)).toBe(false);
-    expect(countryChangedOn(mexico, '2026-09-18', byDay)).toBe(false);
+  it('shows nothing on the days in between, and the flag again on a Monday', () => {
+    expect(flagsOnDay(mexico, '2026-09-22', byDay)).toEqual([]);
+    expect(flagsOnDay(mexico, '2026-09-21', byDay)).toEqual(['MX']);
   });
-  it("shows no change when the check-ins are all in the trip's country", () => {
-    const same = checkinCountriesByDay([ci('2026-09-20', 'Mexico'), ci('2026-09-24', 'Mexico')]);
-    expect(Array.from({ length: 13 }, (_, i) => countryChangedOn(mexico, `2026-09-${18 + i}`, same)).some(Boolean)).toBe(false);
+  it('adds the flag of a country you only passed through', () => {
+    expect(flagsOnDay(mexico, '2026-09-30', byDay)).toEqual(['NL']);
+  });
+  it('shows every country of a first day or a Monday', () => {
+    const two = checkinCountriesByDay([ci('2026-09-21', 'Mexico', 1), ci('2026-09-21', 'Netherlands', 2)]);
+    expect(flagsOnDay(mexico, '2026-09-21', two)).toEqual(['MX', 'NL']);
+  });
+  it('shows the flag again when you come back after another country', () => {
+    const back = checkinCountriesByDay([ci('2026-09-22', 'Netherlands'), ci('2026-09-23', 'Mexico')]);
+    expect(flagsOnDay(mexico, '2026-09-22', back)).toEqual(['NL']);
+    expect(flagsOnDay(mexico, '2026-09-23', back)).toEqual(['MX']);
   });
 });

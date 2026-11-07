@@ -1,7 +1,7 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
 import { flagEmoji } from '../countries/flag';
-import { countryChangedOn, countryOnDay, tripDayShape } from '../trips/tripLine';
+import { flagsOnDay, tripDayShape } from '../trips/tripLine';
 import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
@@ -23,7 +23,7 @@ interface Props {
   outfits: Outfit[];
   trips?: Trip[];
   /** Where you were on days with check-ins (ISO code per YYYY-MM-DD): the flag on a trip follows it. */
-  dayCountries?: ReadonlyMap<string, string>;
+  dayCountries?: ReadonlyMap<string, string[]>;
   plans?: Plan[];
   /** What other modules add: a mark on each day and a summary for the month at the top. */
   layers?: CalendarLayer[];
@@ -46,7 +46,7 @@ function loadLevel(): number {
   return 1;
 }
 
-const NO_COUNTRIES: ReadonlyMap<string, string> = new Map();
+const NO_COUNTRIES: ReadonlyMap<string, string[]> = new Map();
 
 export function CalendarView({ month, items, outfits, trips = [], dayCountries = NO_COUNTRIES, plans = [], layers = [] }: Props) {
   const now = today();
@@ -436,7 +436,7 @@ interface CellProps {
   wear?: DayWear;
   planned?: Outfit[];
   trips: Trip[];
-  dayCountries: ReadonlyMap<string, string>;
+  dayCountries: ReadonlyMap<string, string[]>;
   layers: CalendarLayer[];
   filter: string[];
   items: ClothingItem[];
@@ -508,8 +508,10 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   // A trip is a line through the day numbers with its flag on it, in the row beside the number, so the icons keep to
   // the two rows below it (six cells) on those days.
   const trip = trips[0];
-  const shape = trip ? tripDayShape(trip, date, countryChangedOn(trip, date, dayCountries)) : undefined;
-  const flagCode = trip ? countryOnDay(trip, date, dayCountries) : undefined;
+  const flagCodes = trip ? flagsOnDay(trip, date, dayCountries) : [];
+  const shape = trip ? tripDayShape(trip, date, flagCodes.length > 0) : undefined;
+  const flagText = flagCodes.map((c) => flagEmoji(c) ?? '').join('') || '🧳';
+  const flagMulti = flagCodes.length > 1 ? ' multi' : '';
   const capacity = trip ? 6 : CELLS;
   const iconsHidden = icons.length > capacity ? icons.length - (capacity - 1) : 0;
   const shownIcons = iconsHidden ? icons.slice(0, capacity - 1) : icons;
@@ -563,8 +565,8 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
       {shape?.end && <i className="trip-end-dot trip-end-dot-num" aria-hidden />}
       <span className={`cal-num${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
       {trip && shape?.flag && (
-        <span className="trip-flag trip-flag-num" role="img" aria-label={`Trip: ${trip.name}`}>
-          {flagEmoji(flagCode) ?? '🧳'}
+        <span className={`trip-flag trip-flag-num${flagMulti}`} role="img" aria-label={`Trip: ${trip.name}`}>
+          {flagText}
         </span>
       )}
       {(hasOutfit || marks.length > 0 || trips.length > 0) && (
@@ -582,8 +584,8 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
             {shape?.end && <i className="trip-end-dot" aria-hidden />}
             <span className={`cell-num${isToday ? ' today' : ''}${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
             {trip && shape?.flag && (
-              <span className="cell-slot trip-flag" style={{ gridRow: 1, gridColumn: 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
-                {flagEmoji(flagCode) ?? '🧳'}
+              <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
+                {flagText}
               </span>
             )}
             {shownIcons.map((el, i) => (
