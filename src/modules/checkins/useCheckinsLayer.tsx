@@ -29,13 +29,13 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
       if (!done.length && !planned.length) return null;
       const names = [...done.map((c) => c.venue), ...planned.map((d) => d.venue)];
       return (
-        <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" badge={done.length + planned.length > 1 ? done.length + planned.length : undefined} summary={names.join(', ')}>
+        <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" size="full" badge={done.length + planned.length > 1 ? done.length + planned.length : undefined} summary={names.join(', ')}>
           <ul className="widget-list">
             {done.map((c) => (
               <li key={c.id} className={c.source === 'swarm' ? 'watch-day-play' : undefined}>
                 {c.source === 'swarm' ? (
                   <>
-                    <div>
+                    <div className="checkin-info">
                       <strong>{c.venue}</strong>
                       <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</div>
                       {c.shout && <div className="small">{c.shout}</div>}
