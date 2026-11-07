@@ -7522,11 +7522,20 @@ a.game-row + .food-h2 {
 
 .source-logos {
   display: inline-flex;
-  gap: 0.25rem;
-  vertical-align: -0.2em;
+  gap: 0.3rem;
+  vertical-align: -0.25em;
 }
 .source-logo {
-  width: 1.1em;
-  height: 1.1em;
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
   flex: none;
+}
+.source-swarm {
+  background: currentColor;
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+.source-tripit {
+  border-radius: 22%;
 }
