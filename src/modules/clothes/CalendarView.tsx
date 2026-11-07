@@ -65,7 +65,7 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
     }
   });
   // The date picked in the jump menu; the calendar only moves once the picker is confirmed (its own check button) and closes.
-  const jumpRef = useRef<HTMLInputElement>(null);
+  const [jumpDate, setJumpDate] = useState('');
   const jumpPicked = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
   const setFilter = (next: string[]) => {
@@ -369,33 +369,27 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
           </div>
           <div className="cal-tools">
             <span className="menu-wrap">
-              <button
-                className="icon-btn"
-                aria-label="Jump to a date"
-                onClick={() => {
-                  const input = jumpRef.current;
-                  if (!input) return;
-                  jumpPicked.current = false;
-                  input.value = visibleMonth + '-01';
-                  // The browser's own date picker; the calendar moves when it is confirmed and closes.
-                  if (typeof input.showPicker === 'function') input.showPicker();
-                  else input.focus();
-                }}
-              >
+              <span className="icon-btn" aria-hidden>
                 <CalendarIcon />
-              </button>
+              </span>
+              {/* The browser's own date picker: this input sits invisibly over the button, so tapping it opens the picker. */}
               <input
-                ref={jumpRef}
                 className="cal-jump-input"
                 type="date"
-                tabIndex={-1}
-                aria-hidden
+                aria-label="Jump to a date"
+                value={jumpDate}
                 min={weeks[0]}
                 max={addDays(weeks[weeks.length - 1], 6)}
-                onChange={() => {
+                onFocus={() => {
+                  jumpPicked.current = false;
+                  setJumpDate(visibleMonth + '-01');
+                }}
+                onChange={(e) => {
                   jumpPicked.current = true;
+                  setJumpDate(e.target.value);
                 }}
                 onBlur={(e) => {
+                  // The picker closing (its check button) is the confirmation.
                   if (!jumpPicked.current) return;
                   jumpPicked.current = false;
                   jumpTo(e.target.value);
