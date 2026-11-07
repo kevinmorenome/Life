@@ -2,6 +2,7 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useR
 import { today } from '../../lib/format';
 import { flagEmoji } from '../countries/flag';
 import type { HomeOn } from '../countries/countries';
+import { isUnconfirmedTrip } from '../trips/pendingTrips';
 import { flagsToShow, tripDayShape } from '../trips/tripLine';
 import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
@@ -566,13 +567,13 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   const pillsHidden = pills.length > MAX_PILLS ? pills.length - (MAX_PILLS - 1) : 0;
   const shownPills = pillsHidden ? pills.slice(0, MAX_PILLS - 1) : pills;
   return (
-    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${trip ? ' in-trip' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
+    <a role="gridcell" className={`cal-day${isToday ? ' today' : ''}${trip ? ' in-trip' : ''}${trip && isUnconfirmedTrip(trip) ? ' trip-pending' : ''}${hasOutfit || marks.length > 0 || trips.length > 0 ? ' has-cells' : ''}`} href={href(`/calendar/${date}`)} aria-label={date} onClick={onClick}>
       {/* The same line and flag for the zoomed-out and zoomed-in looks, where the number is not in the grid. */}
       {shape && <i className={`trip-line trip-line-num ${shape.line}${shape.end ? ' end' : ''}`} aria-hidden />}
       {shape?.end && <i className="trip-end-dot trip-end-dot-num" aria-hidden />}
       <span className={`cal-num${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
       {trip && showFlag && (
-        <span className={`trip-flag trip-flag-num${flagMulti}`} role="img" aria-label={`Trip: ${trip.name}`}>
+        <span className={`trip-flag trip-flag-num${flagMulti}`} role="img" aria-label={`${isUnconfirmedTrip(trip) ? 'Trip to confirm' : 'Trip'}: ${trip.name}`}>
           {flagText}
         </span>
       )}
@@ -591,7 +592,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
             {shape?.end && <i className="trip-end-dot" aria-hidden />}
             <span className={`cell-num${isToday ? ' today' : ''}${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
             {trip && showFlag && (
-              <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: flagCodes.length > 1 ? '2 / span 2' : 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
+              <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: flagCodes.length > 1 ? '2 / span 2' : 2 }} role="img" aria-label={`${isUnconfirmedTrip(trip) ? 'Trip to confirm' : 'Trip'}: ${trip.name}`}>
                 {flagText}
               </span>
             )}

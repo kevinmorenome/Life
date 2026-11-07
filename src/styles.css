@@ -7425,3 +7425,29 @@ a.game-row + .food-h2 {
   flex: 1 1 9rem;
   min-width: 0;
 }
+
+/* A trip drawn from check-ins that you haven't confirmed: a dashed, lighter line and flag. */
+.cal-day.trip-pending .trip-line {
+  background: repeating-linear-gradient(90deg, var(--trip-line) 0 5px, transparent 5px 9px);
+}
+.cal-day.trip-pending .trip-flag,
+.cal-day.trip-pending .trip-end-dot {
+  opacity: 0.6;
+}
+.cal-day.trip-pending .cell-num.trip-start:not(.today),
+.cal-day.trip-pending .cal-num.trip-start:not(.today) {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--trip-line);
+}
+.widget-list li.trip-pending-row {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.trip-pending-actions {
+  display: flex;
+  flex: none;
+}
