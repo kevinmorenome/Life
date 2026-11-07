@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmedStay, isUnconfirmedTrip, pendingOnDate } from './pendingTrips';
+import { confirmedStay, hidePatch, isUnconfirmedTrip, pendingOnDate } from './pendingTrips';
 import type { Trip } from './types';
 
 const trip = (id: string, startDate: string, endDate: string): Trip => ({ id, name: id, startDate, endDate, itemIds: [], extras: [], packed: [], createdAt: '', updatedAt: '' });
@@ -24,5 +24,16 @@ describe('pendingOnDate', () => {
   it('knows an unconfirmed trip by its id, and a confirmed stay is not one', () => {
     expect(isUnconfirmedTrip(stay)).toBe(true);
     expect(isUnconfirmedTrip(confirmedStay(stay, 'now'))).toBe(false);
+  });
+});
+
+describe('hidePatch', () => {
+  const suggestion = { ...trip('trip-s1', '2026-05-01', '2026-05-05'), swarmRef: 's1' };
+  it('hides a suggestion by its ref', () => {
+    expect(hidePatch(suggestion, [suggestion], { swarmTripsDismissed: ['x'] })).toEqual({ swarmTripsDismissed: ['x', 's1'] });
+  });
+  it('hides a stay through the suggestion it overlaps, else by its own id', () => {
+    expect(hidePatch(trip('stay-MX-2026-04-30', '2026-04-30', '2026-05-05'), [suggestion], {})).toEqual({ swarmTripsDismissed: ['s1'] });
+    expect(hidePatch(trip('stay-IT-2026-06-01', '2026-06-01', '2026-06-02'), [suggestion], { staysDismissed: ['a'] })).toEqual({ staysDismissed: ['a', 'stay-IT-2026-06-01'] });
   });
 });

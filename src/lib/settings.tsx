@@ -24,6 +24,8 @@ export interface AppSettings {
   tripitDismissed?: string[];
   /** Trips module: Swarm trips you deleted (`Trip.swarmRef`), so they aren't made again. */
   swarmTripsDismissed?: string[];
+  /** Trips: stays the calendar drew from check-ins (`stay-…` ids) that you said are not trips. */
+  staysDismissed?: string[];
   updatedAt: string;
 }
 

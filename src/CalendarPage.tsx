@@ -14,7 +14,7 @@ import type { Checkin } from './modules/checkins/types';
 import { useHomeOn } from './modules/countries/useHomeOn';
 import { abroadStays, calendarTrips, withoutHidden } from './modules/trips/abroadStays';
 import { checkinCountriesByDay } from './modules/trips/tripLine';
-import { pendingOnDate, confirmedStay } from './modules/trips/pendingTrips';
+import { confirmedStay, hidePatch, pendingOnDate } from './modules/trips/pendingTrips';
 import { hiddenSwarmTrips, newSwarmTrips } from './modules/trips/swarmTrips';
 import type { Trip } from './modules/trips/types';
 import type { CalendarLayer } from './modules/types';
@@ -43,8 +43,9 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
   const drawnTrips = useMemo(() => {
     const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, awayOf);
     const stays = abroadStays(checkins.items, homeOn, 3, awayOf);
-    return calendarTrips(trips.items, withoutHidden(stays, hidden));
-  }, [trips.items, checkins.items, homeOn, awayOf, settings.swarmTripsDismissed]);
+    const dismissed = settings.staysDismissed ?? [];
+    return calendarTrips(trips.items, withoutHidden(stays, hidden)).filter((t) => !dismissed.includes(t.id));
+  }, [trips.items, checkins.items, homeOn, awayOf, settings.swarmTripsDismissed, settings.staysDismissed]);
 
   // Trips Swarm suggests, to confirm here as well as on the Trips page.
   const suggestions = useMemo(
@@ -72,11 +73,9 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
                   <button type="button" className="icon-btn" aria-label={`Confirm ${t.name} as a trip`} onClick={() => void trips.save(t.swarmRef ? t : confirmedStay(t, new Date().toISOString()))}>
                     <CheckIcon />
                   </button>
-                  {t.swarmRef && (
-                    <button type="button" className="icon-btn" aria-label={`Not a trip: hide ${t.name}`} onClick={() => void update({ swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), t.swarmRef!] })}>
-                      <EyeOffIcon />
-                    </button>
-                  )}
+                  <button type="button" className="icon-btn" aria-label={`Not a trip: hide ${t.name}`} onClick={() => void update(hidePatch(t, suggestions, settings))}>
+                    <EyeOffIcon />
+                  </button>
                 </span>
               </li>
             ))}

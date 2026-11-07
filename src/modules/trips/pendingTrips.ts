@@ -20,3 +20,10 @@ export function pendingOnDate(date: string, suggestions: Trip[], drawn: Trip[]):
 
 /** The trip to save when you confirm a drawn stay: a new id, so it is no longer drawn as unconfirmed. */
 export const confirmedStay = (stay: Trip, now: string): Trip => ({ ...stay, id: `trip-${stay.id}`, createdAt: now, updatedAt: now });
+
+/** What hiding a trip to confirm changes: the ref of the Swarm suggestion it is (or overlaps), else the id of the drawn stay. */
+export function hidePatch(t: Trip, suggestions: Trip[], settings: { swarmTripsDismissed?: string[]; staysDismissed?: string[] }): { swarmTripsDismissed?: string[]; staysDismissed?: string[] } {
+  const ref = t.swarmRef ?? suggestions.find((s) => s.startDate <= t.endDate && s.endDate >= t.startDate)?.swarmRef;
+  if (ref) return { swarmTripsDismissed: [...(settings.swarmTripsDismissed ?? []), ref] };
+  return { staysDismissed: [...(settings.staysDismissed ?? []), t.id] };
+}
