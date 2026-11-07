@@ -39,12 +39,13 @@ export function TripList({ trips, items, outfits, plans, suggestions = [], onAdd
     const days = tripDays(t).length;
     return (
       <li key={t.id} className="suggest-row">
-        <div className="suggest-text">
+        {/* Tapping a suggestion opens the calendar on the trip's first day. */}
+        <a className="suggest-text" href={href(`/calendar/${t.startDate}`)}>
           <strong>{t.name}</strong>
           <span className="muted small">
             {[t.destination, `${shortDate(t.startDate)} – ${shortDate(t.endDate)}`, `${days} ${days === 1 ? 'day' : 'days'}`].filter(Boolean).join(' · ')}
           </span>
-        </div>
+        </a>
         {buttons}
       </li>
     );
