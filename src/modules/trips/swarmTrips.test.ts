@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
+import { makeAwayOf } from '../countries/countries';
 import { awayRuns, hiddenSwarmTrips, homeCountry, newSwarmTrips, withoutAirports } from './swarmTrips';
 import type { Trip } from './types';
 
@@ -102,5 +103,29 @@ describe('airports', () => {
   it('still makes the trip when there are other check-ins', () => {
     const run = awayRuns([...home, at(ci('2026-03-10', 'Mexico'), 'Airport', 'Airport', 21.03, -86.87), ci('2026-03-11', 'Mexico')], TODAY);
     expect(run.map((r) => [r.start, r.end])).toEqual([['2026-03-11', '2026-03-11']]);
+  });
+});
+
+describe('a home city', () => {
+  const zagreb = Array.from({ length: 12 }, (_, i) => ci(`2026-02-${String(i + 1).padStart(2, '0')}`, 'Croatia', 'Zagreb'));
+  const checkins = [...zagreb, ci('2026-03-10', 'Croatia', 'Split'), ci('2026-03-11', 'Croatia', 'Split'), ci('2026-04-05', 'Croatia', 'Samobor'), ci('2026-03-20', 'Croatia', 'Zagreb')];
+  const awayOf = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), zagreb);
+  it('makes a trip of days in another city of the home country, named after the city', () => {
+    expect(awayRuns(checkins, TODAY)).toEqual([]);
+    const trips = newSwarmTrips(checkins, [], [], TODAY, NOW, () => 'HR', awayOf);
+    expect(trips.map((t) => [t.name, t.country, t.startDate, t.endDate])).toEqual([['Split', 'HR', '2026-03-10', '2026-03-11']]);
+  });
+  it('starts a trip on the day it leaves home, even when the first check-in of that day is at home', () => {
+    const leaving = (date: string, city: string, hour: string, lat: number): Checkin => ({ ...ci(date, 'Croatia', city), at: Date.parse(`${date}T${hour}:00:00Z`) / 1000, lat, lng: 15.5 });
+    const all = [
+      ...zagreb.map((c) => ({ ...c, lat: 45.81, lng: 15.98 })),
+      leaving('2026-03-10', 'Zagreb', '07', 45.81),
+      leaving('2026-03-10', 'Nin', '18', 44.24),
+      leaving('2026-03-11', 'Vir', '12', 44.3),
+      leaving('2026-03-12', 'Zagreb', '12', 45.81),
+    ];
+    const away = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), all);
+    const trips = newSwarmTrips(all, [], [], TODAY, NOW, () => 'HR', away);
+    expect(trips.map((t) => [t.startDate, t.endDate])).toEqual([['2026-03-10', '2026-03-11']]);
   });
 });

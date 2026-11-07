@@ -10,6 +10,7 @@ import { startTripitAutoSync } from './modules/trips/tripitClient';
 import { startTraktAutoSync } from './modules/watching/traktClient';
 import { processInbox } from './modules/clothes/inboxRunner';
 import { migrateTripPlans } from './modules/trips/migratePlans';
+import { syncPlanCheckins } from './modules/trips/planCheckinsRunner';
 import './styles.css';
 
 startLongTaskLog();
@@ -26,8 +27,10 @@ if (!PREVIEW_LABEL) {
   setAfterPull(async () => {
     await processInbox();
     await migrateTripPlans();
+    await syncPlanCheckins();
   });
   void migrateTripPlans();
+  void syncPlanCheckins();
 }
 void startSync();
 if (!PREVIEW_LABEL) startSwarmAutoSync();

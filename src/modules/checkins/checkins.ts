@@ -17,6 +17,6 @@ export function dayLabel(list: Checkin[]): string {
 }
 
 /** "Café Nero · London" style second line. */
-export function place(c: Checkin): string {
+export function place(c: Pick<Checkin, 'category' | 'city'>): string {
   return [c.category, c.city].filter(Boolean).join(' · ');
 }

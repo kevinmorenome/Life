@@ -24,10 +24,10 @@ export interface TripDayShape {
 
 const isMonday = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() === 1;
 
-/** The shape of a trip on one of its days (the date must be inside the trip). `countryChanged`: see `countryChangedOn`. */
-export function tripDayShape(trip: Pick<Trip, 'startDate' | 'endDate'>, date: string, countryChanged = false): TripDayShape {
+/** The shape of a trip on one of its days (the date must be inside the trip). `countryChanged`: see `flagsOnDay`. */
+export function tripDayShape(trip: Pick<Trip, 'startDate' | 'endDate'>, date: string, newCountry = false): TripDayShape {
   const first = date === trip.startDate;
-  return { line: first ? 'from' : 'through', flag: first || isMonday(date) || countryChanged, start: first, end: date === trip.endDate };
+  return { line: first ? 'from' : 'through', flag: first || isMonday(date) || newCountry, start: first, end: date === trip.endDate };
 }
 
 type TripPlace = Pick<Trip, 'startDate' | 'endDate' | 'country' | 'destination'>;
@@ -39,37 +39,60 @@ const addDays = (date: string, n: number): string => {
 };
 
 /**
- * Where you were on each day you checked in, as an ISO code: the country with the most check-ins that day (ties go to
- * the first code alphabetically). Airports count here: a layover in Amsterdam is a day in the Netherlands.
+ * The countries you checked in from on each day, as ISO codes in the order you were there (check-ins are real Swarm
+ * ones and the ones made from itinerary plans). Airports count: a layover in Amsterdam is a day in the Netherlands.
+ * `skip` leaves some out (check-ins in your home city: being home is no flag).
  */
-export function checkinCountriesByDay(checkins: Pick<Checkin, 'country' | 'date'>[]): Map<string, string> {
-  const counts = new Map<string, Map<string, number>>();
-  for (const c of checkins) {
+export function checkinCountriesByDay(checkins: (Pick<Checkin, 'country' | 'date'> & { at?: number; city?: string })[], skip?: (c: Pick<Checkin, 'country' | 'date'> & { city?: string }) => boolean): Map<string, string[]> {
+  const sorted = [...checkins].sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+  const out = new Map<string, string[]>();
+  for (const c of sorted) {
     const code = checkinCountry(c);
-    if (!code) continue;
-    const day = counts.get(c.date) ?? new Map<string, number>();
-    day.set(code, (day.get(code) ?? 0) + 1);
-    counts.set(c.date, day);
+    if (!code || skip?.(c)) continue;
+    const day = out.get(c.date) ?? [];
+    if (day[day.length - 1] !== code) day.push(code);
+    out.set(c.date, day);
   }
-  const out = new Map<string, string>();
-  for (const [date, day] of counts) out.set(date, [...day.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0]);
   return out;
 }
 
-/**
- * The country to show for a day of a trip: where that day's check-ins were; a day without any stays where the day
- * before was (back to the trip's first day), and before any check-in it is the trip's own country.
- */
-export function countryOnDay(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string>): string | undefined {
-  for (let d = date; d >= trip.startDate; d = addDays(d, -1)) {
-    const seen = byDay.get(d);
-    if (seen) return seen;
-  }
-  return tripCountry(trip);
+/** The countries seen in the `back` days before `date` (within the trip), plus the trip's own country before any check-in. */
+function recentCountries(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>, back: number): Set<string> {
+  const seen = new Set<string>();
+  for (let d = addDays(date, -1), n = 0; d >= trip.startDate && n < back; d = addDays(d, -1), n++) for (const c of byDay.get(d) ?? []) seen.add(c);
+  const own = tripCountry(trip);
+  if (seen.size === 0 && own) seen.add(own);
+  return seen;
 }
 
-/** Whether a day of the trip (not the first) is in another country than the day before it. */
-export function countryChangedOn(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string>): boolean {
-  if (date <= trip.startDate) return false;
-  return countryOnDay(trip, date, byDay) !== countryOnDay(trip, addDays(date, -1), byDay);
+/** Most flags a day shows; a day crossing a border back and forth stays readable. */
+export const MAX_FLAGS = 3;
+
+/** A country counts as new again when you haven't been in it for this many days (a daily commute is not a trip). */
+const BACK = 3;
+
+/**
+ * The flags to draw on a day of a trip: every country you were in on the first day and on each Monday (where a new
+ * week's line begins), and on the other days only the countries you got to that day that you had not been in during
+ * the last few days (a layover included; going back and forth over a border shows no new flag). At most `MAX_FLAGS`.
+ */
+export function flagsOnDay(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>): string[] {
+  const today = [...new Set(byDay.get(date) ?? [])];
+  if (date === trip.startDate || isMonday(date)) {
+    const all = today.length ? today : [...recentCountries(trip, date, byDay, 1)].slice(0, 1);
+    return all.slice(0, MAX_FLAGS);
+  }
+  const before = recentCountries(trip, date, byDay, BACK);
+  return today.filter((c) => !before.has(c)).slice(0, MAX_FLAGS);
+}
+
+/**
+ * What the calendar draws for a day of a trip: the flags and whether to draw a suitcase instead, on a first day or
+ * Monday when no country is known at all. Your home country's flag is left out of a trip abroad (coming home is not
+ * worth a flag), but a trip within your home country keeps it: that flag is the trip's.
+ */
+export function flagsToShow(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>, home?: string): { codes: string[]; unknown: boolean } {
+  const raw = flagsOnDay(trip, date, byDay);
+  const domestic = home !== undefined && tripCountry(trip) === home;
+  return { codes: domestic ? raw : raw.filter((c) => c !== home), unknown: raw.length === 0 && (date === trip.startDate || isMonday(date)) };
 }

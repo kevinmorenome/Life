@@ -7,6 +7,8 @@ import { PREVIEW_LABEL } from './lib/preview';
 import { ClosetReview } from './modules/clothes/ClosetReview';
 import { ChevronRightIcon } from './modules/clothes/icons';
 import { href } from './lib/router';
+import { syncPlanCheckins } from './modules/trips/planCheckinsRunner';
+import { sampleTrip } from './modules/trips/sampleTrip';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
 import { sampleRides } from './modules/rides/sampleRides';
@@ -49,6 +51,18 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
     for (const ride of sampleRides(new Date())) await put('rides', ride);
     notify('rides');
     setMessage('Added sample Bolt and Uber rides. See them on the calendar and in Stats → Rides.');
+  }
+
+  async function addSampleTrip() {
+    const sample = sampleTrip(today(), new Date().toISOString());
+    await put('trips', sample.trip);
+    for (const p of sample.plans) await put('tripitplans', p);
+    for (const c of sample.checkins) await put('checkins', c);
+    await syncPlanCheckins();
+    notify('trips');
+    notify('tripitplans');
+    notify('checkins');
+    setMessage('Added a sample Mexico trip. See the calendar (line and flags) and its day screens.');
   }
 
   async function onExport() {
@@ -213,7 +227,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>
-          <p className="muted small">Adds made-up “needs review” items, takeout orders and Bolt/Uber rides so you can try them out. They stay on this device only.</p>
+          <p className="muted small">Adds made-up “needs review” items, takeout orders, Bolt/Uber rides and a Mexico trip so you can try them out. They stay on this device only.</p>
           <div className="form-actions start">
             <button className="btn" onClick={addSamples}>
               Add sample items to review
@@ -223,6 +237,9 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
             </button>
             <button className="btn" onClick={addSampleRides}>
               Add sample rides
+            </button>
+            <button className="btn" onClick={addSampleTrip}>
+              Add sample trip
             </button>
           </div>
         </section>
