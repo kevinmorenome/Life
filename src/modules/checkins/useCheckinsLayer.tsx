@@ -7,6 +7,7 @@ import type { TripitPlan } from '../../../worker/tripitTypes';
 import { plannedOnDay } from '../trips/planCheckins';
 import type { CalendarLayer } from '../types';
 import { byDate, dayLabel, place } from './checkins';
+import { RemoveCheckinButton } from './RemoveCheckin';
 import type { Checkin } from './types';
 
 /** Swarm check-ins on the shared calendar: a mark on each day and the list on the day screen. */
@@ -31,10 +32,23 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
         <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" badge={done.length + planned.length > 1 ? done.length + planned.length : undefined} summary={names.join(', ')}>
           <ul className="widget-list">
             {done.map((c) => (
-              <li key={c.id}>
-                <strong>{c.venue}</strong>
-                <span className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</span>
-                {c.shout && <span className="small">{c.shout}</span>}
+              <li key={c.id} className={c.source === 'swarm' ? 'watch-day-play' : undefined}>
+                {c.source === 'swarm' ? (
+                  <>
+                    <div>
+                      <strong>{c.venue}</strong>
+                      <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</div>
+                      {c.shout && <div className="small">{c.shout}</div>}
+                    </div>
+                    <RemoveCheckinButton checkin={c} />
+                  </>
+                ) : (
+                  <>
+                    <strong>{c.venue}</strong>
+                    <span className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</span>
+                    {c.shout && <span className="small">{c.shout}</span>}
+                  </>
+                )}
               </li>
             ))}
             {planned.map((d) => (

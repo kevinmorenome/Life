@@ -3,7 +3,7 @@
 // into the `checkins` store as fresh, immutable records with ids `swarm-<check-in id>`.
 // These routes sit behind Cloudflare Access like the sync API; the callback is a browser redirect.
 
-import { upsertStatement } from './records';
+import { insertIfMissingStatement } from './records';
 
 export interface SwarmEnv {
   FOURSQUARE_CLIENT_ID?: string;
@@ -266,7 +266,8 @@ export function d1SwarmStore(db: D1Database): SwarmStore {
         .run();
     },
     async saveCheckins(records, { cursor, historyDone }, now) {
-      const stmt = upsertStatement(db);
+      // Insert-if-missing, so a check-in the user removed in the app isn't brought back by a later fetch.
+      const stmt = insertIfMissingStatement(db);
       await db.batch([
         ...records.map((r) => stmt.bind('checkins', r.id, JSON.stringify(r), now)),
         db
