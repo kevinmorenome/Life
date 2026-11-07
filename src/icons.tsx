@@ -279,3 +279,10 @@ export const MusicIcon = () => (
     <circle cx="17.500" cy="16" r="2.500" />
   </Icon>
 );
+
+/** Two stacked layers: merge two entries into one. */
+export const LayersIcon = () => (
+  <Icon>
+    <path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8 12 3.5ZM3.5 12.5 12 17l8.5-4.5M3.5 16.5 12 21l8.5-4.5" />
+  </Icon>
+);

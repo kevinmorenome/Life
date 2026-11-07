@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDue, REFRESH_AFTER_MS } from './swarmClient';
-import { byDate, dayLabel, moveCheckin, moveCheckins, place } from './checkins';
+import { byDate, dayLabel, moveCheckin, mergeCheckins, moveCheckins, place } from './checkins';
 import type { Checkin } from './types';
 
 const at = (id: string, date: string, time: string, secs: number, extra: Partial<Checkin> = {}): Checkin => ({
@@ -76,5 +76,25 @@ describe('moveCheckins', () => {
   });
   it('skips the ones already on that day', () => {
     expect(moveCheckins(list, new Set(['a']), '2026-10-01', 'now')).toEqual([]);
+  });
+});
+
+describe('mergeCheckins', () => {
+  const swarm = at('s', '2026-09-28', '', 12 * 3600, { venue: 'Curry Bowl', category: 'Sri Lankan Restaurant', city: 'Zagreb' });
+  const plan = at('p', '2026-09-28', '20:00', 20 * 3600, { venue: 'Curry Bowl', category: 'Restaurant', city: 'Zagreb', country: 'Croatia', source: 'plan' });
+  it('keeps the Swarm one and fills what it lacks from the plan one', () => {
+    const r = mergeCheckins(plan, swarm, 'now')!;
+    expect(r.drop.id).toBe('p');
+    expect([r.keep.id, r.keep.time, r.keep.category, r.keep.country, r.keep.at, r.keep.updatedAt]).toEqual(['s', '20:00', 'Sri Lankan Restaurant', 'Croatia', 20 * 3600, 'now']);
+  });
+  it('does not touch a field the kept one already has', () => {
+    const r = mergeCheckins(swarm, { ...plan, source: 'swarm', time: '' }, 'now')!;
+    expect(r.keep.id).toBe('s');
+    expect(r.keep.category).toBe('Sri Lankan Restaurant');
+    expect(r.keep.time).toBe('');
+  });
+  it('refuses two check-ins on different days or the same one twice', () => {
+    expect(mergeCheckins(swarm, { ...plan, date: '2026-09-29' }, 'now')).toBeNull();
+    expect(mergeCheckins(swarm, swarm, 'now')).toBeNull();
   });
 });
