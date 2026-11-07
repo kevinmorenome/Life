@@ -7461,22 +7461,14 @@ a.game-row + .food-h2 {
 .cal-tools .menu-wrap {
   position: relative;
 }
-.cal-jump {
-  left: auto;
-  right: 0;
-  min-width: 220px;
-}
-.cal-jump-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.cal-jump-field input {
-  min-height: 44px;
-  font-size: 1rem;
+/* Hidden: the button opens its native picker. */
+.cal-jump-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
 }
 .cal-day.jump-flash {
   animation: jump-flash 1.2s ease-out;

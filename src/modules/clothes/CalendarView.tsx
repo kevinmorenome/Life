@@ -64,9 +64,8 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
       return [];
     }
   });
-  const [jumpOpen, setJumpOpen] = useState(false);
   // The date picked in the jump menu; the calendar only moves once the picker is confirmed (its own check button) and closes.
-  const [jumpDate, setJumpDate] = useState('');
+  const jumpRef = useRef<HTMLInputElement>(null);
   const jumpPicked = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
   const setFilter = (next: string[]) => {
@@ -194,7 +193,6 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
   const jumpTo = (value: string) => {
     const date = clampToWeeks(value, weeks);
     if (!date) return;
-    setJumpOpen(false);
     scrollToDate(date);
     // The week is built when it comes into view, so look for the day a moment later.
     requestAnimationFrame(() =>
@@ -371,46 +369,38 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
           </div>
           <div className="cal-tools">
             <span className="menu-wrap">
-              <button className="icon-btn" aria-label="Jump to a date" aria-expanded={jumpOpen} onClick={() => {
+              <button
+                className="icon-btn"
+                aria-label="Jump to a date"
+                onClick={() => {
+                  const input = jumpRef.current;
+                  if (!input) return;
                   jumpPicked.current = false;
-                  setJumpDate(visibleMonth + '-01');
-                  setJumpOpen((o) => !o);
-                }}>
+                  input.value = visibleMonth + '-01';
+                  // The browser's own date picker; the calendar moves when it is confirmed and closes.
+                  if (typeof input.showPicker === 'function') input.showPicker();
+                  else input.focus();
+                }}
+              >
                 <CalendarIcon />
               </button>
-              {jumpOpen && (
-                <div className="menu cal-jump" role="dialog" aria-label="Jump to a date">
-                  <label className="cal-jump-field">
-                    <span>Go to</span>
-                    <input
-                      type="date"
-                      autoFocus
-                      value={jumpDate}
-                      min={weeks[0]}
-                      max={addDays(weeks[weeks.length - 1], 6)}
-                      onChange={(e) => {
-                        jumpPicked.current = true;
-                        setJumpDate(e.target.value);
-                      }}
-                      onBlur={() => {
-                        // The picker closing (its check button) is the confirmation.
-                        if (!jumpPicked.current) return;
-                        jumpPicked.current = false;
-                        jumpTo(jumpDate);
-                      }}
-                    />
-                  </label>
-                  <button
-                    className="menu-item"
-                    onClick={() => {
-                      setJumpOpen(false);
-                      scrollToToday(true);
-                    }}
-                  >
-                    Today
-                  </button>
-                </div>
-              )}
+              <input
+                ref={jumpRef}
+                className="cal-jump-input"
+                type="date"
+                tabIndex={-1}
+                aria-hidden
+                min={weeks[0]}
+                max={addDays(weeks[weeks.length - 1], 6)}
+                onChange={() => {
+                  jumpPicked.current = true;
+                }}
+                onBlur={(e) => {
+                  if (!jumpPicked.current) return;
+                  jumpPicked.current = false;
+                  jumpTo(e.target.value);
+                }}
+              />
             </span>
             <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
               <FilterIcon />
