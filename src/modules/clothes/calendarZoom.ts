@@ -1,10 +1,10 @@
 import { addDays, addMonths } from './calendar';
 
-/** How much of each day the calendar shows: dots, a photo, or titles. */
-export const ZOOMS = ['compact', 'standard', 'detail'] as const;
+/** How much of each day the calendar shows: dots, a grid of icons, titles, or a whole week with every entry. */
+export const ZOOMS = ['compact', 'standard', 'detail', 'week'] as const;
 export type Zoom = (typeof ZOOMS)[number];
 
-/** A continuous zoom runs from 0 (compact) to 2 (detail); the levels sit on the whole numbers. */
+/** A continuous zoom runs from 0 (compact) to 3 (week); the levels sit on the whole numbers. */
 export const MAX_ZOOM = ZOOMS.length - 1;
 
 /** How far the fingers must spread to move one level. */
@@ -40,7 +40,19 @@ export function weekDays(start: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
-/** The month a week belongs to for the title: the one its Thursday is in (as ISO weeks do). */
+/**
+ * The month a week belongs to for the title: the one its last day (Sunday) is in. A week that holds the 1st has the
+ * new month's label right above it, so the title changes together with the label you see.
+ */
 export function monthOfWeek(start: string): string {
-  return addDays(start, 3).slice(0, 7);
+  return addDays(start, 6).slice(0, 7);
+}
+
+/**
+ * First month of the calendar list: a year before `nowMonth`, or the month asked for, or earlier when
+ * there is data further back (`dates`: the oldest date of each source; missing ones are ignored).
+ */
+export function calendarStart(nowMonth: string, month: string | undefined, dates: (string | undefined)[]): string {
+  const oldest = dates.reduce<string>((min, d) => (d && d.slice(0, 7) < min ? d.slice(0, 7) : min), addMonths(nowMonth, -12));
+  return month && month < oldest ? month : oldest;
 }

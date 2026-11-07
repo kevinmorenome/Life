@@ -1,12 +1,16 @@
 import { authorize, type AuthEnv } from './auth';
 import { checkinAuthorized, handleCheckin, isCheckinPath, type CheckinEnv } from './checkin';
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
+import { handleFoodPhotoImage, handleFoodPhotos, searchAllPhotos } from './foodPhotos';
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
+import { d1StatsfmStore, handleStatsfm, isStatsfmPath } from './statsfm';
 import { d1SwarmStore, handleSwarm, isSwarmPath, type SwarmEnv } from './swarm';
+import { d1TripitStore, handleTripit, isTripitPath, type TripitEnv } from './tripit';
+import { d1TraktStore, handleTrakt, isTraktPath, type TraktEnv } from './trakt';
 import { PULL_LIMIT, validateChanges, type Change, type PullResponse } from './protocol';
 
-interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv {
+interface Env extends AuthEnv, McpEnv, CheckinEnv, SwarmEnv, TraktEnv, TripitEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   /** Set on PR preview versions: they read real data but never write it. */
@@ -52,6 +56,7 @@ export default {
         now: new Date(),
         newId: () => crypto.randomUUID(),
         fetchPhoto,
+        searchPhotos: (input) => searchAllPhotos(input, (i, init) => fetch(i, init)),
       });
     }
 
@@ -67,6 +72,42 @@ export default {
         // Not the bare global: Workers throw "Illegal invocation" when it's called as a method of another object.
         fetch: (input, init) => fetch(input, init),
       });
+    }
+
+    if (isTraktPath(url.pathname)) {
+      return handleTrakt(request, url.pathname, {
+        env,
+        store: d1TraktStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (isTripitPath(url.pathname)) {
+      return handleTripit(request, url.pathname, {
+        env,
+        store: d1TripitStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (isStatsfmPath(url.pathname)) {
+      return handleStatsfm(request, url.pathname, {
+        ...d1StatsfmStore(env.DB),
+        readOnly: env.READ_ONLY === 'true',
+        now: new Date(),
+        fetch: (input, init) => fetch(input, init),
+      });
+    }
+
+    if (url.pathname === '/api/food/photos' && request.method === 'GET') {
+      return handleFoodPhotos(url, (i, init) => fetch(i, init));
+    }
+    if (url.pathname === '/api/food/photo-image' && request.method === 'GET') {
+      return handleFoodPhotoImage(url, (i, init) => fetch(i, init));
     }
 
     if (url.pathname === '/api/sync/pull' && request.method === 'GET') {

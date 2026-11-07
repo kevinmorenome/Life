@@ -100,4 +100,10 @@ describe('planImport', () => {
     expect(plan.write.map((d) => d.id)).toEqual([parsed[0].id]);
     expect(plan.unchanged).toBe(parsed.length - 1);
   });
+
+  it('replaces days inferred from Swarm, but not ones set by hand', () => {
+    const inferred: WorkDay = { id: '2025-10-01', status: 'office', source: 'swarm', updatedAt: '' };
+    const report: WorkDay = { id: '2025-10-01', status: 'office', arrive: '10:04', leave: '18:18', source: 'report', updatedAt: NOW };
+    expect(planImport([report], [inferred]).write).toEqual([report]);
+  });
 });

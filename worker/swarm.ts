@@ -14,15 +14,22 @@ export interface Connection {
   token: string;
   /** createdAt (epoch seconds) of the newest check-in stored so far. */
   cursor: number;
+  /** Whether every page of history has been walked once; until then each fetch starts from the newest again. */
+  historyDone: boolean;
   lastSync: number | null;
+}
+
+export interface SyncProgress {
+  cursor: number;
+  historyDone: boolean;
 }
 
 /** Where the OAuth token lives. Faked in tests. */
 export interface SwarmStore {
   get(): Promise<Connection | null>;
   connect(token: string): Promise<void>;
-  /** Writes check-in records and moves the cursor in one go. */
-  saveCheckins(records: CheckinRecord[], cursor: number, now: number): Promise<void>;
+  /** Writes check-in records and saves the progress in one go. */
+  saveCheckins(records: CheckinRecord[], progress: SyncProgress, now: number): Promise<void>;
   disconnect(): Promise<void>;
 }
 
@@ -61,6 +68,7 @@ const TOKEN = 'https://foursquare.com/oauth2/access_token';
 const CHECKINS = 'https://api.foursquare.com/v2/users/self/checkins';
 /** Foursquare API versioning date; responses keep the shape they had on this day. */
 const VERSION = '20231010';
+/** The most the API returns per request. */
 const PAGE = 250;
 /** Pages per request, to stay well inside the Worker's subrequest limit; the client asks again while `more`. */
 const MAX_PAGES = 8;
@@ -178,40 +186,48 @@ export async function handleSwarm(request: Request, pathname: string, ctx: Swarm
   if (route === 'sync' && request.method === 'POST') {
     const conn = await ctx.store.get();
     if (!conn) return json({ error: 'Swarm is not connected' }, 409);
-    return sync(conn, ctx);
+    const offset = Number(new URL(request.url).searchParams.get('offset'));
+    return sync(conn, ctx, Number.isInteger(offset) && offset > 0 ? offset : 0);
   }
 
   return json({ error: 'Not found' }, 404);
 }
 
-async function sync(conn: Connection, ctx: SwarmContext): Promise<Response> {
-  let cursor = conn.cursor;
+/**
+ * Pages through `users/self/checkins` newest first with `offset`, the only paging the API documents (it
+ * ignores `sort` and `afterTimestamp`). The first time, the client keeps asking with the `offset` it was
+ * given back until history is exhausted; after that a fetch stops at the first check-in already stored.
+ * Re-reading a page is harmless: records are upserted by id.
+ */
+async function sync(conn: Connection, ctx: SwarmContext, offset: number): Promise<Response> {
+  let pos = offset;
+  let newest = conn.cursor;
   let added = 0;
-  let more = false;
-  for (let page = 0; page < MAX_PAGES; page++) {
+  let finished = false;
+  for (let page = 0; page < MAX_PAGES && !finished; page++) {
     const url = new URL(CHECKINS);
     url.search = new URLSearchParams({
       oauth_token: conn.token,
       v: VERSION,
-      sort: 'oldestfirst',
       limit: String(PAGE),
-      afterTimestamp: String(cursor),
+      offset: String(pos),
     }).toString();
     const res = await ctx.fetch(url.toString());
     if (res.status === 401) return json({ error: 'Swarm sign-in expired: connect again', reconnect: true }, 409);
     if (!res.ok) return json({ error: `Swarm answered ${res.status}` }, 502);
     const body = (await res.json()) as { response?: { checkins?: { items?: RawCheckin[] } } };
     const items = body.response?.checkins?.items ?? [];
-    const records = items.map((i) => checkinRecord(i, ctx.now)).filter((r): r is CheckinRecord => r !== null);
+    // Once history is complete, anything at or before the cursor is already stored, and so is everything after it.
+    const fresh = conn.historyDone ? items.filter((i) => (i.createdAt ?? 0) > conn.cursor) : items;
+    const records = fresh.map((i) => checkinRecord(i, ctx.now)).filter((r): r is CheckinRecord => r !== null);
     // The cursor advances over every item, including ones we skip, so they aren't asked for again.
-    const newest = items.reduce((max, i) => Math.max(max, i.createdAt ?? 0), cursor);
-    await ctx.store.saveCheckins(records, newest, ctx.now.getTime());
+    newest = fresh.reduce((max, i) => Math.max(max, i.createdAt ?? 0), newest);
+    finished = items.length === 0 || fresh.length < items.length;
+    pos += items.length;
+    await ctx.store.saveCheckins(records, { cursor: newest, historyDone: conn.historyDone || finished }, ctx.now.getTime());
     added += records.length;
-    if (items.length < PAGE || newest === cursor) break;
-    cursor = newest;
-    more = page === MAX_PAGES - 1;
   }
-  return json({ ok: true, added, more });
+  return json({ ok: true, added, more: !finished, offset: pos });
 }
 
 /** Back to Settings, with the outcome in the query string for the page to show. */
@@ -234,10 +250,10 @@ export function d1SwarmStore(db: D1Database): SwarmStore {
   return {
     async get() {
       const row = await db
-        .prepare('SELECT token, cursor, last_sync FROM integrations WHERE name = ?1')
+        .prepare('SELECT token, cursor, history_done, last_sync FROM integrations WHERE name = ?1')
         .bind('swarm')
-        .first<{ token: string; cursor: number; last_sync: number | null }>();
-      return row ? { token: row.token, cursor: row.cursor, lastSync: row.last_sync } : null;
+        .first<{ token: string; cursor: number; history_done: number; last_sync: number | null }>();
+      return row ? { token: row.token, cursor: row.cursor, historyDone: row.history_done === 1, lastSync: row.last_sync } : null;
     },
     async connect(token) {
       // Keeps the cursor when reconnecting, so history isn't fetched twice.
@@ -249,11 +265,13 @@ export function d1SwarmStore(db: D1Database): SwarmStore {
         .bind(token)
         .run();
     },
-    async saveCheckins(records, cursor, now) {
+    async saveCheckins(records, { cursor, historyDone }, now) {
       const stmt = upsertStatement(db);
       await db.batch([
         ...records.map((r) => stmt.bind('checkins', r.id, JSON.stringify(r), now)),
-        db.prepare('UPDATE integrations SET cursor = ?1, last_sync = ?2 WHERE name = ?3').bind(cursor, now, 'swarm'),
+        db
+          .prepare('UPDATE integrations SET cursor = ?1, history_done = ?2, last_sync = ?3 WHERE name = ?4')
+          .bind(cursor, historyDone ? 1 : 0, now, 'swarm'),
       ]);
     },
     async disconnect() {

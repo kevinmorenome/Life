@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api -X DELETE repos/kevinmorenome/Life/git/refs/heads/*)"
+    ]
+  }
+}

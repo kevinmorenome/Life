@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
+import { calendarStart, monthOfWeek, mondayOf, nearestLevel, pinchZoom, weekDays, weekStarts } from './calendarZoom';
 
 describe('pinchZoom', () => {
   it('follows the fingers continuously and stays within the levels', () => {
@@ -8,7 +8,7 @@ describe('pinchZoom', () => {
     expect(pinchZoom(1, 100, 100 / 1.9)).toBeCloseTo(0, 5);
     expect(pinchZoom(1, 100, 140)).toBeGreaterThan(1);
     expect(pinchZoom(1, 100, 140)).toBeLessThan(2);
-    expect(pinchZoom(1, 100, 1000)).toBe(2);
+    expect(pinchZoom(1, 100, 1000)).toBe(3);
     expect(pinchZoom(1, 100, 1)).toBe(0);
   });
 
@@ -23,7 +23,8 @@ describe('nearestLevel', () => {
     expect(nearestLevel(0.6)).toBe(1);
     expect(nearestLevel(1.4)).toBe(1);
     expect(nearestLevel(1.6)).toBe(2);
-    expect(nearestLevel(5)).toBe(2);
+    expect(nearestLevel(2.6)).toBe(3);
+    expect(nearestLevel(5)).toBe(3);
     expect(nearestLevel(-1)).toBe(0);
   });
 });
@@ -43,9 +44,23 @@ describe('weeks', () => {
     expect(weekDays('2026-10-26')).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01']);
   });
 
-  it('titles a week by the month of its Thursday', () => {
+  it('titles a week by the month of its last day, matching the month label drawn above it', () => {
     expect(monthOfWeek('2026-09-28')).toBe('2026-10');
-    expect(monthOfWeek('2026-10-26')).toBe('2026-10');
+    expect(monthOfWeek('2026-10-26')).toBe('2026-11');
+    expect(monthOfWeek('2026-10-19')).toBe('2026-10');
     expect(monthOfWeek('2026-08-31')).toBe('2026-09');
+  });
+});
+
+describe('calendarStart', () => {
+  it('defaults to a year back', () => {
+    expect(calendarStart('2026-10', undefined, [])).toBe('2025-10');
+    expect(calendarStart('2026-10', undefined, [undefined, '2026-03-04'])).toBe('2025-10');
+  });
+  it('reaches back to the oldest data', () => {
+    expect(calendarStart('2026-10', undefined, ['2019-05-20', '2024-01-01', undefined])).toBe('2019-05');
+  });
+  it('still includes a month asked for further back', () => {
+    expect(calendarStart('2026-10', '2015-01', ['2019-05-20'])).toBe('2015-01');
   });
 });

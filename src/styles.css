@@ -10,6 +10,7 @@
   /* Neutral tile behind photos, so cut-out clothes aren't tinted. */
   --photo-bg: #efefed;
   --danger: #b4382f;
+  --warn: #b7791f;
   --radius: 12px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   color-scheme: light;
@@ -27,6 +28,7 @@
     --accent-soft: #23332e;
     --photo-bg: #2a2b30;
     --danger: #e0685f;
+    --warn: #e0a84f;
     --shadow: none;
     color-scheme: dark;
   }
@@ -80,25 +82,13 @@ ul {
 
 /* Layout */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  /* Part of the page, not a bar: no background or border, it scrolls away with the content. */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 16px;
-  padding-top: max(0.6rem, env(safe-area-inset-top));
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.topbar-hidden {
-  transform: translateY(-100%);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .topbar {
-    transition: transform 0.2s ease;
-  }
+  padding: 0.35rem 8px 0.25rem 16px;
+  padding-top: max(0.35rem, env(safe-area-inset-top));
 }
 .brand-page {
   margin: 0;
@@ -109,10 +99,16 @@ ul {
   color: var(--muted);
 }
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--text);
   text-decoration: none;
+}
+.brand-mark {
+  height: 1.3rem;
+  width: auto;
+  display: block;
 }
 .container {
   max-width: 960px;
@@ -561,9 +557,6 @@ a:focus-visible {
   color: #1c1d20;
   font-size: 0.85rem;
   text-align: center;
-}
-.preview-banner + .topbar {
-  padding-top: 0.6rem;
 }
 
 /* Closet grid */
@@ -1496,6 +1489,60 @@ a:focus-visible {
   margin: 0;
   color: var(--text);
   text-decoration: none;
+}
+/* Trips found in Swarm check-ins: a flat hairline list with icon buttons. */
+.suggest-list {
+  display: grid;
+}
+.suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--hairline, var(--border));
+}
+.suggest-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+/* .icon-btn pulls its right neighbour over it (margin-right: -10px); here the two buttons sit side by side. */
+.suggest-row .icon-btn {
+  flex: none;
+  margin-right: 0;
+}
+.suggest-row {
+  gap: 0.5rem;
+}
+.suggest-hidden {
+  margin-top: 1rem;
+}
+.suggest-hidden summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+/* Trip pictures: a soft-cornered cover, flat on the page (content gets no plate). */
+.trip-photo {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin: 0 0 0.75rem;
+}
+.trip-cover {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 0.4rem;
+}
+.trip-photo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 progress {
   width: 100%;
@@ -3109,6 +3156,17 @@ progress {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border-top: 1px solid var(--border);
+  /* The list holds every week of the history (years of them): the browser skips layout and paint for the
+     ones off screen. The placeholder is exactly a row's height (--row-h + the 1px border), so nothing jumps
+     and the zoom / scroll code can still read any row's position. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--row-h) + 1px);
+}
+/* A week whose days aren't built yet (see WeekRow): same height as a built one. */
+.cal-week-blank {
+  display: block;
+  height: calc(var(--row-h) + 1px);
+  box-sizing: border-box;
 }
 .cal-day {
   position: relative;
@@ -3141,6 +3199,17 @@ progress {
   font-weight: 700;
 }
 /* The three looks of a day sit on top of each other and fade as --z moves between the levels. */
+/* Only the looks that are visible at the current zoom are laid out and painted (the rest are skipped by the
+   browser, not removed, so the pinch can still cross-fade them). data-lo / data-hi are floor / ceil of --z,
+   set from CalendarView. Dots show for z < 1, the icon grid for 0 < z < 2, the pills and the work icon for 1 < z < 3, the week list for z > 2. */
+.cal:not([data-lo="0"]) .cal-dots,
+.cal[data-hi="0"] .cal-cells,
+.cal:is([data-lo="2"], [data-lo="3"]) .cal-cells,
+.cal:is([data-hi="0"], [data-hi="1"], [data-lo="3"]) .cal-pills,
+.cal:is([data-hi="0"], [data-hi="1"]) .cal-work,
+.cal:not([data-hi="3"]) .cal-full {
+  content-visibility: hidden;
+}
 .cal-layer {
   position: absolute;
   pointer-events: none;
@@ -3224,9 +3293,6 @@ progress {
 .dot.mark-trip {
   background: var(--tone-blue);
 }
-.dot.mark-place {
-  background: var(--tone-blue);
-}
 .dot.mark-off {
   background: none;
   box-shadow: inset 0 0 0 1px var(--muted);
@@ -3246,9 +3312,6 @@ progress {
 }
 .day-badge.mark-office {
   color: var(--accent);
-}
-.day-badge.mark-place {
-  color: var(--tone-blue);
 }
 .day-badge.mark-trip {
   color: var(--tone-blue);
@@ -3284,10 +3347,6 @@ progress {
   background: var(--tone-blue);
   color: #fff;
 }
-.pill.mark-place {
-  background: var(--accent-soft);
-  color: var(--text);
-}
 .pill.mark-home {
   background: var(--accent-soft);
   color: var(--text);
@@ -3319,13 +3378,16 @@ progress {
 .pill-outfit.planned {
   opacity: 0.6;
 }
+.pill-more {
+  font-weight: 600;
+}
 .pill-trip {
   background: var(--accent-soft);
 }
 .cal-today {
   position: absolute;
   left: 12px;
-  bottom: 12px;
+  bottom: calc(var(--dock-clear, 0px) + 12px);
   min-height: 44px;
   padding: 0 1.1rem;
   border: 1px solid var(--border);
@@ -3337,20 +3399,1132 @@ progress {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
   cursor: pointer;
 }
-.work-day-section {
-  margin: 0.5rem 0 1rem;
+/* ───────────────────────── Liquid Glass ─────────────────────────
+   Controls are a translucent material floating above the content: blurred and
+   saturated backdrop, a bright rim on top, a soft inner glow, and a deep, soft
+   shadow. Everything is driven by the --glass-* tokens so light and dark share
+   the rules. Content (photos, lists, text) stays flat and sits underneath. */
+:root {
+  --glass-bg: rgb(255 255 255 / 0.55);
+  --glass-bg-strong: rgb(255 255 255 / 0.72);
+  --glass-tint: rgb(255 255 255 / 0.35);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-edge: rgb(255 255 255 / 0.35);
+  --glass-line: rgb(60 60 67 / 0.12);
+  --glass-glow: rgb(255 255 255 / 0.5);
+  --glass-shadow: 0 8px 32px rgb(31 38 54 / 0.14), 0 1px 3px rgb(31 38 54 / 0.08);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-blur-heavy: blur(32px) saturate(190%);
+  --border: rgb(60 60 67 / 0.14);
+  --shadow: 0 4px 20px rgb(31 38 54 / 0.06);
+  --radius: 20px;
 }
-.work-day-section .work-choices {
-  margin: 0.5rem 0;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgb(44 46 54 / 0.5);
+    --glass-bg-strong: rgb(36 38 46 / 0.72);
+    --glass-tint: rgb(255 255 255 / 0.06);
+    --glass-rim: rgb(255 255 255 / 0.22);
+    --glass-edge: rgb(255 255 255 / 0.06);
+    --glass-line: rgb(255 255 255 / 0.1);
+    --glass-glow: rgb(255 255 255 / 0.08);
+    --glass-shadow: 0 10px 36px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+          --border: rgb(255 255 255 / 0.1);
+    --shadow: none;
+  }
 }
-.work-day-section .work-choice {
-  min-height: 64px;
-  flex-direction: row;
-  gap: 0.5rem;
+
+/* The glass material, shared by every floating control. */
+.bottom-nav,
+.sheet,
+.menu,
+.select-bar,
+.filter-head,
+.review-sheet-head,
+.sticky-actions,
+.cal-head,
+.card,
+.btn,
+.chip,
+.tab-plus,
+.card-fab,
+input,
+select,
+textarea {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
-.work-day-section .work-choice svg {
+
+/* The bottom dock floats as a glass pill; the top of the page is plain. */
+.bottom-nav {
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0.3rem 8px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 34px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 22px var(--glass-glow);
+}
+.container.with-nav {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+.select-bar {
+  right: 12px;
+  bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  left: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sticky-actions {
+  bottom: 8px;
+  margin-top: 0.5rem;
+  padding: 0.6rem 12px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.filter-head,
+.cal-head {
+  border-bottom: 1px solid var(--glass-line);
+  background: var(--glass-bg-strong);
+  box-shadow: inset 0 -1px 0 var(--glass-glow);
+}
+.review-sheet-head {
+  background: var(--glass-bg-strong);
+}
+
+/* The selected tab is a lens of glass that sits in the bar. */
+.tab {
+  position: relative;
+  margin: 2px 0;
+  border-radius: 26px;
+}
+.tab[aria-current='page'] {
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 0 0 1px var(--glass-edge), 0 2px 10px rgb(31 38 54 / 0.1);
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tab {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  }
+}
+.tab-plus {
+  border: 1px solid var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+  color: var(--accent-text);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 -6px 12px rgb(0 0 0 / 0.12);
+}
+
+/* Sheets and menus: panes of frosted glass. */
+.sheet-backdrop,
+.review-backdrop {
+  background: rgb(15 20 30 / 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  max-width: 520px;
+  margin: 0 auto calc(8px + env(safe-area-inset-bottom));
+  padding-bottom: 0.75rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 32px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-item:active,
+.menu-item:active {
+  background: var(--glass-tint);
+}
+.menu {
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.review-sheet {
+  border-radius: 32px 32px 0 0;
+  box-shadow: 0 -10px 40px rgb(0 0 0 / 0.18), inset 0 1px 0 var(--glass-rim);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet,
+  .menu {
+    animation: glass-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    transform-origin: bottom center;
+  }
+  .menu {
+    transform-origin: top left;
+  }
+  .menu-end {
+    transform-origin: top right;
+  }
+}
+@keyframes glass-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+}
+
+/* Surfaces and controls. */
+.card {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.btn {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.btn:active,
+.chip:active,
+.card-fab:active,
+.tab-plus:active {
+  transform: scale(0.96);
+}
+.btn-primary {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -6px 10px rgb(0 0 0 / 0.1);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chip {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+input,
+select,
+textarea {
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.08);
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+.card-fab-done {
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--accent-text);
+}
+.icon-btn {
+  transition: background 0.2s ease;
+}
+.icon-btn:active {
+  background: var(--glass-tint);
+}
+.filter-count {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Browsers without backdrop-filter get a more opaque pane so text stays legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+/* Respect users who ask for less transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-bg-strong: var(--surface);
+  }
+}
+
+/* Round icon buttons that carry their own border (calendar zoom, etc.) become small glass lenses. */
+.cal-tools .icon-btn {
+  margin-right: 0;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* ───────────── Liquid Glass: the closet ─────────────
+   Pieces float on the page, controls float above
+   them, and the item page shows its photo on a lit glass stage. */
+:root {
+  --plate: linear-gradient(160deg, var(--glass-bg-strong), var(--glass-bg));
+  --plate-shadow: 0 6px 22px rgb(31 38 54 / 0.09), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+}
+/* Closet / Outfits switch: a glass track with a raised lens on the active side. */
+.seg {
+  position: relative;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 4px rgb(31 38 54 / 0.1), 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.seg button {
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+.seg button[aria-selected='true'] {
+  border-color: var(--glass-edge);
+  background: var(--plate);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+}
+
+/* Search is a glass capsule; filter and select are glass lenses beside it. */
+.search-row {
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+.search-row input {
+  min-height: 48px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 4px rgb(31 38 54 / 0.08), 0 1px 0 var(--glass-rim);
+}
+.filter-btn {
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.filter-btn:active {
+  transform: scale(0.94);
+}
+.filter-btn[aria-pressed='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--glass-bg-strong));
+}
+.filter-count {
+  top: -3px;
+  right: -3px;
+}
+
+/* Category tabs become a row of glass pills. */
+.category-tabs {
+  gap: 0.45rem;
+  margin: 0.75rem -16px 0.25rem;
+  padding: 6px 16px 10px;
+  border-bottom: 0;
+}
+.category-tabs button {
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  margin: 0;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.category-tabs button[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 20%, var(--glass-bg-strong));
+  color: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+.category-tabs .count {
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* Item grid: pieces float on the page, lifted by a soft contact shadow; glass stays on the controls. */
+.closet-grid,
+.outfit-cards {
+  gap: 6px 4px;
+  margin: 0 -8px;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+.closet-grid li,
+.outfit-cards li {
+  position: relative;
+  min-width: 0;
+  border: 0;
+  border-radius: 24px;
+  background: none;
+  box-shadow: none;
+}
+.outfit-cards li {
+  padding: 0.75rem;
+}
+.closet-tile {
+  padding: 0.4rem 0.45rem 0.65rem;
+}
+.closet-tile .thumb {
+  border-radius: 18px;
+  filter: drop-shadow(0 10px 10px rgb(31 38 54 / 0.2));
+}
+.tile-name,
+.tile-meta {
+  padding: 0 0.25rem;
+}
+.closet-tile .thumb-empty {
+  filter: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .closet-tile,
+  .outfit-card {
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  .closet-tile:active,
+  .outfit-card:active {
+    transform: scale(0.96);
+  }
+}
+.closet-tile:active .thumb {
+  opacity: 1;
+}
+
+/* Tile badges: small glass beads. */
+.fav-mark,
+.review-mark,
+.select-mark {
+  top: 0.55rem;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.fav-mark {
+  right: 0.55rem;
+  color: #e5395b;
+}
+.review-mark {
+  left: 0.55rem;
+}
+.select-mark {
+  right: 0.55rem;
+  width: 28px;
+  height: 28px;
+}
+.fav-mark svg,
+.review-mark svg {
+  width: 16px;
+  height: 16px;
+}
+.tile-select[aria-pressed='true'] .thumb {
+  outline: 0;
+}
+/* A selected piece gets a glass lens around it. */
+.closet-grid li:has(.tile-select[aria-pressed='true']) {
+  border: 1px solid var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 14%, var(--glass-bg));
+  box-shadow: 0 0 0 2px var(--accent), var(--plate-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.tile-select[aria-pressed='true'] .select-mark {
+  border-color: var(--glass-rim);
+  background: var(--accent);
+}
+.outfit-card-name {
+  bottom: 0.35rem;
+}
+
+/* Nudges at the top of the closet. */
+.today-prompt {
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+}
+
+/* Item page: the photo stands on a lit glass stage; sections are glass panes. */
+.hero {
+  position: relative;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 36px;
+  background:
+    radial-gradient(80% 60% at 50% 38%, var(--glass-bg-strong), transparent 72%),
+    var(--plate);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 30px var(--glass-glow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.hero .thumb-large {
+  filter: drop-shadow(0 14px 18px rgb(31 38 54 / 0.22));
+}
+.hero-top .back {
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 3px 10px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+}
+.hero-pill {
+  justify-self: center;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  font-size: 0.9rem;
+}
+.item-detail .card {
+  border: 1px solid var(--glass-edge);
+  background: var(--plate);
+  box-shadow: var(--plate-shadow);
+}
+.item-detail .rows > div,
+.flat-list li,
+.filter-body section {
+  border-color: var(--glass-line);
+}
+.item-detail .chip-static {
+  border: 1px solid var(--glass-edge);
+  background: color-mix(in srgb, var(--tag-bg) 70%, var(--glass-bg));
+}
+.use-with-card .board {
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: var(--plate);
+  box-shadow: var(--plate-shadow);
+}
+
+/* Filter page, review drawer: same glass, lighter on the content. */
+.filter-head {
+  border-radius: 0 0 28px 28px;
+  box-shadow: var(--glass-shadow), inset 0 -1px 0 var(--glass-glow);
+}
+.review-sheet-head {
+  box-shadow: inset 0 -1px 0 var(--glass-line);
+}
+.review-handle {
+  background: var(--text);
+  opacity: 0.25;
+}
+.tile-select {
+  min-width: 0;
+  overflow: hidden;
+}
+.tile-select .tile-name,
+.tile-select .tile-meta {
+  display: block;
+  max-width: 100%;
+}
+
+/* Calendar header: same plain page colour as the top of the screen. */
+.cal-head {
+  background: var(--bg);
+  border-bottom-color: var(--glass-line);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The dock shrinks while you scroll down and grows back when you scroll up. It only animates `transform`, which the
+   GPU does on its own: animating width, padding or the icon sizes would re-lay-out the dock (and re-blur the glass
+   behind it) on every frame. The nested ＋ needs no blur of its own: it can only see the dock's background. */
+.bottom-nav {
+  transform-origin: 50% 100%;
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+.bottom-nav-compact {
+  transform: translateY(4px) scale(0.78);
+}
+.bottom-nav .tab-plus {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
+  .tab-lens {
+    transition: none;
+  }
+}
+
+/* Smooth tab changes: the lens glides to the new tab, the page fades in. */
+.tab-lens {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: calc(8px + var(--col, 0) * (100% - 16px) / 5 + 4px);
+  width: calc((100% - 16px) / 5 - 8px);
+  border: 1px solid var(--glass-edge);
+  border-radius: 26px;
+  background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 10px rgb(31 38 54 / 0.1);
+  pointer-events: none;
+  transition: transform 0.42s cubic-bezier(0.3, 1.25, 0.4, 1);
+}
+.bottom-nav .tab {
+  z-index: 1;
+}
+.bottom-nav .tab[aria-current='page'] {
+  background: none;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  main.container {
+    animation: page-in 0.28s ease-out;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-lens {
+    transition: none;
+  }
+}
+
+/* ───────────── Liquid Glass: the rule ─────────────
+   GLASS is the control layer that floats above the page: dock, ＋, buttons, search, pills and chips,
+   segmented switches, tappable field values, menus, sheets, badges on photos, sticky action bars.
+   CONTENT is flat on the page: the hero, photos, grids, sections, stat tiles, settings groups and
+   lists. They get no plate, border or blur; hairlines and spacing separate them. */
+.card:not(.today-prompt):not(.pack-progress) {
+  padding: 1rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  margin-bottom: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.card.tile,
+.card.insight,
+li.card {
+  border-bottom: 0;
+}
+.item-detail .card,
+.item-detail .total-use {
+  border: 0;
+  border-bottom: 1px solid var(--glass-line);
+  background: none;
+  box-shadow: none;
+}
+.module-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Item and outfit pages: the photo floats on the page. */
+.hero {
+  margin: 0 0 1rem;
+  padding: 0.25rem 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.hero-pill {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+.hero-pill .muted {
+  color: inherit;
+}
+.use-with-card .board {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.item-detail .chip-static {
+  box-shadow: none;
+}
+
+/* Values you can tap are controls, so they are glass capsules. */
+.field-pill {
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.field-pill:active {
+  transform: scale(0.97);
+}
+
+/* Office / Home / Trip / Day off: tappable choices are glass controls. */
+.work-choice {
+  border: 1px solid var(--glass-edge);
+  border-radius: 24px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.work-choice:active {
+  transform: scale(0.96);
+}
+.work-choice[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: color-mix(in srgb, var(--accent) 20%, var(--glass-bg-strong));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 var(--glass-rim);
+}
+
+/* A second switch under another one is a sub-section: tucked under it, narrower, shorter and lighter,
+   so the two read as one group (Clothes | Work → Overview | Spending | …). */
+.seg-sub {
+  margin: -0.5rem 14px 1rem;
+  padding: 3px;
+  gap: 2px;
+  border-color: transparent;
+  border-radius: 0 0 22px 22px;
+  background: color-mix(in srgb, var(--glass-tint) 55%, transparent);
+  box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.08);
+}
+.seg-sub button {
+  min-height: 34px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+}
+.seg-sub button[aria-selected='true'] {
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+}
+
+/* Add-item drawer: the line at the top is the grip; drag it down to close. */
+.drawer-grab {
+  padding: 0.75rem 0 0.6rem;
+  cursor: grab;
+  touch-action: none;
+}
+.drawer-grab .review-handle {
+  width: 44px;
+  height: 5px;
+  margin: 0 auto;
+}
+
+/* ───────────── Outfit form (PR #64): preview, steps, details ───────────── */
+/* Outfit form: live flat-lay preview */
+.outfit-preview {
+  height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.outfit-preview .board {
+  width: 100%;
+}
+
+/* Outfit form, step 2: flat lay, hairline detail rows that open sheets, big pinned button */
+.outfit-details {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 140px);
+}
+.step-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+.step-bar h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.step-back {
+  position: absolute;
+  left: -10px;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.step-cards {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+.step-card {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(50% - 0.375rem);
+  max-width: 150px;
+  aspect-ratio: 3 / 4;
+  padding: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.step-card .board {
+  width: 100%;
+}
+.step-card-add {
+  border-style: dashed;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.step-card-add svg {
+  width: 32px;
+  height: 32px;
+}
+.step-intro {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.detail-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.detail-rows li {
+  border-top: 1px solid var(--border);
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.detail-row {
+  cursor: pointer;
+}
+.detail-title {
+  font-weight: 600;
+}
+.detail-value {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.detail-value.is-empty {
+  color: var(--muted);
+}
+.detail-row svg {
+  flex: none;
+  color: var(--muted);
+}
+.detail-value svg {
   width: 22px;
   height: 22px;
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+.switch[aria-checked='true'] span {
+  transform: translateX(20px);
+}
+.outfit-details .sticky-actions {
+  margin-top: auto;
+}
+.btn-cta {
+  min-height: 56px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+}
+
+/* Outfit editor: full-screen canvas with a draggable picker sheet */
+.outfit-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg);
+}
+.editor-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+.editor-canvas {
+  position: absolute;
+  top: 56px;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: var(--surface);
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+.editor-canvas .board {
+  width: 100%;
+}
+.editor-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 3;
+}
+.sheet-handle {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  flex: none;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-handle span {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.editor-sheet {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.editor-sheet .filters,
+.editor-sheet .category-tabs {
+  flex: none;
+  padding: 0 0.75rem;
+}
+/* The shared closet styles assume a 16px page gutter; the sheet has 12px, so don't overhang it. */
+.editor-sheet .category-tabs {
+  margin: 0.25rem 0 0;
+}
+.editor-sheet .closet-grid {
+  margin: 0 -0.75rem;
+}
+.sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Scroll up and down only: no sideways panning. */
+  touch-action: pan-y;
+  padding: 0.5rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+
+.editor-close {
+  font-size: 1.6rem;
+  width: 48px;
+  height: 48px;
+}
+.editor-next {
+  min-height: 44px;
+  padding: 0 1rem;
+  font-size: 0.85rem;
+}
+.sheet-scroll {
+  overscroll-behavior: contain;
+}
+.editor-sheet {
+  transition: none;
+}
+
+/* Editor canvas: pieces wrapped so each can carry a ✕ */
+.board-piece {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  max-width: 70%;
+}
+.board-row.n-2 .board-piece {
+  max-width: 52%;
+}
+.board-row.n-3 .board-piece {
+  max-width: 38%;
+}
+.board-feet .board-piece {
+  max-width: 34%;
+}
+.board-piece img {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+}
+.board-piece + .board-piece {
+  margin-left: -6%;
+}
+.board-extra .board-piece {
+  max-width: none;
+  height: auto;
+}
+.piece-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Details inside the editor sheet */
+.outfit-details.is-embedded {
+  padding: 0;
+}
+.outfit-details.is-embedded .sticky-actions {
+  position: static;
+  padding: 0.75rem 0 0;
+}
+
+/* Outfit editor, the glass way: the canvas is the page (pieces float, no panel); the sheet, close
+   buttons and remove beads are the control layer. */
+.editor-canvas {
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.editor-sheet {
+  border: 1px solid var(--glass-edge);
+  border-bottom: 0;
+  border-radius: 32px 32px 0 0;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  box-shadow: 0 -10px 36px rgb(31 38 54 / 0.14), inset 0 1px 0 var(--glass-rim);
+}
+.sheet-handle span {
+  background: var(--text);
+  opacity: 0.25;
+}
+.editor-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 3px 12px rgb(31 38 54 / 0.12), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.piece-x {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.18), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Swarm check-ins (from main) */
+.dot.mark-place {
+  background: var(--tone-blue);
+}
+.day-badge.mark-place {
+  color: var(--tone-blue);
+}
+.pill.mark-place {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .checkins-day {
@@ -3364,4 +4538,2849 @@ progress {
 .checkins-day li {
   padding: 0.5rem 0;
   border-top: 1px solid var(--border);
+}
+
+.outfit-editor {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.outfit-editor .sheet-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Stats → Places: flat, hairline-separated list of venues (content, no plate). */
+.place-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.place-list li + li {
+  border-top: 1px solid var(--border);
+}
+.place-head {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.place-worn {
+  padding: 0 0 0.6rem;
+}
+.place-worn p {
+  margin: 0.25rem 0;
+}
+
+/* ───────────── Scrollable bottom bar: the tabs slide sideways, the ＋ stays put ───────────── */
+.bottom-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tabs-scroll {
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* A soft fade at both edges hints that there is more to scroll to. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+}
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+.tabs-track {
+  --tabw: calc(100cqw / 4.3);
+  position: relative;
+  display: flex;
+  width: max-content;
+}
+.tabs-track .tab {
+  flex: 0 0 var(--tabw);
+  width: var(--tabw);
+}
+.tabs-track .tab-lens {
+  top: 2px;
+  bottom: 2px;
+  left: 4px;
+  width: calc(var(--tabw) - 8px);
+  /* Glides by transform (compositor), not by `left`. */
+  transform: translateX(calc(var(--col, 0) * var(--tabw)));
+  will-change: transform;
+}
+.bottom-nav .tab-plus {
+  flex: none;
+  margin-right: 4px;
+}
+
+/* ───────────── Games ───────────── */
+.dot.mark-games {
+  background: var(--tone-purple);
+}
+.day-badge.mark-games {
+  color: var(--tone-purple);
+}
+.pill.mark-games {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.game-list {
+  display: grid;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.game-row,
+.game-line {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.7rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.game-line {
+  cursor: default;
+}
+.game-champ {
+  font-weight: 600;
+}
+.game-add {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+.game-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+.game-add select {
+  min-height: 44px;
+  max-width: 45%;
+}
+.game-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 48px;
+  text-decoration: none;
+}
+.game-new svg {
+  width: 20px;
+  height: 20px;
+}
+.game-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.game-scores {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.game-scores li {
+  display: grid;
+  grid-template-columns: 1fr 6rem auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.game-scores .chip {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+/* Live game: scoreboard on top, next round below */
+.play-head {
+  display: grid;
+  gap: 0.1rem;
+  margin-bottom: 0.5rem;
+}
+.play-head .page-title {
+  margin: 0;
+}
+.scoreboard {
+  display: grid;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.score-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.score-pos {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.score-who {
+  display: grid;
+  min-width: 0;
+}
+.score-who strong {
+  font-size: 1.1rem;
+}
+.score-who .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.score-total {
+  display: grid;
+  justify-items: end;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.score-total small {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.score-gap {
+  color: var(--muted);
+}
+.score-first .score-total,
+.score-first .score-who strong {
+  color: var(--accent);
+}
+.round-nav {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -16px 0.6rem;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.round-nav::-webkit-scrollbar {
+  display: none;
+}
+.round-pill {
+  position: relative;
+  flex: none;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--glass-edge, var(--border));
+  border-radius: 999px;
+  background: var(--glass-bg, var(--surface));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.round-pill[aria-current='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.round-pill i {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone-orange);
+}
+.round-track {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.round-track::-webkit-scrollbar {
+  display: none;
+}
+.round-card {
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 0.25rem 4px;
+}
+.round-card header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.round-card header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.round-card header {
+  align-items: center;
+}
+.round-del {
+  display: grid;
+  place-items: center;
+  /* 44px touch target, but it takes little room and has no plate. */
+  width: 44px;
+  height: 44px;
+  margin: -8px 0 -8px -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.round-del svg {
+  width: 17px;
+  height: 17px;
+}
+.round-card ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.round-card li {
+  display: grid;
+  grid-template-columns: 1fr 7rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0;
+}
+.round-card label {
+  font-size: 1.05rem;
+}
+.round-card input {
+  min-height: 52px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+.round-save {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+.play-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.play-finish {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.play-finish svg {
+  width: 20px;
+  height: 20px;
+}
+
+.round-hop {
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+}
+.round-hop button {
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* No up/down spinners on the score fields. */
+.round-card input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.round-card input[type='number']::-webkit-outer-spin-button,
+.round-card input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* Domino calculator */
+.round-card li.has-calc {
+  grid-template-columns: 1fr 6rem 44px;
+}
+.domino-pad {
+  display: grid;
+  gap: 0.75rem;
+}
+.domino-head {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+}
+.domino-total {
+  font-size: 2.6rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.domino-tape {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.domino-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.domino-key {
+  aspect-ratio: 1;
+  min-height: 64px;
+  padding: 6px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.domino-key:active {
+  transform: scale(0.95);
+}
+.domino-key svg {
+  width: 100%;
+  height: 100%;
+}
+.domino-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.domino-done {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 52px;
+}
+.domino-done svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* A round won: a yellow shade over the points */
+.won {
+  padding: 0 0.3em;
+  border-radius: 6px;
+  background: color-mix(in srgb, #f6c90e 70%, transparent);
+  color: #1b1b1b;
+  font-weight: 700;
+}
+
+.tie-note {
+  color: var(--tone-orange);
+  font-weight: 600;
+}
+.round-tie {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.25rem 0 0.4rem;
+}
+
+/* Lords of Waterdeep rows: line 1 name + Lord dropdown, line 2 before / final (/ corruptions) + trophy */
+.game-scores li.wd {
+  grid-template-columns: 1fr 1fr 44px;
+  gap: 0.4rem;
+}
+.game-scores li.wd.wd-sk {
+  grid-template-columns: 1fr 1fr 1fr 44px;
+}
+.game-scores li.wd > div:first-child {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.game-scores li.wd > .chip {
+  grid-row: 2;
+}
+.game-scores li.wd input {
+  min-width: 0;
+  grid-row: 2;
+}
+
+.game-scores li.wd .wd-icon-field {
+  position: relative;
+  min-width: 0;
+  grid-row: 2;
+}
+.game-scores li.wd .wd-icon-field input {
+  width: 100%;
+  padding-right: 2.2rem;
+}
+.game-scores li.wd .wd-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translateY(-50%);
+  color: #1e3560;
+  pointer-events: none;
+  display: inline-flex;
+}
+/* Navy disappears on a dark field, so it is a lighter navy there. */
+@media (prefers-color-scheme: dark) {
+  .game-scores li.wd .wd-icon {
+    color: #5f84cf;
+  }
+}
+.game-scores li.wd .wd-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Settings → Closet review: flat hairline lists; glass only on the controls (time pill, switch, chips, Done bar). */
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 56px;
+  color: var(--text);
+  text-decoration: none;
+}
+.settings-link > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.settings-link > svg {
+  flex: none;
+  color: var(--muted);
+}
+.review-intro {
+  margin: 0 0 0.75rem;
+}
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.review-list li + li {
+  border-top: 1px solid var(--glass-line);
+}
+.review-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+  color: var(--text);
+  text-decoration: none;
+}
+.review-row > svg {
+  flex: none;
+  color: var(--muted);
+}
+.review-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.review-row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+}
+.review-time {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.review-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+.review-tick {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.review-tick-part {
+  background: none;
+  border: 2px solid var(--accent);
+}
+.review-prompt {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+.review-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.review-toggle input {
+  width: 46px;
+  height: 28px;
+  appearance: none;
+  border-radius: 999px;
+  background: var(--glass-line);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.review-toggle input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform 0.2s ease;
+}
+.review-toggle input:checked {
+  background: var(--accent);
+}
+.review-toggle input:checked::after {
+  transform: translateX(18px);
+}
+.review-count {
+  margin: 0.5rem 0 0.25rem;
+}
+.review-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.review-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--glass-line);
+}
+.review-item .thumb {
+  width: 72px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgb(31 38 54 / 0.15));
+}
+.review-chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.review-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.review-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.review-name .muted {
+  font-size: 0.8rem;
+}
+.chip-review {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.review-subs {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--glass-line);
+}
+.review-done {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* Food: receipts */
+.food-month {
+  margin: 0 0 1rem;
+}
+.food-total {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.game-line.food-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.food-sum {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.game-head .icon-btn + .icon-btn {
+  margin-left: 0.25rem;
+}
+.food-edit-line {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.food-edit-top {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.food-edit-top input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+.food-edit-nums {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr 1.2fr 1.2fr;
+  gap: 0.5rem;
+}
+.food-edit-nums label {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.food-edit-nums input,
+.food-edit-nums select,
+.food-kind {
+  min-height: 44px;
+  min-width: 0;
+}
+
+/* Food: stock */
+.check-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+
+.food-gap {
+  margin-bottom: 1.25rem;
+}
+.food-h2 {
+  margin-top: 1.5rem;
+}
+.food-gap + .form,
+.food-gap + .chips {
+  margin-top: 0.5rem;
+}
+a.game-row + section,
+a.game-row + .food-h2 {
+  margin-top: 1rem;
+}
+
+/* Food: stock as a grid of pictures */
+.k-chicken { --k: #8a3a2c; }
+.k-cucumber { --k: #3d6b34; }
+.k-pepper { --k: #a2461f; }
+.k-carrot { --k: #a45a12; }
+.k-jar { --k: #7a5a2e; }
+.k-pasta { --k: #80632a; }
+.k-milk { --k: #35577d; }
+.k-can { --k: #8a5f12; }
+.k-chips { --k: #8a6a12; }
+.k-nuts { --k: #7a5a2e; }
+.k-spice { --k: #8f3b22; }
+.k-oil { --k: #5d6a1f; }
+.k-box { --k: #5b6068; }
+@media (prefers-color-scheme: dark) {
+  .k-chicken { --k: #f0a090; }
+  .k-cucumber { --k: #9fd18f; }
+  .k-pepper { --k: #f2a77f; }
+  .k-carrot { --k: #f2b56a; }
+  .k-jar { --k: #d9b98a; }
+  .k-pasta { --k: #dcc07a; }
+  .k-milk { --k: #8fb4e0; }
+  .k-can { --k: #e2bb6a; }
+  .k-chips { --k: #e2c565; }
+  .k-nuts { --k: #d9b98a; }
+  .k-spice { --k: #eba285; }
+  .k-oil { --k: #c5d573; }
+  .k-box { --k: #b4b8c0; }
+}
+.food-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--k) 15%, var(--surface));
+  color: var(--k);
+  transition: transform 0.15s ease;
+}
+.food-art-big {
+  flex: none;
+  width: 96px;
+  border-radius: 26px;
+}
+.food-section {
+  margin-top: 1.5rem;
+}
+.food-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.food-section-head h2 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.food-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.food-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.food-tile:active .food-art {
+  transform: scale(0.97);
+}
+.food-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+  padding: 0 2px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.food-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  border: 1px solid var(--glass-rim, rgb(255 255 255 / 0.9));
+  background: var(--glass-bg-strong, rgb(255 255 255 / 0.78));
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgb(31 38 54 / 0.12);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .food-badge {
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+}
+.food-pill,
+.food-pill-inline {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.food-pill {
+  align-self: center;
+  height: 22px;
+  margin-top: -2px;
+  padding: 0 10px;
+  border-radius: 11px;
+}
+.food-pill-inline {
+  height: 24px;
+  padding: 0 10px;
+}
+.food-pill.lvl-urgent,
+.food-pill-inline.lvl-urgent {
+  background: #f9d9d3;
+  color: #8a2a1c;
+}
+.food-pill.lvl-soon,
+.food-pill-inline.lvl-soon {
+  background: #fbe8c2;
+  color: #7a4d00;
+}
+.food-pill.lvl-ok,
+.food-pill-inline.lvl-ok {
+  background: #dfeedd;
+  color: #2f5a2b;
+}
+.food-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+.food-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.food-bar .lvl-urgent {
+  background: #c4402c;
+}
+.food-bar .lvl-soon {
+  background: #d08a14;
+}
+.food-bar .lvl-ok {
+  background: #4a8a43;
+}
+.food-used {
+  text-decoration: none;
+}
+.food-banner {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  color: var(--text);
+  text-decoration: none;
+}
+.food-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  padding: 0;
+  border: 0;
+  background: rgb(20 18 15 / 0.32);
+}
+.food-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 46;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 30px 30px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -8px 32px rgb(0 0 0 / 0.2);
+  outline: none;
+  /* With several batches the sheet is taller than the screen: it scrolls inside itself instead of running off the top. */
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .food-sheet {
+    border: 1px solid var(--glass-rim);
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: var(--glass-blur-heavy);
+    backdrop-filter: var(--glass-blur-heavy);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .food-sheet {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.food-grip {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 16px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.food-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.food-sheet-text {
+  min-width: 0;
+}
+.food-sheet-text h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+.food-sheet-text p {
+  margin: 0;
+}
+.food-sheet-amount {
+  margin: 0.4rem 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.food-fresh {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0;
+}
+.food-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+.food-action-wide {
+  grid-column: 1 / -1;
+  order: 5;
+}
+.food-action {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 60px;
+  padding: 0 1rem;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.food-action svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+.food-action-danger svg {
+  color: var(--danger);
+}
+.food-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.food-levels {
+  margin-top: 12px;
+}
+.food-hint {
+  margin: 14px 0 0;
+  line-height: 1.4;
+}
+.food-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(6rem + env(safe-area-inset-bottom));
+  z-index: 47;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 608px;
+  min-height: 48px;
+  margin: 0 auto;
+  padding: 0 8px 0 18px;
+  border-radius: 24px;
+  background: #1d1c1a;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+.food-toast button {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  background: none;
+  color: #9fe0c6;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (prefers-color-scheme: dark) {
+  .food-pill.lvl-urgent,
+  .food-pill-inline.lvl-urgent {
+    background: #5a2a22;
+    color: #ffc9bf;
+  }
+  .food-pill.lvl-soon,
+  .food-pill-inline.lvl-soon {
+    background: #5a4318;
+    color: #ffe0a3;
+  }
+  .food-pill.lvl-ok,
+  .food-pill-inline.lvl-ok {
+    background: #29402a;
+    color: #c4e8c0;
+  }
+}
+
+/* Food: product pictures */
+.food-art.has-photo {
+  background: var(--photo-bg);
+}
+.food-art:not(.has-photo) {
+  background: color-mix(in srgb, var(--k) 8%, var(--photo-bg));
+}
+.food-art:not(.has-photo) svg {
+  opacity: 0.55;
+}
+.food-photo {
+  /* Pinned inside the tile, so the picture's own proportions can't stretch it. */
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 10%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+.food-pic {
+  position: relative;
+  flex: none;
+}
+.food-art-hero {
+  width: 132px;
+  margin: 0.25rem 0 0.75rem;
+  border-radius: 28px;
+}
+.food-pic-menu {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+}
+.food-pic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--glass-rim, rgb(255 255 255 / 0.9));
+  border-radius: 50%;
+  background: var(--glass-bg-strong, rgb(255 255 255 / 0.78));
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.18);
+}
+.food-pic-btn svg {
+  width: 20px;
+  height: 20px;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .food-pic-btn {
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+}
+.food-pic-busy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+.food-pic-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: max-content;
+  max-width: 220px;
+  margin: 4px 0 0;
+  color: var(--danger);
+}
+.food-scrim-top {
+  z-index: 48;
+}
+.food-search {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 49;
+  max-width: 640px;
+  max-height: 86vh;
+  margin: 0 auto;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border-radius: 30px 30px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -8px 32px rgb(0 0 0 / 0.25);
+  outline: none;
+}
+.food-search h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+}
+.food-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.food-search-form input {
+  min-width: 0;
+  min-height: 44px;
+}
+.food-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 10px;
+  margin: 1rem 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.food-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.food-result:disabled {
+  opacity: 0.5;
+}
+.food-result-img {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.food-result-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8%;
+}
+
+.food-filter {
+  margin-top: 1rem;
+}
+.food-none {
+  margin: 1.5rem 0 0;
+}
+.food-tile-gone .food-art {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.food-tile-gone .food-name {
+  color: var(--muted);
+}
+
+/* Food: the pictures pass */
+.food-pass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: center;
+}
+.food-pass h2 {
+  margin: 1rem 0 0.15rem;
+  font-size: 1.25rem;
+}
+.food-pass p {
+  margin: 0.15rem 0;
+}
+.food-pass-bar {
+  width: 100%;
+  height: 4px;
+  margin: 0.5rem 0 1.5rem;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.food-pass-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.food-art-pass {
+  width: 200px;
+  border-radius: 36px;
+}
+.food-pass-actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin: 1.5rem 0 1rem;
+}
+.food-pass-actions .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 52px;
+}
+.food-pass-actions .btn svg {
+  width: 22px;
+  height: 22px;
+}
+.food-pic-error-inline {
+  color: var(--danger);
+}
+
+.food-source {
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* A shop packshot (a flat picture on white) sits on a white tile; a cut-out sits on the neutral one. */
+.food-art.photo-flat {
+  background: #ffffff;
+}
+.food-art.photo-flat .food-photo {
+  padding: 6%;
+}
+
+/* Wolt orders */
+.dot.mark-wolt {
+  background: var(--tone-orange);
+}
+.day-badge.mark-wolt {
+  color: var(--tone-orange);
+}
+.pill.mark-wolt {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.wolt-orders {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.wolt-orders li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.wolt-when {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+.wolt-total {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Food: groceries on the calendar, shopping list, prices */
+.dot.mark-food {
+  background: var(--tone-lime);
+}
+.day-badge.mark-food {
+  color: var(--tone-lime);
+}
+.pill.mark-food {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.food-saving {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+.shop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.shop-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.shop-check {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.shop-check::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 2px solid var(--muted, currentColor);
+  border-radius: 50%;
+}
+.shop-check[aria-checked='true']::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.shop-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.5rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+.shop-done .shop-main {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+/* Food: batches of one product */
+.batch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.batch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.batch-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.batch-by {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.batch-by input[type='date'] {
+  font: inherit;
+  min-height: 36px;
+  padding: 0 0.5rem;
+  border-radius: 10px;
+}
+.food-batch-note {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.food-sheet .batch-list {
+  margin-bottom: 0.5rem;
+}
+.batch-tag {
+  font-weight: 500;
+  color: var(--tone-blue);
+}
+.batch-frozen .batch-main > strong {
+  color: var(--text);
+}
+.batch-tag-thawed {
+  color: var(--tone-orange);
+}
+.batch-thawed-note {
+  font-weight: 600;
+}
+
+/* Food: batch history and "not in statistics" */
+.batch {
+  flex-wrap: wrap;
+}
+.batch-main {
+  flex: 1 1 0;
+}
+.batch-details {
+  flex-basis: 100%;
+}
+.batch-details > summary,
+.batch-past > summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.batch-past {
+  margin-top: 0.5rem;
+}
+.batch-history {
+  list-style: none;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0 0 0 0.25rem;
+}
+.batch-history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  padding: 0.15rem 0;
+}
+.batch-history-date {
+  min-width: 3.5rem;
+}
+.batch-gone .batch-main > strong {
+  font-weight: 600;
+}
+.stats-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+
+/* Trakt plays */
+.dot.mark-watch {
+  background: var(--tone-purple);
+}
+.day-badge.mark-watch {
+  color: var(--tone-purple);
+}
+.pill.mark-watch {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.watch-plays {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.watch-plays li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.checkins-day li.watch-day-play,
+.widget-list li.watch-day-play {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.trakt-code {
+  margin: 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}
+
+/* Day screen as a dashboard: tiles in a two-column grid. A widget is a flat, lightly tinted tile whose header collapses it;
+   glass stays on the controls inside. */
+.day-head h1 {
+  font-size: 1.05rem;
+}
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  align-items: start;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.75rem;
+}
+@media (min-width: 720px) {
+  .day-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.detail .day-grid > .widget {
+  margin-top: 0;
+}
+.widget {
+  --w: var(--accent);
+  grid-column: span 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--w) 5%, var(--surface));
+  overflow: hidden;
+}
+.widget-full {
+  grid-column: 1 / -1;
+}
+.widget-work,
+.widget-clothes {
+  --w: var(--accent);
+}
+.widget-place,
+.widget-trip {
+  --w: var(--tone-blue);
+}
+.widget-games {
+  --w: var(--tone-purple);
+}
+.widget-food {
+  --w: var(--tone-lime);
+}
+.widget-wolt {
+  --w: var(--tone-orange);
+}
+.widget-watch {
+  --w: var(--tone-purple);
+}
+.widget-rides {
+  --w: var(--tone-blue);
+}
+.widget-head {
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+}
+.widget-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.widget-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--w) 18%, var(--surface));
+  color: var(--w);
+}
+.widget-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-badge {
+  flex: none;
+  max-width: 45%;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--w) 14%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-chevron {
+  display: grid;
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.widget-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+.widget.is-collapsed .widget-chevron {
+  transform: rotate(-90deg);
+}
+.widget-summary {
+  margin: -0.2rem 0 0;
+  padding: 0 0.75rem 0.6rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-body {
+  padding: 0 0.75rem 0.7rem;
+}
+.widget-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.widget-list li,
+.widget-link {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}
+.widget-list li:first-child {
+  border-top: 0;
+  padding-top: 0.1rem;
+}
+.widget-list li > li,
+.widget-list li .widget-link {
+  padding: 0;
+  border: 0;
+}
+.widget-list strong,
+.widget-list .small,
+.widget-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-link {
+  color: inherit;
+  text-decoration: none;
+}
+.widget-link strong {
+  white-space: normal;
+}
+.widget-champ {
+  font-weight: 600;
+}
+.widget-line {
+  margin: 0 0 0.4rem;
+}
+.widget .outfit-cards,
+.widget .day-items {
+  margin: 0.25rem 0 0;
+}
+.widget-head .icon-btn {
+  flex: none;
+}
+.day-empty {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+}
+.day-actions {
+  margin-top: 0.5rem;
+}
+/* Work on the day screen: one row of icon buttons; the chosen one shows its name. */
+.work-quick {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-row {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.work-quick-btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.work-quick-btn[aria-pressed='true'] {
+  flex: 2.4;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.work-quick-btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.work-quick-times {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 0.4rem;
+}
+.work-quick-times input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+/* ───────────── Liquid Glass: day widgets ─────────────
+   Glass is the control layer, content is flat: a widget is a plain section on the page, separated by a hairline.
+   What floats as glass are its controls: the icon lens, the count chip and the collapse button.
+   Work is a segmented track with a raised lens, like Items | Outfits. */
+.day-grid {
+  column-gap: 1rem;
+  row-gap: 0;
+}
+.widget {
+  border: 0;
+  border-top: 1px solid var(--glass-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  padding-top: 0.15rem;
+}
+.widget-toggle {
+  padding: 0.3rem 0;
+}
+.widget-head {
+  padding-right: 0;
+}
+.widget-body {
+  padding: 0 0 0.75rem;
+}
+.widget-summary {
+  padding: 0 0 0.75rem;
+}
+.widget-icon {
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--w) 22%, var(--glass-bg-strong)), var(--glass-bg));
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-badge {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron {
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+.widget-list li {
+  border-top-color: var(--glass-line);
+}
+.work-quick {
+  margin-bottom: 0.6rem;
+}
+.work-quick-btn {
+  min-height: 44px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 2px 10px rgb(31 38 54 / 0.08), inset 0 1px 0 var(--glass-rim);
+}
+.work-quick-btn[aria-pressed='true'] {
+  border-color: var(--glass-rim);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--glass-bg-strong)), color-mix(in srgb, var(--accent) 16%, var(--glass-bg)));
+  color: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 var(--glass-rim), inset 0 0 14px var(--glass-glow);
+}
+.work-quick-btn:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .work-quick-btn,
+  .widget-chevron {
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  }
+}
+
+.watch-search {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.watch-search .search {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+.watch-search .icon-btn[aria-pressed='true'] {
+  color: var(--accent);
+}
+.watch-plays li.is-selected {
+  background: var(--accent-soft);
+}
+.watch-select-bar {
+  top: 8px;
+  bottom: auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  border-top: 1px solid var(--glass-edge, var(--border));
+}
+.watch-select-bar .small {
+  flex: 1;
+  white-space: nowrap;
+}
+.watch-select-bar .btn {
+  white-space: nowrap;
+}
+.watch-search .icon-btn,
+.watch-select-bar .icon-btn {
+  margin-right: 0;
+}
+
+/* Rides (Bolt / Uber) */
+.dot.mark-rides {
+  background: var(--tone-blue);
+}
+.day-badge.mark-rides {
+  color: var(--tone-blue);
+}
+.pill.mark-rides {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Stats tabs: too many for one row, so the switch scrolls sideways. */
+.seg.seg-scroll {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.seg.seg-scroll::-webkit-scrollbar {
+  display: none;
+}
+.seg.seg-scroll button {
+  flex: 0 0 auto;
+  padding: 0 1rem;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+/* stats.fm listening */
+.dot.mark-music {
+  background: var(--tone-lime);
+}
+.day-badge.mark-music {
+  color: var(--tone-lime);
+}
+.pill.mark-music {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.perf-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.perf-table th, .perf-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+
+/* ───────────── Calendar: less clutter ─────────────
+   A day shows a few things and a "+N"; the day screen has the full list. */
+.cal-head {
+  padding-bottom: 0.1rem;
+}
+.cal-title {
+  font-size: 1.4rem;
+}
+.cal-head .work-target-head {
+  font-size: 0.82rem;
+}
+.cal-head .work-target-head .small {
+  font-size: 0.75rem;
+}
+.cal-head .work-bar {
+  height: 4px;
+  margin: 0.3rem 0;
+}
+.cal-weekdays {
+  padding: 0.1rem 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.cal-month {
+  padding-top: 0.6rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.cal-week {
+  border-top-color: var(--glass-line);
+}
+.cal-num {
+  font-size: 0.9rem;
+}
+.cal-dots {
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+}
+.more-count {
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+.cal-badges {
+  gap: 2px;
+}
+.day-badge {
+  width: 16px;
+  height: 16px;
+  box-shadow: none;
+  background: color-mix(in srgb, currentColor 12%, var(--bg));
+}
+.day-badge svg {
+  width: 11px;
+  height: 11px;
+}
+.day-badge.badge-more {
+  color: var(--muted);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-soft);
+}
+.cal-badges.with-photo {
+  left: 50%;
+  margin-left: -17px;
+  width: 34px;
+  justify-content: flex-start;
+}
+.cal-pills {
+  gap: 2px;
+}
+.pill {
+  font-size: 0.6rem;
+  padding: 1px 3px;
+}
+.pill-more {
+  justify-content: center;
+  color: var(--muted);
+  background: none;
+  font-weight: 600;
+}
+.cal-today {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+/* Day screen: calmer header, work times that fit, tighter widget headers. */
+.day-head h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.work-quick-times {
+  gap: 0.3rem;
+}
+.work-quick-times input {
+  padding-left: 0.6rem;
+  padding-right: 0.5rem;
+  font-size: 0.95rem;
+}
+.work-quick-times .icon-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  box-shadow: none;
+  border-color: transparent;
+  background: none;
+}
+.widget-toggle {
+  gap: 0.4rem;
+}
+.widget-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+.widget-chevron {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.widget-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.widget-list li {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+/* Default zoom: each day is a 3×3 grid, the day number first, then one icon per entry (the last cell counts the rest). */
+.cal-cells {
+  top: 3px;
+  left: 2px;
+  right: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 21px;
+  place-items: center;
+  opacity: clamp(0, calc(1 - max(var(--z) - 1, 1 - var(--z))), 1);
+}
+.cal-day.has-cells .cal-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.cell-num {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cell-num.today {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.cell {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-badge {
+  width: 17px;
+  height: 17px;
+}
+.cal-cells .day-bubble {
+  position: static;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+}
+.cal-cells .day-bubble .thumb {
+  width: 100%;
+  height: 100%;
+  font-size: 0.6rem;
+}
+.cal-cells .day-bubble.pieces-2 .thumb {
+  height: 50%;
+}
+.cal-cells {
+  left: 5px;
+  right: 5px;
+  grid-auto-rows: 19px;
+}
+.cell,
+.cal-cells .day-badge,
+.cal-cells .day-bubble {
+  width: 15px;
+  height: 15px;
+}
+.cal-cells .day-badge svg {
+  width: 10px;
+  height: 10px;
+}
+.cell-num {
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.68rem;
+}
+.cal-cells .badge-more {
+  font-size: 0.5rem;
+}
+
+/* One colour per kind of entry, never shared: dots, grid icons and pills use the same one. */
+:root {
+  --c-office: var(--accent);
+  --c-home: #00a69c;
+  --c-off: #7a8794;
+  --c-trip: #4f5bd5;
+  --c-place: #e53935;
+  --c-games: #8a4fe0;
+  --c-wolt: #f57c00;
+  --c-food: #7fb800;
+  --c-watch: #d81b8a;
+  --c-rides: #1e88e5;
+  --c-music: #1db954;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-office: var(--accent);
+    --c-home: #3fd6cb;
+    --c-off: #a3afbb;
+    --c-trip: #8f9bff;
+    --c-place: #ff7a75;
+    --c-games: #b88cff;
+    --c-wolt: #ff9a3d;
+    --c-food: #b6e83a;
+    --c-watch: #ff6ab8;
+    --c-rides: #4aa8ff;
+    --c-music: #1ed760;
+  }
+}
+:root[data-theme="dark"] {
+  --c-office: var(--accent);
+  --c-home: #3fd6cb;
+  --c-off: #a3afbb;
+  --c-trip: #8f9bff;
+  --c-place: #ff7a75;
+  --c-games: #b88cff;
+  --c-wolt: #ff9a3d;
+  --c-food: #b6e83a;
+  --c-watch: #ff6ab8;
+  --c-rides: #4aa8ff;
+  --c-music: #1ed760;
+}
+.dot.mark-office {
+  background: var(--c-office);
+  box-shadow: none;
+}
+.day-badge.mark-office {
+  color: var(--c-office);
+  background: color-mix(in srgb, var(--c-office) 16%, var(--bg));
+}
+.dot.mark-home {
+  background: var(--c-home);
+  box-shadow: none;
+}
+.day-badge.mark-home {
+  color: var(--c-home);
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.pill.mark-home {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-home .pill-icon {
+  color: var(--c-home);
+}
+.dot.mark-off {
+  background: var(--c-off);
+  box-shadow: none;
+}
+.day-badge.mark-off {
+  color: var(--c-off);
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+}
+.pill.mark-off {
+  background: color-mix(in srgb, var(--c-off) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-off .pill-icon {
+  color: var(--c-off);
+}
+.dot.mark-trip {
+  background: var(--c-trip);
+  box-shadow: none;
+}
+.day-badge.mark-trip {
+  color: var(--c-trip);
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+}
+.pill.mark-trip {
+  background: color-mix(in srgb, var(--c-trip) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-trip .pill-icon {
+  color: var(--c-trip);
+}
+.dot.mark-place {
+  background: var(--c-place);
+  box-shadow: none;
+}
+.day-badge.mark-place {
+  color: var(--c-place);
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+}
+.pill.mark-place {
+  background: color-mix(in srgb, var(--c-place) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-place .pill-icon {
+  color: var(--c-place);
+}
+.dot.mark-games {
+  background: var(--c-games);
+  box-shadow: none;
+}
+.day-badge.mark-games {
+  color: var(--c-games);
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+}
+.pill.mark-games {
+  background: color-mix(in srgb, var(--c-games) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-games .pill-icon {
+  color: var(--c-games);
+}
+.dot.mark-wolt {
+  background: var(--c-wolt);
+  box-shadow: none;
+}
+.day-badge.mark-wolt {
+  color: var(--c-wolt);
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+}
+.pill.mark-wolt {
+  background: color-mix(in srgb, var(--c-wolt) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-wolt .pill-icon {
+  color: var(--c-wolt);
+}
+.dot.mark-food {
+  background: var(--c-food);
+  box-shadow: none;
+}
+.day-badge.mark-food {
+  color: var(--c-food);
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+}
+.pill.mark-food {
+  background: color-mix(in srgb, var(--c-food) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-food .pill-icon {
+  color: var(--c-food);
+}
+.dot.mark-watch {
+  background: var(--c-watch);
+  box-shadow: none;
+}
+.day-badge.mark-watch {
+  color: var(--c-watch);
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+}
+.pill.mark-watch {
+  background: color-mix(in srgb, var(--c-watch) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-watch .pill-icon {
+  color: var(--c-watch);
+}
+.dot.mark-rides {
+  background: var(--c-rides);
+  box-shadow: none;
+}
+.day-badge.mark-rides {
+  color: var(--c-rides);
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+}
+.pill.mark-rides {
+  background: color-mix(in srgb, var(--c-rides) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-rides .pill-icon {
+  color: var(--c-rides);
+}
+.dot.mark-music {
+  background: var(--c-music);
+  box-shadow: none;
+}
+.day-badge.mark-music {
+  color: var(--c-music);
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+}
+.pill.mark-music {
+  background: color-mix(in srgb, var(--c-music) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-music .pill-icon {
+  color: var(--c-music);
+}
+.dot-trip {
+  background: var(--c-trip);
+}
+.cell-slot {
+  display: grid;
+  place-items: center;
+}
+
+/* Zoomed in: the day number slides to the left corner as --z goes from 1 to 2, and the pills start right under it,
+   so five fit before "+N more". */
+.cal-day {
+  container-type: inline-size;
+}
+.cal-num {
+  translate: calc(clamp(0, var(--z) - 1, 1) * (16px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 7px * clamp(0, var(--z) - 1, 1));
+}
+.cal-num {
+  min-width: 24px;
+  height: 24px;
+  translate: calc(clamp(0, var(--z) - 1, 1) * (15px - 50cqw)) 0;
+}
+.cal-pills {
+  top: calc(31px - 4px * clamp(0, var(--z) - 1, 1));
+}
+
+/* Zoomed in: office / home / day off is just an icon in the top-right corner, level with the number. */
+.cal-work {
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  opacity: clamp(0, calc(var(--z) - 1), 1);
+}
+.cal-work svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ───────────── Calendar: week zoom and filters ───────────── */
+/* Row height now runs on to a whole week with every entry (--z 2 → 3). */
+.cal {
+  --row-h: calc(46px + 22px * min(var(--z), 1) + 52px * clamp(0, var(--z) - 1, 1) + 190px * clamp(0, var(--z) - 2, 1));
+}
+.cal-pills {
+  opacity: clamp(0, min(var(--z) - 1, 3 - var(--z)), 1);
+}
+.cal-full {
+  top: 27px;
+  left: 1px;
+  right: 1px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: clamp(0, var(--z) - 2, 1);
+}
+.cal-full .pill {
+  align-items: flex-start;
+  flex: none;
+  padding: 2px 3px;
+}
+.cal-full .pill-icon {
+  flex: none;
+  margin-top: 1px;
+}
+.cal-full .pill-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.cal-full .pill-more {
+  justify-content: center;
+}
+.cal-full .pill.mark-home,
+.cal-full .pill.mark-off {
+  background: color-mix(in srgb, var(--c-home) 16%, var(--bg));
+}
+.cal-tools .icon-btn.filtering {
+  color: var(--accent);
+}
+.cal-filters {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.15rem -12px 0.3rem;
+  padding: 0 12px 0.15rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cal-filters::-webkit-scrollbar {
+  display: none;
+}
+.cal-filters .chip {
+  flex: none;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+/* The week zoom gives the width to the text: the pill colour already says what kind of entry it is. */
+.cal-full .pill-icon {
+  display: none;
+}
+.cal-full .pill-text {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Countries: map and list */
+.world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.wm-country {
+  fill: var(--border);
+  stroke: var(--bg);
+  stroke-width: 0.6;
+}
+.wm-visited {
+  fill: var(--accent);
+}
+.wm-dot {
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.country-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.country-row {
+  border-top: 1px solid var(--border);
+}
+.country-head {
+  display: flex;
+  align-items: center;
+}
+.country-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.country-name {
+  font-weight: 500;
+}
+.country-detail {
+  padding: 0 0 0.75rem;
+}
+.country-detail p {
+  margin: 0 0 0.25rem;
+}
+
+/* Outfit tiles in the calendar show what was worn, not its name: the pieces side by side across the tile (up to three). */
+.pill-photo {
+  position: relative;
+  padding: 2px;
+}
+.collage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+/* Every piece gets the same square box, so tall pants don't stand out next to wide tops. */
+.collage .thumb {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 3px;
+  background: none;
+  font-size: 0.7rem;
+}
+.pill-plus {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+/* The month's note (e.g. "2 wfh days left") sits on the title row, before the filter button. */
+.cal-note {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.cal-note .note-plenty {
+  color: var(--accent);
+}
+.cal-note .note-low {
+  color: var(--warn);
+}
+.cal-note .note-out {
+  color: var(--danger);
+}
+
+/* A planned outfit sits among the worn ones in the day's Outfits card: lighter, and tagged in words. */
+.outfit-cards li.planned .card-cover {
+  opacity: 0.7;
+}
+.planned-tag {
+  display: block;
+  text-align: center;
+}
+
+/* Country flags (emoji). */
+.flag {
+  font-style: normal;
+  line-height: 1;
+}
+.day-badge .flag {
+  font-size: 0.95em;
+}
+.flag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 1.7rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* A trip on the calendar: a line through the row of day numbers (the numbers sit on it like beads) with the flag
+   on the line where it starts and at the start of each week. It lives in the day's grid look (the 3×3 grid). */
+.trip-line {
+  position: absolute;
+  top: 8.5px;
+  height: 2px;
+  left: -5px;
+  right: -5px;
+  /* A subtle gray: the flag says where, the line only connects the days. */
+  background: var(--trip-line);
+  pointer-events: none;
+}
+/* The number is the middle of the first column: a sixth of the grid's width. */
+.trip-line.from {
+  left: 16.67%;
+  border-radius: 2px 0 0 2px;
+}
+.cal-day.in-trip .cell-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cell-num:not(.today) {
+  background: var(--bg);
+}
+.trip-flag {
+  position: relative;
+  z-index: 1;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* The same trip line at the other zoom levels (the grid look above fades out): level with the big number, which sits
+   in the middle when zoomed out and slides to the left corner when zoomed in. --num-x is where its middle is. */
+.cal-day.in-trip {
+  --trip-line: color-mix(in srgb, var(--muted) 45%, var(--bg));
+  --num-x: calc(50cqw + clamp(0, var(--z) - 1, 1) * (15px - 50cqw));
+}
+.trip-line-num,
+.trip-flag-num {
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.trip-line-num {
+  top: 14px;
+  left: 0;
+  right: 0;
+}
+.trip-line-num.from {
+  left: var(--num-x);
+  right: 0;
+}
+.trip-flag-num {
+  position: absolute;
+  top: 8px;
+  left: calc(var(--num-x) + 18px);
+  translate: -50% 0;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+}
+.cal-day.in-trip .cal-num {
+  position: relative;
+  z-index: 1;
+}
+.cal-day.in-trip .cal-num:not(.today) {
+  background: var(--bg);
+}
+
+/* The two ends of a trip: its first day's number sits on a dot, and the line ends in a dot on the last day. */
+.cal-day.in-trip .cell-num.trip-start:not(.today),
+.cal-day.in-trip .cal-num.trip-start:not(.today) {
+  background: var(--trip-line);
+}
+.trip-end-dot {
+  position: absolute;
+  top: 6px;
+  right: -2px;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--trip-line);
+  pointer-events: none;
+}
+/* The line stops at the middle of the dot. */
+.trip-line.end {
+  right: 1.5px;
+}
+.trip-end-dot-num {
+  top: 11px;
+  right: 3px;
+  opacity: clamp(0, max(var(--z) - 1, 1 - var(--z)), 1);
+}
+.trip-line-num.end {
+  right: 6.5px;
+}
+
+/* Itinerary rows: the text takes the width, the remove / restore button sits at the edge. */
+.itinerary .pack-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.itinerary .pack-text {
+  flex: 1;
+  min-width: 0;
 }

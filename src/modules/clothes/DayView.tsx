@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { tripsOnDate } from '../packing/packing';
-import type { Trip } from '../packing/types';
+import { tripsOnDate } from '../trips/packing';
+import type { Trip } from '../trips/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
-import { CheckIcon, ShirtIcon, TrashIcon } from '../../icons';
+import { CheckIcon, HangerIcon, ShirtIcon, SuitcaseIcon, TrashIcon } from '../../icons';
 import { OutfitCard } from './OutfitCard';
 import { outfitFromItems, outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
 import { pendingPlans } from './plans';
@@ -29,21 +30,14 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
   const wear = wearsByDay(items, outfits).get(date) ?? { outfits: [], items: [] };
   const isFuture = date > today();
   const title = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
-    weekday: 'long',
+    weekday: 'short',
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
+    ...(date.slice(0, 4) !== today().slice(0, 4) ? { year: 'numeric' as const } : {}),
   });
 
-  // Outfits packed for a trip on this day that haven't been logged yet.
+  // The outfits for a trip day are the calendar's own plans (the Planned widget below), not a copy.
   const dayTrips = tripsOnDate(trips, date);
-  const outfitById = new Map(outfits.map((o) => [o.id, o]));
-  const planned = dayTrips.flatMap((t) =>
-    (t.outfitPlan[date] ?? [])
-      .map((id) => outfitById.get(id))
-      .filter((o): o is Outfit => !!o && !o.wears.includes(date))
-      .map((o) => ({ trip: t, outfit: o })),
-  );
 
   const scheduled = pendingPlans(plans, outfits, date);
 
@@ -65,11 +59,31 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
     await onSaveOutfit(outfitFromItems(wear.items, date));
   }
 
+  // The calendar's plans for this day (the same ones a trip uses), listed after the worn outfits in the Outfits card.
+  const plannedItems = scheduled.map(({ plan, outfit }) => (
+    <li key={plan.id} className="planned">
+      <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
+        {isFuture ? (
+          <button className="card-fab" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+            <TrashIcon />
+          </button>
+        ) : (
+          <>
+            <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
+              <CheckIcon />
+            </button>
+            <button className="card-fab card-fab-left" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+              <TrashIcon />
+            </button>
+          </>
+        )}
+      </OutfitCard>
+      <span className="planned-tag muted small">Planned</span>
+    </li>
+  ));
+
   return (
     <article className="detail">
-      <a className="back" href={href('/calendar')}>
-        ← Calendar
-      </a>
       <div className="day-head">
         <a className="btn btn-ghost" href={href(`/calendar/${addDays(date, -1)}`)} aria-label="Previous day">
           ‹
@@ -80,107 +94,88 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
         </a>
       </div>
 
-      {children}
+      <div className="day-grid">
+        {children}
 
-      {dayTrips.length > 0 && (
-        <section>
-          <h2>Trip</h2>
-          {dayTrips.map((t) => (
-            <p key={t.id}>
-              🧳 <a href={href(`/packing/${t.id}`)}>{t.name}</a>
-            </p>
-          ))}
-          <ul className="outfit-cards">
-            {planned.map(({ trip, outfit }) => (
-              <li key={trip.id + outfit.id}>
-                <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
-                  <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn, planned for ${trip.name}`} onClick={() => wearPlanned(outfit)}>
-                    <CheckIcon />
-                  </button>
-                </OutfitCard>
-              </li>
+        {dayTrips.length > 0 && (
+          <DayWidget
+            id="trip"
+            title="Trip"
+            icon={<SuitcaseIcon />}
+            tone="trip"
+            size="half"
+            badge={dayTrips.length > 1 ? dayTrips.length : undefined}
+            summary={dayTrips.map((t) => t.name).join(', ')}
+          >
+            {dayTrips.map((t) => (
+              <p key={t.id} className="widget-line">
+                <a href={href(`/trips/${t.id}`)}>{t.name}</a>
+              </p>
             ))}
-          </ul>
-        </section>
-      )}
+          </DayWidget>
+        )}
 
-      {scheduled.length > 0 && (
-        <section>
-          <h2>Planned</h2>
-          <ul className="outfit-cards">
-            {scheduled.map(({ plan, outfit }) => (
-              <li key={plan.id}>
-                <OutfitCard outfit={outfit} items={items} to={`/clothes/outfits/${outfit.id}`}>
-                  {isFuture ? (
-                    <button className="card-fab" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
+        {wear.outfits.length + scheduled.length > 0 && (
+          <DayWidget
+            id="outfits"
+            title="Outfits"
+            icon={<HangerIcon />}
+            tone="clothes"
+            size="full"
+            badge={wear.outfits.length + scheduled.length}
+            summary={[...wear.outfits, ...scheduled.map(({ outfit }) => outfit)].map(outfitName).join(', ')}
+          >
+            <ul className="outfit-cards">
+              {wear.outfits.map((o) => (
+                <li key={o.id}>
+                  <OutfitCard outfit={o} items={items} to={`/clothes/outfits/${o.id}`}>
+                    <button className="card-fab" aria-label={`Remove ${outfitName(o)} from this day`} onClick={() => removeOutfit(o)}>
                       <TrashIcon />
                     </button>
-                  ) : (
-                    <>
-                      <button className="card-fab" aria-label={`Log ${outfitName(outfit)} as worn`} onClick={() => wearPlanned(outfit, plan.id)}>
-                        <CheckIcon />
-                      </button>
-                      <button className="card-fab card-fab-left" aria-label={`Remove plan ${outfitName(outfit)}`} onClick={() => onRemovePlan?.(plan.id)}>
-                        <TrashIcon />
-                      </button>
-                    </>
-                  )}
-                </OutfitCard>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                  </OutfitCard>
+                </li>
+              ))}
+              {plannedItems}
+            </ul>
+          </DayWidget>
+        )}
 
-      {wear.outfits.length === 0 && wear.items.length === 0 && scheduled.length === 0 && planned.length === 0 && (
-        <p className="muted center">{isFuture ? 'Nothing planned for this day.' : 'Nothing logged for this day.'}</p>
-      )}
-
-      {wear.outfits.length > 0 && (
-        <section>
-          <h2>Outfits</h2>
-          <ul className="outfit-cards">
-            {wear.outfits.map((o) => (
-              <li key={o.id}>
-                <OutfitCard outfit={o} items={items} to={`/clothes/outfits/${o.id}`}>
-                  <button className="card-fab" aria-label={`Remove ${outfitName(o)} from this day`} onClick={() => removeOutfit(o)}>
-                    <TrashIcon />
-                  </button>
-                </OutfitCard>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {wear.items.length > 0 && (
-        <section>
-          <div className="section-head">
-            <h2>{wear.outfits.length ? 'Also worn' : 'Items'}</h2>
-            {wear.items.length > 1 && (
-              <button className="icon-btn" aria-label="Save these items as an outfit" onClick={saveAsOutfit}>
-                <ShirtIcon />
-              </button>
-            )}
-          </div>
-          <ul className="closet-grid day-items">
-            {wear.items.map((i) => (
-              <li key={i.id}>
-                <a href={href(`/clothes/${i.id}`)} className="closet-tile">
-                  <ItemThumb item={i} />
-                  <span className="tile-name">{i.name}</span>
-                </a>
-                <button
-                  className="tile-remove"
-                  aria-label={`Remove ${i.name} from this day`}
-                  onClick={() => onSaveItem(withoutWearOn(i, date))}
-                >
-                  ✕
+        {wear.items.length > 0 && (
+          <DayWidget
+            id="worn"
+            title={wear.outfits.length ? 'Also worn' : 'Worn'}
+            icon={<ShirtIcon />}
+            tone="clothes"
+            size="full"
+            badge={wear.items.length}
+            summary={wear.items.map((i) => i.name).join(', ')}
+            action={
+              wear.items.length > 1 ? (
+                <button className="icon-btn" aria-label="Save these items as an outfit" onClick={saveAsOutfit}>
+                  <ShirtIcon />
                 </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+              ) : undefined
+            }
+          >
+            <ul className="closet-grid day-items">
+              {wear.items.map((i) => (
+                <li key={i.id}>
+                  <a href={href(`/clothes/${i.id}`)} className="closet-tile">
+                    <ItemThumb item={i} />
+                    <span className="tile-name">{i.name}</span>
+                  </a>
+                  <button className="tile-remove" aria-label={`Remove ${i.name} from this day`} onClick={() => onSaveItem(withoutWearOn(i, date))}>
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </DayWidget>
+        )}
+      </div>
+
+      {wear.outfits.length === 0 && wear.items.length === 0 && scheduled.length === 0 && (
+        <p className="muted center day-empty">{isFuture ? 'No outfit planned for this day.' : 'No outfit logged for this day.'}</p>
       )}
 
       <div className="form-actions start day-actions">

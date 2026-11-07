@@ -1,17 +1,20 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BottomNav } from './BottomNav';
 import { CalendarPage } from './CalendarPage';
 import { Home } from './Home';
 import { Settings } from './Settings';
 import { StatsPage } from './StatsPage';
 import { SyncBadge } from './SyncBadge';
+import { Wordmark } from './Wordmark';
 import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
+import { parentRoute } from './lib/backRoute';
 import { href, useRoute } from './lib/router';
-import { useHideOnScroll } from './lib/useHideOnScroll';
+import { useSwipeBack } from './lib/useSwipeBack';
 import { SettingsProvider } from './lib/settings';
 import { MODULES } from './modules';
+import { activeTab } from './nav';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,14 +23,15 @@ function pageTitle(route: string[]): string | undefined {
   const [a, b] = route;
   if (!a || (a === 'calendar' && !DATE.test(b ?? ''))) return 'Calendar';
   if (a === 'stats') return 'Stats';
+  if (a === 'games' && (!b || b === 'players' || b === 'titles')) return 'Games';
   if (a === 'more') return 'More';
+  if (a === 'food' && (!b || b === 'products' || b === 'stock')) return 'Food';
   if (a === 'clothes' && !b) return 'Closet';
   if (a === 'clothes' && b === 'outfits' && route.length === 2) return 'Outfits';
   return undefined;
 }
 
 export function App() {
-  const topbarHidden = useHideOnScroll();
   const route = useRoute();
   const [section, ...rest] = route;
   const redirect = legacyRedirect(route);
@@ -35,17 +39,20 @@ export function App() {
     if (redirect) window.location.replace(href(redirect));
   }, [redirect]);
 
+  const page$ = useCallback(() => document.querySelector<HTMLElement>('main.container'), []);
+  useSwipeBack(redirect ? undefined : parentRoute(route), page$);
+
   const mod = MODULES.find((m) => m.id === section);
   let page;
   if (redirect) page = null;
   else if (!section || section === 'calendar') page = <CalendarPage subroute={rest} />;
   else if (section === 'stats') page = <StatsPage subroute={rest} />;
   else if (section === 'more') page = <Home />;
-  else if (section === 'settings') page = <Settings />;
+  else if (section === 'settings') page = <Settings subroute={rest} />;
   else if (mod) page = mod.render(rest);
   else page = <p className="muted">Page not found.</p>;
 
-  const showNav = !(mod && mod.hideNav?.(rest));
+  const showNav = !(mod && mod.hideNav?.(rest)) && !(section === 'settings' && rest[0] === 'closet-review' && Boolean(rest[1]));
   // The month calendar fills the screen and scrolls inside itself.
   const fullCalendar = !redirect && (!section || section === 'calendar') && !DATE.test(rest[0] ?? '');
   const title = showNav ? pageTitle(route) : undefined;
@@ -58,10 +65,10 @@ export function App() {
           {PREVIEW_COMMIT && <> · {PREVIEW_COMMIT}</>}
         </div>
       )}
-      <header className={`topbar${topbarHidden ? ' topbar-hidden' : ''}`}>
+      <header className="topbar">
         <div className="brand-row">
-          <a className="brand" href={href('/')}>
-            Life
+          <a className="brand" href={href('/')} aria-label="Life">
+            <Wordmark className="brand-mark" />
           </a>
           <SyncBadge />
           {title && <h1 className="brand-page">{title}</h1>}
@@ -75,7 +82,7 @@ export function App() {
           <GearIcon />
         </a>
       </header>
-      <main className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
+      <main key={activeTab(route)} className={`container${showNav ? ' with-nav' : ''}${fullCalendar ? ' cal-full' : ''}`}>{page}</main>
       {showNav && <BottomNav route={route} />}
     </SettingsProvider>
   );

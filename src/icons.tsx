@@ -9,6 +9,29 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
+/** Six-dot drag handle. */
+export const GripIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    {[8.5, 15.5].flatMap((x) => [6, 12, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={1.6} />))}
+  </svg>
+);
+
+/** Longest Road: a road running into the distance. */
+export const RoadIcon = () => (
+  <Icon>
+    <path d="M8 3 4 21M16 3l4 18" />
+    <path d="M12 5v2.5M12 11v2.5M12 17v2.5" />
+  </Icon>
+);
+
+/** Largest Army: a shield with a sword. */
+export const ArmyIcon = () => (
+  <Icon>
+    <path d="M12 3 5 5.5V11c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V5.5L12 3Z" />
+    <path d="M12 8v7M9.5 10.5h5" />
+  </Icon>
+);
+
 export const HangerIcon = () => (
   <Icon>
     <path d="M12 7.5a2 2 0 1 0-2-2" />
@@ -32,6 +55,67 @@ export const CalendarIcon = () => (
 export const ChartIcon = () => (
   <Icon>
     <path d="M4 20.5h16M7 17v-5M12 17V7M17 17v-8" />
+  </Icon>
+);
+
+export const CartIcon = () => (
+  <Icon>
+    <path d="M3 4h2.5l2 10.5h10L19.5 8H6.2" />
+    <circle cx="9" cy="19" r="1.3" />
+    <circle cx="17" cy="19" r="1.3" />
+  </Icon>
+);
+
+/** A shopping bag with a handle and a fork and knife on it: takeout. */
+export const BagIcon = () => (
+  <Icon>
+    <path d="M5.5 8.5h13l1 12h-15z" />
+    <path d="M9 8.5v-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v3" />
+    <path d="M9.5 12.5v2a1 1 0 0 0 2 0v-2M10.5 14.5V18M14.5 18v-5.5c-1.4 1-1.4 3.2 0 3.8" />
+  </Icon>
+);
+
+export const CameraIcon = () => (
+  <Icon>
+    <path d="M4 8h3l1.5-2.500h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.500" />
+  </Icon>
+);
+
+export const ImageIcon = () => (
+  <Icon>
+    <rect x="3.500" y="4.500" width="17" height="15" rx="2" />
+    <circle cx="9" cy="10" r="1.500" />
+    <path d="M4 17l5-4.500 4 3.500 3-2.500 4 3.500" />
+  </Icon>
+);
+
+export const SearchIcon = () => (
+  <Icon>
+    <circle cx="11" cy="11" r="6.500" />
+    <path d="M16 16l4.500 4.500" />
+  </Icon>
+);
+
+/** A ring with a dot: "used it, still have it". */
+export const UsedIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="2.2" fill="currentColor" />
+  </Icon>
+);
+
+/** A circle filled on one side: "some of it is left". */
+export const HalfIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
+  </Icon>
+);
+
+export const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
   </Icon>
 );
 
@@ -127,17 +211,10 @@ export const MoreIcon = () => (
   </Icon>
 );
 
-export const ZoomInIcon = () => (
+/** Funnel: filters. */
+export const FilterIcon = () => (
   <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M10.5 7.800v5.400M7.800 10.500h5.400" />
-  </Icon>
-);
-
-export const ZoomOutIcon = () => (
-  <Icon>
-    <circle cx="10.5" cy="10.5" r="6.5" />
-    <path d="m20 20-4.9-4.9M7.800 10.500h5.400" />
+    <path d="M4 5h16l-6 7.5V19l-4 1.5v-8L4 5Z" />
   </Icon>
 );
 
@@ -145,5 +222,60 @@ export const PinIcon = () => (
   <Icon>
     <path d="M12 21s6.5-5.800 6.500-11a6.500 6.500 0 0 0-13 0c0 5.200 6.500 11 6.500 11Z" />
     <circle cx="12" cy="10" r="2.300" />
+  </Icon>
+);
+
+export const FilmIcon = () => (
+  <Icon>
+    <rect x="4" y="4" width="16" height="16" rx="2.500" />
+    <path d="M8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4" />
+  </Icon>
+);
+
+export const DiceIcon = () => (
+  <Icon>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+    <circle cx="8.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="8.5" r="1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+    <circle cx="8.5" cy="15.5" r="1" fill="currentColor" />
+    <circle cx="15.5" cy="15.5" r="1" fill="currentColor" />
+  </Icon>
+);
+
+export const CalculatorIcon = () => (
+  <Icon>
+    <rect x="5" y="3" width="14" height="18" rx="2.5" />
+    <path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+  </Icon>
+);
+
+/** Skull silhouette (Lords of Waterdeep corruption). Filled, unlike the line icons. */
+export const SkullIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M12 0C18.4 0 22.6 5.2 22.6 11c0 2.6-1.2 3.6-2.4 4.3-1 .6-1.5 1.1-1.5 2.3v3c0 2.1-2.7 3.4-6.7 3.4s-6.7-1.3-6.7-3.4v-3c0-1.2-.5-1.7-1.5-2.3C2.6 14.6 1.4 13.6 1.4 11 1.4 5.2 5.6 0 12 0Z" />
+  </svg>
+);
+
+export const ChevronIcon = () => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
+export const CarIcon = () => (
+  <Icon>
+    <path d="M5 16.5V11l1.7-4.5a1 1 0 0 1 .9-.6h8.8a1 1 0 0 1 .9.6L19 11v5.500M4 16.500h16v2H4z" />
+    <path d="M5 11h14" />
+    <circle cx="8" cy="14" r=".6" />
+    <circle cx="16" cy="14" r=".6" />
+  </Icon>
+);
+
+export const MusicIcon = () => (
+  <Icon>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6.500" cy="18" r="2.500" />
+    <circle cx="17.500" cy="16" r="2.500" />
   </Icon>
 );

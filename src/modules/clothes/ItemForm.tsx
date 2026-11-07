@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { usePhoto } from '../../lib/usePhoto';
 import { newId } from '../../lib/db';
 import { cutOutImage, resizeImage } from '../../lib/image';
 import { today } from '../../lib/format';
@@ -36,7 +37,11 @@ export function ItemForm({ existing, onSave }: Props) {
   const [purchaseDate, setPurchaseDate] = useState(existing?.purchaseDate ?? '');
   const [status, setStatus] = useState<Status>(existing?.status ?? 'active');
   const [condition, setCondition] = useState<Condition | ''>(existing?.condition ?? '');
-  const [photo, setPhoto] = useState(existing?.photo);
+  // undefined: the saved picture is untouched, null: removed, string: a new one.
+  const [photoEdit, setPhotoEdit] = useState<string | null>();
+  const storedPhoto = usePhoto('clothes', existing);
+  const photo = photoEdit === undefined ? storedPhoto : (photoEdit ?? undefined);
+  const setPhoto = (p: string | undefined) => setPhotoEdit(p ?? null);
   // Photo being worked on: its plain resize, its source, and the cut-out once made (null: none found).
   const [picked, setPicked] = useState<{ original: string; source: Blob; cutout?: string | null }>();
   const [removeBg, setRemoveBg] = useState(true);
@@ -122,7 +127,8 @@ export function ItemForm({ existing, onSave }: Props) {
       status,
       retiredDate: retiredDateFor(existing, status, today()),
       condition: condition || undefined,
-      photo,
+      // An untouched picture stays where it is (the record keeps its hasPhoto flag).
+      ...(photoEdit === undefined ? {} : { photo: photoEdit ?? undefined, hasPhoto: photoEdit !== null }),
       notes: notes.trim() || undefined,
       wears: existing?.wears ?? [],
       createdAt: existing?.createdAt ?? now,

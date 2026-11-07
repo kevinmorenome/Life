@@ -14,8 +14,8 @@ export interface WorkDay {
   arrive?: string;
   leave?: string;
   reason?: OffReason;
-  /** Set on days that came from a badge report, which a re-import may replace. Editing a day by hand clears it. */
-  source?: 'report';
+  /** Set on days that came from a badge report or were inferred from Swarm check-ins; a (re-)import of the report may replace them. Editing a day by hand clears it. */
+  source?: 'report' | 'swarm';
   updatedAt: string;
 }
 
