@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDue, REFRESH_AFTER_MS } from './swarmClient';
-import { byDate, dayLabel, place } from './checkins';
+import { byDate, dayLabel, moveCheckin, moveCheckins, place } from './checkins';
 import type { Checkin } from './types';
 
 const at = (id: string, date: string, time: string, secs: number, extra: Partial<Checkin> = {}): Checkin => ({
@@ -45,5 +45,36 @@ describe('isDue', () => {
   });
   it('is not due right after a fetch', () => {
     expect(isDue(1_000_000, 1_000_000 + REFRESH_AFTER_MS - 1)).toBe(false);
+  });
+});
+
+describe('moveCheckin', () => {
+  const c = at('x', '2026-10-01', '09:30', 1000, { venue: 'Cafe', city: 'London' });
+  it('moves the day and time and shifts `at` by the same amount', () => {
+    const m = moveCheckin(c, '2026-10-03', '10:00', 'now');
+    expect([m.date, m.time, m.at - c.at, m.updatedAt]).toEqual(['2026-10-03', '10:00', 2 * 86400 + 30 * 60, 'now']);
+    expect([m.venue, m.city, m.source]).toEqual(['Cafe', 'London', 'swarm']);
+  });
+  it('leaves the record alone when nothing changed or the input is not valid', () => {
+    expect(moveCheckin(c, '2026-10-01', '09:30', 'now')).toBe(c);
+    expect(moveCheckin(c, '', '09:30', 'now')).toBe(c);
+    expect(moveCheckin(c, '2026-10-02', '9am', 'now')).toBe(c);
+  });
+  it('can leave the time out, and put one back', () => {
+    const none = moveCheckin(c, '2026-10-01', '', 'now');
+    expect([none.time, none.at - c.at]).toEqual(['', 150 * 60]);
+    const back = moveCheckin(none, '2026-10-01', '09:30', 'now');
+    expect([back.time, back.at]).toEqual([c.time, c.at]);
+  });
+});
+
+describe('moveCheckins', () => {
+  const list = [at('a', '2026-10-01', '09:00', 100), at('b', '2026-10-01', '18:30', 200), at('c', '2026-10-01', '10:00', 300), at('p', '2026-10-01', '11:00', 400, { source: 'plan' })];
+  it('moves the ticked Swarm check-ins to one day and keeps each time', () => {
+    const moved = moveCheckins(list, new Set(['a', 'b', 'p']), '2026-10-05', 'now');
+    expect(moved.map((m) => [m.id, m.date, m.time])).toEqual([['a', '2026-10-05', '09:00'], ['b', '2026-10-05', '18:30']]);
+  });
+  it('skips the ones already on that day', () => {
+    expect(moveCheckins(list, new Set(['a']), '2026-10-01', 'now')).toEqual([]);
   });
 });
