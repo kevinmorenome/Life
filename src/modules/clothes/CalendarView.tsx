@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { today } from '../../lib/format';
 import { flagEmoji } from '../countries/flag';
 import type { HomeOn } from '../countries/countries';
@@ -480,7 +480,17 @@ function WeekRow({ start, children }: { start: string; children: () => ReactNode
  * A day shows all three zoom levels at once, stacked: --z (set on the calendar) fades dots into a photo with
  * badges and then into labelled pills, so zooming can run continuously.
  */
-function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, dayCountries, homeOn, layers, filter, items, onClick }: CellProps) {
+/**
+ * A day only redraws when what it shows changes: scrolling changes the month label above the list, which used to
+ * redraw every built day. `onClick` is left out of the comparison: it only reads the same things the props carry.
+ */
+const DayCell = memo(DayCellView, (a, b) => {
+  const { trips: at, onClick: _a, ...ar } = a;
+  const { trips: bt, onClick: _b, ...br } = b;
+  return (Object.keys(ar) as (keyof typeof ar)[]).every((k) => ar[k] === br[k]) && at.length === bt.length && at.every((t, i) => t === bt[i]);
+});
+
+function DayCellView({ date, isToday, wear: allWear, planned: allPlanned, trips: allTrips, dayCountries, homeOn, layers, filter, items, onClick }: CellProps) {
   const marks = layers.flatMap((l) => {
     const mark = l.mark?.(date);
     return mark && isShown(filter, kindOfTone(mark.tone)) ? [mark] : [];
@@ -515,7 +525,8 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
   // the two rows below it (six cells) on those days.
   const trip = trips[0];
   const flags = trip ? flagsToShow(trip, date, dayCountries, homeOn?.(date)) : { codes: [], unknown: false };
-  const flagCodes = flags.codes;
+  // A trip you haven't confirmed gets one faded flag: the country it is in, not each border you crossed.
+  const flagCodes = trip && isUnconfirmedTrip(trip) ? flags.codes.slice(0, 1) : flags.codes;
   const shape = trip ? tripDayShape(trip, date) : undefined;
   const showFlag = flagCodes.length > 0 || flags.unknown;
   const flagText = flagCodes.map((c) => flagEmoji(c) ?? '').join('') || '🧳';

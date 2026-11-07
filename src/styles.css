@@ -7430,9 +7430,14 @@ a.game-row + .food-h2 {
 .cal-day.trip-pending .trip-line {
   background: repeating-linear-gradient(90deg, var(--trip-line) 0 5px, transparent 5px 9px);
 }
-.cal-day.trip-pending .trip-flag,
-.cal-day.trip-pending .trip-end-dot {
-  opacity: 0.6;
+.cal-day.trip-pending .trip-flag:not(.trip-flag-num),
+.cal-day.trip-pending .trip-end-dot:not(.trip-end-dot-num) {
+  opacity: 0.55;
+}
+/* The copies beside the big number keep their zoom fade, only fainter. */
+.cal-day.trip-pending .trip-flag-num,
+.cal-day.trip-pending .trip-end-dot-num {
+  opacity: calc(0.55 * clamp(0, max(var(--z) - 1, 1 - var(--z)), 1));
 }
 .cal-day.trip-pending .cell-num.trip-start:not(.today),
 .cal-day.trip-pending .cal-num.trip-start:not(.today) {
@@ -7442,12 +7447,21 @@ a.game-row + .food-h2 {
 .widget-list li.trip-pending-row {
   flex-direction: row;
   flex-wrap: nowrap;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
+.trip-pending-row > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .trip-pending-actions {
   display: flex;
   flex: none;
+  gap: 0.5rem;
+}
+.trip-pending-actions .icon-btn {
+  margin: 0;
 }
