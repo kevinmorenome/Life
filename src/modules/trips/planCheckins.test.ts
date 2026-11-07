@@ -45,8 +45,9 @@ describe('planCheckinChanges', () => {
     expect(planCheckinChanges([{ ...hotel, removed: true }], made, TODAY).remove).toEqual(['plan-tripit-t1-h']);
     expect(planCheckinChanges([hotel], [...made, swarm({ country: 'Mexico' })], TODAY).remove).toEqual(['plan-tripit-t1-h']);
   });
-  it('waits for the day: plans after today make no check-in', () => {
+  it('waits until the day is over: plans of today and later make no check-in', () => {
+    expect(planCheckinChanges([hotel], [], '2026-09-19').add).toEqual([]);
     expect(planCheckinChanges([hotel], [], '2026-09-18').add).toEqual([]);
-    expect(planCheckinChanges([hotel], [], '2026-09-19').add).toHaveLength(1);
+    expect(planCheckinChanges([hotel], [], '2026-09-20').add).toHaveLength(1);
   });
 });
