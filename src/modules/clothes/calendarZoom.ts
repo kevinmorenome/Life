@@ -56,3 +56,10 @@ export function calendarStart(nowMonth: string, month: string | undefined, dates
   const oldest = dates.reduce<string>((min, d) => (d && d.slice(0, 7) < min ? d.slice(0, 7) : min), addMonths(nowMonth, -12));
   return month && month < oldest ? month : oldest;
 }
+
+/** A YYYY-MM-DD limited to the days the list of weeks covers; `undefined` when it is not a date. */
+export function clampToWeeks(date: string, weeks: string[]): string | undefined {
+  if (!weeks.length || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date + 'T00:00:00Z'))) return undefined;
+  const last = addDays(weeks[weeks.length - 1], 6);
+  return date < weeks[0] ? weeks[0] : date > last ? last : date;
+}

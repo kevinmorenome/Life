@@ -9,9 +9,9 @@ import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../trips/packing';
 import type { Trip } from '../trips/types';
-import { addMonths, wearsByDay, type DayWear } from './calendar';
+import { addDays, addMonths, wearsByDay, type DayWear } from './calendar';
 import { FILTER_KINDS, isShown, kindOfTone, parseFilter, toggleKind } from './calendarFilter';
-import { calendarStart, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
+import { calendarStart, clampToWeeks, MAX_ZOOM, monthOfWeek, nearestLevel, pinchZoom, weekDays, weekStarts, ZOOMS } from './calendarZoom';
 import { collagePieces } from './collage';
 import { ItemThumb } from './ItemThumb';
 import { outfitName, outfitPieces } from './outfits';
@@ -64,6 +64,7 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
       return [];
     }
   });
+  const [jumpOpen, setJumpOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
   const setFilter = (next: string[]) => {
     setFilterState(next);
@@ -185,6 +186,25 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
     el.scrollTo({ top: Math.max(0, target), behavior: smooth ? 'smooth' : 'auto' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weeks]);
+
+  /** Jumps to any day: scrolls there (at the current zoom) and flashes the day. */
+  const jumpTo = (value: string) => {
+    const date = clampToWeeks(value, weeks);
+    if (!date) return;
+    setJumpOpen(false);
+    scrollToDate(date);
+    // The week is built when it comes into view, so look for the day a moment later.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const cell = scrollRef.current?.querySelector<HTMLElement>(`[aria-label="${date}"]`);
+        if (!cell) return;
+        cell.classList.remove('jump-flash');
+        void cell.offsetWidth;
+        cell.classList.add('jump-flash');
+        cell.addEventListener('animationend', () => cell.classList.remove('jump-flash'), { once: true });
+      }),
+    );
+  };
 
   /** The start of this month, unless that leaves today's week off the screen. */
   const scrollToToday = useCallback(
@@ -347,6 +367,35 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
             ))}
           </div>
           <div className="cal-tools">
+            <span className="menu-wrap">
+              <button className="icon-btn" aria-label="Jump to a date" aria-expanded={jumpOpen} onClick={() => setJumpOpen((o) => !o)}>
+                <CalendarIcon />
+              </button>
+              {jumpOpen && (
+                <div className="menu cal-jump" role="dialog" aria-label="Jump to a date">
+                  <label className="cal-jump-field">
+                    <span>Go to</span>
+                    <input
+                      type="date"
+                      autoFocus
+                      value={visibleMonth + '-01'}
+                      min={weeks[0]}
+                      max={addDays(weeks[weeks.length - 1], 6)}
+                      onChange={(e) => jumpTo(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="menu-item"
+                    onClick={() => {
+                      setJumpOpen(false);
+                      scrollToToday(true);
+                    }}
+                  >
+                    Today
+                  </button>
+                </div>
+              )}
+            </span>
             <button className={`icon-btn${filter.length ? ' filtering' : ''}`} aria-label="Filter the calendar" aria-pressed={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
               <FilterIcon />
             </button>
