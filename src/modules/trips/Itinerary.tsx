@@ -3,6 +3,7 @@ import { shortDate } from '../../lib/format';
 import { TrashIcon, UndoIcon } from '../../icons';
 import type { PlanKind, TripitPlan } from '../../../worker/tripitTypes';
 import type { Checkin } from '../checkins/types';
+import { SourceLogos } from '../checkins/SourceLogo';
 import { itineraryCheckins } from './itineraryCheckins';
 
 const KIND_LABEL: Record<PlanKind, string> = {
@@ -64,7 +65,7 @@ export function Itinerary({
                   <span className="pack-text">
                     <strong>{p.title}</strong>
                     <span className="muted small">
-                      {[KIND_LABEL[p.kind], p.start === day && p.startTime ? p.startTime : p.start < day ? 'continues' : '', p.location, matched.get(p.id)?.date === day ? 'TripIt · Swarm' : 'TripIt'].filter(Boolean).join(' · ')}
+                      {[KIND_LABEL[p.kind], p.start === day && p.startTime ? p.startTime : p.start < day ? 'continues' : '', p.location].filter(Boolean).join(' · ')} <SourceLogos sources={matched.get(p.id)?.date === day ? ['tripit', 'swarm'] : ['tripit']} />
                     </span>
                   </span>
                   {onRemove && (
@@ -87,7 +88,7 @@ export function Itinerary({
               <li key={c.id} className="pack-row">
                 <span className="pack-text">
                   <strong>{c.venue}</strong>
-                  <span className="muted small">{[c.time, c.category, c.city, 'Swarm'].filter(Boolean).join(' · ')}</span>
+                  <span className="muted small">{[c.time, c.category, c.city].filter(Boolean).join(' · ')} <SourceLogos sources={['swarm']} /></span>
                 </span>
               </li>
             ))}
