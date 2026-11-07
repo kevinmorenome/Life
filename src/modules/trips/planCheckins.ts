@@ -1,7 +1,7 @@
 // Itinerary plans as check-ins. Every plan that took you somewhere becomes a check-in record, shaped like a Swarm one
 // (so the calendar, Places stats and countries read them the same way): a flight gives two (where it left and where
 // it landed), anything else one, on its first day. A real Swarm check-in wins: a plan's check-in is left out when
-// Swarm already has one in the same country (and city, when both say) that day. A removed plan has none.
+// Swarm already has one in the same country (and city, when both say) that day. Plans of days after today wait. A removed plan has none.
 // Pure: `planCheckinChanges` says what to add and what to delete; `syncPlanCheckins` (planCheckinsRunner.ts) applies it.
 
 import type { PlanKind, TripitPlan } from '../../../worker/tripitTypes';
@@ -93,14 +93,15 @@ function coveredBySwarm(d: Draft, swarm: Pick<Checkin, 'date' | 'country' | 'cit
  * What to change so the plan-made check-ins match the plans: new ones to add, and the ids of ones to delete (their
  * plan was removed, or Swarm has the place now). Existing ones are never rewritten.
  */
-export function planCheckinChanges(plans: PlanLike[], checkins: Checkin[], now = new Date().toISOString()): { add: Checkin[]; remove: string[] } {
+export function planCheckinChanges(plans: PlanLike[], checkins: Checkin[], today: string, now = new Date().toISOString()): { add: Checkin[]; remove: string[] } {
   const swarm = checkins.filter((c) => c.source !== 'plan');
   const existing = new Map(checkins.filter((c) => c.source === 'plan').map((c) => [c.id, c]));
   const wanted = new Set<string>();
   const add: Checkin[] = [];
   for (const plan of plans) {
     for (const d of draftsOfPlan(plan)) {
-      if (coveredBySwarm(d, swarm)) continue;
+      // A plan for a day that hasn't come yet is no check-in (and not a visit): it appears once the day has.
+      if (d.date > today || coveredBySwarm(d, swarm)) continue;
       wanted.add(d.id);
       if (existing.has(d.id)) continue;
       add.push({ ...d, source: 'plan', createdAt: now, updatedAt: now });
