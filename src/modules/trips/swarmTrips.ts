@@ -1,7 +1,7 @@
 // Turns Swarm check-ins into trips: a run of days checked in outside your home country is a trip.
 // Check-ins at airports don't count. Pure.
 
-import { findCountry } from '../countries/countries';
+import { findCountry, type HomeOn } from '../countries/countries';
 import type { Checkin } from '../checkins/types';
 import type { Trip } from './types';
 
@@ -88,13 +88,15 @@ export function homeCountry(checkins: Checkin[]): string | undefined {
  * Runs of days away from home that have ended (nothing for `MAX_GAP_DAYS` since, so one in progress isn't cut short).
  * A check-in at home ends a run; so does a long silence.
  */
-export function awayRuns(checkins: Checkin[], today: string): SwarmRun[] {
-  const home = homeCountry(checkins);
-  if (!home) return [];
+export function awayRuns(checkins: Checkin[], today: string, homeOn?: HomeOn): SwarmRun[] {
+  const auto = homeCountry(checkins);
+  if (!auto && !homeOn) return [];
   const runs: Stop[][] = [];
   let current: Stop[] = [];
   for (const s of stops(checkins)) {
     const last = current[current.length - 1];
+    const home = homeOn?.(s.date) ?? auto;
+    if (!home) continue;
     if (s.key === home) {
       if (current.length) runs.push(current);
       current = [];
@@ -142,22 +144,22 @@ export function tripFromRun(run: SwarmRun, now: string): Trip {
  * carries its `swarmRef`, when you deleted it (`dismissed`), or when any trip of yours (by hand or from TripIt)
  * already covers some of its days.
  */
-export function newSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
-  return openRuns(checkins, trips, today)
+export function newSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string, homeOn?: HomeOn): Trip[] {
+  return openRuns(checkins, trips, today, homeOn)
     .filter((run) => !dismissed.includes(run.ref))
     .map((run) => tripFromRun(run, now));
 }
 
 /** The suggestions you hid (or whose trip you deleted), so a mistake can be undone. */
-export function hiddenSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
-  return openRuns(checkins, trips, today)
+export function hiddenSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string, homeOn?: HomeOn): Trip[] {
+  return openRuns(checkins, trips, today, homeOn)
     .filter((run) => dismissed.includes(run.ref))
     .map((run) => tripFromRun(run, now));
 }
 
 /** Runs with no trip yet: not already added and not overlapping a trip of yours. */
-function openRuns(checkins: Checkin[], trips: Trip[], today: string): SwarmRun[] {
-  return awayRuns(checkins, today).filter(
+function openRuns(checkins: Checkin[], trips: Trip[], today: string, homeOn?: HomeOn): SwarmRun[] {
+  return awayRuns(checkins, today, homeOn).filter(
     (run) => !trips.some((t) => t.swarmRef === run.ref) && !trips.some((t) => t.startDate <= run.end && t.endDate >= run.start),
   );
 }

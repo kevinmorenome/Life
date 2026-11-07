@@ -2,7 +2,7 @@
 // another country than home, drawn as a line with that country's flag, like a recorded trip. Pure.
 
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, countryByCode } from '../countries/countries';
+import { checkinCountry, countryByCode, type HomeOn } from '../countries/countries';
 import type { Trip } from './types';
 
 export interface Stay {
@@ -20,14 +20,17 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00
  * check in every day), and a check-in at home in between ends it. A day with check-ins in several countries counts
  * for the one with most of them.
  */
-export function abroadStays(checkins: Pick<Checkin, 'country' | 'date'>[], home: string | undefined, maxGap = 3): Stay[] {
+export function abroadStays(checkins: Pick<Checkin, 'country' | 'date'>[], home: string | undefined | HomeOn, maxGap = 3): Stay[] {
   if (!home) return [];
+  const homeAt: HomeOn = typeof home === 'function' ? home : () => home;
   const homeDays = new Set<string>();
   const foreign = new Map<string, Map<string, number>>();
   for (const c of checkins) {
     const code = checkinCountry(c);
     if (!code) continue;
-    if (code === home) {
+    const homeThen = homeAt(c.date);
+    if (!homeThen) continue;
+    if (code === homeThen) {
       homeDays.add(c.date);
       continue;
     }

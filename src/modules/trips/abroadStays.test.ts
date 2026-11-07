@@ -61,3 +61,15 @@ describe('withoutHidden', () => {
     expect(withoutHidden(stays, [])).toEqual(stays);
   });
 });
+
+describe('abroadStays with a home that changes', () => {
+  it('counts a country as home only in the period it was home', () => {
+    const c = [
+      { date: '2023-05-01', country: 'Mexico' },
+      { date: '2023-08-01', country: 'Mexico' },
+      { date: '2023-08-03', country: 'Mexico' },
+    ];
+    const home = (d: string) => (d < '2023-07-01' ? 'MX' : 'HR');
+    expect(abroadStays(c, home).map((s) => [s.country, s.startDate, s.endDate])).toEqual([['MX', '2023-08-01', '2023-08-03']]);
+  });
+});

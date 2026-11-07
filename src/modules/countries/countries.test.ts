@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, homeCountry, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, homeCountry, homeOnDate, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -214,5 +214,27 @@ describe('plans you removed', () => {
 
   it('falls back to the location text for a plan with no stops', () => {
     expect(plansInCountry([{ id: 'x', location: 'Beograd, Serbia', start: '2023-10-13', end: '2023-10-13' }], 'RS', '2026-11-05')).toHaveLength(1);
+  });
+});
+
+describe('homeOnDate', () => {
+  const periods = [{ country: 'MX' }, { from: '2023-07-01', country: 'HR' }];
+  it('is the period that started last on or before the day', () => {
+    const home = homeOnDate(periods, undefined, 'US');
+    expect(home('2020-05-01')).toBe('MX');
+    expect(home('2023-06-30')).toBe('MX');
+    expect(home('2023-07-01')).toBe('HR');
+    expect(home('2026-11-07')).toBe('HR');
+  });
+  it('does not mind the order the periods were added in', () => {
+    expect(homeOnDate([...periods].reverse(), undefined, undefined)('2023-06-30')).toBe('MX');
+  });
+  it('uses the chosen country, else the automatic one, where no period applies', () => {
+    expect(homeOnDate(undefined, 'PT', 'US')('2024-01-01')).toBe('PT');
+    expect(homeOnDate([], undefined, 'US')('2024-01-01')).toBe('US');
+    expect(homeOnDate([{ from: '2023-07-01', country: 'HR' }], undefined, 'US')('2020-01-01')).toBe('US');
+  });
+  it('ignores a period with an unknown country', () => {
+    expect(homeOnDate([{ country: 'ZZ' }], undefined, 'US')('2024-01-01')).toBe('US');
   });
 });

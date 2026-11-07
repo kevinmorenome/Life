@@ -115,6 +115,31 @@ export function homeCountry(checkins: Pick<Checkin, 'country'>[], chosen?: strin
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
 }
 
+/** Where you lived for a while: from this day (missing = from the beginning) until the next period starts. */
+export interface HomePeriod {
+  from?: string;
+  /** ISO alpha-2 */
+  country: string;
+}
+
+/** Your home country on a day, or nothing when it isn't known. */
+export type HomeOn = (date: string) => string | undefined;
+
+/**
+ * Your home country on each day: the period that started last on or before the day; days no period covers (before
+ * the first one starts, or no periods at all) use `chosen` (Settings → Home country), else `auto` (the country of most
+ * of your check-ins).
+ */
+export function homeOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomeOn {
+  const valid = (periods ?? []).filter((p) => byCode.has(p.country.toUpperCase())).sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''));
+  const fallback = (chosen ? byCode.get(chosen.toUpperCase())?.code : undefined) ?? auto;
+  return (date) => {
+    let found: HomePeriod | undefined;
+    for (const p of valid) if ((p.from ?? '') <= date) found = p;
+    return found ? byCode.get(found.country.toUpperCase())!.code : fallback;
+  };
+}
+
 /**
  * The country a location text is in, as an ISO code: the last comma-separated part that is a country's name
  * ("Hotel Avenida, 1050 Lisboa, Portugal"). Nothing when no part is one: never a guess from a city.

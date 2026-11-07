@@ -84,3 +84,12 @@ export function flagsOnDay(trip: TripPlace, date: string, byDay: ReadonlyMap<str
   const before = recentCountries(trip, date, byDay, BACK);
   return today.filter((c) => !before.has(c)).slice(0, MAX_FLAGS);
 }
+
+/**
+ * What the calendar draws for a day of a trip: the flags (never your home country's: home is not worth a flag) and
+ * whether to draw a suitcase instead, on a first day or Monday when no country is known at all.
+ */
+export function flagsToShow(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>, home?: string): { codes: string[]; unknown: boolean } {
+  const raw = flagsOnDay(trip, date, byDay);
+  return { codes: raw.filter((c) => c !== home), unknown: raw.length === 0 && (date === trip.startDate || isMonday(date)) };
+}

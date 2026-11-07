@@ -7,7 +7,7 @@ import { CalendarView } from './modules/clothes/CalendarView';
 import { ClothesRoot } from './modules/clothes/ClothesRoot';
 import type { Outfit, ClothingItem, Plan } from './modules/clothes/types';
 import type { Checkin } from './modules/checkins/types';
-import { homeCountry } from './modules/countries/countries';
+import { useHomeOn } from './modules/countries/useHomeOn';
 import { abroadStays, calendarTrips, withoutHidden } from './modules/trips/abroadStays';
 import { checkinCountriesByDay } from './modules/trips/tripLine';
 import { hiddenSwarmTrips } from './modules/trips/swarmTrips';
@@ -32,13 +32,14 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
   const plans = useCollection<Plan>('plans');
   const checkins = useCollection<Checkin>('checkins');
   const { settings } = useSettings();
+  const homeOn = useHomeOn(checkins.items);
   // Time abroad that isn't one of your trips is drawn like one (a line and the flag), from your check-ins.
   // A suggestion you hid on the Trips page (not a trip) is not drawn either.
   const drawnTrips = useMemo(() => {
-    const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString());
-    const stays = abroadStays(checkins.items, homeCountry(checkins.items, settings.homeCountry));
+    const hidden = hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn);
+    const stays = abroadStays(checkins.items, homeOn);
     return calendarTrips(trips.items, withoutHidden(stays, hidden));
-  }, [trips.items, checkins.items, settings.homeCountry, settings.swarmTripsDismissed]);
+  }, [trips.items, checkins.items, homeOn, settings.swarmTripsDismissed]);
 
   const dayCountries = useMemo(() => checkinCountriesByDay(checkins.items), [checkins.items]);
 
@@ -54,6 +55,7 @@ export function CalendarPage({ subroute }: { subroute: string[] }) {
       outfits={outfits.items}
       trips={drawnTrips}
       dayCountries={dayCountries}
+      homeOn={homeOn}
       plans={plans.items}
       layers={layers}
     />

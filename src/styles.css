@@ -7408,3 +7408,20 @@ a.game-row + .food-h2 {
   flex: 1;
   min-width: 0;
 }
+
+/* Settings → Home country: one row per period (country, from date, remove). */
+.home-periods {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.home-periods li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.home-periods .input {
+  flex: 1 1 9rem;
+  min-width: 0;
+}

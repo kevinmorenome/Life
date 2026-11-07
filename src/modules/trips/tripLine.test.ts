@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkinCountriesByDay, flagsOnDay, tripDayShape } from './tripLine';
+import { checkinCountriesByDay, flagsOnDay, flagsToShow, tripDayShape } from './tripLine';
 
 // 2026-11-04 is a Wednesday, so the 9th is the next Monday.
 const trip = { startDate: '2026-11-04', endDate: '2026-11-11' };
@@ -75,5 +75,18 @@ describe('flagsOnDay', () => {
   it('shows at most three flags', () => {
     const many = checkinCountriesByDay([ci('2026-09-21', 'Mexico', 1), ci('2026-09-21', 'Belize', 2), ci('2026-09-21', 'Guatemala', 3), ci('2026-09-21', 'Honduras', 4)]);
     expect(flagsOnDay(mexico, '2026-09-21', many)).toHaveLength(3);
+  });
+});
+
+describe('flagsToShow', () => {
+  it("never draws your home country's flag, and no suitcase for it either", () => {
+    const home = { startDate: '2026-09-18', endDate: '2026-09-30', country: 'HR', destination: 'Split' };
+    expect(flagsToShow(home, '2026-09-18', new Map(), 'HR')).toEqual({ codes: [], unknown: false });
+    expect(flagsToShow(mexico, '2026-09-18', new Map(), 'HR').codes).toEqual(['MX']);
+  });
+  it('draws the other flags of a day and a suitcase when no country is known', () => {
+    const by = checkinCountriesByDay([ci('2026-09-21', 'Croatia', 1), ci('2026-09-21', 'Mexico', 2)]);
+    expect(flagsToShow(mexico, '2026-09-21', by, 'HR').codes).toEqual(['MX']);
+    expect(flagsToShow({ startDate: '2026-09-18', endDate: '2026-09-20' }, '2026-09-18', new Map())).toEqual({ codes: [], unknown: true });
   });
 });
