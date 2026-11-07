@@ -7487,3 +7487,16 @@ a.game-row + .food-h2 {
     animation-duration: 0.01s;
   }
 }
+
+.checkin-actions,
+.checkin-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.checkin-edit input {
+  min-height: 44px;
+  max-width: 9.5rem;
+}

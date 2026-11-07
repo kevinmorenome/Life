@@ -7,7 +7,7 @@ import type { TripitPlan } from '../../../worker/tripitTypes';
 import { plannedOnDay } from '../trips/planCheckins';
 import type { CalendarLayer } from '../types';
 import { byDate, dayLabel, place } from './checkins';
-import { RemoveCheckinButton } from './RemoveCheckin';
+import { CheckinActions } from './CheckinActions';
 import type { Checkin } from './types';
 
 /** Swarm check-ins on the shared calendar: a mark on each day and the list on the day screen. */
@@ -40,7 +40,7 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
                       <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</div>
                       {c.shout && <div className="small">{c.shout}</div>}
                     </div>
-                    <RemoveCheckinButton checkin={c} />
+                    <CheckinActions checkin={c} />
                   </>
                 ) : (
                   <>

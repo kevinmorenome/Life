@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDue, REFRESH_AFTER_MS } from './swarmClient';
-import { byDate, dayLabel, place } from './checkins';
+import { byDate, dayLabel, moveCheckin, place } from './checkins';
 import type { Checkin } from './types';
 
 const at = (id: string, date: string, time: string, secs: number, extra: Partial<Checkin> = {}): Checkin => ({
@@ -45,5 +45,19 @@ describe('isDue', () => {
   });
   it('is not due right after a fetch', () => {
     expect(isDue(1_000_000, 1_000_000 + REFRESH_AFTER_MS - 1)).toBe(false);
+  });
+});
+
+describe('moveCheckin', () => {
+  const c = at('x', '2026-10-01', '09:30', 1000, { venue: 'Cafe', city: 'London' });
+  it('moves the day and time and shifts `at` by the same amount', () => {
+    const m = moveCheckin(c, '2026-10-03', '10:00', 'now');
+    expect([m.date, m.time, m.at - c.at, m.updatedAt]).toEqual(['2026-10-03', '10:00', 2 * 86400 + 30 * 60, 'now']);
+    expect([m.venue, m.city, m.source]).toEqual(['Cafe', 'London', 'swarm']);
+  });
+  it('leaves the record alone when nothing changed or the input is not valid', () => {
+    expect(moveCheckin(c, '2026-10-01', '09:30', 'now')).toBe(c);
+    expect(moveCheckin(c, '', '09:30', 'now')).toBe(c);
+    expect(moveCheckin(c, '2026-10-02', '', 'now')).toBe(c);
   });
 });
