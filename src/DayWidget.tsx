@@ -50,6 +50,8 @@ interface Props {
   size?: 'half' | 'full';
   /** A button in the header (next to, not inside, the toggle). */
   action?: ReactNode;
+  /** Show `action` only while the widget is open (it makes no sense on a collapsed one). */
+  actionOpenOnly?: boolean;
   children: ReactNode;
 }
 
@@ -57,7 +59,7 @@ interface Props {
  * One tile of the day dashboard: a header that collapses the body, with a short summary when closed.
  * Tiles flow in a two-column grid (`.day-grid`); `full` ones take both columns.
  */
-export function DayWidget({ id, title, icon, tone = 'accent', badge, summary, size = 'half', action, children }: Props) {
+export function DayWidget({ id, title, icon, tone = 'accent', badge, summary, size = 'half', action, actionOpenOnly = false, children }: Props) {
   const [collapsed, setCollapsed] = useWidgetCollapsed(id);
   const bodyId = `widget-${id}`;
   return (
@@ -71,7 +73,7 @@ export function DayWidget({ id, title, icon, tone = 'accent', badge, summary, si
             <ChevronIcon />
           </span>
         </button>
-        {action}
+        {!(actionOpenOnly && collapsed) && action}
       </div>
       {collapsed ? summary != null && summary !== '' && <p className="widget-summary">{summary}</p> : <div id={bodyId} className="widget-body">{children}</div>}
     </section>

@@ -139,7 +139,7 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
     ) : undefined;
 
   return (
-    <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" size="full" badge={total > 1 ? total : undefined} summary={names.join(', ')} action={headerButtons}>
+    <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" size="full" badge={total > 1 ? total : undefined} summary={names.join(', ')} action={headerButtons} actionOpenOnly>
       {selecting && (
         <div className="sticky-actions watch-select-bar checkin-select-bar">
           <span className="small">{ticked.size} selected</span>
