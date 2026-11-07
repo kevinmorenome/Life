@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
-import { checkinCountry, findCountry, homeCountry, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
+import { checkinCountry, findCountry, atHome, homeCountry, homeOnDate, homePlaceOnDate, makeAwayOf, sameCity, plansInCountry, tripCountry, newVisit, parseCountryList, sortEntries, summarize, visitedCountries, visitsToImport } from './countries';
 
 const ci = (country: string | undefined, date: string): Checkin => ({
   id: `swarm-${country}-${date}`,
@@ -214,5 +214,66 @@ describe('plans you removed', () => {
 
   it('falls back to the location text for a plan with no stops', () => {
     expect(plansInCountry([{ id: 'x', location: 'Beograd, Serbia', start: '2023-10-13', end: '2023-10-13' }], 'RS', '2026-11-05')).toHaveLength(1);
+  });
+});
+
+describe('homeOnDate', () => {
+  const periods = [{ country: 'MX' }, { from: '2023-07-01', country: 'HR' }];
+  it('is the period that started last on or before the day', () => {
+    const home = homeOnDate(periods, undefined, 'US');
+    expect(home('2020-05-01')).toBe('MX');
+    expect(home('2023-06-30')).toBe('MX');
+    expect(home('2023-07-01')).toBe('HR');
+    expect(home('2026-11-07')).toBe('HR');
+  });
+  it('does not mind the order the periods were added in', () => {
+    expect(homeOnDate([...periods].reverse(), undefined, undefined)('2023-06-30')).toBe('MX');
+  });
+  it('uses the chosen country, else the automatic one, where no period applies', () => {
+    expect(homeOnDate(undefined, 'PT', 'US')('2024-01-01')).toBe('PT');
+    expect(homeOnDate([], undefined, 'US')('2024-01-01')).toBe('US');
+    expect(homeOnDate([{ from: '2023-07-01', country: 'HR' }], undefined, 'US')('2020-01-01')).toBe('US');
+  });
+  it('ignores a period with an unknown country', () => {
+    expect(homeOnDate([{ country: 'ZZ' }], undefined, 'US')('2024-01-01')).toBe('US');
+  });
+});
+
+describe('home as a city', () => {
+  const place = homePlaceOnDate([{ country: 'HR', city: 'Zagreb' }], undefined, 'US');
+  it('gives the city of the period, and no city for the fallback', () => {
+    expect(place('2024-01-01')).toEqual({ country: 'HR', city: 'Zagreb' });
+    expect(homePlaceOnDate(undefined, 'PT', undefined)('2024-01-01')).toEqual({ country: 'PT' });
+  });
+  it('matches city names with or without accents and extra words', () => {
+    expect(sameCity('Zagreb', 'City of Zagreb')).toBe(true);
+    expect(sameCity('Mérida', 'merida')).toBe(true);
+    expect(sameCity('Split', 'Zagreb')).toBe(false);
+    expect(sameCity(undefined, 'Zagreb')).toBe(false);
+  });
+  it('is at home only in the home city, or anywhere in the country when there is no city', () => {
+    expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Zagreb' })).toBe(true);
+    expect(atHome({ country: 'HR', city: 'Zagreb' }, { country: 'Croatia', city: 'Split' })).toBe(false);
+    expect(atHome({ country: 'HR' }, { country: 'Croatia', city: 'Split' })).toBe(true);
+  });
+});
+
+describe('makeAwayOf', () => {
+  const zagreb = { country: 'Croatia', city: 'Zagreb', lat: 45.81, lng: 15.98 };
+  const awayOf = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), [zagreb, { ...zagreb, lat: 45.8, lng: 16 }, { ...zagreb, lat: 45.82, lng: 15.97 }]);
+  const at = (c: object) => awayOf({ date: '2026-09-06', country: 'Croatia', ...c });
+  it('is home in the home city, and for a check-in with no city that is in it', () => {
+    expect(at({ city: 'Zagreb' })).toBe('home');
+    expect(at({ lat: 45.81, lng: 15.99 })).toBe('home');
+    expect(at({ city: 'Sesvete', lat: 45.83, lng: 16.12 })).toBe('home');
+  });
+  it('is near another town not far off, and far a long way off or abroad', () => {
+    expect(at({ city: 'Samobor', lat: 45.8, lng: 15.71 })).toBe('near');
+    expect(at({ city: 'Split', lat: 43.51, lng: 16.44 })).toBe('far');
+    expect(awayOf({ date: '2026-09-06', country: 'Italy', city: 'Rome' })).toBe('far');
+  });
+  it("can't tell a check-in with neither city nor position from home, and names another city near", () => {
+    expect(at({})).toBe('home');
+    expect(at({ city: 'Split' })).toBe('near');
   });
 });

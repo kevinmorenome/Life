@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { syncPlanCheckins } from '../trips/planCheckinsRunner';
 import { TrashIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
@@ -60,7 +61,10 @@ export function CountriesStatsRoute() {
         ) : (
           <ul className="country-list">
             {entries.map((e) => (
-              <CountryRow key={e.country.code} entry={e} plans={plansInCountry(plans.items, e.country.code, today())} tripName={(id) => trips.items.find((t) => t.id === id)?.name} onRemovePlan={(p) => plans.save({ ...p, removed: true })} onRemove={e.visit ? () => void visits.remove(e.visit!.id) : undefined} onDate={(d) => e.visit && void visits.save({ ...e.visit, firstVisit: d || undefined, updatedAt: new Date().toISOString() })} />
+              <CountryRow key={e.country.code} entry={e} plans={plansInCountry(plans.items, e.country.code, today())} tripName={(id) => trips.items.find((t) => t.id === id)?.name} onRemovePlan={async (p) => {
+                await plans.save({ ...p, removed: true });
+                await syncPlanCheckins();
+              }} onRemove={e.visit ? () => void visits.remove(e.visit!.id) : undefined} onDate={(d) => e.visit && void visits.save({ ...e.visit, firstVisit: d || undefined, updatedAt: new Date().toISOString() })} />
             ))}
           </ul>
         )}

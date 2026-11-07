@@ -16,12 +16,16 @@ export interface AppSettings {
   officeVenue?: string;
   /** Places: your home country (ISO alpha-2), so days abroad get a flag on the calendar. Missing = the country of most of your check-ins. */
   homeCountry?: string;
+  /** Places: where you lived over time (a period lasts until the next starts), e.g. Mexico, then Croatia from 2023-07-01. Days it doesn't cover use `homeCountry`. */
+  homePeriods?: { from?: string; country: string; city?: string }[];
   /** Music module: your stats.fm custom ID (the last part of your profile link). */
   statsfmUser?: string;
   /** Trips module: TripIt trips you deleted (`Trip.tripitRef`), so a later fetch doesn't make them again. */
   tripitDismissed?: string[];
   /** Trips module: Swarm trips you deleted (`Trip.swarmRef`), so they aren't made again. */
   swarmTripsDismissed?: string[];
+  /** Trips: stays the calendar drew from check-ins (`stay-…` ids) that you said are not trips. */
+  staysDismissed?: string[];
   updatedAt: string;
 }
 

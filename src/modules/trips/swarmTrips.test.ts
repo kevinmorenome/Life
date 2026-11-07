@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Checkin } from '../checkins/types';
+import { makeAwayOf } from '../countries/countries';
 import { awayRuns, hiddenSwarmTrips, homeCountry, newSwarmTrips, withoutAirports } from './swarmTrips';
 import type { Trip } from './types';
 
@@ -102,5 +103,16 @@ describe('airports', () => {
   it('still makes the trip when there are other check-ins', () => {
     const run = awayRuns([...home, at(ci('2026-03-10', 'Mexico'), 'Airport', 'Airport', 21.03, -86.87), ci('2026-03-11', 'Mexico')], TODAY);
     expect(run.map((r) => [r.start, r.end])).toEqual([['2026-03-11', '2026-03-11']]);
+  });
+});
+
+describe('a home city', () => {
+  const zagreb = Array.from({ length: 12 }, (_, i) => ci(`2026-02-${String(i + 1).padStart(2, '0')}`, 'Croatia', 'Zagreb'));
+  const checkins = [...zagreb, ci('2026-03-10', 'Croatia', 'Split'), ci('2026-03-11', 'Croatia', 'Split'), ci('2026-04-05', 'Croatia', 'Samobor'), ci('2026-03-20', 'Croatia', 'Zagreb')];
+  const awayOf = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), zagreb);
+  it('makes a trip of days in another city of the home country, named after the city', () => {
+    expect(awayRuns(checkins, TODAY)).toEqual([]);
+    const trips = newSwarmTrips(checkins, [], [], TODAY, NOW, () => 'HR', awayOf);
+    expect(trips.map((t) => [t.name, t.country, t.startDate, t.endDate])).toEqual([['Split', 'HR', '2026-03-10', '2026-03-11']]);
   });
 });

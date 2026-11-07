@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { syncPlanCheckins } from './planCheckinsRunner';
 import { today } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { useCollection } from '../../lib/useCollection';
@@ -7,6 +8,7 @@ import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { DayOutfitPicker, TripItemsPicker } from './Pickers';
 import { TripForm } from './TripForm';
 import type { Checkin } from '../checkins/types';
+import { useHomeOn } from '../countries/useHomeOn';
 import { hiddenSwarmTrips, newSwarmTrips } from './swarmTrips';
 import { TripList } from './TripList';
 import { TripView, type TripTab } from './TripView';
@@ -20,15 +22,16 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
   const plans = useCollection<Plan>('plans');
   const { settings, update } = useSettings();
   const checkins = useCollection<Checkin>('checkins');
+  const { homeOn, awayOf } = useHomeOn(checkins.items);
   const [first, second, third] = subroute;
   const hidden = useMemo(
-    () => hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString()),
-    [checkins.items, trips.items, settings.swarmTripsDismissed],
+    () => hiddenSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, awayOf),
+    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn, awayOf],
   );
   // Trips Swarm suggests (see swarmTrips.ts): nothing is made until you add one.
   const suggestions = useMemo(
-    () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString()),
-    [checkins.items, trips.items, settings.swarmTripsDismissed],
+    () => newSwarmTrips(checkins.items, trips.items, settings.swarmTripsDismissed ?? [], today(), new Date().toISOString(), homeOn, awayOf),
+    [checkins.items, trips.items, settings.swarmTripsDismissed, homeOn, awayOf],
   );
 
   if (trips.loading || clothes.loading || outfits.loading || tripitPlans.loading || plans.loading || checkins.loading) return <p className="muted">Loading…</p>;
@@ -50,7 +53,10 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
     if (second === 'day' && third && /^\d{4}-\d{2}-\d{2}$/.test(third)) return <DayOutfitPicker date={third} {...props} {...planProps} />;
     const tab: TripTab =
       second === 'outfits' || second === 'other' || second === 'itinerary' ? second : 'clothes';
-    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onSavePlan={tripitPlans.save} onDelete={onDelete} />;
+    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onSavePlan={async (p) => {
+          await tripitPlans.save(p);
+          await syncPlanCheckins();
+        }} onDelete={onDelete} />;
   }
   return (
     <TripList

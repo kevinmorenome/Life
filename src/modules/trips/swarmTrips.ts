@@ -1,7 +1,7 @@
 // Turns Swarm check-ins into trips: a run of days checked in outside your home country is a trip.
 // Check-ins at airports don't count. Pure.
 
-import { findCountry } from '../countries/countries';
+import { findCountry, type AwayOf, type HomeOn } from '../countries/countries';
 import type { Checkin } from '../checkins/types';
 import type { Trip } from './types';
 
@@ -22,7 +22,7 @@ const km = (a: Checkin, b: Checkin): number => {
   return 12742 * Math.asin(Math.sqrt(h));
 };
 
-const isAirportCheckin = (c: Checkin): boolean => AIRPORT.test(`${c.category ?? ''} ${c.venue}`);
+export const isAirportCheckin = (c: { category?: string; venue?: string }): boolean => AIRPORT.test(`${c.category ?? ''} ${c.venue ?? ''}`);
 
 /**
  * Check-ins that say nothing about being on a trip: at an airport (the airport, a terminal, a gate, a lounge, by its
@@ -45,6 +45,8 @@ interface Stop {
   code?: string;
   city?: string;
   firstCheckin: string;
+  /** Against your home (only with `awayOf`). */
+  away?: 'home' | 'near' | 'far';
 }
 
 export interface SwarmRun {
@@ -54,10 +56,12 @@ export interface SwarmRun {
   end: string;
   countries: { name: string; code?: string }[];
   city?: string;
+  /** Every day was in your home country (another city of it), so the trip is named after the city. */
+  domestic?: boolean;
 }
 
 /** One entry per day you checked in (the first check-in of the day decides the country). */
-function stops(checkins: Checkin[]): Stop[] {
+function stops(checkins: Checkin[], awayOf?: AwayOf): Stop[] {
   const byDay = new Map<string, Stop>();
   const sorted = withoutAirports(checkins).filter((c) => c.country?.trim()).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
   for (const c of sorted) {
@@ -70,6 +74,7 @@ function stops(checkins: Checkin[]): Stop[] {
       code: country?.code,
       city: c.city?.trim() || undefined,
       firstCheckin: c.id,
+      ...(awayOf ? { away: awayOf(c) } : {}),
     });
   }
   return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -88,14 +93,16 @@ export function homeCountry(checkins: Checkin[]): string | undefined {
  * Runs of days away from home that have ended (nothing for `MAX_GAP_DAYS` since, so one in progress isn't cut short).
  * A check-in at home ends a run; so does a long silence.
  */
-export function awayRuns(checkins: Checkin[], today: string): SwarmRun[] {
-  const home = homeCountry(checkins);
-  if (!home) return [];
+export function awayRuns(checkins: Checkin[], today: string, homeOn?: HomeOn, awayOf?: AwayOf): SwarmRun[] {
+  const auto = homeCountry(checkins);
+  if (!auto && !homeOn && !awayOf) return [];
   const runs: Stop[][] = [];
   let current: Stop[] = [];
-  for (const s of stops(checkins)) {
+  for (const s of stops(checkins, awayOf)) {
     const last = current[current.length - 1];
-    if (s.key === home) {
+    const homeNow = homeOn?.(s.date) ?? auto;
+    if (awayOf ? !s.away : !homeNow) continue;
+    if (awayOf ? s.away === 'home' : s.key === homeNow) {
       if (current.length) runs.push(current);
       current = [];
     } else if (last && day(s.date) - day(last.date) > MAX_GAP_DAYS + 1) {
@@ -106,6 +113,8 @@ export function awayRuns(checkins: Checkin[], today: string): SwarmRun[] {
   if (current.length) runs.push(current);
 
   return runs
+    // Days in another town of your own country need two days, unless one was far away.
+    .filter((r) => !awayOf || !r.every((x) => x.key === (homeOn?.(x.date) ?? auto)) || r.length >= 2 || r.some((x) => x.away === 'far'))
     .filter((r) => day(r[r.length - 1].date) + MAX_GAP_DAYS < day(today))
     .filter((r) => day(r[r.length - 1].date) - day(r[0].date) + 1 <= MAX_TRIP_DAYS)
     .map((r) => {
@@ -114,7 +123,8 @@ export function awayRuns(checkins: Checkin[], today: string): SwarmRun[] {
       const cities = new Map<string, number>();
       for (const s of r) if (s.city) cities.set(s.city, (cities.get(s.city) ?? 0) + 1);
       const city = [...cities.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
-      return { ref: r[0].firstCheckin, start: r[0].date, end: r[r.length - 1].date, countries, ...(city ? { city } : {}) };
+      const domestic = !!awayOf && r.every((x) => x.key === (homeOn?.(x.date) ?? auto));
+      return { ref: r[0].firstCheckin, start: r[0].date, end: r[r.length - 1].date, countries, ...(city ? { city } : {}), ...(domestic ? { domestic } : {}) };
     });
 }
 
@@ -123,7 +133,7 @@ export function tripFromRun(run: SwarmRun, now: string): Trip {
   const main = run.countries[0];
   return {
     id: `trip-${run.ref}`,
-    name: names.length <= 3 ? names.join(' & ') : `Trip · ${MONTHS[Number(run.start.slice(5, 7)) - 1]} ${run.start.slice(0, 4)}`,
+    name: run.domestic && run.city ? run.city : names.length <= 3 ? names.join(' & ') : `Trip · ${MONTHS[Number(run.start.slice(5, 7)) - 1]} ${run.start.slice(0, 4)}`,
     ...(run.city ? { destination: run.city.slice(0, 80) } : {}),
     ...(main.code ? { country: main.code } : {}),
     startDate: run.start,
@@ -142,22 +152,22 @@ export function tripFromRun(run: SwarmRun, now: string): Trip {
  * carries its `swarmRef`, when you deleted it (`dismissed`), or when any trip of yours (by hand or from TripIt)
  * already covers some of its days.
  */
-export function newSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
-  return openRuns(checkins, trips, today)
+export function newSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string, homeOn?: HomeOn, awayOf?: AwayOf): Trip[] {
+  return openRuns(checkins, trips, today, homeOn, awayOf)
     .filter((run) => !dismissed.includes(run.ref))
     .map((run) => tripFromRun(run, now));
 }
 
 /** The suggestions you hid (or whose trip you deleted), so a mistake can be undone. */
-export function hiddenSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string): Trip[] {
-  return openRuns(checkins, trips, today)
+export function hiddenSwarmTrips(checkins: Checkin[], trips: Trip[], dismissed: readonly string[], today: string, now: string, homeOn?: HomeOn, awayOf?: AwayOf): Trip[] {
+  return openRuns(checkins, trips, today, homeOn, awayOf)
     .filter((run) => dismissed.includes(run.ref))
     .map((run) => tripFromRun(run, now));
 }
 
 /** Runs with no trip yet: not already added and not overlapping a trip of yours. */
-function openRuns(checkins: Checkin[], trips: Trip[], today: string): SwarmRun[] {
-  return awayRuns(checkins, today).filter(
+function openRuns(checkins: Checkin[], trips: Trip[], today: string, homeOn?: HomeOn, awayOf?: AwayOf): SwarmRun[] {
+  return awayRuns(checkins, today, homeOn, awayOf).filter(
     (run) => !trips.some((t) => t.swarmRef === run.ref) && !trips.some((t) => t.startDate <= run.end && t.endDate >= run.start),
   );
 }

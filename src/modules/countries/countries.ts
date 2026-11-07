@@ -115,6 +115,111 @@ export function homeCountry(checkins: Pick<Checkin, 'country'>[], chosen?: strin
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
 }
 
+/** Where you lived for a while: from this day (missing = from the beginning) until the next period starts. */
+export interface HomePeriod {
+  from?: string;
+  /** ISO alpha-2 */
+  country: string;
+  /** The city, when home is a city and not the whole country: a trip to another city of the country is then a trip. */
+  city?: string;
+}
+
+/** Your home country on a day, or nothing when it isn't known. */
+export type HomeOn = (date: string) => string | undefined;
+
+/** Your home on a day: the country, and the city when you gave one. */
+export interface HomePlace {
+  country?: string;
+  city?: string;
+}
+export type HomePlaceOn = (date: string) => HomePlace;
+
+/**
+ * Your home on each day: the period that started last on or before the day; days no period covers (before the first
+ * one starts, or no periods at all) use `chosen` (Settings → Home country), else `auto` (the country of most of your
+ * check-ins), without a city.
+ */
+export function homePlaceOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomePlaceOn {
+  const valid = (periods ?? []).filter((p) => byCode.has(p.country.toUpperCase())).sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''));
+  const fallback = (chosen ? byCode.get(chosen.toUpperCase())?.code : undefined) ?? auto;
+  return (date) => {
+    let found: HomePeriod | undefined;
+    for (const p of valid) if ((p.from ?? '') <= date) found = p;
+    if (!found) return { country: fallback };
+    const city = found.city?.trim();
+    return { country: byCode.get(found.country.toUpperCase())!.code, ...(city ? { city } : {}) };
+  };
+}
+
+/** Your home country on each day (see `homePlaceOnDate`). */
+export function homeOnDate(periods: readonly HomePeriod[] | undefined, chosen: string | undefined, auto: string | undefined): HomeOn {
+  const place = homePlaceOnDate(periods, chosen, auto);
+  return (date) => place(date).country;
+}
+
+/** Two city names for the same place: "Zagreb" and "City of Zagreb", with or without accents. */
+export function sameCity(a: string | undefined, b: string | undefined): boolean {
+  const x = normalizeName(a ?? '');
+  const y = normalizeName(b ?? '');
+  if (!x || !y) return false;
+  return x === y || ` ${x} `.includes(` ${y} `) || ` ${y} `.includes(` ${x} `);
+}
+
+/**
+ * Whether a check-in was at home: in the home country and, when home is a city, in that city. Without a home city
+ * the whole country is home.
+ */
+export function atHome(place: HomePlace, c: Pick<Checkin, 'country' | 'city'>): boolean {
+  if (!place.country || checkinCountry(c) !== place.country) return false;
+  return !place.city || sameCity(c.city, place.city);
+}
+
+/** How far from home a check-in was: at home, near it (another town) or far (another country, or a long way). */
+export type Away = 'home' | 'near' | 'far';
+export type AwayOf = (c: Pick<Checkin, 'country' | 'city' | 'lat' | 'lng' | 'date'>) => Away | undefined;
+
+/** A check-in within this many km of your home city is at home, whatever its city name says (suburbs, missing city). */
+export const HOME_RADIUS_KM = 15;
+/** Beyond this many km a single day away is a trip; closer places need two days. */
+export const FAR_KM = 50;
+
+const rad = Math.PI / 180;
+const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  const h = Math.sin(((bLat - aLat) * rad) / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(((bLng - aLng) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+/**
+ * Where each check-in stands against your home: `home` in the home city (by its name, or within `HOME_RADIUS_KM` of
+ * where you usually check in there), `far` in another country or more than `FAR_KM` from it, else `near`. A check-in
+ * with no city and no position can't be told apart from home. With a country as home (no city) every check-in in it is
+ * `home`. Nothing when no home is known on that day.
+ */
+export function makeAwayOf(placeOn: HomePlaceOn, checkins: Pick<Checkin, 'country' | 'city' | 'lat' | 'lng'>[]): AwayOf {
+  const centres = new Map<string, { lat: number; lng: number } | null>();
+  const centre = (place: HomePlace): { lat: number; lng: number } | null => {
+    const key = `${place.country}|${normalizeName(place.city ?? '')}`;
+    if (!centres.has(key)) {
+      const pts = checkins.filter((c) => c.lat !== undefined && c.lng !== undefined && atHome(place, c));
+      centres.set(key, pts.length ? { lat: median(pts.map((p) => p.lat!)), lng: median(pts.map((p) => p.lng!)) } : null);
+    }
+    return centres.get(key)!;
+  };
+  return (c) => {
+    const place = placeOn(c.date);
+    if (!place.country) return undefined;
+    if (checkinCountry(c) !== place.country) return 'far';
+    if (!place.city || sameCity(c.city, place.city)) return 'home';
+    const middle = centre(place);
+    if (middle && c.lat !== undefined && c.lng !== undefined) {
+      const d = distanceKm(middle.lat, middle.lng, c.lat, c.lng);
+      return d <= HOME_RADIUS_KM ? 'home' : d <= FAR_KM ? 'near' : 'far';
+    }
+    return c.city?.trim() ? 'near' : 'home';
+  };
+}
+
 /**
  * The country a location text is in, as an ISO code: the last comma-separated part that is a country's name
  * ("Hotel Avenida, 1050 Lisboa, Portugal"). Nothing when no part is one: never a guess from a city.

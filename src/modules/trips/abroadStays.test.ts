@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { makeAwayOf } from '../countries/countries';
 import { abroadStays, calendarTrips, withoutHidden } from './abroadStays';
 import type { Trip } from './types';
 
@@ -59,5 +60,52 @@ describe('withoutHidden', () => {
   });
   it('keeps everything when nothing is hidden', () => {
     expect(withoutHidden(stays, [])).toEqual(stays);
+  });
+});
+
+describe('abroadStays with a home that changes', () => {
+  it('counts a country as home only in the period it was home', () => {
+    const c = [
+      { date: '2023-05-01', country: 'Mexico' },
+      { date: '2023-08-01', country: 'Mexico' },
+      { date: '2023-08-03', country: 'Mexico' },
+    ];
+    const home = (d: string) => (d < '2023-07-01' ? 'MX' : 'HR');
+    expect(abroadStays(c, home).map((s) => [s.country, s.startDate, s.endDate])).toEqual([['MX', '2023-08-01', '2023-08-03']]);
+  });
+});
+
+describe('abroadStays with a home city', () => {
+  const place = () => ({ country: 'HR', city: 'Zagreb' });
+  const away = (c: Parameters<typeof makeAwayOf>[1]) => makeAwayOf(place, c);
+  const c = [
+    { date: '2026-05-01', country: 'Croatia', city: 'Zagreb' },
+    { date: '2026-05-02', country: 'Croatia', city: 'Split' },
+    { date: '2026-05-03', country: 'Croatia', city: 'Split' },
+    { date: '2026-05-04', country: 'Croatia', city: 'Zagreb' },
+    { date: '2026-05-05', country: 'Croatia', city: 'Velika Gorica', category: 'Airport', venue: 'Zagreb Airport' },
+  ];
+  it('counts another city of the home country as a stay, ended by a day at home', () => {
+    expect(abroadStays(c, 'HR', 3, away(c)).map((s) => [s.country, s.startDate, s.endDate])).toEqual([['HR', '2026-05-02', '2026-05-03']]);
+  });
+  it('is no stay at all when home is the country', () => {
+    expect(abroadStays(c, 'HR')).toEqual([]);
+  });
+  it('needs two days in a town near home, but one is enough far away', () => {
+    const near = [{ date: '2026-05-02', country: 'Croatia', city: 'Samobor' }];
+    expect(abroadStays(near, 'HR', 3, away(near))).toEqual([]);
+    const far = [
+      { date: '2026-05-01', country: 'Croatia', city: 'Zagreb', lat: 45.81, lng: 15.98 },
+      { date: '2026-05-02', country: 'Croatia', city: 'Split', lat: 43.51, lng: 16.44 },
+    ];
+    expect(abroadStays(far, 'HR', 3, away(far)).map((s) => s.startDate)).toEqual(['2026-05-02']);
+  });
+  it('does not count a check-in with no city that is in the home city', () => {
+    const c = [
+      { date: '2026-05-01', country: 'Croatia', city: 'Zagreb', lat: 45.81, lng: 15.98 },
+      { date: '2026-09-06', country: 'Croatia', lat: 45.8, lng: 15.99 },
+      { date: '2026-09-07', country: 'Croatia' },
+    ];
+    expect(abroadStays(c, 'HR', 3, away(c))).toEqual([]);
   });
 });
