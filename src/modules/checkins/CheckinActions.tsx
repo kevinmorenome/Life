@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckIcon, EditIcon, TrashIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
+import { syncPlanCheckins } from '../trips/planCheckinsRunner';
 import { moveCheckin } from './checkins';
 import type { Checkin } from './types';
 
@@ -31,7 +32,7 @@ export function CheckinActions({ checkin }: { checkin: Checkin }) {
           className="icon-btn"
           aria-label="Save check-in"
           onClick={() => {
-            if (moved !== checkin) void save(moved);
+            if (moved !== checkin) void save(moved).then(() => syncPlanCheckins(true));
             setEditing(false);
           }}
         >
@@ -60,7 +61,7 @@ export function CheckinActions({ checkin }: { checkin: Checkin }) {
         className="icon-btn"
         aria-label={`Remove check-in at ${checkin.venue}`}
         onClick={() => {
-          if (confirm(`Remove “${checkin.venue}” from your check-ins here? It stays on Swarm.`)) void remove(checkin.id);
+          if (confirm(`Remove “${checkin.venue}” from your check-ins here? It stays on Swarm.`)) void remove(checkin.id).then(() => syncPlanCheckins(true));
         }}
       >
         <TrashIcon />

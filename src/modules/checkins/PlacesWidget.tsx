@@ -3,6 +3,7 @@ import { DayWidget } from '../../DayWidget';
 import { CheckIcon, PinIcon, TrashIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import { allSelected, pruned, toggled, toggledAll } from '../watching/selection';
+import { syncPlanCheckins } from '../trips/planCheckinsRunner';
 import type { Draft } from '../trips/planCheckins';
 import { CheckinActions } from './CheckinActions';
 import { moveCheckins, place } from './checkins';
@@ -32,6 +33,7 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
   async function moveTicked() {
     const moved = moveCheckins(done, ticked, target, new Date().toISOString());
     await Promise.all(moved.map((c) => save(c)));
+    await syncPlanCheckins(true);
     stopSelecting();
   }
 
@@ -39,6 +41,7 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
     const n = ticked.size;
     if (!confirm(`Remove ${n} ${n === 1 ? 'check-in' : 'check-ins'} from your check-ins here? They stay on Swarm.`)) return;
     await Promise.all([...ticked].map((id) => remove(id)));
+    await syncPlanCheckins(true);
     stopSelecting();
   }
 
