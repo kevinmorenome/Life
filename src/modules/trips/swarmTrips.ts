@@ -60,12 +60,18 @@ export interface SwarmRun {
   domestic?: boolean;
 }
 
-/** One entry per day you checked in (the first check-in of the day decides the country). */
+/**
+ * One entry per day you checked in: the first check-in of the day decides the country. With `awayOf` a day that starts at
+ * home but goes away (the office, then the drive to the coast) counts as away, from its first check-in that was away.
+ */
 function stops(checkins: Checkin[], awayOf?: AwayOf): Stop[] {
   const byDay = new Map<string, Stop>();
   const sorted = withoutAirports(checkins).filter((c) => c.country?.trim()).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
   for (const c of sorted) {
-    if (byDay.has(c.date)) continue;
+    const kept = byDay.get(c.date);
+    if (kept && !(awayOf && kept.away === 'home')) continue;
+    const away = awayOf?.(c);
+    if (kept && (!away || away === 'home')) continue;
     const country = findCountry(c.country);
     byDay.set(c.date, {
       date: c.date,
@@ -74,7 +80,7 @@ function stops(checkins: Checkin[], awayOf?: AwayOf): Stop[] {
       code: country?.code,
       city: c.city?.trim() || undefined,
       firstCheckin: c.id,
-      ...(awayOf ? { away: awayOf(c) } : {}),
+      ...(awayOf ? { away } : {}),
     });
   }
   return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));

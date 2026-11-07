@@ -115,4 +115,17 @@ describe('a home city', () => {
     const trips = newSwarmTrips(checkins, [], [], TODAY, NOW, () => 'HR', awayOf);
     expect(trips.map((t) => [t.name, t.country, t.startDate, t.endDate])).toEqual([['Split', 'HR', '2026-03-10', '2026-03-11']]);
   });
+  it('starts a trip on the day it leaves home, even when the first check-in of that day is at home', () => {
+    const leaving = (date: string, city: string, hour: string, lat: number): Checkin => ({ ...ci(date, 'Croatia', city), at: Date.parse(`${date}T${hour}:00:00Z`) / 1000, lat, lng: 15.5 });
+    const all = [
+      ...zagreb.map((c) => ({ ...c, lat: 45.81, lng: 15.98 })),
+      leaving('2026-03-10', 'Zagreb', '07', 45.81),
+      leaving('2026-03-10', 'Nin', '18', 44.24),
+      leaving('2026-03-11', 'Vir', '12', 44.3),
+      leaving('2026-03-12', 'Zagreb', '12', 45.81),
+    ];
+    const away = makeAwayOf(() => ({ country: 'HR', city: 'Zagreb' }), all);
+    const trips = newSwarmTrips(all, [], [], TODAY, NOW, () => 'HR', away);
+    expect(trips.map((t) => [t.startDate, t.endDate])).toEqual([['2026-03-10', '2026-03-11']]);
+  });
 });
