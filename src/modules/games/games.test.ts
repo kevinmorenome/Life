@@ -170,3 +170,105 @@ describe('reachedTarget', () => {
     expect(reachedTarget({ a: 100 }, ['a'], 0)).toEqual([]);
   });
 });
+
+describe('catan details', () => {
+  it('cleans empty entries and counts wins by seat', async () => {
+    const { cleanCatan, seatStats, isCatan } = await import('./catan');
+    expect(isCatan({ name: 'Catan' })).toBe(true);
+    expect(cleanCatan({ seats: { a: 1 }, colors: { a: '' } }, ['a', 'b'])).toEqual({ seats: { a: 1 } });
+    expect(cleanCatan({}, ['a'])).toBeUndefined();
+    const m = (seats: Record<string, number>, winnerIds: string[], live = false) => ({ catan: { seats }, winnerIds, live });
+    expect(seatStats([m({ a: 1, b: 2 }, ['a']), m({ a: 2, b: 1 }, ['a']), m({ a: 1, b: 2 }, [], true)])).toEqual({
+      1: { games: 2, wins: 1 },
+      2: { games: 2, wins: 1 },
+    });
+  });
+});
+
+describe('catan seat order', () => {
+  it('orders by seat and moves a player', async () => {
+    const { seatOrder, moveSeat } = await import('./catan');
+    expect(seatOrder(['a', 'b', 'c'])).toEqual(['a', 'b', 'c']);
+    expect(seatOrder(['a', 'b', 'c'], { c: 1, a: 2 })).toEqual(['c', 'a', 'b']);
+    expect(moveSeat(['a', 'b', 'c'], 'c', 0)).toEqual({ c: 1, a: 2, b: 3 });
+    expect(moveSeat(['a', 'b', 'c'], 'a', 2)).toEqual({ b: 1, c: 2, a: 3 });
+  });
+});
+
+describe('catan road and army', () => {
+  it('keeps them only for players in the game', async () => {
+    const { cleanCatan } = await import('./catan');
+    expect(cleanCatan({ longestRoad: 'a', largestArmy: 'z' }, ['a', 'b'])).toEqual({ longestRoad: 'a' });
+    expect(cleanCatan({ largestArmy: 'z' }, ['a'])).toBeUndefined();
+  });
+});
+
+describe('catan bonus stats', () => {
+  it('counts road and army and wins while holding them', async () => {
+    const { bonusStats } = await import('./catan');
+    const m = (catan: object | undefined, winnerIds: string[], live = false) => ({ catan, winnerIds, live, playerIds: ['a', 'b'] });
+    const out = bonusStats([
+      m({ longestRoad: 'a', largestArmy: 'b' }, ['a']),
+      m({ longestRoad: 'a' }, ['b']),
+      m(undefined, ['a']),
+      m({ longestRoad: 'b' }, [], true),
+    ]);
+    expect(out).toEqual([
+      { id: 'a', games: 2, road: 2, army: 0, roadWins: 1, armyWins: 0 },
+      { id: 'b', games: 2, road: 0, army: 1, roadWins: 0, armyWins: 0 },
+    ]);
+  });
+});
+
+describe('Lords of Waterdeep', () => {
+  it('cleans the info and works out the bonus', async () => {
+    const { cleanWaterdeep, lordBonus, isWaterdeep } = await import('./waterdeep');
+    expect(isWaterdeep({ name: 'Lords of Waterdeep' })).toBe(true);
+    expect(cleanWaterdeep({ lords: { a: ' Mirt ', b: '', z: 'Gone' }, before: { a: 120, z: 5 } }, ['a', 'b'])).toEqual({ lords: { a: 'Mirt' }, before: { a: 120 } });
+    expect(cleanWaterdeep({ lords: { a: '' } }, ['a'])).toBeUndefined();
+    expect(lordBonus(120, 160)).toBe(40);
+    expect(lordBonus(undefined, 160)).toBeUndefined();
+  });
+
+  it('counts games, wins, average bonus and comebacks per Lord', async () => {
+    const { lordStats } = await import('./waterdeep');
+    const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof lordStats>[0][number];
+    const out = lordStats([
+      m({ waterdeep: { lords: { a: 'Mirt', b: 'Durnan' }, before: { a: 100, b: 110 } }, scores: { a: 150, b: 130 }, winnerIds: ['a'] }),
+      m({ waterdeep: { lords: { a: 'Mirt', b: 'Durnan' } }, scores: { a: 90, b: 95 }, winnerIds: ['b'] }),
+      m({ waterdeep: { lords: { a: 'Mirt' } }, scores: {}, winnerIds: [], live: true }),
+    ]);
+    const mirt = out.find((s) => s.lord === 'Mirt')!;
+    expect(mirt).toMatchObject({ games: 2, wins: 1, bonusGames: 1, avgBonus: 50, turnarounds: 1 });
+    expect(out.find((s) => s.lord === 'Durnan')).toMatchObject({ games: 2, wins: 1, avgBonus: 20, turnarounds: 0 });
+  });
+});
+
+describe('Skullport corruption', () => {
+  it('cleans corruption and counts it only for expansion games', async () => {
+    const { cleanWaterdeep, corruptionStats } = await import('./waterdeep');
+    expect(cleanWaterdeep({ skullport: true, corruption: { a: [-5, -10], b: [], z: [-1] } }, ['a', 'b'])).toEqual({ skullport: true, corruption: { a: [-5, -10] } });
+    expect(cleanWaterdeep({ skullport: false }, ['a'])).toBeUndefined();
+    const m = (over: object) => ({ playerIds: ['a', 'b'], live: false, ...over }) as Parameters<typeof corruptionStats>[0][number];
+    // Counts times a shared value, and the older per-corruption lists still count.
+    const fresh = corruptionStats([m({ waterdeep: { skullport: true, corruptionValue: -5, corruptions: { a: 3, b: 1 } }, winnerIds: ['a'] })]);
+    expect(fresh.find((x) => x.id === 'a')).toMatchObject({ count: 3, points: -15 });
+    expect(fresh.find((x) => x.id === 'b')).toMatchObject({ count: 1, points: -5 });
+    expect(cleanWaterdeep({ skullport: true, corruptionValue: -5, corruptions: { a: 2, b: 0, z: 4 } }, ['a', 'b'])).toEqual({ skullport: true, corruptionValue: -5, corruptions: { a: 2 } });
+    const out = corruptionStats([
+      m({ waterdeep: { skullport: true, corruption: { a: [-5, -10] } }, winnerIds: ['b'] }),
+      m({ waterdeep: { skullport: true, corruption: { a: [-5], b: [-2] } }, winnerIds: ['a'] }),
+      m({ waterdeep: { corruption: { a: [-99] } }, winnerIds: ['a'] }),
+    ]);
+    expect(out.find((s) => s.id === 'a')).toEqual({ id: 'a', games: 2, wins: 1, count: 3, points: -20 });
+    expect(out.find((s) => s.id === 'b')).toEqual({ id: 'b', games: 2, wins: 1, count: 1, points: -2 });
+  });
+});
+
+describe('Waterdeep Lord list', () => {
+  it('has all 17 distinct Lords', async () => {
+    const { WATERDEEP_LORDS } = await import('./waterdeep');
+    expect(WATERDEEP_LORDS).toHaveLength(17);
+    expect(new Set(WATERDEEP_LORDS).size).toBe(17);
+  });
+});

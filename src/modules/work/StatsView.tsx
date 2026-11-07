@@ -21,7 +21,7 @@ const COLORS: Record<WorkStatus, string> = {
   trip: 'var(--tone-purple)',
   off: 'var(--muted)',
 };
-const NAMES: Record<WorkStatus, string> = { office: 'Office', home: 'Home', trip: 'Trip', off: 'Day off' };
+const NAMES: Record<WorkStatus, string> = { office: 'Office', home: 'Home', trip: 'Work trip', off: 'Day off' };
 
 const monthName = (ym: string, style: 'short' | 'narrow' | 'long' = 'short') =>
   new Date(ym + '-01T00:00:00Z').toLocaleDateString(undefined, { month: style, timeZone: 'UTC' });
@@ -105,7 +105,7 @@ function SplitCard({ infos, now }: { infos: Map<string, DayInfo>; now: string })
   const slices = (['office', 'home', 'trip', 'off'] as WorkStatus[]).filter((s) => counts[s] > 0).map((s) => ({ name: NAMES[s], value: counts[s] }));
   const byName = (name: string) => COLORS[(Object.keys(NAMES) as WorkStatus[]).find((s) => NAMES[s] === name) ?? 'off'];
   return (
-    <Section title="Where you work" note="Office, home, trips and days off.">
+    <Section title="Where you work" note="Office, home, work trips and days off.">
       <Toggle label="Period" options={PERIODS} value={period} onChange={setPeriod} />
       {slices.length === 0 ? (
         <Empty>No days logged in this period.</Empty>
@@ -120,7 +120,7 @@ function StreakCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   const st = attendanceStreaks(infos, now);
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
   return (
-    <Section title="Streaks" note="Workdays in a row. Weekends, days off and trips don’t break a streak; a workday with nothing logged does.">
+    <Section title="Streaks" note="Workdays in a row. Weekends, days off and work trips don’t break a streak; a workday with nothing logged does.">
       <div className="tiles">
         <Tile value={days(st.office.current)} label="in the office now" tone={0} />
         <Tile value={days(st.office.longest)} label="longest office run" tone={0} />

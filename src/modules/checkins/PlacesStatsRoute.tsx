@@ -19,10 +19,12 @@ import {
   type VenueRow,
 } from './placeStats';
 import type { Checkin } from './types';
+import { CountriesStatsRoute } from '../countries/CountriesStatsRoute';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'trends', label: 'Trends' },
+  { id: 'countries', label: 'Countries' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -46,7 +48,8 @@ export function PlacesStatsRoute({ tab: routeTab }: { tab?: string }) {
   const tab: TabId = TABS.find((t) => t.id === routeTab)?.id ?? 'overview';
 
   if (checkins.loading) return <p className="muted">Loading…</p>;
-  if (checkins.items.length === 0) {
+  // Countries also holds trips added by hand, so it works without any check-ins.
+  if (checkins.items.length === 0 && tab !== 'countries') {
     return (
       <Section title="Nothing yet">
         <Empty>Connect Swarm in Settings and fetch your check-ins, and the numbers build up here.</Empty>
@@ -72,7 +75,13 @@ export function PlacesStatsRoute({ tab: routeTab }: { tab?: string }) {
         ))}
       </div>
       <div id="places-panel" role="tabpanel" aria-labelledby={`places-tab-${tab}`}>
-        {tab === 'overview' ? <Overview checkins={checkins.items} wears={wears} now={now} /> : <Trends checkins={checkins.items} now={now} />}
+        {tab === 'overview' ? (
+          <Overview checkins={checkins.items} wears={wears} now={now} />
+        ) : tab === 'trends' ? (
+          <Trends checkins={checkins.items} now={now} />
+        ) : (
+          <CountriesStatsRoute />
+        )}
       </div>
     </>
   );

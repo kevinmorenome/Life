@@ -6,17 +6,26 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  */
 export function parentRoute(route: string[]): string | undefined {
   const [a, b, c, d] = route;
-  if (a === 'settings') return '/more';
+  if (a === 'settings') {
+    if (b === 'closet-review') return c ? '/settings/closet-review' : '/settings';
+    return '/more';
+  }
   if (a === 'calendar') return b && DATE.test(b) ? '/calendar' : undefined;
   if (a === 'games') {
     if (b === 'night' && c) return d ? `/games/night/${c}` : '/games';
     return b === 'new' ? '/games' : undefined;
   }
-  if (a === 'packing') {
+  if (a === 'food') {
+    if (b === 'receipt' && c) return d === 'edit' ? `/food/receipt/${c}` : '/food';
+    if (b === 'product' && c) return '/food/stock';
+    if (b === 'check' || b === 'pictures') return '/food/stock';
+    return b === 'new' ? '/food' : '/more';
+  }
+  if (a === 'trips') {
     if (!b) return '/more';
-    if (b === 'new') return '/packing';
-    if (c === 'edit' || c === 'items' || c === 'day') return `/packing/${b}`;
-    return '/packing';
+    if (b === 'new') return '/trips';
+    if (c === 'edit' || c === 'items' || c === 'day') return `/trips/${b}`;
+    return '/trips';
   }
   if (a !== 'clothes') return undefined;
   if (!b) return undefined;

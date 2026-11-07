@@ -67,8 +67,10 @@ export interface ClothingItem {
   /** YYYY-MM-DD the item left the closet (sold, donated, discarded). Unset for older records. */
   retiredDate?: string;
   condition?: Condition;
-  /** JPEG data URL */
+  /** JPEG data URL. Only on a record held in memory (a draft, an import, a save): records read from the store carry `hasPhoto` and the image is loaded with `usePhoto()`. */
   photo?: string;
+  /** The record has a picture in the local photos store (see lib/photoSplit.ts). Set it to false to remove the picture. */
+  hasPhoto?: boolean;
   notes?: string;
   /** Fabric or material, e.g. "Cotton, Elastane". */
   material?: string;
@@ -78,6 +80,14 @@ export interface ClothingItem {
   needsReview?: boolean;
   /** Situations it suits, e.g. "work", "date night". */
   occasions?: string[];
+  /** e.g. "Striped"; set from Closet review. */
+  pattern?: string;
+  /** e.g. ["Casual", "Vintage"]; set from Closet review. */
+  styles?: string[];
+  /** e.g. "Oversized"; set from Closet review. */
+  fit?: string;
+  /** Closet review step id → YYYY-MM-DD it was last reviewed, so "Only new items" can skip the done ones. */
+  reviewed?: Record<string, string>;
   /** One YYYY-MM-DD entry per time worn. */
   wears: string[];
   /** Wears counted before tracking started (e.g. imported), without dates. */

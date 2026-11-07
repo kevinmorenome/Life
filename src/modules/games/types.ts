@@ -20,9 +20,16 @@ export interface GameTitle {
   id: string;
   name: string;
   rule: ScoreRule;
+  /** Players get a color (default: on for Catan). */
+  colors?: boolean;
+  /** Turn order matters, so players can be dragged into seats (default: on for Catan). */
+  orderMatters?: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+import type { CatanInfo } from './catan';
+import type { WaterdeepInfo } from './waterdeep';
 
 /** One game played during a night. */
 export interface Match {
@@ -42,6 +49,10 @@ export interface Match {
   live?: boolean;
   /** Points that end the game when a player reaches them (round-by-round games). Only prompts to finish; the user decides. */
   targetScore?: number;
+  /** Catan extras: seats, colors, variant, how it was won. */
+  catan?: CatanInfo;
+  /** Lords of Waterdeep extras: each player's Lord and their points before its bonus. */
+  waterdeep?: WaterdeepInfo;
 }
 
 /** An evening of games: where, who, and the games played in order. */

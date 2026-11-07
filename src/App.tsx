@@ -5,6 +5,7 @@ import { Home } from './Home';
 import { Settings } from './Settings';
 import { StatsPage } from './StatsPage';
 import { SyncBadge } from './SyncBadge';
+import { Wordmark } from './Wordmark';
 import { GearIcon } from './icons';
 import { legacyRedirect } from './lib/legacyRoutes';
 import { PREVIEW_COMMIT, PREVIEW_LABEL } from './lib/preview';
@@ -24,6 +25,7 @@ function pageTitle(route: string[]): string | undefined {
   if (a === 'stats') return 'Stats';
   if (a === 'games' && (!b || b === 'players' || b === 'titles')) return 'Games';
   if (a === 'more') return 'More';
+  if (a === 'food' && (!b || b === 'products' || b === 'stock')) return 'Food';
   if (a === 'clothes' && !b) return 'Closet';
   if (a === 'clothes' && b === 'outfits' && route.length === 2) return 'Outfits';
   return undefined;
@@ -46,11 +48,11 @@ export function App() {
   else if (!section || section === 'calendar') page = <CalendarPage subroute={rest} />;
   else if (section === 'stats') page = <StatsPage subroute={rest} />;
   else if (section === 'more') page = <Home />;
-  else if (section === 'settings') page = <Settings />;
+  else if (section === 'settings') page = <Settings subroute={rest} />;
   else if (mod) page = mod.render(rest);
   else page = <p className="muted">Page not found.</p>;
 
-  const showNav = !(mod && mod.hideNav?.(rest));
+  const showNav = !(mod && mod.hideNav?.(rest)) && !(section === 'settings' && rest[0] === 'closet-review' && Boolean(rest[1]));
   // The month calendar fills the screen and scrolls inside itself.
   const fullCalendar = !redirect && (!section || section === 'calendar') && !DATE.test(rest[0] ?? '');
   const title = showNav ? pageTitle(route) : undefined;
@@ -65,8 +67,8 @@ export function App() {
       )}
       <header className="topbar">
         <div className="brand-row">
-          <a className="brand" href={href('/')}>
-            Life
+          <a className="brand" href={href('/')} aria-label="Life">
+            <Wordmark className="brand-mark" />
           </a>
           <SyncBadge />
           {title && <h1 className="brand-page">{title}</h1>}
