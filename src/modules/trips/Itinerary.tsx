@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { shortDate } from '../../lib/format';
 import { TrashIcon, UndoIcon } from '../../icons';
 import type { PlanKind, TripitPlan } from '../../../worker/tripitTypes';
+import type { Checkin } from '../checkins/types';
+import { itineraryCheckins } from './itineraryCheckins';
 
 const KIND_LABEL: Record<PlanKind, string> = {
   flight: 'Flight',
@@ -14,17 +16,20 @@ const KIND_LABEL: Record<PlanKind, string> = {
 };
 
 /**
- * What TripIt has for the days of a trip, day by day. A plan that spans days is listed on each. A plan that is wrong
+ * What TripIt has for the days of a trip, day by day, with your Swarm check-ins of those days (a check-in that is the
+ * same place as a plan is shown on that plan, not twice). A plan that spans days is listed on each. A plan that is wrong
  * (or one you never did) can be removed: it then counts for nothing, anywhere, and can be restored from the end of the list.
  */
 export function Itinerary({
   plans,
+  checkins = [],
   startDate,
   endDate,
   onRemove,
   onRestore,
 }: {
   plans: TripitPlan[];
+  checkins?: Checkin[];
   startDate: string;
   endDate: string;
   onRemove?: (p: TripitPlan) => Promise<void> | void;
@@ -40,10 +45,11 @@ export function Itinerary({
 
   const shown = plans.filter((p) => !p.removed);
   const removed = plans.filter((p) => p.removed);
-  if (plans.length === 0) {
+  const { extra, matched } = itineraryCheckins(shown, checkins, startDate, endDate);
+  if (plans.length === 0 && extra.size === 0) {
     return <p className="muted">Nothing from TripIt for these days yet. Connect TripIt in Settings, or add plans in TripIt and fetch again.</p>;
   }
-  const days = [...new Set(shown.flatMap((p) => daysOf(p, startDate, endDate)))].sort();
+  const days = [...new Set([...shown.flatMap((p) => daysOf(p, startDate, endDate)), ...extra.keys()])].sort();
   return (
     <section className="itinerary">
       {days.length === 0 && <p className="muted">Every plan of this trip is removed.</p>}
@@ -58,7 +64,7 @@ export function Itinerary({
                   <span className="pack-text">
                     <strong>{p.title}</strong>
                     <span className="muted small">
-                      {[KIND_LABEL[p.kind], p.start === day && p.startTime ? p.startTime : p.start < day ? 'continues' : '', p.location].filter(Boolean).join(' · ')}
+                      {[KIND_LABEL[p.kind], p.start === day && p.startTime ? p.startTime : p.start < day ? 'continues' : '', p.location, matched.get(p.id)?.date === day ? 'TripIt · Swarm' : 'TripIt'].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {onRemove && (
@@ -77,6 +83,14 @@ export function Itinerary({
                   )}
                 </li>
               ))}
+            {(extra.get(day) ?? []).map((c) => (
+              <li key={c.id} className="pack-row">
+                <span className="pack-text">
+                  <strong>{c.venue}</strong>
+                  <span className="muted small">{[c.time, c.category, c.city, 'Swarm'].filter(Boolean).join(' · ')}</span>
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
       ))}

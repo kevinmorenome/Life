@@ -53,7 +53,7 @@ export function TripsRoot({ subroute }: { subroute: string[] }) {
     if (second === 'day' && third && /^\d{4}-\d{2}-\d{2}$/.test(third)) return <DayOutfitPicker date={third} {...props} {...planProps} />;
     const tab: TripTab =
       second === 'outfits' || second === 'other' || second === 'itinerary' ? second : 'clothes';
-    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} onSavePlan={async (p) => {
+    return <TripView {...props} tab={tab} tripitPlans={tripitPlans.items} checkins={checkins.items} onSavePlan={async (p) => {
           await tripitPlans.save(p);
           await syncPlanCheckins();
         }} onDelete={onDelete} />;
