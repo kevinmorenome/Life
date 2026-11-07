@@ -582,7 +582,7 @@ function DayCellView({ date, isToday, wear: allWear, planned: allPlanned, trips:
       {/* The same line and flag for the zoomed-out and zoomed-in looks, where the number is not in the grid. */}
       {shape && <i className={`trip-line trip-line-num ${shape.line}${shape.end ? ' end' : ''}`} aria-hidden />}
       {shape?.end && <i className="trip-end-dot trip-end-dot-num" aria-hidden />}
-      <span className={`cal-num${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
+      <span className="cal-num">{Number(date.slice(8))}</span>
       {trip && showFlag && (
         <span className={`trip-flag trip-flag-num${flagMulti}`} role="img" aria-label={`${isUnconfirmedTrip(trip) ? 'Trip to confirm' : 'Trip'}: ${trip.name}`}>
           {flagText}
@@ -601,7 +601,7 @@ function DayCellView({ date, isToday, wear: allWear, planned: allPlanned, trips:
           <span className="cal-layer cal-cells">
             {shape && <i className={`trip-line ${shape.line}${shape.end ? ' end' : ''}`} aria-hidden />}
             {shape?.end && <i className="trip-end-dot" aria-hidden />}
-            <span className={`cell-num${isToday ? ' today' : ''}${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
+            <span className={`cell-num${isToday ? ' today' : ''}`}>{Number(date.slice(8))}</span>
             {trip && showFlag && (
               <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: flagCodes.length > 1 ? '2 / span 2' : 2 }} role="img" aria-label={`${isUnconfirmedTrip(trip) ? 'Trip to confirm' : 'Trip'}: ${trip.name}`}>
                 {flagText}

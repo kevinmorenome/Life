@@ -7369,11 +7369,7 @@ a.game-row + .food-h2 {
   background: var(--bg);
 }
 
-/* The two ends of a trip: its first day's number sits on a dot, and the line ends in a dot on the last day. */
-.cal-day.in-trip .cell-num.trip-start:not(.today),
-.cal-day.in-trip .cal-num.trip-start:not(.today) {
-  background: var(--trip-line);
-}
+/* The end of a trip: the line ends in a dot on the last day. */
 .trip-end-dot {
   position: absolute;
   top: 6px;
@@ -7438,11 +7434,6 @@ a.game-row + .food-h2 {
 .cal-day.trip-pending .trip-flag-num,
 .cal-day.trip-pending .trip-end-dot-num {
   opacity: calc(0.55 * clamp(0, max(var(--z) - 1, 1 - var(--z)), 1));
-}
-.cal-day.trip-pending .cell-num.trip-start:not(.today),
-.cal-day.trip-pending .cal-num.trip-start:not(.today) {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--trip-line);
 }
 .widget-list li.trip-pending-row {
   flex-direction: row;
