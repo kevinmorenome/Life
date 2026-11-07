@@ -79,14 +79,18 @@ describe('flagsOnDay', () => {
 });
 
 describe('flagsToShow', () => {
-  it("never draws your home country's flag, and no suitcase for it either", () => {
-    const home = { startDate: '2026-09-18', endDate: '2026-09-30', country: 'HR', destination: 'Split' };
-    expect(flagsToShow(home, '2026-09-18', new Map(), 'HR')).toEqual({ codes: [], unknown: false });
+  it("leaves your home country's flag out of a trip abroad", () => {
+    const by = checkinCountriesByDay([ci('2026-09-30', 'Mexico', 1), ci('2026-09-30', 'Croatia', 2)]);
+    expect(flagsOnDay(mexico, '2026-09-30', by)).toEqual(['HR']);
+    expect(flagsToShow(mexico, '2026-09-30', by, 'HR')).toEqual({ codes: [], unknown: false });
     expect(flagsToShow(mexico, '2026-09-18', new Map(), 'HR').codes).toEqual(['MX']);
   });
-  it('draws the other flags of a day and a suitcase when no country is known', () => {
-    const by = checkinCountriesByDay([ci('2026-09-21', 'Croatia', 1), ci('2026-09-21', 'Mexico', 2)]);
-    expect(flagsToShow(mexico, '2026-09-21', by, 'HR').codes).toEqual(['MX']);
+  it('keeps the flag for a trip within your home country', () => {
+    const home = { startDate: '2026-09-18', endDate: '2026-09-30', country: 'HR', destination: 'Split' };
+    expect(flagsToShow(home, '2026-09-18', new Map(), 'HR')).toEqual({ codes: ['HR'], unknown: false });
+    expect(flagsToShow(home, '2026-09-21', new Map(), 'HR').codes).toEqual(['HR']);
+  });
+  it('draws a suitcase when no country is known', () => {
     expect(flagsToShow({ startDate: '2026-09-18', endDate: '2026-09-20' }, '2026-09-18', new Map())).toEqual({ codes: [], unknown: true });
   });
 });

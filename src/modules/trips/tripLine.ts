@@ -86,10 +86,12 @@ export function flagsOnDay(trip: TripPlace, date: string, byDay: ReadonlyMap<str
 }
 
 /**
- * What the calendar draws for a day of a trip: the flags (never your home country's: home is not worth a flag) and
- * whether to draw a suitcase instead, on a first day or Monday when no country is known at all.
+ * What the calendar draws for a day of a trip: the flags and whether to draw a suitcase instead, on a first day or
+ * Monday when no country is known at all. Your home country's flag is left out of a trip abroad (coming home is not
+ * worth a flag), but a trip within your home country keeps it: that flag is the trip's.
  */
 export function flagsToShow(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>, home?: string): { codes: string[]; unknown: boolean } {
   const raw = flagsOnDay(trip, date, byDay);
-  return { codes: raw.filter((c) => c !== home), unknown: raw.length === 0 && (date === trip.startDate || isMonday(date)) };
+  const domestic = home !== undefined && tripCountry(trip) === home;
+  return { codes: domestic ? raw : raw.filter((c) => c !== home), unknown: raw.length === 0 && (date === trip.startDate || isMonday(date)) };
 }
