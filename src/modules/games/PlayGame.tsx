@@ -4,8 +4,10 @@ import { DominoPad } from './DominoPad';
 import { Scoreboard } from './Scoreboard';
 import { isDomino } from './domino';
 import { navigate } from '../../lib/router';
-import { roundTotals, roundWinners, standings, winnersFromScores } from './games';
+import { reachedTarget, roundTotals, roundWinners, standings, winnersFromScores } from './games';
 import type { GameNight, GameTitle, Match, Player } from './types';
+
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
 
 interface Props {
   night: GameNight;
@@ -40,6 +42,7 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
   const wonBy = outcomes.map((o) => o.winners);
   const totals = roundTotals(rounds, ids);
   const winners = picked ?? winnersFromScores(rule, totals, ids);
+  const reached = match.live ? reachedTarget(totals, ids, match.targetScore) : [];
   const persist = (next: Record<string, number>[], done = false, nextPicks = picks) => {
     const t = roundTotals(next, ids);
     const w = picked ?? winnersFromScores(rule, t, ids);
@@ -131,8 +134,21 @@ export function PlayGame({ night, match, players, title, onSave }: Props) {
         <span className="muted small">
           {match.live ? 'Live' : 'Finished'} · {rounds.length} {rounds.length === 1 ? 'round' : 'rounds'}
           {rule !== 'manual' && ` · ${rule === 'high' ? 'highest' : 'lowest'} wins`}
+          {match.targetScore ? ` · ends at ${fmt(match.targetScore)}` : ''}
         </span>
       </div>
+
+      {reached.length > 0 && (
+        <div className="round-tie" role="status">
+          <span>
+            <strong>{reached.map(name).join(' & ')}</strong> reached {fmt(match.targetScore!)} points.
+            {winners.length > 0 && rule !== 'manual' && <> Winner: {winners.map(name).join(' & ')}.</>}
+          </span>
+          <button type="button" className="btn btn-primary" onClick={finish}>
+            <CheckIcon /> Finish game
+          </button>
+        </div>
+      )}
 
       <Scoreboard board={board} rule={rule} started={started} name={name} wonBy={wonBy} />
 
