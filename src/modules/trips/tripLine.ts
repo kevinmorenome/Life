@@ -55,31 +55,32 @@ export function checkinCountriesByDay(checkins: (Pick<Checkin, 'country' | 'date
   return out;
 }
 
-/** The last country you were in before `date` within the trip (the trip's own country before any check-in). */
-function countryBefore(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>): string | undefined {
-  for (let d = addDays(date, -1); d >= trip.startDate; d = addDays(d, -1)) {
-    const seen = byDay.get(d);
-    if (seen?.length) return seen[seen.length - 1];
-  }
-  return tripCountry(trip);
+/** The countries seen in the `back` days before `date` (within the trip), plus the trip's own country before any check-in. */
+function recentCountries(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>, back: number): Set<string> {
+  const seen = new Set<string>();
+  for (let d = addDays(date, -1), n = 0; d >= trip.startDate && n < back; d = addDays(d, -1), n++) for (const c of byDay.get(d) ?? []) seen.add(c);
+  const own = tripCountry(trip);
+  if (seen.size === 0 && own) seen.add(own);
+  return seen;
 }
+
+/** Most flags a day shows; a day crossing a border back and forth stays readable. */
+export const MAX_FLAGS = 3;
+
+/** A country counts as new again when you haven't been in it for this many days (a daily commute is not a trip). */
+const BACK = 3;
 
 /**
  * The flags to draw on a day of a trip: every country you were in on the first day and on each Monday (where a new
- * week's line begins), and on the other days only the countries you got to that day (a different one from where you
- * were before, a layover included). A day without check-ins stays where the day before was and has none of its own.
+ * week's line begins), and on the other days only the countries you got to that day that you had not been in during
+ * the last few days (a layover included; going back and forth over a border shows no new flag). At most `MAX_FLAGS`.
  */
 export function flagsOnDay(trip: TripPlace, date: string, byDay: ReadonlyMap<string, string[]>): string[] {
-  const today = byDay.get(date) ?? [];
-  const before = countryBefore(trip, date, byDay);
-  const first = date === trip.startDate;
-  const all = today.length ? today : before ? [before] : [];
-  if (first || isMonday(date)) return [...new Set(all)];
-  const out: string[] = [];
-  let prev = before;
-  for (const c of today) {
-    if (c !== prev && !out.includes(c)) out.push(c);
-    prev = c;
+  const today = [...new Set(byDay.get(date) ?? [])];
+  if (date === trip.startDate || isMonday(date)) {
+    const all = today.length ? today : [...recentCountries(trip, date, byDay, 1)].slice(0, 1);
+    return all.slice(0, MAX_FLAGS);
   }
-  return out;
+  const before = recentCountries(trip, date, byDay, BACK);
+  return today.filter((c) => !before.has(c)).slice(0, MAX_FLAGS);
 }

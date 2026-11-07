@@ -584,7 +584,7 @@ function DayCell({ date, isToday, wear: allWear, planned: allPlanned, trips: all
             {shape?.end && <i className="trip-end-dot" aria-hidden />}
             <span className={`cell-num${isToday ? ' today' : ''}${shape?.start ? ' trip-start' : ''}`}>{Number(date.slice(8))}</span>
             {trip && shape?.flag && (
-              <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
+              <span className={`cell-slot trip-flag${flagMulti}`} style={{ gridRow: 1, gridColumn: flagCodes.length > 1 ? '2 / span 2' : 2 }} role="img" aria-label={`Trip: ${trip.name}`}>
                 {flagText}
               </span>
             )}

@@ -65,4 +65,15 @@ describe('flagsOnDay', () => {
     expect(flagsOnDay(mexico, '2026-09-22', back)).toEqual(['NL']);
     expect(flagsOnDay(mexico, '2026-09-23', back)).toEqual(['MX']);
   });
+  it('shows no new flag when you cross the same border back and forth every day', () => {
+    const commute = checkinCountriesByDay(
+      [22, 23, 24, 25].flatMap((d) => [ci(`2026-09-${d}`, 'Mexico', 1), ci(`2026-09-${d}`, 'Belize', 2), ci(`2026-09-${d}`, 'Mexico', 3), ci(`2026-09-${d}`, 'Belize', 4)]),
+    );
+    expect(flagsOnDay(mexico, '2026-09-23', commute)).toEqual([]);
+    expect(flagsOnDay(mexico, '2026-09-25', commute)).toEqual([]);
+  });
+  it('shows at most three flags', () => {
+    const many = checkinCountriesByDay([ci('2026-09-21', 'Mexico', 1), ci('2026-09-21', 'Belize', 2), ci('2026-09-21', 'Guatemala', 3), ci('2026-09-21', 'Honduras', 4)]);
+    expect(flagsOnDay(mexico, '2026-09-21', many)).toHaveLength(3);
+  });
 });

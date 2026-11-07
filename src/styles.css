@@ -6131,6 +6131,7 @@ a.game-row + .food-h2 {
   align-items: center;
   gap: 0.5rem 0.75rem;
   margin-top: 0.75rem;
+}
 
 /* Trakt plays */
 .dot.mark-watch {
@@ -7316,9 +7317,11 @@ a.game-row + .food-h2 {
 .trip-flag.multi {
   width: auto;
   min-width: 17px;
-  padding: 0 2px;
+  padding: 0 1px;
   border-radius: 9px;
   white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: -2px;
 }
 
 /* The same trip line at the other zoom levels (the grid look above fades out): level with the big number, which sits
@@ -7353,8 +7356,10 @@ a.game-row + .food-h2 {
 }
 .trip-flag-num.multi {
   width: auto;
-  padding: 0 2px;
+  padding: 0 1px;
   white-space: nowrap;
+  font-size: 8px;
+  letter-spacing: -2px;
 }
 .cal-day.in-trip .cal-num {
   position: relative;
