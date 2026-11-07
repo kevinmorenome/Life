@@ -12,6 +12,19 @@ export const KIND_LABEL: Record<PlanKind, string> = {
   other: 'Plan',
 };
 
+/** Local time now as HH:MM. */
+export const nowTime = (d = new Date()): string => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+/**
+ * Whether a plan on `day` hasn't happened yet: a later day, or later today than its planned time. A plan you checked in at
+ * has happened, and one with no planned time counts as happening all day.
+ */
+export function isUpcoming(plan: Pick<TripitPlan, 'start' | 'startTime'>, day: string, here: unknown, today: string, now: string): boolean {
+  if (here) return false;
+  if (day > today) return true;
+  return day === today && plan.start === day && !!plan.startTime && plan.startTime > now;
+}
+
 /**
  * The text of a TripIt plan on one day, the same in the trip's Itinerary and on the day screen. A plan you also checked in
  * at keeps both times (when it was planned, when you were there) and shows both logos.

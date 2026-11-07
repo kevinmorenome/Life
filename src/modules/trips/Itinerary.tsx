@@ -4,7 +4,8 @@ import { TrashIcon, UndoIcon } from '../../icons';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Checkin } from '../checkins/types';
 import { itineraryCheckins, matchKey } from './itineraryCheckins';
-import { CheckinText, PlanText } from './placeRows';
+import { today } from '../../lib/format';
+import { CheckinText, isUpcoming, nowTime, PlanText } from './placeRows';
 
 /**
  * What TripIt has for the days of a trip, day by day, with your Swarm check-ins of those days (a check-in that is the
@@ -34,6 +35,8 @@ export function Itinerary({
     return () => window.clearTimeout(id);
   }, [toast]);
 
+  const todayStr = today();
+  const now = nowTime();
   const shown = plans.filter((p) => !p.removed);
   const removed = plans.filter((p) => p.removed);
   const { extra, matched } = itineraryCheckins(shown, checkins, startDate, endDate);
@@ -51,7 +54,7 @@ export function Itinerary({
             {shown
               .filter((p) => p.start <= day && p.end >= day)
               .map((p) => (
-                  <li key={p.id} className="pack-row">
+                  <li key={p.id} className={`pack-row${isUpcoming(p, day, matched.get(matchKey(p, day)), todayStr, now) ? ' is-upcoming' : ''}`}>
                     <span className="pack-text">
                       <PlanText plan={p} day={day} here={matched.get(matchKey(p, day))} />
                     </span>

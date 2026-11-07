@@ -5,7 +5,8 @@ import { useCollection } from '../../lib/useCollection';
 import { allSelected, pruned, toggled, toggledAll } from '../watching/selection';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import { itineraryCheckins, matchKey } from '../trips/itineraryCheckins';
-import { CheckinText, PlanText } from '../trips/placeRows';
+import { today } from '../../lib/format';
+import { CheckinText, isUpcoming, nowTime, PlanText } from '../trips/placeRows';
 import { CheckinActions } from './CheckinActions';
 import { mergeCheckins, moveCheckins } from './checkins';
 import type { Checkin } from './types';
@@ -119,7 +120,7 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
         {dayPlans.map((p) => {
           const here = matched.get(matchKey(p, date));
           return (
-            <li key={p.id} className={['watch-day-play', selecting && here && ticked.has(here.id) ? 'is-selected' : ''].filter(Boolean).join(' ')}>
+            <li key={p.id} className={['watch-day-play', isUpcoming(p, date, here, today(), nowTime()) ? 'is-upcoming' : '', selecting && here && ticked.has(here.id) ? 'is-selected' : ''].filter(Boolean).join(' ')}>
               <div className="pack-text checkin-info">
                 <PlanText plan={p} day={date} here={here} />
                 {here?.shout && <span className="small">{here.shout}</span>}

@@ -7539,3 +7539,8 @@ a.game-row + .food-h2 {
 .source-tripit {
   border-radius: 22%;
 }
+
+/* Something that hasn't happened yet (a plan of a later day or later today): faded. */
+.is-upcoming {
+  opacity: 0.5;
+}
