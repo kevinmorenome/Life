@@ -4,7 +4,7 @@ import { flagEmoji } from '../countries/flag';
 import type { HomeOn } from '../countries/countries';
 import { isUnconfirmedTrip } from '../trips/pendingTrips';
 import { flagsToShow, tripDayShape } from '../trips/tripLine';
-import { CalendarIcon, CheckIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
+import { CalendarIcon, FilterIcon, PlusIcon, ShirtIcon } from '../../icons';
 import { href, navigate } from '../../lib/router';
 import type { CalendarLayer, DayMark } from '../types';
 import { tripsOnDate } from '../trips/packing';
@@ -65,8 +65,9 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
     }
   });
   const [jumpOpen, setJumpOpen] = useState(false);
-  // The date picked in the jump menu; the calendar only moves when it is confirmed with the check button.
+  // The date picked in the jump menu; the calendar only moves once the picker is confirmed (its own check button) and closes.
   const [jumpDate, setJumpDate] = useState('');
+  const jumpPicked = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(filter.length > 0);
   const setFilter = (next: string[]) => {
     setFilterState(next);
@@ -371,6 +372,7 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
           <div className="cal-tools">
             <span className="menu-wrap">
               <button className="icon-btn" aria-label="Jump to a date" aria-expanded={jumpOpen} onClick={() => {
+                  jumpPicked.current = false;
                   setJumpDate(visibleMonth + '-01');
                   setJumpOpen((o) => !o);
                 }}>
@@ -378,22 +380,26 @@ export function CalendarView({ month, items, outfits, trips = [], dayCountries =
               </button>
               {jumpOpen && (
                 <div className="menu cal-jump" role="dialog" aria-label="Jump to a date">
-                  <div className="cal-jump-row">
-                    <label className="cal-jump-field">
-                      <span>Go to</span>
-                      <input
-                        type="date"
-                        autoFocus
-                        value={jumpDate}
-                        min={weeks[0]}
-                        max={addDays(weeks[weeks.length - 1], 6)}
-                        onChange={(e) => setJumpDate(e.target.value)}
-                      />
-                    </label>
-                    <button className="icon-btn" aria-label="Go to this date" disabled={!clampToWeeks(jumpDate, weeks)} onClick={() => jumpTo(jumpDate)}>
-                      <CheckIcon />
-                    </button>
-                  </div>
+                  <label className="cal-jump-field">
+                    <span>Go to</span>
+                    <input
+                      type="date"
+                      autoFocus
+                      value={jumpDate}
+                      min={weeks[0]}
+                      max={addDays(weeks[weeks.length - 1], 6)}
+                      onChange={(e) => {
+                        jumpPicked.current = true;
+                        setJumpDate(e.target.value);
+                      }}
+                      onBlur={() => {
+                        // The picker closing (its check button) is the confirmation.
+                        if (!jumpPicked.current) return;
+                        jumpPicked.current = false;
+                        jumpTo(jumpDate);
+                      }}
+                    />
+                  </label>
                   <button
                     className="menu-item"
                     onClick={() => {
