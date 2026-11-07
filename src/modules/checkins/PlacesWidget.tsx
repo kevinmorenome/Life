@@ -8,7 +8,7 @@ import { itineraryCheckins, matchKey } from '../trips/itineraryCheckins';
 import { today } from '../../lib/format';
 import { CheckinText, isUpcoming, nowTime, PlanText } from '../trips/placeRows';
 import { CheckinActions } from './CheckinActions';
-import { mergeCheckins, moveCheckins } from './checkins';
+import { linkToPlan, mergeCheckins, moveCheckins, unlinkFromPlan } from './checkins';
 import type { Checkin } from './types';
 
 /**
@@ -23,13 +23,6 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState(date);
   const swarmIds = useMemo(() => done.filter((c) => c.source === 'swarm').map((c) => c.id), [done]);
-  const allIds = useMemo(() => done.map((c) => c.id), [done]);
-  // A check-in that moved away or was removed (here or on another device) can't stay ticked.
-  const ticked = useMemo(() => pruned(selected, allIds), [selected, allIds]);
-  // Move and remove are for Swarm check-ins; a plan's check-in only takes part in a merge.
-  const onlySwarm = [...ticked].every((id) => swarmIds.includes(id));
-  const pair = ticked.size === 2 ? done.filter((c) => ticked.has(c.id)) : [];
-  const merged = pair.length === 2 ? mergeCheckins(pair[0], pair[1], new Date().toISOString()) : null;
   // The plans of the day in the Itinerary's order, and what is left of the check-ins once the ones that are a plan are folded in.
   const dayPlans = useMemo(
     () =>
@@ -42,6 +35,22 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
   const extras = extra.get(date) ?? [];
   const total = dayPlans.length + extras.length;
   const names = [...dayPlans.map((p) => p.title), ...extras.map((c) => c.venue)];
+
+  // A plan with no check-in can be ticked too (as `plan:<id>`), to merge it with a Swarm check-in.
+  const planTick = (planId: string) => `plan:${planId}`;
+  const foldedIds = useMemo(() => new Set(dayPlans.map((p) => matched.get(matchKey(p, date))?.id).filter((id): id is string => !!id)), [dayPlans, matched, date]);
+  const allIds = useMemo(() => [...done.map((c) => c.id), ...dayPlans.map((p) => planTick(p.id))], [done, dayPlans]);
+  // Something that moved away or was removed (here or on another device) can't stay ticked.
+  const ticked = useMemo(() => pruned(selected, allIds), [selected, allIds]);
+  // Move and remove are for Swarm check-ins only.
+  const onlySwarm = [...ticked].every((id) => swarmIds.includes(id));
+  const pair = ticked.size === 2 ? done.filter((c) => ticked.has(c.id)) : [];
+  const merged = pair.length === 2 ? mergeCheckins(pair[0], pair[1], new Date().toISOString()) : null;
+  // One plan and one check-in that isn't part of a plan: merge them into one row.
+  const planPick = ticked.size === 2 ? dayPlans.find((p) => ticked.has(planTick(p.id)) && !matched.has(matchKey(p, date))) : undefined;
+  const checkinPick = planPick ? extras.find((c) => ticked.has(c.id)) : undefined;
+  // One check-in that is part of a plan: take it out again.
+  const foldedPick = ticked.size === 1 ? done.find((c) => ticked.has(c.id) && foldedIds.has(c.id)) : undefined;
 
   /** The select box or the edit / remove buttons of a Swarm check-in. */
   const checkinControls = (c: Checkin) =>
@@ -69,6 +78,18 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
     stopSelecting();
   }
 
+  async function linkTicked() {
+    if (!planPick || !checkinPick) return;
+    await save(linkToPlan(checkinPick, planPick.id, new Date().toISOString()));
+    stopSelecting();
+  }
+
+  async function separateTicked() {
+    if (!foldedPick) return;
+    await save(unlinkFromPlan(foldedPick, new Date().toISOString()));
+    stopSelecting();
+  }
+
   async function removeTicked() {
     const n = ticked.size;
     if (!confirm(`Remove ${n} ${n === 1 ? 'check-in' : 'check-ins'} from your check-ins here? They stay on Swarm.`)) return;
@@ -77,7 +98,7 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
   }
 
   const selectButton =
-    swarmIds.length > 0 && total > 1 ? (
+    swarmIds.length > 0 && total > 0 && dayPlans.length + swarmIds.length > 1 ? (
       <button
         type="button"
         className="icon-btn"
@@ -105,9 +126,20 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
           <button type="button" className="btn btn-primary" disabled={ticked.size === 0 || !onlySwarm || !target || target === date} onClick={() => void moveTicked()}>
             Move
           </button>
-          <button type="button" className="icon-btn" aria-label="Merge the two selected into one" disabled={!merged || (merged.keep.source !== 'swarm')} onClick={() => void mergeTicked()}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={planPick ? 'Merge the plan and the check-in into one' : 'Merge the two selected into one'}
+            disabled={planPick ? !checkinPick : !merged || merged.keep.source !== 'swarm'}
+            onClick={() => void (planPick ? linkTicked() : mergeTicked())}
+          >
             <LayersIcon />
           </button>
+          {foldedPick && (
+            <button type="button" className="btn" onClick={() => void separateTicked()}>
+              Separate
+            </button>
+          )}
           <button type="button" className="icon-btn" aria-label={`Remove ${ticked.size} selected`} disabled={ticked.size === 0 || !onlySwarm} onClick={() => void removeTicked()}>
             <TrashIcon />
           </button>
@@ -125,7 +157,13 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
                 <PlanText plan={p} day={date} here={here} />
                 {here?.shout && <span className="small">{here.shout}</span>}
               </div>
-              {here && checkinControls(here)}
+              {here ? (
+                checkinControls(here)
+              ) : (
+                selecting && (
+                  <button type="button" className="shop-check" role="checkbox" aria-checked={ticked.has(planTick(p.id))} aria-label={`Select ${p.title}`} onClick={() => setSelected(toggled(ticked, planTick(p.id)))} />
+                )
+              )}
             </li>
           );
         })}

@@ -53,4 +53,16 @@ describe('isUpcoming', () => {
     expect(isUpcoming(p, '2022-09-28', { id: 'x' }, '2022-09-27', '12:00')).toBe(false);
     expect(isUpcoming({ start: '2022-09-28' }, '2022-09-28', undefined, '2022-09-28', '07:00')).toBe(false);
   });
+  it('folds a check-in merged by hand into its plan whatever the names, and keeps a separated one apart', () => {
+    const r = itineraryCheckins([plan({ id: 'p1', title: 'Sablicevo Beach' })], [ci({ id: 'm', venue: 'Totally different', planRef: 'p1' })], '2022-09-25', '2022-09-30');
+    expect(r.matched.get(matchKey({ id: 'p1' }, '2022-09-28'))?.id).toBe('m');
+    const apart = itineraryCheckins([plan({})], [ci({ id: 'n', planRef: 'none' })], '2022-09-25', '2022-09-30');
+    expect(apart.matched.size).toBe(0);
+    expect(apart.extra.get('2022-09-28')?.map((c) => c.id)).toEqual(['n']);
+  });
+  it('lets a hand merge win over a name match for the same plan', () => {
+    const r = itineraryCheckins([plan({ id: 'p1' })], [ci({ id: 'auto', at: 1 }), ci({ id: 'hand', venue: 'Other', at: 2, planRef: 'p1' })], '2022-09-25', '2022-09-30');
+    expect(r.matched.get(matchKey({ id: 'p1' }, '2022-09-28'))?.id).toBe('hand');
+    expect(r.extra.get('2022-09-28')?.map((c) => c.id)).toEqual(['auto']);
+  });
 });

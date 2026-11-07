@@ -18,6 +18,11 @@ export interface Checkin {
   /** Epoch seconds. */
   at: number;
   source: 'swarm' | 'plan';
+  /** A Swarm check-in you merged with a TripIt plan by hand (the plan's id), or `NO_PLAN` to keep it apart from the plan its name matches. */
+  planRef?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+/** `Checkin.planRef` value for a check-in that must not be folded into a plan, whatever its name. */
+export const NO_PLAN = 'none';

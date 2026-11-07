@@ -1,4 +1,4 @@
-import type { Checkin } from './types';
+import { NO_PLAN, type Checkin } from './types';
 
 /** Check-ins grouped by local date, each day oldest first. */
 export function byDate(checkins: Checkin[]): Map<string, Checkin[]> {
@@ -61,4 +61,14 @@ export function mergeCheckins(a: Checkin, b: Checkin, now: string): { keep: Chec
   const merged = keep.time || !drop.time ? filled : moveCheckin(filled, keep.date, drop.time, now);
   const changed = JSON.stringify(merged) !== JSON.stringify(keep) || merged !== filled;
   return { keep: changed ? { ...merged, updatedAt: now } : keep, drop };
+}
+
+/** The check-in merged with a TripIt plan by hand: the Itinerary and the day screen show the two as one row. */
+export function linkToPlan(c: Checkin, planId: string, now: string): Checkin {
+  return { ...c, planRef: planId, updatedAt: now };
+}
+
+/** The check-in kept apart from the plan it was folded into (by hand or because the names match). */
+export function unlinkFromPlan(c: Checkin, now: string): Checkin {
+  return { ...c, planRef: NO_PLAN, updatedAt: now };
 }
