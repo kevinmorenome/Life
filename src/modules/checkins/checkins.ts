@@ -46,3 +46,19 @@ export function moveCheckins(checkins: Checkin[], ids: ReadonlySet<string>, date
     .filter((m) => m.after !== m.before)
     .map((m) => m.after);
 }
+
+/**
+ * Two check-ins of the same day that are the same visit, as one: the Swarm one is kept (else the one with a time,
+ * else the first), and whatever it lacks (time, category, city, country, position, note) is filled in from the
+ * other, which is dropped. Returns `null` for two that aren't on the same day.
+ */
+export function mergeCheckins(a: Checkin, b: Checkin, now: string): { keep: Checkin; drop: Checkin } | null {
+  if (a.date !== b.date || a.id === b.id) return null;
+  const rank = (c: Checkin) => (c.source === 'swarm' ? 2 : 0) + (c.time ? 1 : 0);
+  const [keep, drop] = rank(b) > rank(a) ? [b, a] : [a, b];
+  const fill = <K extends keyof Checkin>(k: K) => (keep[k] === undefined || keep[k] === '' ? { [k]: drop[k] } : {});
+  const filled: Checkin = { ...keep, ...fill('venueId'), ...fill('category'), ...fill('city'), ...fill('country'), ...fill('lat'), ...fill('lng'), ...fill('shout') };
+  const merged = keep.time || !drop.time ? filled : moveCheckin(filled, keep.date, drop.time, now);
+  const changed = JSON.stringify(merged) !== JSON.stringify(keep) || merged !== filled;
+  return { keep: changed ? { ...merged, updatedAt: now } : keep, drop };
+}
