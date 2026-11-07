@@ -9,6 +9,9 @@ import { CheckinActions } from './CheckinActions';
 import { mergeCheckins, moveCheckins, place } from './checkins';
 import type { Checkin } from './types';
 
+/** Where a check-in came from, said in words on its row. */
+const sourceName = (c: Checkin): string => (c.source === 'plan' ? 'TripIt' : 'Swarm');
+
 /**
  * The day screen's Places widget: the day's check-ins and planned places. The check button in its header turns on
  * select mode: tick Swarm check-ins and move them all to another day (each keeps its time) or remove them, in the
@@ -107,7 +110,7 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
                 <>
                   <div className="checkin-info">
                     <strong>{c.venue}</strong>
-                    <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</div>
+                    <div className="muted small">{[c.time, place(c), sourceName(c)].filter(Boolean).join(' · ')}</div>
                     {c.shout && <div className="small">{c.shout}</div>}
                   </div>
                   {selecting ? (
@@ -120,7 +123,7 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
                 <>
                   <div className="checkin-info">
                     <strong>{c.venue}</strong>
-                    <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')}</div>
+                    <div className="muted small">{[c.time, place(c), sourceName(c)].filter(Boolean).join(' · ')}</div>
                     {c.shout && <div className="small">{c.shout}</div>}
                   </div>
                   {selecting && <button type="button" className="shop-check" role="checkbox" aria-checked={on} aria-label={`Select ${c.venue}`} onClick={() => setSelected(toggled(ticked, c.id))} />}
