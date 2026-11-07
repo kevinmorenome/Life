@@ -19,10 +19,13 @@ export function sameName(venue: string, title: string): boolean {
   return short.length >= 4 && (` ${long} `).includes(` ${short} `);
 }
 
+/** Key of `ItineraryCheckins.matched`: a plan on one day. */
+export const matchKey = (plan: Pick<TripitPlan, 'id'>, day: string): string => `${plan.id}|${day}`;
+
 export interface ItineraryCheckins {
   /** Check-ins of the trip's days with no plan of the same name that day, by day (oldest first). */
   extra: Map<string, Checkin[]>;
-  /** For a plan, the Swarm check-in that is the same place on a day it covers: shown on the plan, not twice. */
+  /** For a plan on one of its days (`matchKey`), the Swarm check-in that is the same place: shown on the plan, not twice. */
   matched: Map<string, Checkin>;
 }
 
@@ -37,8 +40,9 @@ export function itineraryCheckins(plans: TripitPlan[], checkins: Checkin[], star
   const swarm = checkins.filter((c) => c.source === 'swarm' && c.date >= startDate && c.date <= endDate).sort((a, b) => a.at - b.at);
   for (const c of swarm) {
     const plan = plans.find((p) => !p.removed && p.start <= c.date && p.end >= c.date && sameName(c.venue, p.title));
-    if (plan) {
-      if (!matched.has(plan.id)) matched.set(plan.id, c);
+    // The first check-in of a place that day is folded into its plan; another one at the same place is listed, never hidden.
+    if (plan && !matched.has(matchKey(plan, c.date))) {
+      matched.set(matchKey(plan, c.date), c);
       continue;
     }
     const list = extra.get(c.date);

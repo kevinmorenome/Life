@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Checkin } from '../checkins/types';
-import { itineraryCheckins, sameName } from './itineraryCheckins';
+import { itineraryCheckins, matchKey, sameName } from './itineraryCheckins';
 
 const plan = (o: Partial<TripitPlan>): TripitPlan => ({ id: 'p', kind: 'meal', title: 'Curry Bowl', start: '2022-09-28', end: '2022-09-28', ...o }) as TripitPlan;
 const ci = (o: Partial<Checkin>): Checkin => ({ id: 's', venue: 'Curry Bowl', date: '2022-09-28', time: '20:00', at: 1, source: 'swarm', createdAt: '', updatedAt: '', ...o });
@@ -19,7 +19,7 @@ describe('sameName', () => {
 describe('itineraryCheckins', () => {
   it('folds a Swarm check-in into the plan of the same name, so it is listed once', () => {
     const r = itineraryCheckins([plan({})], [ci({})], '2022-09-25', '2022-09-30');
-    expect(r.matched.get('p')?.id).toBe('s');
+    expect(r.matched.get(matchKey(plan({}), '2022-09-28'))?.id).toBe('s');
     expect(r.extra.size).toBe(0);
   });
   it('lists the others on their own day, oldest first', () => {
@@ -31,5 +31,11 @@ describe('itineraryCheckins', () => {
     const r = itineraryCheckins([plan({ removed: true })], [ci({ source: 'plan' }), ci({ id: 'out', date: '2022-10-05' }), ci({ id: 'in' })], '2022-09-25', '2022-09-30');
     expect([...r.extra.values()].flat().map((c) => c.id)).toEqual(['in']);
     expect(r.matched.size).toBe(0);
+  });
+  it('folds one check-in per plan and day, and lists a second one at the same place', () => {
+    const stay = plan({ id: 'stay', title: 'Hotel Sol', start: '2022-09-28', end: '2022-09-29' });
+    const r = itineraryCheckins([stay], [ci({ id: 'a', venue: 'Hotel Sol', at: 1 }), ci({ id: 'b', venue: 'Hotel Sol', at: 2 }), ci({ id: 'c', venue: 'Hotel Sol', date: '2022-09-29', at: 3 })], '2022-09-25', '2022-09-30');
+    expect([r.matched.get(matchKey(stay, '2022-09-28'))?.id, r.matched.get(matchKey(stay, '2022-09-29'))?.id]).toEqual(['a', 'c']);
+    expect(r.extra.get('2022-09-28')?.map((c) => c.id)).toEqual(['b']);
   });
 });

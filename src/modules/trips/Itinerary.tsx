@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react';
 import { shortDate } from '../../lib/format';
 import { TrashIcon, UndoIcon } from '../../icons';
-import type { PlanKind, TripitPlan } from '../../../worker/tripitTypes';
+import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { Checkin } from '../checkins/types';
-import { SourceLogos } from '../checkins/SourceLogo';
-import { itineraryCheckins } from './itineraryCheckins';
-
-const KIND_LABEL: Record<PlanKind, string> = {
-  flight: 'Flight',
-  lodging: 'Stay',
-  transit: 'Transit',
-  car: 'Car',
-  meal: 'Meal',
-  activity: 'Activity',
-  other: 'Plan',
-};
+import { itineraryCheckins, matchKey } from './itineraryCheckins';
+import { CheckinText, PlanText } from './placeRows';
 
 /**
  * What TripIt has for the days of a trip, day by day, with your Swarm check-ins of those days (a check-in that is the
@@ -60,19 +50,10 @@ export function Itinerary({
           <ul className="pack-list">
             {shown
               .filter((p) => p.start <= day && p.end >= day)
-              .map((p) => {
-                const seen = matched.get(p.id);
-                const here = seen?.date === day ? seen : undefined;
-                const planTime = p.start === day && p.startTime ? p.startTime : '';
-                // A plan you also checked in at keeps both times: when it was planned and when you were there.
-                const times = here ? [planTime && `planned ${planTime}`, here.time && `checked in ${here.time}`] : [planTime];
-                return (
+              .map((p) => (
                   <li key={p.id} className="pack-row">
                     <span className="pack-text">
-                      <strong>{p.title}</strong>
-                      <span className="muted small">
-                        {[KIND_LABEL[p.kind], ...times, !planTime && p.start < day ? 'continues' : '', p.location].filter(Boolean).join(' · ')} <SourceLogos sources={here ? ['tripit', 'swarm'] : ['tripit']} />
-                      </span>
+                      <PlanText plan={p} day={day} here={matched.get(matchKey(p, day))} />
                     </span>
                     {onRemove && (
                       <button
@@ -89,13 +70,11 @@ export function Itinerary({
                       </button>
                     )}
                   </li>
-                );
-              })}
+              ))}
             {(extra.get(day) ?? []).map((c) => (
               <li key={c.id} className="pack-row">
                 <span className="pack-text">
-                  <strong>{c.venue}</strong>
-                  <span className="muted small">{[c.time, c.category, c.city].filter(Boolean).join(' · ')} <SourceLogos sources={['swarm']} /></span>
+                  <CheckinText checkin={c} />
                 </span>
               </li>
             ))}

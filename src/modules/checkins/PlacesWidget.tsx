@@ -3,18 +3,20 @@ import { DayWidget } from '../../DayWidget';
 import { CheckIcon, LayersIcon, PinIcon, TrashIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import { allSelected, pruned, toggled, toggledAll } from '../watching/selection';
-import type { Draft } from '../trips/planCheckins';
-import { SourceLogos } from './SourceLogo';
+import type { TripitPlan } from '../../../worker/tripitTypes';
+import { itineraryCheckins, matchKey } from '../trips/itineraryCheckins';
+import { CheckinText, PlanText } from '../trips/placeRows';
 import { CheckinActions } from './CheckinActions';
-import { mergeCheckins, moveCheckins, place } from './checkins';
+import { mergeCheckins, moveCheckins } from './checkins';
 import type { Checkin } from './types';
 
 /**
- * The day screen's Places widget: the day's check-ins and planned places. The check button in its header turns on
+ * The day screen's Places widget, built the same way as the trip's Itinerary (same rows, same folding): the TripIt plans of
+ * the day, each with the Swarm check-in of the same place folded in, then the other Swarm check-ins. The check button in its header turns on
  * select mode: tick Swarm check-ins and move them all to another day (each keeps its time) or remove them, in the
  * app only.
  */
-export function PlacesWidget({ date, done, planned }: { date: string; done: Checkin[]; planned: Draft[] }) {
+export function PlacesWidget({ date, done, plans }: { date: string; done: Checkin[]; plans: TripitPlan[] }) {
   const { save, remove } = useCollection<Checkin>('checkins');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -27,8 +29,26 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
   const onlySwarm = [...ticked].every((id) => swarmIds.includes(id));
   const pair = ticked.size === 2 ? done.filter((c) => ticked.has(c.id)) : [];
   const merged = pair.length === 2 ? mergeCheckins(pair[0], pair[1], new Date().toISOString()) : null;
-  const total = done.length + planned.length;
-  const names = [...done.map((c) => c.venue), ...planned.map((d) => d.venue)];
+  // The plans of the day in the Itinerary's order, and what is left of the check-ins once the ones that are a plan are folded in.
+  const dayPlans = useMemo(
+    () =>
+      plans
+        .filter((p) => !p.removed && p.start <= date && p.end >= date)
+        .sort((a, b) => a.start.localeCompare(b.start) || (a.startTime ?? '').localeCompare(b.startTime ?? '') || a.id.localeCompare(b.id)),
+    [plans, date],
+  );
+  const { extra, matched } = useMemo(() => itineraryCheckins(dayPlans, done, date, date), [dayPlans, done, date]);
+  const extras = extra.get(date) ?? [];
+  const total = dayPlans.length + extras.length;
+  const names = [...dayPlans.map((p) => p.title), ...extras.map((c) => c.venue)];
+
+  /** The select box or the edit / remove buttons of a Swarm check-in. */
+  const checkinControls = (c: Checkin) =>
+    selecting ? (
+      <button type="button" className="shop-check" role="checkbox" aria-checked={ticked.has(c.id)} aria-label={`Select ${c.venue}`} onClick={() => setSelected(toggled(ticked, c.id))} />
+    ) : (
+      <CheckinActions checkin={c} />
+    );
 
   function stopSelecting() {
     setSelecting(false);
@@ -56,7 +76,7 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
   }
 
   const selectButton =
-    swarmIds.length > 0 && done.length > 1 ? (
+    swarmIds.length > 0 && total > 1 ? (
       <button
         type="button"
         className="icon-btn"
@@ -96,41 +116,24 @@ export function PlacesWidget({ date, done, planned }: { date: string; done: Chec
         </div>
       )}
       <ul className="widget-list">
-        {done.map((c) => {
-          const on = ticked.has(c.id);
+        {dayPlans.map((p) => {
+          const here = matched.get(matchKey(p, date));
           return (
-            <li key={c.id} className={[c.source === 'swarm' || selecting ? 'watch-day-play' : '', selecting && on ? 'is-selected' : ''].filter(Boolean).join(' ') || undefined}>
-              {c.source === 'swarm' ? (
-                <>
-                  <div className="checkin-info">
-                    <strong>{c.venue}</strong>
-                    <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')} <SourceLogos sources={['swarm']} /></div>
-                    {c.shout && <div className="small">{c.shout}</div>}
-                  </div>
-                  {selecting ? (
-                    <button type="button" className="shop-check" role="checkbox" aria-checked={on} aria-label={`Select ${c.venue}`} onClick={() => setSelected(toggled(ticked, c.id))} />
-                  ) : (
-                    <CheckinActions checkin={c} />
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="checkin-info">
-                    <strong>{c.venue}</strong>
-                    <div className="muted small">{[c.time, place(c)].filter(Boolean).join(' · ')} <SourceLogos sources={['tripit']} /></div>
-                    {c.shout && <div className="small">{c.shout}</div>}
-                  </div>
-                  {selecting && <button type="button" className="shop-check" role="checkbox" aria-checked={on} aria-label={`Select ${c.venue}`} onClick={() => setSelected(toggled(ticked, c.id))} />}
-                </>
-              )}
+            <li key={p.id} className={['watch-day-play', selecting && here && ticked.has(here.id) ? 'is-selected' : ''].filter(Boolean).join(' ')}>
+              <div className="pack-text checkin-info">
+                <PlanText plan={p} day={date} here={here} />
+                {here?.shout && <span className="small">{here.shout}</span>}
+              </div>
+              {here && checkinControls(here)}
             </li>
           );
         })}
-        {planned.map((d) => (
-          <li key={d.id} className="planned">
-            <strong>{d.venue}</strong>
-            <span className="muted small">{[d.time, place(d)].filter(Boolean).join(' · ')}</span>
-            <span className="planned-tag muted small">Planned</span>
+        {extras.map((c) => (
+          <li key={c.id} className={['watch-day-play', selecting && ticked.has(c.id) ? 'is-selected' : ''].filter(Boolean).join(' ')}>
+            <div className="pack-text checkin-info">
+              <CheckinText checkin={c} shout />
+            </div>
+            {checkinControls(c)}
           </li>
         ))}
       </ul>
