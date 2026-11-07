@@ -7544,3 +7544,42 @@ a.game-row + .food-h2 {
 .is-upcoming {
   opacity: 0.5;
 }
+
+/* Small glass buttons in a widget's header, drawn like the count and the chevron (the button keeps a 44px touch area). */
+.widget-minis {
+  display: inline-flex;
+  flex: none;
+}
+.widget-mini {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.widget-mini-dot {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--plate);
+  box-shadow: 0 2px 8px rgb(31 38 54 / 0.1), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.widget-mini-dot svg {
+  width: 14px;
+  height: 14px;
+}
+.widget-mini[aria-pressed='true'] {
+  color: var(--accent);
+}
+.widget-mini[aria-pressed='true'] .widget-mini-dot {
+  border-color: var(--accent);
+}

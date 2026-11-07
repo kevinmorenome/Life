@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DayWidget } from '../../DayWidget';
-import { CheckIcon, LayersIcon, PinIcon, TrashIcon } from '../../icons';
+import { CheckIcon, EditIcon, LayersIcon, PinIcon, TrashIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import { allSelected, pruned, toggled, toggledAll } from '../watching/selection';
 import type { TripitPlan } from '../../../worker/tripitTypes';
@@ -19,6 +19,7 @@ import type { Checkin } from './types';
  */
 export function PlacesWidget({ date, done, plans }: { date: string; done: Checkin[]; plans: TripitPlan[] }) {
   const { save, remove } = useCollection<Checkin>('checkins');
+  const [editing, setEditing] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState(date);
@@ -52,13 +53,13 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
   // One check-in that is part of a plan: take it out again.
   const foldedPick = ticked.size === 1 ? done.find((c) => ticked.has(c.id) && foldedIds.has(c.id)) : undefined;
 
-  /** The select box or the edit / remove buttons of a Swarm check-in. */
+  /** The select box (select mode) or the edit / remove buttons (edit mode) of a Swarm check-in; nothing otherwise. */
   const checkinControls = (c: Checkin) =>
     selecting ? (
       <button type="button" className="shop-check" role="checkbox" aria-checked={ticked.has(c.id)} aria-label={`Select ${c.venue}`} onClick={() => setSelected(toggled(ticked, c.id))} />
-    ) : (
+    ) : editing ? (
       <CheckinActions checkin={c} />
-    );
+    ) : null;
 
   function stopSelecting() {
     setSelecting(false);
@@ -97,25 +98,48 @@ export function PlacesWidget({ date, done, plans }: { date: string; done: Checki
     stopSelecting();
   }
 
-  const selectButton =
-    swarmIds.length > 0 && total > 0 && dayPlans.length + swarmIds.length > 1 ? (
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label="Select check-ins"
-        aria-pressed={selecting}
-        onClick={() => {
-          setTarget(date);
-          if (selecting) stopSelecting();
-          else setSelecting(true);
-        }}
-      >
-        <CheckIcon />
-      </button>
+  // Two small glass buttons in the header, like the count and the chevron: edit shows the edit / remove buttons on the
+  // check-ins, the check turns on multi-select. Neither shows until asked for.
+  const headerButtons =
+    swarmIds.length > 0 ? (
+      <span className="widget-minis">
+        <button
+          type="button"
+          className="widget-mini"
+          aria-label="Edit check-ins"
+          aria-pressed={editing}
+          onClick={() => {
+            stopSelecting();
+            setEditing(!editing);
+          }}
+        >
+          <span className="widget-mini-dot">
+            <EditIcon />
+          </span>
+        </button>
+        {dayPlans.length + swarmIds.length > 1 && (
+          <button
+            type="button"
+            className="widget-mini"
+            aria-label="Select check-ins"
+            aria-pressed={selecting}
+            onClick={() => {
+              setTarget(date);
+              setEditing(false);
+              if (selecting) stopSelecting();
+              else setSelecting(true);
+            }}
+          >
+            <span className="widget-mini-dot">
+              <CheckIcon />
+            </span>
+          </button>
+        )}
+      </span>
     ) : undefined;
 
   return (
-    <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" size="full" badge={total > 1 ? total : undefined} summary={names.join(', ')} action={selectButton}>
+    <DayWidget id="places" title="Places" icon={<PinIcon />} tone="place" size="full" badge={total > 1 ? total : undefined} summary={names.join(', ')} action={headerButtons}>
       {selecting && (
         <div className="sticky-actions watch-select-bar checkin-select-bar">
           <span className="small">{ticked.size} selected</span>
