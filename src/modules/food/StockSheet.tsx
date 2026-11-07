@@ -7,7 +7,8 @@ import { PictureControl } from './PictureControl';
 import { unitLabel } from './products';
 import { dayText, tileInfo } from './stockTiles';
 import { formatAmount, levelOptions } from './stock';
-import { partLeftEvent, stockEvent, usedEarlierEvent } from './stockActions';
+import { keepOutOfStats, partLeftEvent, stockEvent, usedEarlierEvent } from './stockActions';
+import { StatsSwitch } from './StatsSwitch';
 import type { Entry } from './stockEntries';
 import type { StockEvent } from './types';
 
@@ -21,9 +22,12 @@ export interface SheetAct {
 }
 
 /** The actions for one product, in a sheet over the stock grid: a big picture, the amount, and four ways to say what happened. */
-export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; onAct(a: SheetAct): void; onPhoto(photo: string | null): Promise<void> | void; onClose(): void }) {
+export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry: Entry; onAct(a: SheetAct): void; onPhoto(photo: string | null): Promise<void> | void; onClose(): void }) {
   const { product: p, stock: s, uses } = entry;
   const [levels, setLevels] = useState(false);
+  // While this is on, what you log still changes the stock but is kept out of the statistics.
+  const [quiet, setQuiet] = useState(false);
+  const onAct = (a: SheetAct) => sendAct(quiet ? { ...a, event: keepOutOfStats(a.event), undo: keepOutOfStats(a.undo) } : a);
   const box = useRef<HTMLDivElement>(null);
   const day = today();
   const info = tileInfo(entry, day);
@@ -96,6 +100,7 @@ export function StockSheet({ entry, onAct, onPhoto, onClose }: { entry: Entry; o
             Threw out
           </button>
         </div>
+        {!have && <StatsSwitch off={quiet} onChange={setQuiet} />}
         {levels && options.length > 0 && (
           <div className="chips food-levels">
             {options.map((l) => (

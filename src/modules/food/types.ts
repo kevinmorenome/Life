@@ -121,6 +121,11 @@ export interface StockEvent {
    * frozen one back out, use-by two days on). Without one, the stock that expires first is used.
    */
   batch?: string;
+  /**
+   * True to keep this out of the statistics (food thrown away, uses): it still changes the stock and shows in the
+   * history, as a correction you made rather than something that happened today.
+   */
+  untracked?: boolean;
   /** For `expiry` events: the use-by date (YYYY-MM-DD) set for the batch. The newest one wins. */
   useBy?: string;
   note?: string;
