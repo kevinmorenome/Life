@@ -12,7 +12,7 @@ import { StatsSwitch } from './StatsSwitch';
 
 import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
 
-const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
+const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' } as const;
 
 /** One product: how it is tracked, and every time you bought it. */
 const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by', freeze: 'Froze', thaw: 'Took out' } as const;
@@ -48,7 +48,7 @@ export function ProductView({
 
   // Spread the record first so fields this screen doesn't show survive; create it on the first change.
   const save = (patch: Partial<FoodProduct>) => onSave(productRecord(product, record, patch, new Date().toISOString()));
-  const setType = (type: ProductType) => save({ type, ...(product.custom ? {} : { storage: defaultStorage(type) }) });
+  const setType = (type: ProductType) => save({ type, ...(product.custom ? {} : { storage: defaultStorage(type, product.kind) }) });
   const commitPack = () => {
     const n = Number(pack.replace(',', '.'));
     const packSize = pack.trim() && Number.isFinite(n) && n >= 2 && n <= 100 ? Math.round(n) : undefined;

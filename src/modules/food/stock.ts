@@ -1,5 +1,5 @@
 import type { Purchase } from './products';
-import type { ProductType, StockEvent, Unit } from './types';
+import type { ProductType, StockEvent, Storage, Unit } from './types';
 
 /** How long food keeps once frozen, counted from the day it went in (change it per batch with its use-by date). */
 export const FREEZER_DAYS = 90;
@@ -14,6 +14,9 @@ const CHECK_AFTER_DAYS: Partial<Record<ProductType, number>> = { fresh: 4, stapl
 
 /** Days after which things that are all in the freezer are worth asking about in the weekly check. */
 const FROZEN_CHECK_DAYS = 60;
+
+/** Things kept at home (shampoo, soap) last for months: they are only worth a look now and then. */
+const HOME_CHECK_DAYS = 90;
 
 const DAY = 86_400_000;
 const toUtc = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
@@ -316,22 +319,22 @@ export function usesSince(events: StockEvent[], since?: string): number {
  * Worth asking about in the weekly check: this batch is past its use-by date, or nothing has confirmed it for a while
  * (since it was bought, put in the freezer, or you last said you still had it). Thawed food is only asked about once past its date.
  */
-export function needsBatchCheck(type: ProductType, b: Batch, today: string): boolean {
+export function needsBatchCheck(type: ProductType, b: Batch, today: string, storage?: Storage): boolean {
   if (b.quantity <= 0) return false;
   if (b.useBy && today > b.useBy) return true;
   if (b.thawed) return false;
   // What is in the freezer keeps for months: it is only worth a look now and then.
-  const after = b.frozen ? FROZEN_CHECK_DAYS : CHECK_AFTER_DAYS[type];
+  const after = b.frozen ? FROZEN_CHECK_DAYS : storage === 'home' ? HOME_CHECK_DAYS : CHECK_AFTER_DAYS[type];
   return after !== undefined && daysBetween(b.confirmed ?? b.frozen ?? b.date, today) >= after;
 }
 
 /** The batches of a product the weekly check should ask about, in the order they are listed. */
-export function batchesToCheck(type: ProductType, s: Stock, today: string): Batch[] {
-  return s.tracked ? s.batches.filter((b) => needsBatchCheck(type, b, today)) : [];
+export function batchesToCheck(type: ProductType, s: Stock, today: string, storage?: Storage): Batch[] {
+  return s.tracked ? s.batches.filter((b) => needsBatchCheck(type, b, today, storage)) : [];
 }
 
 /** Worth asking about in the weekly check: at least one batch needs a look. Products you only have or don't are never asked about. */
-export const needsCheck = (type: ProductType, s: Stock, today: string): boolean => batchesToCheck(type, s, today).length > 0;
+export const needsCheck = (type: ProductType, s: Stock, today: string, storage?: Storage): boolean => batchesToCheck(type, s, today, storage).length > 0;
 
 /** Quantity worth showing: "3", "0.48", never "0.4800000001". */
 export const formatQty = (n: number): string => String(round3(n));

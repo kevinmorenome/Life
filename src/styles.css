@@ -5357,6 +5357,7 @@ a.game-row + .food-h2 {
 .k-spice { --k: #8f3b22; }
 .k-oil { --k: #5d6a1f; }
 .k-box { --k: #5b6068; }
+.k-bottle { --k: #1f7a8c; }
 @media (prefers-color-scheme: dark) {
   .k-chicken { --k: #f0a090; }
   .k-cucumber { --k: #9fd18f; }
@@ -5371,6 +5372,7 @@ a.game-row + .food-h2 {
   .k-spice { --k: #eba285; }
   .k-oil { --k: #c5d573; }
   .k-box { --k: #b4b8c0; }
+  .k-bottle { --k: #7fcbdc; }
 }
 .food-art {
   position: relative;

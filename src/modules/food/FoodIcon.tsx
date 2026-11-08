@@ -12,6 +12,14 @@ export function FoodIcon({ kind, size = 56 }: { kind: IconKind; size?: number })
 }
 
 const PATHS: Record<IconKind, React.ReactNode> = {
+  bottle: (
+    <>
+      <path d="M20 5h8v5h-8z" />
+      <path d="M28 7h6c2 0 3 1 3 3" />
+      <path d="M17 14h14c2 0 3 1 3 3v22c0 2-1 3-3 3H17c-2 0-3-1-3-3V17c0-2 1-3 3-3z" />
+      <path d="M14 26h20" />
+    </>
+  ),
   chicken: (
     <>
       <path d="M32 8c7 0 12 6 10 13-1 5-6 9-11 9-3 0-5-1-7-3-2-2-3-4-3-7 0-6 5-12 11-12z" />

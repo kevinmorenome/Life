@@ -1,10 +1,15 @@
-/** What a receipt line is. Deposits (bottle/can returns) and bags are not food and stay out of food stats. */
-export const LINE_KINDS = ['food', 'alcohol', 'deposit', 'bag', 'other'] as const;
+/**
+ * What a receipt line is. Deposits (bottle/can returns) and bags are not food and stay out of food stats. Household & care
+ * (shampoo, soap, toothpaste, cleaning products, from dm and the like) is stocked like food but is not food: it has its own
+ * place in the stock grid and stays out of the food stats.
+ */
+export const LINE_KINDS = ['food', 'alcohol', 'household', 'deposit', 'bag', 'other'] as const;
 export type LineKind = (typeof LINE_KINDS)[number];
 
 export const KIND_LABELS: Record<LineKind, string> = {
   food: 'Food & drink',
   alcohol: 'Alcohol',
+  household: 'Household & care',
   deposit: 'Deposits',
   bag: 'Bags',
   other: 'Other',
@@ -62,7 +67,8 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   snack: 'Snack',
 };
 
-export const STORAGES = ['fridge', 'pantry', 'freezer'] as const;
+/** Where a product is kept; `home` is for what isn't food (the bathroom, the cleaning cupboard). */
+export const STORAGES = ['fridge', 'pantry', 'freezer', 'home'] as const;
 export type Storage = (typeof STORAGES)[number];
 
 /**

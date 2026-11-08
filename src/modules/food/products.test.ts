@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageUnitPrice, canonicalName, defaultStorage, defaultType, isStocked, normalizeKey, packSizeOf, pluralize, pricePerItem, productId, productSummaries } from './products';
+import { averageUnitPrice, canonicalName, defaultStorage, defaultType, isFoodKind, isStocked, normalizeKey, packSizeOf, pluralize, pricePerItem, productId, productSummaries } from './products';
 import type { FoodProduct, FoodReceipt, ReceiptLine } from './types';
 
 const line = (over: Partial<ReceiptLine>): ReceiptLine => ({ name: 'Milk', kind: 'food', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1, ...over });
@@ -22,8 +22,14 @@ describe('defaults', () => {
     expect(defaultStorage('fresh')).toBe('fridge');
     expect(defaultStorage('staple')).toBe('pantry');
   });
-  it('only stock food and alcohol', () => {
-    expect(['food', 'alcohol', 'deposit', 'bag', 'other'].filter((k) => isStocked(k as 'food'))).toEqual(['food', 'alcohol']);
+  it('only stock food, alcohol and household things', () => {
+    expect(['food', 'alcohol', 'household', 'deposit', 'bag', 'other'].filter((k) => isStocked(k as 'food'))).toEqual(['food', 'alcohol', 'household']);
+    expect(['food', 'alcohol', 'household'].filter((k) => isFoodKind(k as 'food'))).toEqual(['food', 'alcohol']);
+  });
+  it('household things are staples kept at home', () => {
+    expect(defaultType('household', 'pc')).toBe('staple');
+    expect(defaultStorage('staple', 'household')).toBe('home');
+    expect(defaultStorage('staple', 'food')).toBe('pantry');
   });
 });
 

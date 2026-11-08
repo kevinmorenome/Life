@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { allowedImage, handleFoodPhotoImage, handleFoodPhotos, searchAllPhotos } from './foodPhotos';
+import { resetDmCache } from './dm';
 import { resetKonzumCache } from './konzum';
 
 const KONZUM_IMG = 'https://d17zv3ray5yxvp.cloudfront.net/variants/abc/def';
+const DM_IMG = 'https://products.dm-static.com/images/f_auto,q_auto,c_fit,h_440,w_500/v1/assets/pas/images/abc/dm-sampon-test';
 const OFF_IMG = 'https://images.openfoodfacts.org/images/products/385/013/100/3398/front_hr.3.400.jpg';
 const page = `<script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name: 'Staropramen Svijetlo pivo 6x0,5 l', image: KONZUM_IMG, sku: '90770559', brand: 'ZAGREBAČKA PIVOVARA d.o.o.' })}</script>`;
 const offBody = { products: [{ code: '3850131003398', product_name: 'Staropramen', brands: 'Staropramen', quantity: '0,5 l', image_front_url: OFF_IMG, countries_tags: ['en:croatia'] }] };
@@ -12,6 +14,8 @@ const web = (opts: { konzumDown?: boolean; offDown?: boolean; calls?: string[] }
   (async (input: string) => {
     const url = String(input);
     opts.calls?.push(url);
+    if (url.startsWith('https://www.dm.hr/')) return new Response('<loc>https://www.dm.hr/p/d/1234567/dm-sampon-test</loc>');
+    if (url.startsWith('https://products.dm.de/')) return new Response(JSON.stringify({ title: { headline: 'Šampon test' }, brand: { name: 'dm' }, images: [{ src: DM_IMG }] }));
     if (url.startsWith('https://www.konzum.hr/')) {
       if (opts.konzumDown) return new Response('x', { status: 503 });
       if (url.endsWith('sitemap_products.xml')) return new Response("<loc>https://www.konzum.hr/web/products/staropramen-pivo-6pack-0-5l-lim</loc><loc>https://www.konzum.hr/web/products/mrkva</loc>");
@@ -21,7 +25,10 @@ const web = (opts: { konzumDown?: boolean; offDown?: boolean; calls?: string[] }
     return new Response('bytes', { headers: { 'content-type': 'image/jpeg' } });
   }) as unknown as typeof fetch;
 
-beforeEach(resetKonzumCache);
+beforeEach(() => {
+  resetKonzumCache();
+  resetDmCache();
+});
 
 describe('searchAllPhotos', () => {
   it("puts Konzum's match first, then Open Food Facts', each marked with where it came from", async () => {
@@ -83,5 +90,18 @@ describe('handleFoodPhotoImage', () => {
     const huge = (async () => new Response(new Uint8Array(2_600_000), { headers: { 'content-type': 'image/jpeg' } })) as unknown as typeof fetch;
     const down = (async () => { throw new Error('network'); }) as unknown as typeof fetch;
     for (const f of [html, svg, empty, huge, down]) expect((await ask(KONZUM_IMG, f)).status).toBe(502);
+  });
+});
+
+describe('searchAllPhotos with dm', () => {
+  it("puts dm's match first for a product bought at dm, and last of the shops otherwise", async () => {
+    const dmFirst = await searchAllPhotos({ rawName: 'dm šampon test', store: 'dm' }, web());
+    expect(dmFirst.candidates[0]).toMatchObject({ source: 'dm', imageUrl: DM_IMG });
+    const elsewhere = await searchAllPhotos({ rawName: 'PIVO STAROPRAMEN dm šampon test', store: 'Konzum' }, web());
+    expect(elsewhere.candidates.map((c) => c.source)).toEqual(['Konzum', 'dm', 'Open Food Facts']);
+  });
+  it('lets the app download dm pictures, and nothing else from its host', () => {
+    expect(allowedImage(DM_IMG)).toBe(true);
+    expect(allowedImage('https://products.dm.de/product/products/detail/hr/dan/1')).toBe(false);
   });
 });

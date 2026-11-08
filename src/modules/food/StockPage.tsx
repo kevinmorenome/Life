@@ -11,7 +11,7 @@ import { StockTile } from './StockTile';
 import { tileInfo } from './stockTiles';
 import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent } from './types';
 
-const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer' } as const;
+const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' } as const;
 
 interface Toast {
   text: string;
@@ -52,7 +52,7 @@ export function StockPage({
   const have = entries.filter((e) => e.stock.quantity > 0);
   const out = entries.filter((e) => e.stock.quantity === 0);
   const missing = needsPicture(entries).length;
-  const toCheck = have.reduce((n, e) => n + batchesToCheck(e.product.type, e.stock, day).length, 0);
+  const toCheck = have.reduce((n, e) => n + batchesToCheck(e.product.type, e.stock, day, e.product.storage).length, 0);
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
   const thawed = have.filter((e) => e.stock.thawedQuantity > 0);
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);

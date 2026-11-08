@@ -468,6 +468,13 @@ describe('weekly check, per batch', () => {
     expect(needsBatchCheck('fresh', batch({ date: '2026-10-01', thawed: '2026-11-01', useBy: '2026-11-03' }), '2026-11-04')).toBe(true); // past its date
     expect(needsBatchCheck('fresh', { date: '2026-10-01', quantity: 0 }, '2026-11-02')).toBe(false);
   });
+
+  it('things kept at home (shampoo) are only asked about after months', () => {
+    const bought = { date: '2026-08-01', quantity: 1 };
+    expect(needsBatchCheck('staple', bought, '2026-09-01')).toBe(true); // a pantry staple: 14 days
+    expect(needsBatchCheck('staple', bought, '2026-09-01', 'home')).toBe(false);
+    expect(needsBatchCheck('staple', bought, '2026-11-02', 'home')).toBe(true); // 93 days
+  });
 });
 
 describe('batch history', () => {

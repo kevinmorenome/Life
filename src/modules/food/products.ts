@@ -40,14 +40,19 @@ export function pricePerItem(unitPrice: number, packSize: number | undefined): n
 }
 
 /** Lines of these kinds are things you stock; deposits and bags are not. */
-export const isStocked = (kind: LineKind): boolean => kind === 'food' || kind === 'alcohol';
+export const isStocked = (kind: LineKind): boolean => kind === 'food' || kind === 'alcohol' || kind === 'household';
+
+/** Stocked things you eat or drink: the ones the food stats are about. */
+export const isFoodKind = (kind: LineKind): boolean => kind === 'food' || kind === 'alcohol';
 
 export function defaultType(kind: LineKind, unit: Unit): ProductType {
   if (kind === 'alcohol') return 'drink';
+  if (kind === 'household') return 'staple';
   return unit === 'kg' ? 'fresh' : 'staple';
 }
 
-export function defaultStorage(type: ProductType): Storage {
+export function defaultStorage(type: ProductType, kind?: LineKind): Storage {
+  if (kind === 'household') return 'home';
   return type === 'fresh' ? 'fridge' : 'pantry';
 }
 
@@ -119,7 +124,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }

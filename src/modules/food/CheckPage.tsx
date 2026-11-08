@@ -15,7 +15,7 @@ import type { FoodProduct, FoodReceipt, StockEvent } from './types';
  */
 export function CheckPage({ receipts, products, events, onEvent }: { receipts: FoodReceipt[]; products: FoodProduct[]; events: StockEvent[]; onEvent(e: StockEvent): Promise<void> }) {
   const day = today();
-  const rows = stockEntries(receipts, products, events, day).flatMap(({ product, stock }) => batchesToCheck(product.type, stock, day).map((batch) => ({ product, batch })));
+  const rows = stockEntries(receipts, products, events, day).flatMap(({ product, stock }) => batchesToCheck(product.type, stock, day, product.storage).map((batch) => ({ product, batch })));
 
   // A batch is named by its purchase; stock that has no name can only be counted for the whole product.
   const still = (product: ProductSummary, b: Batch) => (b.id ? batchEvent(product.id, b.id, 'count', b.quantity, 'check') : stockEvent(product.id, 'count', b.quantity, 'check'));

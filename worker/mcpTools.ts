@@ -194,7 +194,7 @@ export const TOOLS = [
   {
     name: 'add_grocery_receipt',
     description:
-      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Give each food and drink line a productType, storage and shelfLifeDays too (trackAmount false for spices, oil and sauces; packSize and packLabel for multipacks such as a 6-pack of beer) (they create the product the first time it is seen and are ignored afterwards); the same abbreviation at the same store is matched to the product named earlier, so keep rawName exactly as printed. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
+      'Save a grocery or supermarket receipt (a PDF or photo the user gave you, or an e-receipt email) in the food log: where it was bought, when, and every line with what it cost. One call per receipt. Pass sourceId = the receipt\'s unique number (for a Croatian fiscal receipt the JIR, otherwise the email message id or the receipt number) so the same receipt is never added twice. Clean up abbreviated names ("NAP ZOB 3,5% MA NO M" becomes "Oat milk 3.5%") and keep the printed text in rawName. For each line give quantity, unit (pc, or kg/l for weighed or poured goods) and unitPrice = the price the shop actually charged per unit, as printed on the receipt line: the line amount divided by the quantity, so quantity × unitPrice equals the printed line amount and the lines add up to the total. A discount shown on its own line (POPUST, loyalty-card discount) is usually already inside the printed line amount; check that the lines still add up to the total. If they do, put the amount in discount as a positive number (it is only what was saved, never subtracted again) and keep unitPrice as printed. If the lines only add up to the total after subtracting the discount, fold it into that line\'s unitPrice instead. Set kind: food, alcohol (beer, wine, cider, spirits), household (shampoo, conditioner, hair masks, soap, toothpaste, cleaning products, from drugstores like dm: stocked like food and kept under Home, but not food, so it stays out of the food stats; give it productType staple, storage home and a long shelfLifeDays, and packSize for multipacks), other (anything else that is not stocked), deposit (bottle/can return fees, POV.NAKNADA) or bag. Deposit lines marked "included" (UKLJUČ. POV.NAKNADA) are already inside the product prices: do NOT add them as lines, mention them in notes. Add deposit lines only when they are charged on top. Give each food, drink and household line a productType, storage and shelfLifeDays too (trackAmount false for spices, oil and sauces; packSize and packLabel for multipacks such as a 6-pack of beer) (they create the product the first time it is seen and are ignored afterwards); the same abbreviation at the same store is matched to the product named earlier, so keep rawName exactly as printed. Include every other line on the receipt, bags too, and pass the printed total so the result can tell you if a line was misread. Receipts are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -966,7 +966,7 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
     if (!isStocked(l.kind) || known.has(pid)) continue;
     known.add(pid);
     const type = hints[i]?.type ?? defaultType(l.kind, l.unit);
-    const product: FoodProduct = { id: pid, name: l.name, type, storage: hints[i]?.storage ?? defaultStorage(type), shelfLifeDays: hints[i]?.shelfLifeDays, ...(hints[i]?.trackAmount === false ? { trackAmount: false } : {}), ...(l.unit === 'pc' && hints[i]?.packSize ? { packSize: hints[i]!.packSize, packLabel: hints[i]!.packLabel } : {}), createdAt: stamp, updatedAt: stamp };
+    const product: FoodProduct = { id: pid, name: l.name, type, storage: hints[i]?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: hints[i]?.shelfLifeDays, ...(hints[i]?.trackAmount === false ? { trackAmount: false } : {}), ...(l.unit === 'pc' && hints[i]?.packSize ? { packSize: hints[i]!.packSize, packLabel: hints[i]!.packLabel } : {}), createdAt: stamp, updatedAt: stamp };
     await store.put('foodproducts', pid, product);
     created.push(l.name);
   }
@@ -1267,6 +1267,7 @@ async function findProductPhoto(args: Args, { store, now, searchPhotos: search }
   if (!search) return fail('Picture search is not available in this deployment.');
   let query = text(args.query, 100);
   let rawName: string | undefined;
+  let shop: string | undefined;
   const code = text(args.code, 20);
   if (!query && !code) {
     const { products } = await stockState(store, now);
@@ -1275,8 +1276,9 @@ async function findProductPhoto(args: Args, { store, now, searchPhotos: search }
     query = found.product.name;
     // The text printed on the receipt (Croatian) is the way into the shop's catalogue.
     rawName = found.product.purchases[0]?.rawName;
+    shop = found.product.purchases[0]?.store;
   }
-  const r = await search({ query, rawName, code });
+  const r = await search({ query, rawName, code, store: shop });
   if (r.error && r.candidates.length === 0) return fail(`${r.error} Try again in a minute, or use a barcode.`);
   if (r.candidates.length === 0) return ok({ candidates: [], note: 'Nothing found. Try other words or the barcode, or ask the user to photograph the product in the app.' });
   return ok({

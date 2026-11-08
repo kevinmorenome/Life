@@ -3,15 +3,16 @@ import type { PhotoSearchResult } from '../../../worker/openfoodfacts';
 export type { PhotoCandidate, PhotoSearchResult } from '../../../worker/openfoodfacts';
 
 /**
- * Pictures of food, through the Worker: Konzum's web shop (found with the text printed on the receipt) and Open
+ * Pictures of food, through the Worker: Konzum's and dm's web shops (found with the text printed on the receipt) and Open
  * Food Facts (by name, or exactly by barcode).
  */
-export async function searchPhotoCandidates(input: { query?: string; rawName?: string; code?: string }): Promise<PhotoSearchResult> {
+export async function searchPhotoCandidates(input: { query?: string; rawName?: string; code?: string; store?: string }): Promise<PhotoSearchResult> {
   const params = new URLSearchParams();
   if (input.code?.trim()) params.set('code', input.code.trim());
   else {
     if (input.query?.trim()) params.set('q', input.query.trim());
     if (input.rawName?.trim()) params.set('raw', input.rawName.trim());
+    if (input.store?.trim()) params.set('store', input.store.trim());
   }
   try {
     const res = await fetch(`/api/food/photos?${params}`);
