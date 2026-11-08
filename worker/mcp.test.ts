@@ -587,6 +587,13 @@ describe('add_grocery_receipt', () => {
     ],
   };
 
+  it('makes a household product (shampoo from dm) a stocked product kept at home, apart from the food', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'add_grocery_receipt', { sourceId: 'dm-1', store: 'dm', date: '2026-11-08', total: 8.65, lines: [{ name: 'HASK Curl shampoo 355 ml', rawName: 'HASK šampon Curl 355ml', kind: 'household', quantity: 1, unitPrice: 7.45 }, { name: 'dmBio tofu natur 200 g', quantity: 1, unitPrice: 1.2, productType: 'fresh', storage: 'fridge' }] });
+    expect(r.json().newProducts).toEqual(['HASK Curl shampoo 355 ml', 'dmBio tofu natur 200 g']);
+    expect(data.foodproducts.get('fp-hask-curl-shampoo-355-ml')).toMatchObject({ type: 'staple', storage: 'home' });
+    expect(data.foodproducts.get('fp-dmbio-natural-tofu-200-g') ?? data.foodproducts.get('fp-dmbio-tofu-natur-200-g')).toMatchObject({ storage: 'fridge' });
+  });
   it('stores the receipt with recomputed line amounts and is idempotent', async () => {
     const { ctx, data } = setup();
     const r = await call(ctx, 'add_grocery_receipt', args);
@@ -823,7 +830,7 @@ describe('food stock', () => {
       const { ctx } = setup(withSearch({ candidates }, calls));
       ctx.store.put('foodreceipts', 'r', { id: 'r', store: 'K', date: '2026-10-24', lines: [{ name: 'Staropramen beer', rawName: 'PIVO STAROPRAMEN 6PA', kind: 'alcohol', quantity: 1, unit: 'pc', unitPrice: 1, discount: 0, paid: 1 }] });
       const byName = (await call(ctx, 'find_product_photo', { product: 'staropramen' })).json();
-      expect(calls[0]).toEqual({ query: 'Staropramen beer', rawName: 'PIVO STAROPRAMEN 6PA', code: undefined });
+      expect(calls[0]).toEqual({ query: 'Staropramen beer', rawName: 'PIVO STAROPRAMEN 6PA', code: undefined, store: 'K' });
       expect(byName.candidates[0]).toMatchObject({ name: 'Staropramen', code: '3850131003398', imageUrl: candidates[0].imageUrl });
       await call(ctx, 'find_product_photo', { code: '3850131003398' });
       await call(ctx, 'find_product_photo', { query: 'somersby cider' });

@@ -19,6 +19,9 @@ describe('iconKind', () => {
     ['Olive oil', 'staple', 'pc', 'oil'],
     ['Pivo Ožujsko', 'drink', 'pc', 'can'],
     ['Krastavac', 'fresh', 'kg', 'cucumber'],
+    ['HASK Curl shampoo 355 ml', 'staple', 'pc', 'bottle'],
+    ['Asebon šampon 200ml', 'staple', 'pc', 'bottle'],
+    ['La Croa hair mask 25 ml', 'staple', 'pc', 'bottle'],
   ] as const)('%s → %s', (name, type, unit, kind) => {
     expect(iconKind(name, type, unit)).toBe(kind);
   });

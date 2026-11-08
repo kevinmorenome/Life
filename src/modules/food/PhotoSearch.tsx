@@ -5,7 +5,7 @@ import { searchPhotoCandidates, type PhotoCandidate } from './photoSearch';
 import { photoFromUrl } from './productPhoto';
 
 /** Search Open Food Facts for a picture of the product; tap the right one. Loose by name, exact by barcode. */
-export function PhotoSearch({ name, rawName, onPick, onClose }: { name: string; /** The text printed on the receipt, the best way into Konzum's catalogue. */ rawName?: string; onPick(photo: string): Promise<void> | void; onClose(): void }) {
+export function PhotoSearch({ name, rawName, store, onPick, onClose }: { name: string; /** The text printed on the receipt, the best way into a shop's catalogue. */ rawName?: string; /** The shop it was bought at, so its catalogue is tried first. */ store?: string; onPick(photo: string): Promise<void> | void; onClose(): void }) {
   const [query, setQuery] = useState(name);
   // The receipt text is only used until you type your own words.
   const [typed, setTyped] = useState(false);
@@ -15,7 +15,7 @@ export function PhotoSearch({ name, rawName, onPick, onClose }: { name: string; 
 
   async function run(q: string, c: string, useRaw: boolean) {
     setState({ status: 'loading', candidates: [] });
-    const r = await searchPhotoCandidates(c.trim() ? { code: c } : { query: q, rawName: useRaw ? rawName : undefined });
+    const r = await searchPhotoCandidates(c.trim() ? { code: c } : { query: q, rawName: useRaw ? rawName : undefined, store });
     setState({ status: 'done', candidates: r.candidates, error: r.error });
   }
 

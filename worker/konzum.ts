@@ -32,7 +32,7 @@ export function parseSitemap(xml: string): CatalogueEntry[] {
 /** Filler on receipts and packs that says nothing about the product. */
 const FILLER = new Set(['plu', 'kom', 'pak', 'kg', 'gr', 'ml', 'pack', 'pakiranje']);
 /** Words of a text worth matching on: no accents, lowercase, not too short, not just a number or filler. */
-const words = (text: string): string[] => [...new Set(normalizeKey(text).split(' ').filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !FILLER.has(w)))];
+const words = (text: string): string[] => [...new Set(normalizeKey(text).split(' ').filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !/^\d+(ml|g|kg|gr|l|cl|kom)$/.test(w) && !FILLER.has(w)))];
 /** The same word give or take its ending: "krastavac" / "krastavci", "prsa" / "prsni", "mrkva" / "mrkvica". */
 export function sameWord(a: string, b: string): boolean {
   if (a === b) return true;
@@ -46,10 +46,10 @@ export function sameWord(a: string, b: string): boolean {
  * is in Croatian like the shop, the product's own name is often English), best first. An entry needs at least half
  * of a text's words; of equally good ones the shorter name is more likely the plain product.
  */
-export function rankCatalogue(catalogue: CatalogueEntry[], texts: string[], limit = MAX_PAGES): CatalogueEntry[] {
+export function rankCatalogue<T extends { slug: string }>(catalogue: T[], texts: string[], limit = MAX_PAGES): T[] {
   const queries = texts.map(words).filter((w) => w.length > 0);
   if (queries.length === 0) return [];
-  const scored: { e: CatalogueEntry; score: number }[] = [];
+  const scored: { e: T; score: number }[] = [];
   for (const e of catalogue) {
     const slugWords = e.slug.split('-').filter(Boolean);
     let best = 0;

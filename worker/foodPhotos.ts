@@ -1,5 +1,6 @@
-// The picture search behind "Find a picture" and Claude's find_product_photo: Konzum's web shop (exact products, found
-// with the Croatian text printed on the receipt) and Open Food Facts (packaged goods by name or barcode), side by side.
+// The picture search behind "Find a picture" and Claude's find_product_photo: Konzum's and dm's web shops (exact products,
+// found with the Croatian text printed on the receipt) and Open Food Facts (packaged goods by name or barcode), side by side.
+import { DM_IMAGE_HOST, searchDm } from './dm';
 import { KONZUM_IMAGE_HOST, searchKonzum } from './konzum';
 import { OFF_IMAGE_HOST, searchPhotos, type PhotoCandidate, type PhotoSearchResult } from './openfoodfacts';
 
@@ -14,22 +15,26 @@ export interface PhotoSearchInput {
   rawName?: string;
   /** A barcode: exact, looked up at Open Food Facts only. */
   code?: string;
+  /** Where the product was bought, so that shop's own catalogue comes first ("dm", "Konzum"). */
+  store?: string;
 }
 
-/** Konzum's matches first (it is where the groceries come from), then Open Food Facts', without the same picture twice. */
+/** The shop's own matches first (Konzum unless the product came from dm), then the other shop's, then Open Food Facts', without the same picture twice. */
 export async function searchAllPhotos(input: PhotoSearchInput, doFetch: typeof fetch = fetch): Promise<PhotoSearchResult> {
   if (input.code?.trim()) return searchPhotos({ code: input.code }, doFetch);
   const texts = [input.rawName, input.query].filter((t): t is string => !!t?.trim());
   if (texts.length === 0) return { candidates: [], error: 'Give a barcode or some words from the product name.' };
-  const [shop, open] = await Promise.all([searchKonzum(texts, doFetch), searchPhotos({ query: input.query?.trim() || input.rawName }, doFetch)]);
+  const [konzum, dm, open] = await Promise.all([searchKonzum(texts, doFetch), searchDm(texts, doFetch), searchPhotos({ query: input.query?.trim() || input.rawName }, doFetch)]);
+  const fromDm = /^\s*dm\b/i.test(input.store ?? '');
+  const shops = fromDm ? [dm, konzum] : [konzum, dm];
   const seen = new Set<string>();
   const candidates: PhotoCandidate[] = [];
-  for (const c of [...shop.candidates.slice(0, MAX_PER_SOURCE), ...open.candidates.slice(0, MAX_PER_SOURCE)]) {
+  for (const c of [...shops.flatMap((s) => s.candidates.slice(0, MAX_PER_SOURCE)), ...open.candidates.slice(0, MAX_PER_SOURCE)]) {
     if (seen.has(c.imageUrl)) continue;
     seen.add(c.imageUrl);
     candidates.push(c);
   }
-  return { candidates, ...(candidates.length === 0 ? { error: shop.error ?? open.error } : {}) };
+  return { candidates, ...(candidates.length === 0 ? { error: konzum.error ?? dm.error ?? open.error } : {}) };
 }
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...extra } });
@@ -37,12 +42,12 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
 /** GET /api/food/photos?q=<name>&raw=<receipt text>|code=<barcode> */
 export async function handleFoodPhotos(url: URL, doFetch: typeof fetch = fetch): Promise<Response> {
   const p = url.searchParams;
-  const result = await searchAllPhotos({ query: p.get('q') ?? undefined, rawName: p.get('raw') ?? undefined, code: p.get('code') ?? undefined }, doFetch);
+  const result = await searchAllPhotos({ query: p.get('q') ?? undefined, rawName: p.get('raw') ?? undefined, code: p.get('code') ?? undefined, store: p.get('store') ?? undefined }, doFetch);
   return json(result, 200, { 'Cache-Control': 'private, max-age=300' });
 }
 
 /** Pictures the Worker will fetch for the app: only from the hosts the searches above return. */
-export const allowedImage = (u: string): boolean => u.length <= 600 && (OFF_IMAGE_HOST.test(u) || KONZUM_IMAGE_HOST.test(u));
+export const allowedImage = (u: string): boolean => u.length <= 600 && (OFF_IMAGE_HOST.test(u) || KONZUM_IMAGE_HOST.test(u) || DM_IMAGE_HOST.test(u));
 
 /**
  * GET /api/food/photo-image?url=<picture url>: the picture's bytes, so the app can turn it into a tile picture

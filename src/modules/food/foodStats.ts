@@ -1,12 +1,12 @@
 import { round2 } from './food';
 import { comparablePrice, priceUnit } from './prices';
-import { averageUnitPrice, defaultType, isStocked, productId, type ProductSummary } from './products';
+import { averageUnitPrice, defaultType, isFoodKind, isStocked, productId, type ProductSummary } from './products';
 import { addDays, daysBetween, originBatch } from './stock';
 import { usualInterval } from './shopping';
 import type { FoodProduct, FoodReceipt, LineKind, ProductType, StockEvent } from './types';
 
 /** Lines that count as food spending: deposits and bags stay out. */
-export const isFoodSpend = (kind: LineKind): boolean => kind !== 'deposit' && kind !== 'bag';
+export const isFoodSpend = (kind: LineKind): boolean => kind !== 'deposit' && kind !== 'bag' && kind !== 'household';
 
 const monthOf = (date: string) => date.slice(0, 7);
 
@@ -205,7 +205,8 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
   for (const e of events) {
     if (e.type !== 'toss' || e.quantity <= 0 || e.untracked) continue;
     const p = byId.get(e.productId);
-    if (!p) continue;
+    // Shampoo used up is not food thrown away.
+    if (!p || p.kind === 'household') continue;
     // A pack-less product is thrown by pack; for multipacks the quantity is in items and the price per item.
     // A throw-away that names a batch is valued at what that batch cost.
     const batchPrice = e.batch ? p.purchases.find((x) => x.batch === originBatch(e.batch!) && x.unit === p.unit)?.unitPrice : undefined;
@@ -222,7 +223,7 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
     w.value = round2(w.value + worth);
     per.set(p.id, w);
   }
-  const spent = receipts.reduce((s, r) => s + r.lines.filter((l) => isStocked(l.kind)).reduce((a, l) => a + l.paid, 0), 0);
+  const spent = receipts.reduce((s, r) => s + r.lines.filter((l) => isFoodKind(l.kind)).reduce((a, l) => a + l.paid, 0), 0);
   const perMonth = Array.from({ length: months }, (_, i) => addMonths(nowMonth, i - months + 1)).map((key) => ({ key, value: monthly.get(key) ?? 0 }));
   return { value, times, share: spent > 0 ? value / spent : undefined, perMonth, top: [...per.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, 10) };
 }

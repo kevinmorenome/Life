@@ -33,7 +33,7 @@ export function PictureControl({ product, className, size = 64, onPhoto }: { pro
       </div>
       {inputs}
       {error && <p className="small food-pic-error" role="alert">{error}</p>}
-      {search && <PhotoSearch name={product.name} rawName={product.purchases[0]?.rawName} onPick={(photo) => onPhoto(photo)} onClose={() => setSearch(false)} />}
+      {search && <PhotoSearch name={product.name} rawName={product.purchases[0]?.rawName} store={product.purchases[0]?.store} onPick={(photo) => onPhoto(photo)} onClose={() => setSearch(false)} />}
     </div>
   );
 }

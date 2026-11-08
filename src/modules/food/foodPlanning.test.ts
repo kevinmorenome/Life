@@ -115,6 +115,18 @@ describe('shopping list', () => {
   });
 });
 
+describe('household things are not food', () => {
+  const rs = [receipt({ id: 'a', date: '2026-10-01', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 6 }), line({ name: 'Shampoo', kind: 'household', quantity: 1, unitPrice: 7.45 })] })];
+  it('stay out of the food spend and the categories, but are products you stock', () => {
+    expect(monthlyFoodSpend(rs, '2026-10', 1).at(-1)?.spent).toBe(6);
+    expect(spendByCategory(rs, []).map((c) => c.key)).toEqual(['fresh']);
+    expect(productSummaries(rs, []).map((p) => [p.name, p.storage, p.type])).toEqual([['Chicken', 'fridge', 'fresh'], ['Shampoo', 'home', 'staple']]);
+  });
+  it('are not counted as food thrown away', () => {
+    expect(wasteSummary(productSummaries(rs, []), [toss('fp-shampoo', 1, '2026-10-12')], rs, '2026-11', 1)).toMatchObject({ value: 0, times: 0 });
+  });
+});
+
 describe('waste by batch', () => {
   it('values a thrown-away batch at what that batch cost', () => {
     const rs = [receipt({ id: 'a', date: '2026-10-01', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 6 })] }), receipt({ id: 'b', date: '2026-10-10', lines: [line({ name: 'Chicken', unit: 'kg', quantity: 1, unitPrice: 10 })] })];

@@ -2,11 +2,12 @@ import { normalizeKey } from './products';
 import type { ProductType, Unit } from './types';
 
 /** The drawn pictures used on a tile until a product has a real photo. */
-export const ICON_KINDS = ['chicken', 'cucumber', 'pepper', 'carrot', 'jar', 'pasta', 'milk', 'can', 'chips', 'nuts', 'spice', 'oil', 'box'] as const;
+export const ICON_KINDS = ['chicken', 'cucumber', 'pepper', 'carrot', 'jar', 'pasta', 'milk', 'can', 'chips', 'nuts', 'spice', 'oil', 'box', 'bottle'] as const;
 export type IconKind = (typeof ICON_KINDS)[number];
 
 /** Keywords per picture, tried in this order (so "smoked paprika" is a spice and "paprika mix" a pepper). English and Croatian. */
 const RULES: [IconKind, string[]][] = [
+  ['bottle', ['shampoo', 'sampon', 'conditioner', 'regenerator', 'balzam', 'soap', 'sapun', 'lotion', 'losion', 'mask', 'maska', 'krema', 'deodorant', 'dezodorans', 'detergent', 'toothpaste', 'zubna', 'gel', 'serum', 'omeksivac']],
   ['can', ['beer', 'pivo', 'cider', 'somersby', 'lager', 'ale', 'wine', 'vino', 'staropramen', 'radler']],
   ['pasta', ['pasta', 'tortellini', 'noodle', 'spaghetti', 'penne', 'gnocchi', 'ravioli', 'macaroni', 'tjestenina']],
   ['spice', ['salt', 'sol', 'spice', 'cinnamon', 'cumin', 'oregano', 'smoked', 'ground', 'powder', 'seasoning', 'herb', 'vegeta', 'curry']],
