@@ -30,9 +30,9 @@ export function expiryEvent(productId: string, batch: string, useBy: string, sou
   return { ...stockEvent(productId, 'expiry', 0, source), batch, useBy };
 }
 
-/** Puts some of a batch in the freezer, or takes some of a frozen batch out: the new batch gets its own use-by (see `stockOf`). */
-export function moveEvent(productId: string, batch: string, type: 'freeze' | 'thaw', quantity: number, source: StockEvent['source']): StockEvent {
-  return { ...stockEvent(productId, type, quantity, source), batch };
+/** Puts some of a batch in the freezer, or takes some of a frozen batch out: the new batch gets its own use-by (see `stockOf`). `date` is the day it happened when that was not today. */
+export function moveEvent(productId: string, batch: string, type: 'freeze' | 'thaw', quantity: number, source: StockEvent['source'], date?: string): StockEvent {
+  return { ...stockEvent(productId, type, quantity, source), batch, ...(date ? { date } : {}) };
 }
 
 /** Keeps an event out of the statistics (it still changes the stock): see `StockEvent.untracked`. Use-by changes are not statistics, so they stay as they are. */

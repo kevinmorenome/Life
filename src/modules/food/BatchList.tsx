@@ -53,6 +53,17 @@ export function BatchList({ product, stock, onAct, showPast = false }: { product
     return Number.isFinite(typed) && typed > 0 ? Math.min(typed, b.quantity) : undefined;
   }
 
+  /** Asks for a day between `from` and today (today by default); undefined when cancelled or not a valid date. */
+  function askDate(question: string, from: string): string | undefined {
+    const typed = window.prompt(question, day);
+    if (typed === null) return undefined;
+    const v = typed.trim() || day;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) { window.alert('Use the form YYYY-MM-DD.'); return undefined; }
+    if (v > day) { window.alert('That day is in the future.'); return undefined; }
+    if (v < from) { window.alert(`That is before ${shortDate(from)}.`); return undefined; }
+    return v;
+  }
+
   function used(b: Batch) {
     const n = askAmount(`How much of this batch of ${product.name} did you use?`, b, product.unit === 'pc' ? 1 : 0.1);
     if (n === undefined) return;
@@ -63,7 +74,9 @@ export function BatchList({ product, stock, onAct, showPast = false }: { product
   function move(b: Batch, freezing: boolean) {
     const n = askAmount(freezing ? `How much of this batch of ${product.name} are you putting in the freezer?` : `How much of this frozen batch of ${product.name} are you taking out?`, b, b.quantity);
     if (n === undefined) return;
-    const event = moveEvent(product.id, b.id!, freezing ? 'freeze' : 'thaw', n, 'app');
+    const when = askDate(freezing ? 'Day it went in the freezer (YYYY-MM-DD)' : 'Day it was taken out (YYYY-MM-DD)', b.frozen ?? b.date);
+    if (when === undefined) return;
+    const event = moveEvent(product.id, b.id!, freezing ? 'freeze' : 'thaw', n, 'app', when);
     onAct({
       event,
       text: freezing ? `${product.name}: ${amount(n)} in the freezer` : `${product.name}: ${amount(n)} taken out, use within ${THAW_DAYS} days`,
