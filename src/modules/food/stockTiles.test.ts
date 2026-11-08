@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductSummary } from './products';
 import { dayText, freshnessLevel, tileInfo } from './stockTiles';
 import { stockOf } from './stock';
-import type { Entry } from './stockEntries';
+import { storagesInUse, type Entry } from './stockEntries';
 
 const entry = (over: Partial<ProductSummary>, bought = '2026-10-31', qty = 1): Entry => {
   const product: ProductSummary = { id: 'fp-x', name: 'Thing', kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', trackAmount: true, hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
@@ -79,5 +79,18 @@ describe('thawed food on the grid', () => {
   it('goes before everything else', () => {
     const soonest = entry({ type: 'fresh', shelfLifeDays: 1 }, '2026-11-02');
     expect(tileInfo(make('staple'), '2026-11-02').sortKey).toBeLessThan(tileInfo(soonest, '2026-11-02').sortKey);
+  });
+});
+
+describe('the places offered by the stock filter', () => {
+  it('lists only places with something, in the usual order, frozen food under the freezer', () => {
+    const home = entry({ id: 'fp-a', storage: 'home' });
+    const fridge = entry({ id: 'fp-b', storage: 'fridge', type: 'fresh' });
+    const gone = entry({ id: 'fp-c', storage: 'pantry' }, '2026-10-31', 0);
+    expect(storagesInUse([home, fridge, gone])).toEqual(['fridge', 'pantry', 'home']);
+    expect(storagesInUse([])).toEqual([]);
+    const frozen = entry({ id: 'fp-d', storage: 'fridge', type: 'fresh' }, '2026-10-20');
+    const ev = { id: 'f', productId: 'fp-d', type: 'freeze' as const, quantity: 1, date: '2026-10-21', source: 'app' as const, batch: 'r:0', createdAt: '2026-10-21T10:00:00Z', updatedAt: '' };
+    expect(storagesInUse([{ ...frozen, stock: stockOf(frozen.product, frozen.product.purchases, [ev], '2026-11-02') }])).toEqual(['freezer']);
   });
 });

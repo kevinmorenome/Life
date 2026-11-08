@@ -5,11 +5,11 @@ import { FoodTabs } from './FoodTabs';
 import { needsPicture } from './pictures';
 import { productRecord } from './productEdits';
 import { batchesToCheck } from './stock';
-import { stockEntries, storageOf } from './stockEntries';
+import { stockEntries, storageOf, storagesInUse } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
 import { StockTile } from './StockTile';
 import { tileInfo } from './stockTiles';
-import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent } from './types';
+import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent, type Storage } from './types';
 
 const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' } as const;
 
@@ -40,6 +40,7 @@ export function StockPage({
   const [selId, setSelId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [place, setPlace] = useState<Storage | 'all'>('all');
   const close = useCallback(() => setSelId(null), []);
 
   // The toast fades on its own; an undo that is not taken stays a plain count history.
@@ -53,6 +54,9 @@ export function StockPage({
   const out = entries.filter((e) => e.stock.quantity === 0);
   const missing = needsPicture(entries).length;
   const toCheck = have.reduce((n, e) => n + batchesToCheck(e.product.type, e.stock, day, e.product.storage).length, 0);
+  // The filter only offers places that have something; one that emptied out falls back to everything.
+  const places = storagesInUse(entries);
+  const activePlace = place !== 'all' && places.includes(place) ? place : 'all';
   const selected = selId ? entries.find((e) => e.product.id === selId) : undefined;
   const thawed = have.filter((e) => e.stock.thawedQuantity > 0);
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
@@ -66,6 +70,15 @@ export function StockPage({
   return (
     <>
       <FoodTabs active="stock" />
+      {places.length > 1 && (
+        <div className="seg seg-sub" role="tablist" aria-label="Where it is kept" style={{ ['--tabs' as string]: places.length + 1 }}>
+          {(['all', ...places] as const).map((s) => (
+            <button key={s} type="button" role="tab" aria-selected={activePlace === s} onClick={() => setPlace(s)}>
+              {s === 'all' ? 'All' : STORAGE_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      )}
       {entries.length === 0 && (
         <div className="empty">
           <p className="muted">Nothing here yet. Stock is worked out from your receipts, so add one first.</p>
@@ -101,7 +114,10 @@ export function StockPage({
         </div>
       )}
       {entries.length > 0 && have.length === 0 && !showAll && <p className="muted food-none">Nothing in stock right now.</p>}
-      {STORAGES.map((storage) => {
+      {activePlace !== 'all' && !have.some((e) => storageOf(e) === activePlace) && have.length > 0 && !(showAll && out.some((e) => storageOf(e) === activePlace)) && (
+        <p className="muted food-none">Nothing in stock in the {STORAGE_LABELS[activePlace].toLowerCase()} right now.</p>
+      )}
+      {STORAGES.filter((s) => activePlace === 'all' || s === activePlace).map((storage) => {
         const inStock = have.filter((e) => storageOf(e) === storage).sort(bySoonest);
         const gone = showAll ? out.filter((e) => storageOf(e) === storage).sort((a, b) => a.product.name.localeCompare(b.product.name)) : [];
         if (inStock.length + gone.length === 0) return null;
