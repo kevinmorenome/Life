@@ -7539,3 +7539,64 @@ a.game-row + .food-h2 {
 .source-tripit {
   border-radius: 22%;
 }
+
+/* Something that hasn't happened yet (a plan of a later day or later today): faded. */
+.is-upcoming {
+  opacity: 0.5;
+}
+
+/* Place rows (day screen and Itinerary): the whole row is the button that opens the sheet. */
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.place-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.place-row.is-selected {
+  background: var(--accent-soft);
+}
+.place-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.place-when input {
+  min-height: 44px;
+}
+.place-merge ul {
+  display: grid;
+  gap: 10px;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.place-merge .food-action {
+  width: 100%;
+  min-height: 56px;
+  text-align: left;
+}
+.place-merge-text {
+  display: grid;
+  min-width: 0;
+}
+.place-main .small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.place-sheet .food-action {
+  text-align: left;
+}

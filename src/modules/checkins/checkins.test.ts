@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDue, REFRESH_AFTER_MS } from './swarmClient';
-import { byDate, dayLabel, moveCheckin, mergeCheckins, moveCheckins, place } from './checkins';
+import { byDate, dayLabel, moveCheckin, linkToPlan, mergeCheckins, moveCheckins, place, unlinkFromPlan } from './checkins';
 import type { Checkin } from './types';
 
 const at = (id: string, date: string, time: string, secs: number, extra: Partial<Checkin> = {}): Checkin => ({
@@ -96,5 +96,14 @@ describe('mergeCheckins', () => {
   it('refuses two check-ins on different days or the same one twice', () => {
     expect(mergeCheckins(swarm, { ...plan, date: '2026-09-29' }, 'now')).toBeNull();
     expect(mergeCheckins(swarm, swarm, 'now')).toBeNull();
+  });
+});
+
+describe('linkToPlan', () => {
+  it('records the plan on the check-in and can be undone for good', () => {
+    const c = at('x', '2026-09-28', '19:50', 1);
+    const linked = linkToPlan(c, 'plan-1', 'now');
+    expect([linked.planRef, linked.updatedAt, linked.venue]).toEqual(['plan-1', 'now', 'x']);
+    expect(unlinkFromPlan(linked, 'later').planRef).toBe('none');
   });
 });
