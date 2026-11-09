@@ -5,9 +5,12 @@ import { money } from '../../lib/format';
 import type { CalendarLayer } from '../types';
 import type { WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
-import { SERVICE_NAMES, byDate, placeName, serviceOf } from './wolt';
+import { ShareEditor } from './ShareEditor';
+import { SERVICE_NAMES, byDate, mine, placeName, serviceOf } from './wolt';
 
-const amount = (o: WoltOrder) => (o.currency === 'EUR' ? money(o.total).replace(/^[^\d]*/, '€') : `${o.total.toFixed(2)} ${o.currency}`);
+const fmt = (o: WoltOrder, n: number) => (o.currency === 'EUR' ? money(n).replace(/^[^\d]*/, '€') : `${n.toFixed(2)} ${o.currency}`);
+/** My part, and the whole order beside it when someone else paid some. */
+const amount = (o: WoltOrder) => (o.myShare === undefined ? fmt(o, o.total) : `${fmt(o, mine(o))} of ${fmt(o, o.total)}`);
 
 /** Wolt orders on the shared calendar: a mark on each day with an order and the list on the day screen. */
 export function useWoltCalendarLayer(): CalendarLayer {
@@ -31,6 +34,7 @@ export function useWoltCalendarLayer(): CalendarLayer {
               <li key={o.id}>
                 <strong>{o.restaurant}</strong>{serviceOf(o) !== 'wolt' && <span className="muted small"> {SERVICE_NAMES[serviceOf(o)]}</span>}
                 <span className="muted small">{[o.time, amount(o)].filter(Boolean).join(' · ')}</span>
+                <ShareEditor order={o} />
               </li>
             ))}
           </ul>

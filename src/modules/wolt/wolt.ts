@@ -18,11 +18,14 @@ export function byService(orders: WoltOrder[]): { service: TakeoutService; order
     const s = serviceOf(o);
     const r = rows.get(s) ?? { service: s, orders: 0, spent: 0 };
     r.orders++;
-    if (isEuro(o)) r.spent = round2(r.spent + o.total);
+    if (isEuro(o)) r.spent = round2(r.spent + mine(o));
     rows.set(s, r);
   }
   return [...rows.values()].sort((a, b) => b.orders - a.orders);
 }
+
+/** What the order cost you: your share when you set one, else the whole total. */
+export const mine = (o: WoltOrder) => o.myShare ?? o.total;
 
 export const isEuro = (o: WoltOrder) => o.currency === 'EUR';
 
@@ -46,7 +49,7 @@ export interface WoltSummary {
 /** Euro orders make the money figures; `year` is the YYYY the "this year" numbers are for. */
 export function summarize(orders: WoltOrder[], year: string): WoltSummary {
   const euro = orders.filter(isEuro);
-  const spent = round2(euro.reduce((s, o) => s + o.total, 0));
+  const spent = round2(euro.reduce((s, o) => s + mine(o), 0));
   const inYear = euro.filter((o) => o.date.startsWith(year));
   return {
     orders: orders.length,
@@ -55,7 +58,7 @@ export function summarize(orders: WoltOrder[], year: string): WoltSummary {
     average: euro.length ? round2(spent / euro.length) : 0,
     since: orders.reduce<string | undefined>((a, o) => (!a || o.date < a ? o.date : a), undefined),
     yearOrders: orders.filter((o) => o.date.startsWith(year)).length,
-    yearSpent: round2(inYear.reduce((s, o) => s + o.total, 0)),
+    yearSpent: round2(inYear.reduce((s, o) => s + mine(o), 0)),
     topPlace: topPlaces(orders)[0]?.name,
   };
 }
@@ -75,7 +78,7 @@ export function topPlaces(orders: WoltOrder[], prefix = ''): PlaceRow[] {
     const key = name.toLowerCase();
     const r = rows.get(key) ?? { name, orders: 0, spent: 0 };
     r.orders++;
-    r.spent = round2(r.spent + o.total);
+    r.spent = round2(r.spent + mine(o));
     rows.set(key, r);
   }
   return [...rows.values()].sort((a, b) => b.spent - a.spent || b.orders - a.orders || a.name.localeCompare(b.name));
@@ -95,7 +98,7 @@ export function monthlySpend(orders: WoltOrder[], endMonth: string): { month: st
   for (const o of euro) {
     const m = o.date.slice(0, 7);
     const s = sums.get(m) ?? { spent: 0, orders: 0 };
-    s.spent = round2(s.spent + o.total);
+    s.spent = round2(s.spent + mine(o));
     s.orders++;
     sums.set(m, s);
   }
@@ -121,7 +124,7 @@ export function otherCurrencies(orders: WoltOrder[]): { currency: string; orders
     if (isEuro(o)) continue;
     const r = rows.get(o.currency) ?? { currency: o.currency, orders: 0, total: 0 };
     r.orders++;
-    r.total = round2(r.total + o.total);
+    r.total = round2(r.total + mine(o));
     rows.set(o.currency, r);
   }
   return [...rows.values()];

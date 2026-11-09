@@ -5983,7 +5983,7 @@ a.game-row + .food-h2 {
 }
 .wolt-orders li {
   display: grid;
-  grid-template-columns: 5.5rem 1fr auto;
+  grid-template-columns: 5.5rem 1fr auto auto;
   gap: 0.5rem;
   align-items: baseline;
   padding: 0.6rem 0;
@@ -7620,4 +7620,23 @@ a.game-row + .food-h2 {
 }
 .place-sheet .food-action {
   text-align: left;
+}
+
+/* Takeout: set what you paid of an order */
+.share-btn {
+  justify-self: end;
+}
+.share-form {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.share-form .search {
+  width: 7rem;
+}
+.share-error {
+  flex-basis: 100%;
+  color: var(--danger, #c0392b);
 }

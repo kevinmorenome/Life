@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
+import { ShareEditor } from './ShareEditor';
 import { useTakeoutOrders } from './useTakeoutOrders';
-import { SERVICE_NAMES, byService, hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, serviceOf, summarize, topPlaces } from './wolt';
+import { SERVICE_NAMES, byService, hourCounts, mine, monthlySpend, newestFirst, otherCurrencies, searchOrders, serviceOf, summarize, topPlaces } from './wolt';
 
 const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 const eur0 = (n: number) => `€${Math.round(n).toLocaleString()}`;
@@ -54,7 +55,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
           <HBars rows={services.map((r) => ({ key: r.service, label: SERVICE_NAMES[r.service], value: r.spent, shown: `${count(r.orders, 'order')} · ${eur0(r.spent)}` }))} />
         </Section>
       )}
-      <Section title="Spend per month" note="Euro orders, by the month they were delivered. Months without orders show as empty.">
+      <Section title="Spend per month" note="Euro orders (your share), by the month they were delivered. Months without orders show as empty.">
         <ReadoutColumns bars={monthBars} big={(b) => eur(b.value)} small={(b) => `${monthLabel(b.key, 'long')} · ${count(months.find((m) => m.month === b.key)?.orders ?? 0, 'order')}`} initial={months[months.length - 1]?.month} />
       </Section>
       <Section title="Where you order most" note="Top 10 places by total spend, branches combined.">
@@ -92,7 +93,11 @@ function AllOrders({ orders }: { orders: WoltOrder[] }) {
                 {o.time && <span className="muted small"> {o.time}</span>}
               </span>
               <span className="wolt-name">{o.restaurant}{serviceOf(o) !== 'wolt' && <span className="muted small"> · {SERVICE_NAMES[serviceOf(o)]}</span>}</span>
-              <span className="wolt-total">{o.total.toFixed(2)} <span className="muted small">{o.currency}</span></span>
+              <span className="wolt-total">
+                {mine(o).toFixed(2)} <span className="muted small">{o.currency}</span>
+                {o.myShare !== undefined && <span className="muted small"> of {o.total.toFixed(2)}</span>}
+              </span>
+              <ShareEditor order={o} />
             </li>
           ))}
         </ul>

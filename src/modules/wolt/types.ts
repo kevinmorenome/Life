@@ -13,6 +13,8 @@ export interface WoltOrder {
   time?: string;
   /** What was paid, in `currency`. */
   total: number;
+  /** What you paid when others covered part of the order, in `currency`; missing = you paid the whole `total`. Set by hand in the app. */
+  myShare?: number;
   /** ISO code, "EUR" by default. Orders in other currencies stay out of the euro totals. */
   currency: string;
   city?: string;
