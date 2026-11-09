@@ -7681,10 +7681,16 @@ a.game-row + .food-h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   min-height: 56px;
   margin-top: 18px;
-  padding-top: 10px;
+  padding: 10px 0 0;
+  border: 0;
   border-top: 1px solid var(--glass-line, var(--border));
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
@@ -7701,6 +7707,15 @@ a.game-row + .food-h2 {
   width: 20px;
   height: 20px;
   color: var(--muted);
+}
+.pstock-link svg {
+  transition: transform 0.15s ease;
+}
+.pstock-link.is-open svg {
+  transform: rotate(180deg);
+}
+.pstock-details > .food-h2:first-child {
+  margin-top: 0.75rem;
 }
 .pstock + .food-h2 {
   margin-top: 2rem;

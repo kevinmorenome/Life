@@ -136,6 +136,8 @@ export function StockPage({
           key={selected.product.id}
           entry={selected}
           events={events.filter((e) => e.productId === selected.product.id)}
+          record={products.find((p) => p.id === selected.product.id)}
+          onSave={onProduct}
           onAct={act}
           onPhoto={(photo) => onProduct(productRecord(selected.product, products.find((p) => p.id === selected.product.id), { photo: photo ?? undefined, hasPhoto: !!photo }, new Date().toISOString()))}
           onClose={close}
