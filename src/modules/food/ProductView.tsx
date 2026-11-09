@@ -6,8 +6,9 @@ import { PictureControl } from './PictureControl';
 import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
-import { formatAmount, formatQty, levelOptions, stockOf } from './stock';
-import { keepOutOfStats, partLeftEvent, stockEvent } from './stockActions';
+import { THAW_DAYS, formatAmount, formatQty, levelOptions, stockOf } from './stock';
+import { batchEvent, keepOutOfStats, moveEvent, partLeftEvent, stockEvent } from './stockActions';
+import { UseContextBar, useUseContext } from './UseContext';
 import { StatsSwitch } from './StatsSwitch';
 
 import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
@@ -38,7 +39,33 @@ export function ProductView({
   const [note, setNote] = useState<BatchAct | null>(null);
   // While this is on, what you log still changes the stock but is kept out of the statistics.
   const [quiet, setQuiet] = useState(false);
-  const onEvent = (e: StockEvent) => sendEvent(quiet ? keepOutOfStats(e) : e);
+  // Which batch (oldest purchase unless you pick another) and which day (today unless you change it) the buttons below use.
+  const ctx = useUseContext(product, stock, events);
+  /** Saves as it is (undo and count corrections stay dated today). */
+  const saveEvent = (e: StockEvent) => sendEvent(quiet ? keepOutOfStats(e) : e);
+  /** Saves something that happened: on the chosen day. */
+  const onEvent = (e: StockEvent) => saveEvent(ctx.stamp(e));
+  const b = ctx.batch;
+  const bid = b?.id;
+  const left = b?.quantity ?? stock.quantity;
+  const ofBatch = (type: 'use' | 'toss' | 'count', quantity: number) => (bid ? batchEvent(product.id, bid, type, quantity, 'app') : stockEvent(product.id, type, quantity, 'app'));
+  /** Puts the chosen batch (all, or the amount you type) in the freezer, or takes it out. */
+  const move = (freezing: boolean) => {
+    if (!b || !bid) return;
+    let n = b.quantity;
+    if (product.unit !== 'pc' || b.quantity > 1) {
+      const typed = ask(freezing ? `How much ${product.name} are you putting in the freezer?` : `How much ${product.name} are you taking out of the freezer?`, String(b.quantity));
+      if (!typed) return;
+      n = Math.min(typed, b.quantity);
+    }
+    const event = moveEvent(product.id, bid, freezing ? 'freeze' : 'thaw', n, 'app');
+    onEvent(event);
+    setNote({
+      event,
+      text: freezing ? `${product.name}: ${formatAmount(n, product.unit)}${unitLabel(product, n)} in the freezer` : `${product.name}: taken out, use within ${THAW_DAYS} days`,
+      undo: [batchEvent(product.id, bid, 'count', b.quantity, 'app'), batchEvent(product.id, `${event.type}-${event.id}:${bid}`, 'count', 0, 'app')],
+    });
+  };
   const comparison = comparePrices(product, today());
   const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
@@ -81,35 +108,42 @@ export function ProductView({
           <span className="muted small">{unitLabel(product, stock.quantity) || ' in stock'}</span>
         </p>
         <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : ''].filter(Boolean).join(' · ')}</p>
+        {stock.quantity > 0 && <UseContextBar ctx={ctx} product={product} />}
         <div className="chips food-gap">
           <button
             type="button"
             className="chip"
             onClick={() => {
               const n = ask(`How much ${product.name} did you use?`, '1');
-              if (n) onEvent(stockEvent(product.id, 'use', n, 'app'));
+              if (n) onEvent(ofBatch('use', Math.min(n, left)));
             }}
           >
             Used some
           </button>
-          {levelOptions(stock.quantity, product.unit, product.packSize).map((l) => (
+          {levelOptions(left, product.unit, product.packSize).map((l) => (
             <button
               key={l.fraction}
               type="button"
               className="chip"
               onClick={() => {
-                const e = partLeftEvent(product.id, product.unit, stock, l.fraction, 'app');
-                if (e) onEvent(e);
+                const e = partLeftEvent(product.id, product.unit, { quantity: left }, l.fraction, 'app');
+                if (e) onEvent(bid ? { ...e, batch: bid } : e);
               }}
             >
               {l.label}
             </button>
           ))}
-          <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 0, 'app'))}>
+          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(ofBatch('count', 0))}>
             Finished
           </button>
-          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(stockEvent(product.id, 'toss', stock.quantity, 'app'))}>
+          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(ofBatch('toss', left))}>
             Threw out
+          </button>
+          <button type="button" className="chip" disabled={!b || !bid || !!b.frozen || !!b.thawed} onClick={() => move(true)}>
+            Put in freezer
+          </button>
+          <button type="button" className="chip" disabled={!b || !bid || !b.frozen} onClick={() => move(false)}>
+            Take out of freezer
           </button>
           <button
             type="button"
@@ -145,7 +179,7 @@ export function ProductView({
                   type="button"
                   className="chip"
                   onClick={() => {
-                    for (const e of [note.undo!].flat()) onEvent(e);
+                    for (const e of [note.undo!].flat()) saveEvent(e);
                     setNote(null);
                   }}
                 >

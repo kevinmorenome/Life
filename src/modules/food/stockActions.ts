@@ -40,3 +40,9 @@ export function keepOutOfStats<T extends StockEvent | StockEvent[] | undefined>(
   const mark = (x: StockEvent): StockEvent => (x.type === 'expiry' ? x : { ...x, untracked: true });
   return (Array.isArray(e) ? e.map(mark) : e ? mark(e) : e) as T;
 }
+
+/** The same event(s) dated on another day, for logging what happened earlier. A use-by change has no day of its own, and "used earlier, date unknown" has none on purpose, so those stay as they are. */
+export function withDate<T extends StockEvent | StockEvent[] | undefined>(e: T, date: string): T {
+  const put = (x: StockEvent): StockEvent => (x.type === 'expiry' || x.undated ? x : { ...x, date });
+  return (Array.isArray(e) ? e.map(put) : e ? put(e) : e) as T;
+}

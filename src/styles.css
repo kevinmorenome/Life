@@ -7621,3 +7621,27 @@ a.game-row + .food-h2 {
 .place-sheet .food-action {
   text-align: left;
 }
+
+/* "From batch" and "Day" choices above the use / freeze / throw out buttons (food/UseContext.tsx). */
+.use-context {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+.use-context-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+.use-context-row select,
+.use-context-row input {
+  min-height: 44px;
+  max-width: 100%;
+}
+.use-context p {
+  margin: 0;
+}
+.use-context-warn {
+  color: var(--warn, #b45309);
+}

@@ -2,6 +2,7 @@ import { CheckIcon, MinusIcon, TrashIcon } from '../../icons';
 import { money, shortDate, today } from '../../lib/format';
 import { IconMenu } from '../clothes/IconMenu';
 import { historyNotes, historyText } from './batchHistory';
+import { sortOldestFirst } from './batches';
 import { THAW_DAYS, daysBetween, formatAmount, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
 import { batchEvent, expiryEvent, moveEvent, usedEarlierEvent } from './stockActions';
 import { dayText, freshnessLevel } from './stockTiles';
@@ -74,7 +75,7 @@ export function BatchList({ product, stock, onAct, showPast = false }: { product
   return (
     <>
     <ul className="batch-list">
-      {stock.batches.map((b) => {
+      {sortOldestFirst(product, stock.batches).map((b) => {
         const left = b.useBy ? daysBetween(day, b.useBy) : undefined;
         const level = left === undefined ? '' : `lvl-${freshnessLevel(left)}`;
         const act = b.id
