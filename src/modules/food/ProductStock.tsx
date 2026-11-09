@@ -38,12 +38,16 @@ export const Badges = ({ badges }: { badges: Badge[] }) =>
     </span>
   );
 
-/** The shortcuts of the amount dialog: parts of what there is for weighed things, single items for counted ones. */
+/**
+ * The shortcuts of the amount dialog. Weighed and poured goods go by parts of what there is; single things (a jar,
+ * a pack) can be used by a quarter or a half, so those are offered too; items counted in cans, slices… are whole.
+ */
 function quickAmounts(max: number, unit: ProductSummary['unit'], packSize?: number): { label: string; value: number }[] {
   const all = { label: 'All', value: max };
   if (unit !== 'pc') return [{ label: 'Quarter', value: round3(max / 4) }, { label: 'Half', value: round3(max / 2) }, all];
-  if (max > 1) return [{ label: '1', value: 1 }, ...(max >= 4 ? [{ label: 'Half', value: Math.floor(max / 2) }] : []), all];
-  return packSize ? [all] : [{ label: 'Half', value: round3(max / 2) }, all];
+  if (packSize) return max > 1 ? [{ label: '1', value: 1 }, ...(max >= 4 ? [{ label: 'Half', value: Math.floor(max / 2) }] : []), all] : [all];
+  const parts = [{ label: '¼', value: 0.25 }, { label: '½', value: 0.5 }, { label: '1', value: 1 }].filter((q) => q.value < max - 1e-9);
+  return [...parts, all];
 }
 
 /**
@@ -88,7 +92,7 @@ export function ProductStock({
   // A count that puts back what there was before: events are never deleted, so "undo" is a newer count.
   const restore = () => stockEvent(p.id, 'count', s.quantity, 'app');
   const restoreBatch = (b: Batch) => batchEvent(p.id, b.id!, 'count', b.quantity, 'app');
-  const step = (max: number) => (p.unit !== 'pc' ? 0.05 : max > 1 || p.packSize ? 1 : 0.25);
+  const step = (max: number) => (p.unit !== 'pc' ? 0.05 : p.packSize ? 1 : max > 1 ? 0.5 : 0.25);
 
   /* ---- What you can do with one batch ---- */
 

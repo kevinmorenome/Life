@@ -89,14 +89,14 @@ export function AmountSheet({ ask, onClose }: { ask: AmountAsk; onClose(): void 
         <h2 className="amount-title">{ask.title}</h2>
         {ask.hint && <p className="muted small amount-hint">{ask.hint}</p>}
         <div className="amount-row">
-          <button type="button" className="amount-step" aria-label="Less" onClick={() => nudge(-ask.step)} disabled={!value}>
+          <button type="button" className="amount-step" aria-label="Decrease amount" onClick={() => nudge(-ask.step)} disabled={!value}>
             <MinusIcon />
           </button>
           <label className="amount-field">
             <input ref={field} inputMode="decimal" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} aria-label={`Amount (${ask.unit})`} aria-invalid={over} placeholder="0" />
             <span className="muted">{ask.unit}</span>
           </label>
-          <button type="button" className="amount-step" aria-label="More" onClick={() => nudge(ask.step)} disabled={ask.max !== undefined && (value ?? 0) >= ask.max - 1e-9}>
+          <button type="button" className="amount-step" aria-label="Increase amount" onClick={() => nudge(ask.step)} disabled={ask.max !== undefined && (value ?? 0) >= ask.max - 1e-9}>
             <PlusIcon />
           </button>
         </div>
