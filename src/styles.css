@@ -7861,20 +7861,23 @@ a.game-row + .food-h2 {
   outline-offset: 4px;
   border-radius: 6px;
 }
-.fold {
+.bcard-history > summary,
+.bcard-past > summary {
   display: flex;
   align-items: center;
   min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--muted);
-  font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  list-style: none;
 }
-.fold::after {
+.bcard-history > summary::-webkit-details-marker,
+.bcard-past > summary::-webkit-details-marker {
+  display: none;
+}
+.bcard-history > summary::after,
+.bcard-past > summary::after {
   content: '';
   width: 6px;
   height: 6px;
@@ -7883,16 +7886,17 @@ a.game-row + .food-h2 {
   border-bottom: 1.5px solid currentColor;
   transform: translateY(-2px) rotate(45deg);
 }
-.fold[aria-expanded='true']::after {
+.bcard-history[open] > summary::after,
+.bcard-past[open] > summary::after {
   transform: translateY(1px) rotate(-135deg);
 }
-.bcard-history.is-open {
+.bcard-history[open] {
   flex-basis: 100%;
 }
-.bcard-older {
+.bcard-past {
   margin-top: 6px;
 }
-.bcard-older > .fold {
+.bcard-past > summary {
   font-size: 0.875rem;
 }
 .bcard-gone {

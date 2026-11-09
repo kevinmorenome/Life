@@ -77,24 +77,6 @@ export function ProductStock({
   // While this is on, what you log still changes the stock but is kept out of the statistics.
   const [quiet, setQuiet] = useState(false);
   const [allActivity, setAllActivity] = useState(false);
-  // Which histories (by batch id) and whether the past batches are open. Plain buttons and state rather than
-  // <details>, whose open state the browser owns: it could not be opened a second time on the phone.
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (key: string) =>
-    setOpen((was) => {
-      const next = new Set(was);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-  /** A line that opens and closes what is under it. */
-  const fold = (key: string, text: string, className: string, body: () => ReactNode) => (
-    <div className={`${className}${open.has(key) ? ' is-open' : ''}`}>
-      <button type="button" className="fold" aria-expanded={open.has(key)} onClick={() => toggle(key)}>
-        {text}
-      </button>
-      {open.has(key) && body()}
-    </div>
-  );
   const onAct = (a: StockAct) => sendAct(quiet ? { ...a, event: keepOutOfStats(a.event), undo: keepOutOfStats(a.undo) } : a);
 
   const amount = (q: number) => `${formatAmount(q, p.unit)}${unitLabel(p, q)}`;
@@ -288,8 +270,12 @@ export function ProductStock({
           ) : (
             b.useBy && <span className="small muted">Use by {label(b.useBy)}</span>
           )}
-          {entries && entries.length > 1 &&
-            fold(`h:${b.id}`, `History (${entries.length})`, 'bcard-history', () => history(entries))}
+          {entries && entries.length > 1 && (
+            <details className="bcard-history">
+              <summary>History ({entries.length})</summary>
+              {history(entries)}
+            </details>
+          )}
         </div>
       </li>
     );
@@ -377,8 +363,9 @@ export function ProductStock({
           ) : (
             <ul className="bcard-list">{[...s.batches].sort(newestFirst).map(card)}</ul>
           )}
-          {s.pastBatches.length > 0 &&
-            fold('past', `Past batches (${s.pastBatches.length})`, 'bcard-older', () => (
+          {s.pastBatches.length > 0 && (
+            <details className="bcard-past">
+              <summary>Past batches ({s.pastBatches.length})</summary>
               <ul className="bcard-list">
                 {[...s.pastBatches].sort(newestFirst).map((b) => {
                   const entries = s.history[b.id!];
@@ -393,12 +380,16 @@ export function ProductStock({
                         {origin(b)}
                         {end.date ? ` · ${end.undated ? 'date unknown' : label(end.date)}` : ''}
                       </p>
-                      {fold(`h:${b.id}`, `History (${entries?.length ?? 0})`, 'bcard-history', () => history(entries))}
+                      <details className="bcard-history">
+                        <summary>History ({entries?.length ?? 0})</summary>
+                        {history(entries)}
+                      </details>
                     </li>
                   );
                 })}
               </ul>
-            ))}
+            </details>
+          )}
         </section>
       )}
 
