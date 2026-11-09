@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CalendarIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { batchOrigin } from './BatchList';
 import { dateWarning, sortOldestFirst } from './batches';
@@ -48,14 +49,18 @@ export function UseContextBar({ ctx, product }: { ctx: UseContext; product: Prod
       )}
       <label className="use-context-row">
         <span className="muted small">Day</span>
-        <input type="date" className="field-pill" max={day} value={when} onChange={(e) => e.target.value && ctx.setWhen(e.target.value > day ? day : e.target.value)} aria-label="Which day it happened" />
+        {/* A button that opens the browser's own calendar: the date input sits invisibly over it, so tapping it opens the picker. */}
+        <span className="use-day field-pill">
+          <CalendarIcon />
+          <span>{when === day ? 'Today' : shortDate(when)}</span>
+          <input type="date" className="use-day-input" max={day} value={when} onChange={(e) => e.target.value && ctx.setWhen(e.target.value > day ? day : e.target.value)} aria-label="Which day it happened: open the calendar" />
+        </span>
         {when !== day && (
           <button type="button" className="chip" onClick={() => ctx.setWhen(day)}>
             Today
           </button>
         )}
       </label>
-      {when !== day && <p className="muted small">Logged on {shortDate(when)}.</p>}
       {ctx.warning && (
         <p className="use-context-warn small" role="status">
           {ctx.warning}
