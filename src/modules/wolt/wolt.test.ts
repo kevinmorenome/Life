@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WoltOrder } from './types';
+import { parseShare } from './ShareEditor';
 import { byDate, byService, hourCounts, monthlySpend, otherCurrencies, placeName, searchOrders, summarize, topPlaces } from './wolt';
 
 const o = (id: string, restaurant: string, date: string, total: number, extra: Partial<WoltOrder> = {}): WoltOrder => ({
@@ -77,5 +78,21 @@ describe('byService', () => {
       { service: 'wolt', orders: 2, spent: 30 },
       { service: 'bolt', orders: 1, spent: 5 },
     ]);
+  });
+});
+
+describe('my share', () => {
+  const shared = [o('1', 'Umami', '2026-01-20', 40, { myShare: 15 }), o('2', 'Umami', '2026-01-21', 20)];
+  it('counts only what you paid in totals, places and months', () => {
+    expect(summarize(shared, '2026')).toMatchObject({ spent: 35, average: 17.5, yearSpent: 35 });
+    expect(topPlaces(shared)).toEqual([{ name: 'Umami', orders: 2, spent: 35 }]);
+    expect(monthlySpend(shared, '2026-01')).toEqual([{ month: '2026-01', spent: 35, orders: 2 }]);
+  });
+  it('parses the typed amount', () => {
+    expect(parseShare('', 40)).toBeUndefined();
+    expect(parseShare('12,5', 40)).toBe(12.5);
+    expect(parseShare('0', 40)).toBe(0);
+    expect(parseShare('50', 40)).toBeNull();
+    expect(parseShare('abc', 40)).toBeNull();
   });
 });
