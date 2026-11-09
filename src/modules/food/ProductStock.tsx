@@ -209,7 +209,9 @@ export function ProductStock({
           const when = h.undated ? 'Date unknown' : label(h.date);
           const id = h.eventId;
           // As the line is now, so a correction can be taken back.
-          const asNow = () => editEvent(p.id, id!, { date: h.undated ? undefined : h.date }, 'app');
+          const asNow = () => editEvent(p.id, id!, h.undated ? { undated: true } : { date: h.date }, 'app');
+          // Only something used or finished can have happened "at some point": the calendar's Reset means that.
+          const canBeUndated = h.kind === 'used' || h.kind === 'finished';
           return (
             <li key={`${id ?? 'x'}-${i}`}>
               {id ? (
@@ -223,6 +225,11 @@ export function ProductStock({
                     aria-label={`Date of “${what}” on ${batchTitle(p, b)}`}
                     onChange={(e) => {
                       const v = e.target.value;
+                      // The calendar's own Reset button empties the field: that is "no date", like Used earlier.
+                      if (v === '') {
+                        if (canBeUndated && !h.undated) onAct({ event: editEvent(p.id, id, { undated: true }, 'app'), text: `${p.name}: “${what}” has no date now`, undo: asNow() });
+                        return;
+                      }
                       if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v < earliest || v > day || (v === h.date && !h.undated)) return;
                       onAct({ event: editEvent(p.id, id, { date: v }, 'app'), text: `${p.name}: “${what}” moved to ${label(v)}`, undo: asNow() });
                     }}

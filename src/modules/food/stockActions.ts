@@ -42,9 +42,9 @@ export function keepOutOfStats<T extends StockEvent | StockEvent[] | undefined>(
 }
 
 /**
- * Corrects an event without touching it: moves it to the day it really happened, or removes it (see `StockEvent.target`).
+ * Corrects an event without touching it: moves it to the day it really happened, says its day is unknown, or removes it (see `StockEvent.target`).
  * With neither, the event is as it was recorded again, which is how a correction is undone.
  */
-export function editEvent(productId: string, target: string, change: { date?: string; removed?: boolean }, source: StockEvent['source']): StockEvent {
-  return { ...stockEvent(productId, 'edit', 0, source), target, ...(change.date ? { newDate: change.date } : {}), ...(change.removed ? { removed: true } : {}) };
+export function editEvent(productId: string, target: string, change: { date?: string; undated?: boolean; removed?: boolean }, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, 'edit', 0, source), target, ...(change.undated ? { undated: true } : change.date ? { newDate: change.date } : {}), ...(change.removed ? { removed: true } : {}) };
 }

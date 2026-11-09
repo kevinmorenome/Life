@@ -145,6 +145,7 @@ export interface StockEvent {
   /**
    * For `edit` events: the id of the event this corrects. Events are never changed or deleted, so a correction is its
    * own record: it moves the target to `newDate` (the day it really happened; without one the target keeps its own),
+   * says nobody knows when it happened (`undated` on the edit),
    * or takes it away (`removed`). The newest edit of a target wins, so undoing one is just another edit. Its
    * `quantity` is 0. See `effectiveEvents()`.
    */

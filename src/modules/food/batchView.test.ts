@@ -119,7 +119,7 @@ describe('batches of a product', () => {
   });
 
   describe('corrections', () => {
-    const edit = (id: string, target: string, change: { newDate?: string; removed?: boolean }, at = '2026-11-09T20:00:00.000Z'): StockEvent => ({ ...ev(id, 'edit', 0, '2026-11-09', { target, ...change }), createdAt: at });
+    const edit = (id: string, target: string, change: { newDate?: string; removed?: boolean; undated?: boolean }, at = '2026-11-09T20:00:00.000Z'): StockEvent => ({ ...ev(id, 'edit', 0, '2026-11-09', { target, ...change }), createdAt: at });
 
     it('removing an event gives the batch its amount back, and the event counts for nothing', () => {
       const s = stockOf(product, purchases, [...events, edit('x1', 'e0', { removed: true })], today);
@@ -135,6 +135,14 @@ describe('batches of a product', () => {
       const dated = stockOf(product, purchases, [...events, undated, edit('x2', 'u', { newDate: '2026-11-08' })], today);
       expect(pastStatus(dated.history['c:0'])).toMatchObject({ text: 'Finished', date: '2026-11-08' });
       expect(pastStatus(dated.history['c:0']).undated).toBeUndefined();
+    });
+
+    it('can say nobody knows when something was used: it then counts as a use on no day', () => {
+      const s = stockOf(product, purchases, [...events, edit('x1', 'e3', { undated: true })], today);
+      expect(s.history['b:0'][1]).toMatchObject({ kind: 'used', undated: true, quantity: 0.3 });
+      expect(s.batches.find((b) => b.id === 'b:0')).toMatchObject({ quantity: 0.5 });
+      const use = ev('u1', 'use', 1, '2026-11-09');
+      expect(usesSince([use, edit('x1', 'u1', { undated: true })])).toBe(0);
     });
 
     it('the newest correction wins, so one with nothing in it puts the event back as it was', () => {

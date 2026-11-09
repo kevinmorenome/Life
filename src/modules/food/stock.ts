@@ -47,6 +47,7 @@ export function effectiveEvents(events: StockEvent[]): StockEvent[] {
     const edit = edits.get(e.id);
     if (!edit) out.push(e);
     else if (edit.removed) continue;
+    else if (edit.undated) out.push(e.undated ? e : { ...e, undated: true, edited: true });
     else if (edit.newDate && /^\d{4}-\d{2}-\d{2}$/.test(edit.newDate) && (edit.newDate !== e.date || e.undated)) {
       const { undated: _undated, ...rest } = e;
       out.push({ ...rest, date: edit.newDate, edited: true });
