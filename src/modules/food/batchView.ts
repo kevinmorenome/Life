@@ -1,7 +1,7 @@
 import { money, shortDate } from '../../lib/format';
 import { historyNotes, historyText } from './batchHistory';
 import type { ProductSummary, Purchase } from './products';
-import { daysBetween, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
+import { daysBetween, effectiveEvents, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
 import { STORAGE_LABELS, type StockEvent } from './types';
 
 /**
@@ -214,7 +214,7 @@ export function activityOf(product: Pick<ProductSummary, 'purchases'>, stock: St
     }
   } else {
     for (const p of product.purchases) rows.push({ key: `p-${p.batch}`, date: p.date, at: '', text: 'Purchased', tone: 'green', notes: [p.store] });
-    for (const e of events) {
+    for (const e of effectiveEvents(events)) {
       const text = e.type === 'use' ? 'Used' : e.type === 'toss' ? 'Discarded' : e.type === 'count' ? (e.quantity > 0 ? 'Have it again' : e.undated ? 'Used earlier' : 'Finished') : undefined;
       if (!text) continue;
       const notes = [e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { activityOf, batchBadges, batchNumber, batchTitle, dueText, expiryBadge, originalQuantity, overviewOf, parseAmount, pastStatus, usedOf } from './batchView';
 import type { ProductSummary, Purchase } from './products';
-import { stockOf } from './stock';
+import { effectiveEvents, stockOf, usesSince } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (batch: string, date: string, quantity: number, store = 'Konzum'): Purchase => ({ receiptId: batch.split(':')[0], date, store, quantity, unit: 'kg', unitPrice: 8, paid: quantity * 8, batch });
@@ -116,5 +116,37 @@ describe('batches of a product', () => {
 
   it('says how far a date is in words', () => {
     expect([0, 1, -1, 4, -3].map(dueText)).toEqual(['today', 'tomorrow', 'yesterday', 'in 4 days', '3 days ago']);
+  });
+
+  describe('corrections', () => {
+    const edit = (id: string, target: string, change: { newDate?: string; removed?: boolean }, at = '2026-11-09T20:00:00.000Z'): StockEvent => ({ ...ev(id, 'edit', 0, '2026-11-09', { target, ...change }), createdAt: at });
+
+    it('removing an event gives the batch its amount back, and the event counts for nothing', () => {
+      const s = stockOf(product, purchases, [...events, edit('x1', 'e0', { removed: true })], today);
+      expect(s.pastBatches.map((b) => b.id)).toEqual(['a:0']);
+      expect(s.batches.find((b) => b.id === 'z:0')).toMatchObject({ quantity: 0.5 });
+      expect(s.history['z:0'].map((h) => h.kind)).toEqual(['bought']);
+    });
+
+    it('moves an event to another day, and gives a date to one that had none', () => {
+      const s = stockOf(product, purchases, [...events, edit('x1', 'e3', { newDate: '2026-11-08' })], today);
+      expect(s.history['b:0'][1]).toMatchObject({ kind: 'used', date: '2026-11-08', edited: true, eventId: 'e3' });
+      const undated = ev('u', 'count', 0, '2026-11-09', { batch: 'c:0', undated: true });
+      const dated = stockOf(product, purchases, [...events, undated, edit('x2', 'u', { newDate: '2026-11-08' })], today);
+      expect(pastStatus(dated.history['c:0'])).toMatchObject({ text: 'Finished', date: '2026-11-08' });
+      expect(pastStatus(dated.history['c:0']).undated).toBeUndefined();
+    });
+
+    it('the newest correction wins, so one with nothing in it puts the event back as it was', () => {
+      const all = [...events, edit('x1', 'e3', { removed: true }), edit('x2', 'e3', {}, '2026-11-09T20:00:01.000Z')];
+      expect(effectiveEvents(all)).toEqual(events);
+      expect(effectiveEvents(events)).toBe(events);
+    });
+
+    it('is never read as an event of its own', () => {
+      const use = ev('u1', 'use', 1, '2026-11-09');
+      expect(usesSince([use, edit('x1', 'u1', { removed: true })])).toBe(0);
+      expect(effectiveEvents([use, edit('x1', 'gone', { removed: true })])).toEqual([use]);
+    });
   });
 });

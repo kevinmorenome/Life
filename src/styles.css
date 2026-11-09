@@ -7928,10 +7928,58 @@ a.game-row + .food-h2 {
 }
 .batch-history li {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 0.75rem;
-  align-items: baseline;
-  padding: 0.2rem 0;
+  grid-template-columns: 6.75rem minmax(0, 1fr) 44px;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+}
+/* A date you can correct: tap it and the browser's calendar opens (an invisible date field lies over it). */
+.hist-date {
+  position: relative;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  cursor: pointer;
+}
+.hist-date > span {
+  text-decoration: underline dotted color-mix(in srgb, var(--text) 35%, transparent);
+  text-underline-offset: 4px;
+}
+.hist-date input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hist-date:focus-within > span {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.hist-remove {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.hist-remove:active {
+  color: var(--danger);
+}
+.hist-remove svg {
+  width: 18px;
+  height: 18px;
 }
 
 .activity {

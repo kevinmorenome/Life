@@ -8,7 +8,7 @@ import { activityOf, batchBadges, batchTitle, dueText, originalQuantity, overvie
 import { PictureControl } from './PictureControl';
 import { unitLabel, type ProductSummary } from './products';
 import { FREEZER_DAYS, THAW_DAYS, addDays, daysBetween, formatAmount, levelOptions, partLeft, type Batch, type HistoryEntry, type Stock } from './stock';
-import { batchEvent, expiryEvent, keepOutOfStats, moveEvent, stockEvent, usedEarlierEvent } from './stockActions';
+import { batchEvent, editEvent, expiryEvent, keepOutOfStats, moveEvent, stockEvent, usedEarlierEvent } from './stockActions';
 import type { StockEvent } from './types';
 
 /** What an action reports back: the new event(s), a line for the toast, and the event(s) that put things back. */
@@ -194,20 +194,59 @@ export function ProductStock({
 
   /* ---- Pieces ---- */
 
-  const history = (entries: HistoryEntry[] | undefined) => (
-    <ul className="batch-history">
-      {(entries ?? []).map((h, i) => (
-        <li key={`${h.eventId ?? 'x'}-${i}`}>
-          <span className="muted small batch-history-date">{h.undated ? 'Date unknown' : label(h.date)}</span>
-          <span className="small">
-            {h.kind === 'finished' && h.undated ? 'Used earlier' : historyText(h, amount)}
-            {h.kind === 'expiry' && h.useBy ? `: ${label(h.useBy)}` : ''}
-            {historyNotes(h).length > 0 && <span className="muted"> · {historyNotes(h).join(' · ')}</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+  /**
+   * What happened to a batch, oldest first. A line that comes from an event of yours can be corrected: its date is a
+   * value you tap (the browser's calendar lies over it), and the bin takes the line away. Neither changes the event:
+   * each writes a correction (`editEvent`), and Undo writes one that puts the line back as it was.
+   */
+  const history = (entries: HistoryEntry[] | undefined, b: Pick<Batch, 'id' | 'date'>) => {
+    // An event can't happen before its batch was bought, or after today.
+    const earliest = purchaseOf(p, b)?.date ?? b.date;
+    return (
+      <ul className="batch-history">
+        {(entries ?? []).map((h, i) => {
+          const what = h.kind === 'finished' && h.undated ? 'Used earlier' : historyText(h, amount);
+          const when = h.undated ? 'Date unknown' : label(h.date);
+          const id = h.eventId;
+          // As the line is now, so a correction can be taken back.
+          const asNow = () => editEvent(p.id, id!, { date: h.undated ? undefined : h.date }, 'app');
+          return (
+            <li key={`${id ?? 'x'}-${i}`}>
+              {id ? (
+                <label className="muted small batch-history-date hist-date">
+                  <span>{when}</span>
+                  <input
+                    type="date"
+                    value={h.undated ? '' : h.date}
+                    min={earliest}
+                    max={day}
+                    aria-label={`Date of “${what}” on ${batchTitle(p, b)}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v < earliest || v > day || (v === h.date && !h.undated)) return;
+                      onAct({ event: editEvent(p.id, id, { date: v }, 'app'), text: `${p.name}: “${what}” moved to ${label(v)}`, undo: asNow() });
+                    }}
+                  />
+                </label>
+              ) : (
+                <span className="muted small batch-history-date">{when}</span>
+              )}
+              <span className="small">
+                {what}
+                {h.kind === 'expiry' && h.useBy ? `: ${label(h.useBy)}` : ''}
+                {historyNotes(h).length > 0 && <span className="muted"> · {historyNotes(h).join(' · ')}</span>}
+              </span>
+              {id && (
+                <button type="button" className="hist-remove" aria-label={`Remove “${what}” from ${batchTitle(p, b)}`} onClick={() => onAct({ event: editEvent(p.id, id, { removed: true }, 'app'), text: `${p.name}: “${what}” removed`, undo: asNow() })}>
+                  <TrashIcon />
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
 
   /** Where a batch came from: "Bought 31 Oct · Konzum · €1.89 / kg". */
   const origin = (b: Batch): string => {
@@ -273,7 +312,7 @@ export function ProductStock({
           {entries && entries.length > 1 && (
             <details className="bcard-history">
               <summary>History ({entries.length})</summary>
-              {history(entries)}
+              {history(entries, b)}
             </details>
           )}
         </div>
@@ -382,7 +421,7 @@ export function ProductStock({
                       </p>
                       <details className="bcard-history">
                         <summary>History ({entries?.length ?? 0})</summary>
-                        {history(entries)}
+                        {history(entries, b)}
                       </details>
                     </li>
                   );

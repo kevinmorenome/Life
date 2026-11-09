@@ -37,6 +37,14 @@ export function moveEvent(productId: string, batch: string, type: 'freeze' | 'th
 
 /** Keeps an event out of the statistics (it still changes the stock): see `StockEvent.untracked`. Use-by changes are not statistics, so they stay as they are. */
 export function keepOutOfStats<T extends StockEvent | StockEvent[] | undefined>(e: T): T {
-  const mark = (x: StockEvent): StockEvent => (x.type === 'expiry' ? x : { ...x, untracked: true });
+  const mark = (x: StockEvent): StockEvent => (x.type === 'expiry' || x.type === 'edit' ? x : { ...x, untracked: true });
   return (Array.isArray(e) ? e.map(mark) : e ? mark(e) : e) as T;
+}
+
+/**
+ * Corrects an event without touching it: moves it to the day it really happened, or removes it (see `StockEvent.target`).
+ * With neither, the event is as it was recorded again, which is how a correction is undone.
+ */
+export function editEvent(productId: string, target: string, change: { date?: string; removed?: boolean }, source: StockEvent['source']): StockEvent {
+  return { ...stockEvent(productId, 'edit', 0, source), target, ...(change.date ? { newDate: change.date } : {}), ...(change.removed ? { removed: true } : {}) };
 }

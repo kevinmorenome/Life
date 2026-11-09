@@ -28,6 +28,33 @@ export const daysBetween = (from: string, to: string): number => Math.round((toU
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
+/**
+ * The events as they count once corrections are applied: an `edit` event names another event and either moves it to
+ * the day it really happened (which also gives a "date unknown" event its date) or removes it. The newest edit of an
+ * event wins. Everything that reads stock events goes through this, so a removed event counts for nothing anywhere.
+ */
+export function effectiveEvents(events: StockEvent[]): StockEvent[] {
+  const edits = new Map<string, StockEvent>();
+  for (const e of events) {
+    if (e.type !== 'edit' || !e.target) continue;
+    const had = edits.get(e.target);
+    if (!had || e.createdAt >= had.createdAt) edits.set(e.target, e);
+  }
+  if (edits.size === 0) return events.some((e) => e.type === 'edit') ? events.filter((e) => e.type !== 'edit') : events;
+  const out: StockEvent[] = [];
+  for (const e of events) {
+    if (e.type === 'edit') continue;
+    const edit = edits.get(e.id);
+    if (!edit) out.push(e);
+    else if (edit.removed) continue;
+    else if (edit.newDate && /^\d{4}-\d{2}-\d{2}$/.test(edit.newDate) && (edit.newDate !== e.date || e.undated)) {
+      const { undated: _undated, ...rest } = e;
+      out.push({ ...rest, date: edit.newDate, edited: true });
+    } else out.push(e);
+  }
+  return out;
+}
+
 /** What is left from one purchase (or from a count). */
 export interface Batch {
   /** When it was bought or counted. */
@@ -84,6 +111,8 @@ export interface HistoryEntry {
   untracked?: boolean;
   /** When the event was recorded (ISO timestamp), to order what happened on the same day and to show the time. */
   at?: string;
+  /** The event's day was corrected by hand. */
+  edited?: boolean;
   /** The event's day is only when it was logged: it happened at some unknown time before (see `StockEvent.undated`). */
   undated?: boolean;
 }
@@ -151,7 +180,7 @@ function consume(batches: Work[], amount: number, key: (b: Work) => string, took
 
 /** Adds a line to a batch's history, taking the date, source and statistics flag from the event. */
 function log(b: Work, e: StockEvent, entry: Omit<HistoryEntry, 'date' | 'source' | 'eventId' | 'untracked' | 'at' | 'undated'>): void {
-  b.history.push({ date: e.date, ...entry, source: e.source, eventId: e.id, at: e.createdAt, ...(e.untracked ? { untracked: true } : {}), ...(e.undated ? { undated: true } : {}) });
+  b.history.push({ date: e.date, ...entry, source: e.source, eventId: e.id, at: e.createdAt, ...(e.untracked ? { untracked: true } : {}), ...(e.undated ? { undated: true } : {}), ...(e.edited ? { edited: true } : {}) });
 }
 
 /**
@@ -167,6 +196,7 @@ export function stockOf(
   events: StockEvent[],
   today: string,
 ): Stock {
+  events = effectiveEvents(events);
   if (product.trackAmount === false) return presenceOf(purchases, events);
   // With a pack size, stock is counted in items: each pack bought adds that many.
   const perPack = product.packSize && product.packSize > 1 ? product.packSize : 1;
@@ -316,7 +346,7 @@ function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: St
 
 /** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
 export function usesSince(events: StockEvent[], since?: string): number {
-  return events.filter((e) => e.type === 'use' && !e.undated && !e.untracked && (!since || e.date >= since)).length;
+  return effectiveEvents(events).filter((e) => e.type === 'use' && !e.undated && !e.untracked && (!since || e.date >= since)).length;
 }
 
 /**

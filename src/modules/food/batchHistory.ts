@@ -33,5 +33,5 @@ export function historyText(h: HistoryEntry, amount: (q: number) => string): str
 
 /** Where a line came from, when it isn't plainly you in the app: "via Claude", "weekly check", "not in statistics". */
 export function historyNotes(h: HistoryEntry): string[] {
-  return [h.source === 'claude' ? 'via Claude' : h.source === 'check' ? 'weekly check' : '', h.untracked ? 'not in statistics' : ''].filter(Boolean);
+  return [h.source === 'claude' ? 'via Claude' : h.source === 'check' ? 'weekly check' : '', h.untracked ? 'not in statistics' : '', h.edited ? 'date edited' : ''].filter(Boolean);
 }
