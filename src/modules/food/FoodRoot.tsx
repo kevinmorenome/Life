@@ -9,6 +9,7 @@ import { ReceiptList } from './ReceiptList';
 import { ReceiptView } from './ReceiptView';
 import { ShoppingPage } from './ShoppingPage';
 import { StockPage } from './StockPage';
+import { UsagePage } from './UsagePage';
 import type { FoodProduct, FoodReceipt, StockEvent } from './types';
 
 export function FoodRoot({ subroute }: { subroute: string[] }) {
@@ -27,6 +28,7 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
     return <ReceiptView receipt={receipt} onDelete={receipts.remove} />;
   }
   if (first === 'stock') return <StockPage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} onProduct={products.save} />;
+  if (first === 'log') return <UsagePage receipts={receipts.items} products={products.items} events={events.items} onEvent={events.save} />;
   if (first === 'products') return <ProductsPage receipts={receipts.items} products={products.items} />;
   if (first === 'shopping') return <ShoppingPage receipts={receipts.items} products={products.items} events={events.items} />;
   if (first === 'pictures') return <PicturesPage receipts={receipts.items} products={products.items} events={events.items} onProduct={products.save} />;

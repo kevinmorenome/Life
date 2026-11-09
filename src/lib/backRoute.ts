@@ -18,7 +18,7 @@ export function parentRoute(route: string[]): string | undefined {
   if (a === 'food') {
     if (b === 'receipt' && c) return d === 'edit' ? `/food/receipt/${c}` : '/food';
     if (b === 'product' && c) return '/food/stock';
-    if (b === 'check' || b === 'pictures') return '/food/stock';
+    if (b === 'check' || b === 'pictures' || b === 'log') return '/food/stock';
     return b === 'new' ? '/food' : '/more';
   }
   if (a === 'trips') {

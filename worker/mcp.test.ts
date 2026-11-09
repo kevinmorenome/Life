@@ -787,6 +787,21 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
   });
 
+  it('list_stock lists batches even for one purchase, oldest purchase first', async () => {
+    const { ctx, data } = seed();
+    data.foodreceipts.set('food-p2', receipt('food-p2', '2026-10-30', [L('Pesto sauce 190g', 1)]));
+    data.foodreceipts.set('food-p1', receipt('food-p1', '2026-10-24', [L('Pesto sauce 190g', 2)]));
+    const [p] = (await call(ctx, 'list_stock', { query: 'pesto' })).json() as { quantity: number; batches: { boughtOn: string; quantity: number }[] }[];
+    expect(p.quantity).toBe(3);
+    expect(p.batches.map((b) => [b.boughtOn, b.quantity])).toEqual([['2026-10-24', 2], ['2026-10-30', 1]]);
+    data.foodreceipts.delete('food-p2');
+    const [one] = (await call(ctx, 'list_stock', { query: 'pesto' })).json() as { batches: { boughtOn: string }[] }[];
+    expect(one.batches.map((b) => b.boughtOn)).toEqual(['2026-10-24']);
+    // Using the oldest batch by its purchase date lowers that batch only.
+    expect((await call(ctx, 'use_stock', { product: 'pesto', quantity: 0.5, boughtOn: '2026-10-24', date: '2026-11-01' })).json()).toMatchObject({ used: '0.5' });
+    expect([...data.foodstock.values()]).toMatchObject([{ type: 'use', quantity: 0.5, date: '2026-11-01', batch: 'food-p1:0' }]);
+  });
+
   describe('product pictures', () => {
     const photo = 'data:image/jpeg;base64,AAAA';
     const candidates = [{ code: '3850131003398', name: 'Staropramen', brand: 'Staropramen', quantity: '0,5 l', country: 'croatia', imageUrl: 'https://images.openfoodfacts.org/images/products/385/013/100/3398/front_hr.3.400.jpg' }];

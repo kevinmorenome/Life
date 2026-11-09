@@ -364,7 +364,7 @@ export const TOOLS = [
         product: { type: 'string', description: 'Product name or the words the user used, e.g. "hummus"' },
         action: { type: 'string', enum: ['use', 'some_left', 'finish', 'toss', 'freeze', 'thaw'], description: 'Default "use". "freeze" puts quantity (default: all that is not frozen, or all of the batch) in the freezer, which extends its use-by to about three months; "thaw" takes quantity of what is frozen out, use-by two days on.' },
         notInStats: { type: 'boolean', description: 'True when the user is just catching up on something that happened earlier ("I already used that one", "threw that out last week"): the stock changes, but it is kept out of the statistics (waste, uses). Use it whenever the user says the thing did not happen today or should not count.' },
-        boughtOn: { type: 'string', description: 'YYYY-MM-DD. Act on the batch bought on that day (see "batches" in list_stock) instead of whichever expires first: "threw out the chicken from Tuesday". With toss or finish it applies to that batch only.' },
+        boughtOn: { type: 'string', description: 'YYYY-MM-DD. Act on the batch bought on that day (see "batches" in list_stock, listed oldest first) instead of whichever expires first. When the user logs a use without naming a purchase, pass the boughtOn of the OLDEST batch so older stock is used first: "threw out the chicken from Tuesday". With toss or finish it applies to that batch only.' },
         fractionLeft: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1, description: 'For action "some_left": how much of the pack in use is left, e.g. 0.5.' },
         quantity: { type: 'number', exclusiveMinimum: 0, description: 'How much was used (action "use"). Default 1.' },
         date: { type: 'string', description: 'YYYY-MM-DD, default today.' },
@@ -1053,9 +1053,13 @@ function describeProduct(p: ProductSummary, s: Stock, hasPicture: boolean) {
     ...(s.useBy ? { useBy: s.useBy } : {}),
     ...(s.frozenQuantity > 0 ? { inFreezer: s.frozenQuantity } : {}),
     ...(s.thawedQuantity > 0 ? { thawed: s.thawedQuantity, note: 'Thawed: use this first, do not refreeze.' } : {}),
-    // Several purchases are kept apart, each with its own use-by: name one with boughtOn in use_stock.
-    ...(s.batches.length > 1
-      ? { batches: s.batches.map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.thawed ? { thawedOn: b.thawed } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) })) }
+    // Every purchase is its own batch with its own use-by, listed oldest purchase first: name one with boughtOn in use_stock.
+    ...(s.batches.length > 0
+      ? {
+          batches: s.batches
+            .map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.thawed ? { thawedOn: b.thawed } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) }))
+            .sort((x, y) => x.boughtOn.localeCompare(y.boughtOn) || Number(!!x.frozenOn) - Number(!!y.frozenOn)),
+        }
       : {}),
     ...(s.lastConfirmed ? { lastBoughtOrCounted: s.lastConfirmed } : {}),
   };
