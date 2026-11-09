@@ -30,9 +30,9 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
   const [quiet, setQuiet] = useState(false);
   // The batch (oldest purchase unless you pick another) and the day (today unless you change it) every action below uses.
   const ctx = useUseContext(p, s, events);
-  const onAct = (a: SheetAct) => {
+  const onAct = (a: SheetAct, date: string = today()) => {
     const marked = quiet ? { ...a, event: keepOutOfStats(a.event), undo: keepOutOfStats(a.undo) } : a;
-    sendAct({ ...marked, event: ctx.stamp(marked.event) });
+    sendAct({ ...marked, event: ctx.stamp(marked.event, date) });
   };
   const box = useRef<HTMLDivElement>(null);
   const day = today();
@@ -54,18 +54,18 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
   const ofBatch = (type: 'use' | 'toss' | 'count', quantity: number) => (bid ? batchEvent(p.id, bid, type, quantity, 'app') : stockEvent(p.id, type, quantity, 'app'));
   const one = p.packSize && p.packLabel ? `Used one ${p.packLabel}` : 'Used one';
 
-  function usedOne() {
+  function usedOne(date: string) {
     let n = 1;
     if (p.unit !== 'pc') {
       const typed = Number((window.prompt(`How much ${p.name} did you use (${p.unit})?`, '0.1') ?? '').trim().replace(',', '.'));
       if (!Number.isFinite(typed) || typed <= 0) return;
       n = Math.min(typed, left);
     }
-    onAct({ event: ofBatch('use', Math.min(n, left)), text: `${p.name}: used ${formatAmount(n, p.unit)}${unitLabel(p, n)}`, undo: restore(), done: s.quantity - n <= 1e-9 });
+    onAct({ event: ofBatch('use', Math.min(n, left)), text: `${p.name}: used ${formatAmount(n, p.unit)}${unitLabel(p, n)}`, undo: restore(), done: s.quantity - n <= 1e-9 }, date);
   }
 
   /** Puts the chosen batch (all of it, or the amount you type) in the freezer, or takes it out. */
-  function move(freezing: boolean) {
+  function move(freezing: boolean, date: string) {
     if (!b || !bid) return;
     let n = b.quantity;
     if (p.unit !== 'pc' || b.quantity > 1) {
@@ -79,7 +79,7 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
       event,
       text: freezing ? `${p.name}: ${amountText} in the freezer` : `${p.name}: ${amountText} taken out, use within ${THAW_DAYS} days`,
       undo: [batchEvent(p.id, bid, 'count', b.quantity, 'app'), batchEvent(p.id, `${event.type}-${event.id}:${bid}`, 'count', 0, 'app')],
-    });
+    }, date);
   }
 
   const amount = s.quantity <= 0 ? 'Used up' : `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
@@ -106,7 +106,7 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
         )}
         {s.quantity > 0 && <UseContextBar ctx={ctx} product={p} />}
         <div className="food-actions">
-          <button type="button" className="food-action" onClick={usedOne} disabled={s.quantity <= 0}>
+          <button type="button" className="food-action" onClick={ctx.withDay(usedOne)} disabled={s.quantity <= 0}>
             <MinusIcon />
             {p.unit === 'pc' ? one : 'Used some'}
           </button>
@@ -114,7 +114,7 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
             <HalfIcon />
             Part left
           </button>
-          <button type="button" className="food-action" disabled={s.quantity <= 0} onClick={() => onAct({ event: ofBatch('count', 0), text: `${p.name} finished`, undo: restore(), done: s.quantity - left <= 1e-9 })}>
+          <button type="button" className="food-action" disabled={s.quantity <= 0} onClick={ctx.withDay((d) => onAct({ event: ofBatch('count', 0), text: `${p.name} finished`, undo: restore(), done: s.quantity - left <= 1e-9 }, d))}>
             <CheckIcon />
             Finished
           </button>
@@ -122,15 +122,15 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
             <CheckIcon />
             Used earlier, date unknown
           </button>
-          <button type="button" className="food-action" disabled={!b || !bid || !!b.frozen || !!b.thawed} onClick={() => move(true)}>
+          <button type="button" className="food-action" disabled={!b || !bid || !!b.frozen || !!b.thawed} onClick={ctx.withDay((d) => move(true, d))}>
             <MinusIcon />
             Put in freezer
           </button>
-          <button type="button" className="food-action" disabled={!b || !bid || !b.frozen} onClick={() => move(false)}>
+          <button type="button" className="food-action" disabled={!b || !bid || !b.frozen} onClick={ctx.withDay((d) => move(false, d))}>
             <MinusIcon />
             Take out of freezer
           </button>
-          <button type="button" className="food-action food-action-danger" disabled={s.quantity <= 0} onClick={() => onAct({ event: ofBatch('toss', left), text: `${p.name} thrown out`, undo: restore(), done: s.quantity - left <= 1e-9 })}>
+          <button type="button" className="food-action food-action-danger" disabled={s.quantity <= 0} onClick={ctx.withDay((d) => onAct({ event: ofBatch('toss', left), text: `${p.name} thrown out`, undo: restore(), done: s.quantity - left <= 1e-9 }, d))}>
             <TrashIcon />
             Threw out
           </button>
@@ -144,9 +144,11 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
                 type="button"
                 className="chip"
                 onClick={() => {
-                  const e = partLeftEvent(p.id, p.unit, { quantity: left }, l.fraction, 'app');
-                  if (e) onAct({ event: bid ? { ...e, batch: bid } : e, text: `${p.name}: ${l.label.toLowerCase()}`, undo: restore() });
                   setLevels(false);
+                  ctx.askDay((d) => {
+                    const e = partLeftEvent(p.id, p.unit, { quantity: left }, l.fraction, 'app');
+                    if (e) onAct({ event: bid ? { ...e, batch: bid } : e, text: `${p.name}: ${l.label.toLowerCase()}`, undo: restore() }, d);
+                  });
                 }}
               >
                 {l.label}
@@ -157,7 +159,7 @@ export function StockSheet({ entry, events, onAct: sendAct, onPhoto, onClose }: 
         {s.batches.length > 0 && (
           <>
             <h3 className="small muted food-h2">Batches</h3>
-            <BatchList product={p} stock={s} onAct={(a) => onAct({ event: a.event, text: a.text, undo: a.undo })} />
+            <BatchList product={p} stock={s} onAct={(a) => (a.event.type === 'expiry' ? onAct({ event: a.event, text: a.text, undo: a.undo }) : ctx.askDay((d) => onAct({ event: a.event, text: a.text, undo: a.undo }, d)))} />
           </>
         )}
         <p className="muted small food-hint">

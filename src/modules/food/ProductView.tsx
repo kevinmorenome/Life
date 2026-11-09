@@ -43,14 +43,14 @@ export function ProductView({
   const ctx = useUseContext(product, stock, events);
   /** Saves as it is (undo and count corrections stay dated today). */
   const saveEvent = (e: StockEvent) => sendEvent(quiet ? keepOutOfStats(e) : e);
-  /** Saves something that happened: on the chosen day. */
-  const onEvent = (e: StockEvent) => saveEvent(ctx.stamp(e));
+  /** Saves something that happened, on the day that was tapped in the calendar. */
+  const onEvent = (e: StockEvent, date: string = today()) => saveEvent(ctx.stamp(e, date));
   const b = ctx.batch;
   const bid = b?.id;
   const left = b?.quantity ?? stock.quantity;
   const ofBatch = (type: 'use' | 'toss' | 'count', quantity: number) => (bid ? batchEvent(product.id, bid, type, quantity, 'app') : stockEvent(product.id, type, quantity, 'app'));
   /** Puts the chosen batch (all, or the amount you type) in the freezer, or takes it out. */
-  const move = (freezing: boolean) => {
+  const move = (freezing: boolean, date: string) => {
     if (!b || !bid) return;
     let n = b.quantity;
     if (product.unit !== 'pc' || b.quantity > 1) {
@@ -59,7 +59,7 @@ export function ProductView({
       n = Math.min(typed, b.quantity);
     }
     const event = moveEvent(product.id, bid, freezing ? 'freeze' : 'thaw', n, 'app');
-    onEvent(event);
+    onEvent(event, date);
     setNote({
       event,
       text: freezing ? `${product.name}: ${formatAmount(n, product.unit)}${unitLabel(product, n)} in the freezer` : `${product.name}: taken out, use within ${THAW_DAYS} days`,
@@ -114,8 +114,10 @@ export function ProductView({
             type="button"
             className="chip"
             onClick={() => {
-              const n = ask(`How much ${product.name} did you use?`, '1');
-              if (n) onEvent(ofBatch('use', Math.min(n, left)));
+              ctx.askDay((d) => {
+                const n = ask(`How much ${product.name} did you use?`, '1');
+                if (n) onEvent(ofBatch('use', Math.min(n, left)), d);
+              });
             }}
           >
             Used some
@@ -125,24 +127,24 @@ export function ProductView({
               key={l.fraction}
               type="button"
               className="chip"
-              onClick={() => {
+              onClick={ctx.withDay((d) => {
                 const e = partLeftEvent(product.id, product.unit, { quantity: left }, l.fraction, 'app');
-                if (e) onEvent(bid ? { ...e, batch: bid } : e);
-              }}
+                if (e) onEvent(bid ? { ...e, batch: bid } : e, d);
+              })}
             >
               {l.label}
             </button>
           ))}
-          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(ofBatch('count', 0))}>
+          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={ctx.withDay((d) => onEvent(ofBatch('count', 0), d))}>
             Finished
           </button>
-          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(ofBatch('toss', left))}>
+          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={ctx.withDay((d) => onEvent(ofBatch('toss', left), d))}>
             Threw out
           </button>
-          <button type="button" className="chip" disabled={!b || !bid || !!b.frozen || !!b.thawed} onClick={() => move(true)}>
+          <button type="button" className="chip" disabled={!b || !bid || !!b.frozen || !!b.thawed} onClick={ctx.withDay((d) => move(true, d))}>
             Put in freezer
           </button>
-          <button type="button" className="chip" disabled={!b || !bid || !b.frozen} onClick={() => move(false)}>
+          <button type="button" className="chip" disabled={!b || !bid || !b.frozen} onClick={ctx.withDay((d) => move(false, d))}>
             Take out of freezer
           </button>
           <button
@@ -167,8 +169,12 @@ export function ProductView({
             stock={stock}
             showPast
             onAct={(a) => {
-              onEvent(a.event);
-              setNote(a);
+              const log = (d: string) => {
+                onEvent(a.event, d);
+                setNote(a);
+              };
+              if (a.event.type === 'expiry') log(today());
+              else ctx.askDay(log);
             }}
           />
           {note && (
