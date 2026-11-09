@@ -90,12 +90,6 @@ export function StockPage({
           <span className="muted small">{thawed.map((e) => e.product.name).join(', ')}. Thawed food isn’t put back in the freezer.</span>
         </div>
       )}
-      {entries.length > 0 && (
-        <a className="food-banner" href={href('/food/log')}>
-          <strong>Log usage</strong>
-          <span className="muted small">Type or say what you used, froze or threw out</span>
-        </a>
-      )}
       {toCheck > 0 && (
         <a className="food-banner" href={href('/food/check')}>
           <strong>Weekly check</strong>
