@@ -30,7 +30,7 @@ export function batchOrigin(product: ProductSummary, b: Batch): string {
 export function BatchList({ product, stock, onAct, showPast = false }: { product: ProductSummary; stock: Stock; onAct(a: BatchAct): void; /** Also list the batches that are gone, for their history. */ showPast?: boolean }) {
   const day = today();
   const past = showPast ? stock.pastBatches : [];
-  if (!stock.tracked || (stock.batches.length === 0 && past.length === 0)) return null;
+  if ((stock.batches.length === 0 && past.length === 0)) return null;
   const amount = (q: number) => `${formatAmount(q, product.unit)}${unitLabel(product, q)}`;
 
   /** What happened to a batch, oldest first: bought, used, put in the freezer… with dates. */

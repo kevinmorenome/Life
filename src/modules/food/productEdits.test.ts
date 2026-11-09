@@ -12,15 +12,15 @@ const NOW = new Date('2026-11-02T12:00:00Z');
 
 describe('parseProductChanges', () => {
   it('keeps valid fields and rounds numbers', () => {
-    expect(parseProductChanges({ packSize: 5.6, packLabel: ' can ', storage: 'fridge', type: 'drink', shelfLifeDays: 9.4, trackAmount: false })).toEqual({
-      packSize: 6, packLabel: 'can', storage: 'fridge', type: 'drink', shelfLifeDays: 9, trackAmount: false,
+    expect(parseProductChanges({ packSize: 5.6, packLabel: ' can ', storage: 'fridge', type: 'drink', shelfLifeDays: 9.4 })).toEqual({
+      packSize: 6, packLabel: 'can', storage: 'fridge', type: 'drink', shelfLifeDays: 9,
     });
   });
   it('lets null clear the optional ones', () => {
     expect(parseProductChanges({ packSize: null, packLabel: null, shelfLifeDays: null })).toEqual({ packSize: null, packLabel: null, shelfLifeDays: null });
   });
   it('rejects bad values with a message, and an empty edit', () => {
-    for (const bad of [{ packSize: 1 }, { packSize: 101 }, { packSize: 'six' }, { type: 'dessert' }, { storage: 'attic' }, { shelfLifeDays: 0 }, { trackAmount: 'no' }, { packLabel: '' }, { packLabel: 'x'.repeat(21) }]) {
+    for (const bad of [{ packSize: 1 }, { packSize: 101 }, { packSize: 'six' }, { type: 'dessert' }, { storage: 'attic' }, { shelfLifeDays: 0 }, { packLabel: '' }, { packLabel: 'x'.repeat(21) }]) {
       expect(typeof parseProductChanges(bad as Record<string, unknown>)).toBe('string');
     }
     expect(typeof parseProductChanges({})).toBe('string');
@@ -31,12 +31,10 @@ describe('withProductChanges', () => {
   it('changes only the fields given', () => {
     expect(withProductChanges(rec({ shelfLifeDays: 90 }), { packSize: 6 }, 'now')).toMatchObject({ packSize: 6, shelfLifeDays: 90, type: 'drink', updatedAt: 'now' });
   });
-  it('clears with null and maps trackAmount like the product page', () => {
-    const out = withProductChanges(rec({ packSize: 6, packLabel: 'can', trackAmount: false }), { packSize: null, packLabel: null, trackAmount: true }, 'now');
+  it('clears with null', () => {
+    const out = withProductChanges(rec({ packSize: 6, packLabel: 'can' }), { packSize: null, packLabel: null }, 'now');
     expect(out.packSize).toBeUndefined();
     expect(out.packLabel).toBeUndefined();
-    expect(out.trackAmount).toBeUndefined();
-    expect(withProductChanges(rec(), { trackAmount: false }, 'now').trackAmount).toBe(false);
   });
   it('returns the same record when nothing changes', () => {
     const r = rec({ packSize: 6 });

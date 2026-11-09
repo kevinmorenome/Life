@@ -92,8 +92,6 @@ export interface ProductChanges {
   type?: string;
   storage?: string;
   shelfLifeDays?: number | null;
-  /** `false` = only "have it or out"; `true` = count how many. */
-  trackAmount?: boolean;
   packSize?: number | null;
   packLabel?: string | null;
   /** The product's picture: an image data URL (the Worker downloads it; the app downscales it before it is saved), `null` removes it. */

@@ -5,8 +5,8 @@ import { stockOf } from './stock';
 import { storagesInUse, type Entry } from './stockEntries';
 
 const entry = (over: Partial<ProductSummary>, bought = '2026-10-31', qty = 1): Entry => {
-  const product: ProductSummary = { id: 'fp-x', name: 'Thing', kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', trackAmount: true, hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
-  return { product, stock: stockOf(product, product.purchases, [], '2026-11-02'), uses: 0 };
+  const product: ProductSummary = { id: 'fp-x', name: 'Thing', kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
+  return { product, stock: stockOf(product, product.purchases, [], '2026-11-02') };
 };
 
 describe('freshness words', () => {
@@ -51,10 +51,6 @@ describe('tileInfo', () => {
     const old = tileInfo(entry({ type: 'fresh', shelfLifeDays: 2 }, '2026-10-25'), '2026-11-02');
     expect(old.pill).toEqual({ text: 'Past date', level: 'urgent' });
     expect(old.bar?.pct).toBe(6);
-  });
-  it('says Have for products with no amount', () => {
-    const oil = entry({ trackAmount: false });
-    expect(tileInfo(oil, '2026-11-02')).toMatchObject({ badge: 'Have', label: 'Thing, have it' });
   });
 });
 

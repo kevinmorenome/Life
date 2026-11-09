@@ -6,7 +6,7 @@ import { PictureControl } from './PictureControl';
 import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
 import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
-import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
+import { formatAmount, formatQty, levelOptions, stockOf } from './stock';
 import { keepOutOfStats, partLeftEvent, stockEvent } from './stockActions';
 import { StatsSwitch } from './StatsSwitch';
 
@@ -31,7 +31,6 @@ export function ProductView({
   onEvent(e: StockEvent): Promise<void>;
 }) {
   const stock = stockOf(product, product.purchases, events, today());
-  const uses = stock.tracked ? 0 : usesSince(events, product.purchases[0]?.date);
   const ask = (question: string, fallback: string): number | undefined => {
     const n = Number((window.prompt(question, fallback) ?? '').trim().replace(',', '.'));
     return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
@@ -78,69 +77,55 @@ export function ProductView({
 
       <section className="food-gap">
         <p className="food-total">
-          {stock.tracked ? formatAmount(stock.quantity, product.unit) : stock.quantity > 0 ? 'Have it' : 'Out'}
-          {stock.tracked && <span className="muted small">{unitLabel(product, stock.quantity) || ' in stock'}</span>}
+          {formatAmount(stock.quantity, product.unit)}
+          <span className="muted small">{unitLabel(product, stock.quantity) || ' in stock'}</span>
         </p>
-        <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : '', !stock.tracked && uses > 0 ? `used ${uses}× since you bought it` : ''].filter(Boolean).join(' · ')}</p>
+        <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : ''].filter(Boolean).join(' · ')}</p>
         <div className="chips food-gap">
-          {stock.tracked ? (
-            <>
-              <button
-                type="button"
-                className="chip"
-                onClick={() => {
-                  const n = ask(`How much ${product.name} did you use?`, '1');
-                  if (n) onEvent(stockEvent(product.id, 'use', n, 'app'));
-                }}
-              >
-                Used some
-              </button>
-              {levelOptions(stock.quantity, product.unit, product.packSize).map((l) => (
-                <button
-                  key={l.fraction}
-                  type="button"
-                  className="chip"
-                  onClick={() => {
-                    const e = partLeftEvent(product.id, product.unit, stock, l.fraction, 'app');
-                    if (e) onEvent(e);
-                  }}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </>
-          ) : (
-            <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'use', 1, 'app'))}>
-              Used it
+          <button
+            type="button"
+            className="chip"
+            onClick={() => {
+              const n = ask(`How much ${product.name} did you use?`, '1');
+              if (n) onEvent(stockEvent(product.id, 'use', n, 'app'));
+            }}
+          >
+            Used some
+          </button>
+          {levelOptions(stock.quantity, product.unit, product.packSize).map((l) => (
+            <button
+              key={l.fraction}
+              type="button"
+              className="chip"
+              onClick={() => {
+                const e = partLeftEvent(product.id, product.unit, stock, l.fraction, 'app');
+                if (e) onEvent(e);
+              }}
+            >
+              {l.label}
             </button>
-          )}
+          ))}
           <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 0, 'app'))}>
             Finished
           </button>
           <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(stockEvent(product.id, 'toss', stock.quantity, 'app'))}>
             Threw out
           </button>
-          {stock.tracked ? (
-            <button
-              type="button"
-              className="chip"
-              onClick={() => {
-                const n = ask(`How many ${product.name} do you have now?`, formatQty(stock.quantity));
-                if (n !== undefined) onEvent(stockEvent(product.id, 'count', n, 'app'));
-              }}
-            >
-              I have…
-            </button>
-          ) : (
-            <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 1, 'app'))}>
-              Have it
-            </button>
-          )}
+          <button
+            type="button"
+            className="chip"
+            onClick={() => {
+              const n = ask(`How many ${product.name} do you have now?`, formatQty(stock.quantity));
+              if (n !== undefined) onEvent(stockEvent(product.id, 'count', n, 'app'));
+            }}
+          >
+            I have…
+          </button>
         </div>
         <StatsSwitch off={quiet} onChange={setQuiet} />
       </section>
 
-      {stock.tracked && (stock.batches.length > 0 || stock.pastBatches.length > 0) && (
+      {(stock.batches.length > 0 || stock.pastBatches.length > 0) && (
         <>
           <h2 className="small muted food-h2">Batches</h2>
           <BatchList
@@ -193,19 +178,7 @@ export function ProductView({
           ))}
         </div>
       </div>
-      <div className="field">
-        <span>Stock</span>
-        <div className="chips">
-          <button type="button" className="chip" aria-pressed={product.trackAmount} onClick={() => save({ trackAmount: undefined })}>
-            Count how many
-          </button>
-          <button type="button" className="chip" aria-pressed={!product.trackAmount} onClick={() => save({ trackAmount: false })}>
-            Just have it or out
-          </button>
-        </div>
-        <span className="muted small">For spices, oil and sauces: a use is logged but never lowers it; tap Finished when it is all gone.</span>
-      </div>
-      {product.unit === 'pc' && product.trackAmount && (
+      {product.unit === 'pc' && (
         <div className="field-grid">
           <label className="field">
             <span>Items in a pack</span>
@@ -262,7 +235,7 @@ export function ProductView({
               .slice(0, 8)
               .map((e) => (
                 <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? (e.undated ? '→ used earlier' : '→ finished') : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
+                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? (e.undated ? '→ used earlier' : '→ finished') : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
                   <span className="muted small">{[e.undated ? 'date unknown' : shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean).join(' · ')}</span>
                 </li>
               ))}

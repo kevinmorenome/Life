@@ -87,8 +87,6 @@ export interface HistoryEntry {
 export type StockStatus = 'ok' | 'use-soon' | 'check' | 'low' | 'out';
 
 export interface Stock {
-  /** False for products you only have or don't (`trackAmount` off): then `quantity` is 1 (have it) or 0 (out). */
-  tracked: boolean;
   quantity: number;
   /** Oldest first. */
   batches: Batch[];
@@ -158,12 +156,11 @@ function log(b: Work, e: StockEvent, entry: Omit<HistoryEntry, 'date' | 'source'
  * A purchase on the day of a count is taken as already included in the count.
  */
 export function stockOf(
-  product: { type: ProductType; shelfLifeDays?: number; trackAmount?: boolean; packSize?: number },
+  product: { type: ProductType; shelfLifeDays?: number; packSize?: number },
   purchases: (Pick<Purchase, 'date' | 'quantity'> & { batch?: string })[],
   events: StockEvent[],
   today: string,
 ): Stock {
-  if (product.trackAmount === false) return presenceOf(purchases, events);
   // With a pack size, stock is counted in items: each pack bought adds that many.
   const perPack = product.packSize && product.packSize > 1 ? product.packSize : 1;
   if (perPack > 1) purchases = purchases.map((p) => ({ ...p, quantity: p.quantity * perPack }));
@@ -293,26 +290,7 @@ export function stockOf(
   // Thawed food is to be used first, whatever else it is.
   if (thawedQuantity > 0 && (status === 'ok' || status === 'low')) status = 'use-soon';
 
-  return { tracked: true, quantity, batches: out, useBy, frozenQuantity, thawedQuantity, history, pastBatches: past, lastConfirmed, status };
-}
-
-/**
- * A product you only have or don't (spices, oil): you have it from the first purchase until you say it is
- * finished or thrown away, and buying it again puts it back. Uses never lower anything.
- */
-function presenceOf(purchases: Pick<Purchase, 'date' | 'quantity'>[], events: StockEvent[]): Stock {
-  const resets = events.filter((e) => e.type === 'count' || e.type === 'toss').sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
-  const reset = resets[resets.length - 1];
-  const lastBought = purchases.reduce<string | undefined>((m, p) => (!m || p.date > m ? p.date : m), undefined);
-  const boughtAfter = purchases.some((p) => !reset || p.date > reset.date);
-  const have = reset ? (reset.type === 'count' && reset.quantity > 0) || boughtAfter : purchases.length > 0;
-  const lastConfirmed = [reset?.type === 'count' && reset.quantity > 0 ? reset.date : undefined, lastBought].filter((d): d is string => !!d).sort().pop();
-  return { tracked: false, frozenQuantity: 0, thawedQuantity: 0, history: {}, pastBatches: [], quantity: have ? 1 : 0, batches: have && lastConfirmed ? [{ date: lastConfirmed, quantity: 1 }] : [], lastConfirmed, status: have ? 'ok' : 'out' };
-}
-
-/** How many times a product was used on or after `since` (for products that are only "have it", where a use changes nothing else). */
-export function usesSince(events: StockEvent[], since?: string): number {
-  return events.filter((e) => e.type === 'use' && !e.undated && !e.untracked && (!since || e.date >= since)).length;
+  return { quantity, batches: out, useBy, frozenQuantity, thawedQuantity, history, pastBatches: past, lastConfirmed, status };
 }
 
 /**
@@ -330,7 +308,7 @@ export function needsBatchCheck(type: ProductType, b: Batch, today: string, stor
 
 /** The batches of a product the weekly check should ask about, in the order they are listed. */
 export function batchesToCheck(type: ProductType, s: Stock, today: string, storage?: Storage): Batch[] {
-  return s.tracked ? s.batches.filter((b) => needsBatchCheck(type, b, today, storage)) : [];
+  return s.batches.filter((b) => needsBatchCheck(type, b, today, storage));
 }
 
 /** Worth asking about in the weekly check: at least one batch needs a look. Products you only have or don't are never asked about. */

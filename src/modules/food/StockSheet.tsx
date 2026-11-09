@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckIcon, HalfIcon, MinusIcon, TrashIcon, UsedIcon } from '../../icons';
+import { CheckIcon, HalfIcon, MinusIcon, TrashIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { BatchList } from './BatchList';
@@ -23,7 +23,7 @@ export interface SheetAct {
 
 /** The actions for one product, in a sheet over the stock grid: a big picture, the amount, and four ways to say what happened. */
 export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry: Entry; onAct(a: SheetAct): void; onPhoto(photo: string | null): Promise<void> | void; onClose(): void }) {
-  const { product: p, stock: s, uses } = entry;
+  const { product: p, stock: s } = entry;
   const [levels, setLevels] = useState(false);
   // While this is on, what you log still changes the stock but is kept out of the statistics.
   const [quiet, setQuiet] = useState(false);
@@ -31,8 +31,7 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
   const box = useRef<HTMLDivElement>(null);
   const day = today();
   const info = tileInfo(entry, day);
-  const have = !s.tracked;
-  const options = have ? [] : levelOptions(s.quantity, p.unit, p.packSize);
+  const options = levelOptions(s.quantity, p.unit, p.packSize);
 
   useEffect(() => {
     box.current?.focus();
@@ -46,7 +45,6 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
   const one = p.packSize && p.packLabel ? `Used one ${p.packLabel}` : 'Used one';
 
   function usedOne() {
-    if (have) return onAct({ event: stockEvent(p.id, 'use', 1, 'app'), text: `${p.name}: used, still have it` });
     let n = 1;
     if (p.unit !== 'pc') {
       const typed = Number((window.prompt(`How much ${p.name} did you use (${p.unit})?`, '0.1') ?? '').trim().replace(',', '.'));
@@ -56,8 +54,8 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
     onAct({ event: stockEvent(p.id, 'use', n, 'app'), text: `${p.name}: used ${formatAmount(n, p.unit)}${unitLabel(p, n)}`, undo: restore(), done: s.quantity - n <= 1e-9 });
   }
 
-  const amount = s.quantity <= 0 ? 'Used up' : have ? 'Have it' : `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
-  const where = `${p.storage[0].toUpperCase()}${p.storage.slice(1)} · bought ${shortDate(p.purchases[0].date)}${have && uses > 0 ? ` · used ${uses}×` : ''}`;
+  const amount = s.quantity <= 0 ? 'Used up' : `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
+  const where = `${p.storage[0].toUpperCase()}${p.storage.slice(1)} · bought ${shortDate(p.purchases[0].date)}`;
 
   return (
     <>
@@ -80,8 +78,8 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
         )}
         <div className="food-actions">
           <button type="button" className="food-action" onClick={usedOne} disabled={s.quantity <= 0}>
-            {have ? <UsedIcon /> : <MinusIcon />}
-            {have ? 'Used it' : p.unit === 'pc' ? one : 'Used some'}
+            <MinusIcon />
+            {p.unit === 'pc' ? one : 'Used some'}
           </button>
           <button type="button" className="food-action" onClick={() => setLevels((v) => !v)} aria-expanded={levels} disabled={options.length === 0}>
             <HalfIcon />
@@ -100,7 +98,7 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
             Threw out
           </button>
         </div>
-        {!have && <StatsSwitch off={quiet} onChange={setQuiet} />}
+        <StatsSwitch off={quiet} onChange={setQuiet} />
         {levels && options.length > 0 && (
           <div className="chips food-levels">
             {options.map((l) => (
@@ -119,7 +117,7 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
             ))}
           </div>
         )}
-        {!have && s.batches.length > 0 && (
+        {s.batches.length > 0 && (
           <>
             <h3 className="small muted food-h2">Batches</h3>
             <BatchList product={p} stock={s} onAct={(a) => onAct({ event: a.event, text: a.text, undo: a.undo })} />
@@ -128,8 +126,6 @@ export function StockSheet({ entry, onAct: sendAct, onPhoto, onClose }: { entry:
         <p className="muted small food-hint">
           {s.quantity <= 0
             ? 'Used up. If you have some again, say how many with I have… on the product page.'
-            : have
-            ? 'Counted as have it or out: Used it logs a use and keeps it in stock; Finished takes it away.'
             : p.packSize
               ? `Counted in single ${p.packLabel ? p.packLabel + 's' : 'items'}; ${p.purchases.length === 1 ? 'one purchase' : `${p.purchases.length} purchases`} of packs of ${p.packSize}.`
               : 'Part left lowers the pack you have open.'}{' '}

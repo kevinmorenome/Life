@@ -85,12 +85,6 @@ export interface FoodProduct {
   /** Days it keeps once bought, for fresh items ("use soon"). */
   shelfLifeDays?: number;
   /**
-   * False for things you can't count or measure in a useful way (spices, salt, oil, sauces): you either have
-   * it or it is out. A use is logged but doesn't lower anything; only "finished" (or a thrown away) does.
-   * Absent means true.
-   */
-  trackAmount?: boolean;
-  /**
    * Items in one pack as bought (a 6-pack of beer = 6), for products sold in pieces. Stock is then counted in
    * items (cans), so you can say "had one", not "used a sixth of a pack". Absent: a piece is what is bought.
    */

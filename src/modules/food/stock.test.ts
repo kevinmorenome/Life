@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, batchesToCheck, daysBetween, formatAmount, levelOptions, needsBatchCheck, needsCheck, originBatch, partLeft, stockOf, usesSince } from './stock';
+import { addDays, batchesToCheck, daysBetween, formatAmount, levelOptions, needsBatchCheck, needsCheck, originBatch, partLeft, stockOf } from './stock';
 import type { StockEvent } from './types';
 import { usedEarlierEvent } from './stockActions';
 
@@ -136,34 +136,6 @@ describe('part left', () => {
   });
 });
 
-describe('products you only have or do not (spices)', () => {
-  const spice = { type: 'staple' as const, trackAmount: false };
-  it('are in stock from the first purchase and uses change nothing', () => {
-    const s = stockOf(spice, [buy('2026-10-01', 1)], [ev('use', 1, '2026-10-02'), ev('use', 1, '2026-10-03'), ev('use', 1, '2026-10-04')], '2026-11-01');
-    expect(s).toMatchObject({ tracked: false, quantity: 1, status: 'ok' });
-    expect(s.batches).toEqual([{ date: '2026-10-01', quantity: 1 }]);
-  });
-  it('are out once finished or thrown away, and back after buying it again', () => {
-    expect(stockOf(spice, [buy('2026-10-01', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01')).toMatchObject({ quantity: 0, status: 'out' });
-    expect(stockOf(spice, [buy('2026-10-01', 1)], [ev('toss', 1, '2026-10-20')], '2026-11-01').quantity).toBe(0);
-    expect(stockOf(spice, [buy('2026-10-01', 1), buy('2026-10-25', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01').quantity).toBe(1);
-  });
-  it('a purchase on the day it was finished does not bring it back, a count above zero does', () => {
-    expect(stockOf(spice, [buy('2026-10-20', 1)], [ev('count', 0, '2026-10-20')], '2026-11-01').quantity).toBe(0);
-    expect(stockOf(spice, [], [ev('count', 0, '2026-10-20'), ev('count', 1, '2026-10-22')], '2026-11-01').quantity).toBe(1);
-  });
-  it('are never "low" and never asked about in the weekly check', () => {
-    const s = stockOf(spice, [buy('2026-01-01', 1)], [], '2026-11-01');
-    expect(s.status).toBe('ok');
-    expect(needsCheck('staple', s, '2026-11-01')).toBe(false);
-  });
-  it('can still count how often they were used', () => {
-    const events = [ev('use', 1, '2026-10-02'), ev('use', 1, '2026-10-10'), ev('count', 1, '2026-10-12'), ev('use', 1, '2026-10-15')];
-    expect(usesSince(events)).toBe(3);
-    expect(usesSince(events, '2026-10-10')).toBe(2);
-  });
-});
-
 describe('packs (a 6-pack of beer is bought as 1 and drunk as 6)', () => {
   const beer = { type: 'drink' as const, packSize: 6 };
   it('counts in items: each pack bought adds its size', () => {
@@ -185,9 +157,6 @@ describe('packs (a 6-pack of beer is bought as 1 and drunk as 6)', () => {
     expect(levelOptions(12, 'pc', 6)).toEqual([]);
     expect(levelOptions(1.5, 'pc', 1).length).toBeGreaterThan(0);
     expect(levelOptions(1.5, 'pc', undefined).length).toBeGreaterThan(0);
-  });
-  it('is ignored for products you only have or do not', () => {
-    expect(stockOf({ type: 'staple', trackAmount: false, packSize: 6 }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(1);
   });
   it('a pack size of 1 or nothing changes nothing', () => {
     expect(stockOf({ type: 'staple', packSize: 1 }, [buy('2026-10-01', 2)], [], '2026-10-02').quantity).toBe(2);
@@ -537,7 +506,6 @@ describe('batch history', () => {
     const s = stockOf(chicken, bought, [hev('use', 'a:0', 0.5, '2026-10-26', 'u1', { untracked: true })], '2026-10-27');
     expect(s.history['a:0'][1]).toMatchObject({ kind: 'used', quantity: 0.5, untracked: true });
     expect(s.quantity).toBe(1.5);
-    expect(usesSince([hev('use', undefined, 1, '2026-10-26', 'a'), hev('use', undefined, 1, '2026-10-26', 'b', { untracked: true })])).toBe(1);
   });
 });
 
@@ -547,6 +515,5 @@ describe('used earlier (undated)', () => {
     expect(e.undated).toBe(true);
     expect(e.type).toBe('count');
     expect(e.quantity).toBe(0);
-    expect(usesSince([{ ...e, type: 'use', quantity: 1 }])).toBe(0);
   });
 });

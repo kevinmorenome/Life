@@ -616,23 +616,19 @@ describe('add_grocery_receipt', () => {
         { name: 'Chicken fillet', quantity: 0.5, unit: 'kg', unitPrice: 6, productType: 'fresh', storage: 'fridge', shelfLifeDays: 2 },
         { name: 'Beer', kind: 'alcohol', quantity: 1, unitPrice: 2, productType: 'bogus', storage: 'attic', shelfLifeDays: -3 },
         { name: 'Bag', kind: 'bag', quantity: 1, unitPrice: 0.2 },
-        { name: 'Cumin', quantity: 1, unitPrice: 1.5, trackAmount: false },
         { name: 'Cider 4-pack', kind: 'alcohol', quantity: 1, unitPrice: 6, packSize: 4, packLabel: 'bottle' },
         { name: 'Odd pack', quantity: 1, unitPrice: 6, packSize: 1, packLabel: 'x' },
         { name: 'Weighed pack', quantity: 0.5, unit: 'kg', unitPrice: 6, packSize: 4 },
-        { name: 'Rice', quantity: 1, unitPrice: 1.5, trackAmount: 'no' },
       ],
     });
-    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cumin', 'Cider 4-pack', 'Odd pack', 'Weighed pack', 'Rice']);
+    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cider 4-pack', 'Odd pack', 'Weighed pack']);
     expect(data.foodproducts.get('fp-cider-4-pack')).toMatchObject({ packSize: 4, packLabel: 'bottle' });
     expect(data.foodproducts.get('fp-odd-pack')!.packSize).toBeUndefined();
     expect(data.foodproducts.get('fp-weighed-pack')!.packSize).toBeUndefined();
-    expect(data.foodproducts.get('fp-cumin')).toMatchObject({ trackAmount: false });
-    expect(data.foodproducts.get('fp-rice')!.trackAmount).toBeUndefined();
     expect(data.foodproducts.get('fp-chicken-fillet')).toMatchObject({ name: 'Chicken fillet', type: 'fresh', storage: 'fridge', shelfLifeDays: 2 });
     expect(data.foodproducts.get('fp-beer')).toMatchObject({ type: 'drink', storage: 'pantry' });
     expect(data.foodproducts.get('fp-beer')!.shelfLifeDays).toBeUndefined();
-    expect(data.foodproducts.size).toBe(7);
+    expect(data.foodproducts.size).toBe(5);
   });
 
   it('never edits an existing product and reuses the name given to the same printed text', async () => {
@@ -791,21 +787,6 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
   });
 
-  it('spices and the like are only have-it-or-out: a use is logged but never lowers them', async () => {
-    const { ctx, data } = seed();
-    data.foodreceipts.set('food-3', receipt('food-3', '2026-10-22', [L('Smoked paprika', 1)]));
-    data.foodproducts.set('fp-smoked-paprika', { id: 'fp-smoked-paprika', name: 'Smoked paprika', type: 'staple', storage: 'pantry', trackAmount: false });
-    expect((await call(ctx, 'list_stock', { query: 'paprika' })).json()).toMatchObject([{ name: 'Smoked paprika', tracking: 'have it or out (no amount)', have: true, status: 'ok' }]);
-    for (let i = 0; i < 3; i++) {
-      expect((await call(ctx, 'use_stock', { product: 'paprika', quantity: 5 })).json()).toMatchObject({ recorded: 'use', have: true });
-    }
-    expect([...data.foodstock.values()].map((e) => [e.type, e.quantity])).toEqual([['use', 1], ['use', 1], ['use', 1]]);
-    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
-    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
-    expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
-    expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
-  });
-
   describe('product pictures', () => {
     const photo = 'data:image/jpeg;base64,AAAA';
     const candidates = [{ code: '3850131003398', name: 'Staropramen', brand: 'Staropramen', quantity: '0,5 l', country: 'croatia', imageUrl: 'https://images.openfoodfacts.org/images/products/385/013/100/3398/front_hr.3.400.jpg' }];
@@ -899,11 +880,10 @@ describe('food stock', () => {
       ]);
     });
 
-    it('can clear a pack size, and turn counting off for spices', async () => {
+    it('can clear a pack size', async () => {
       const { ctx, data } = beer();
-      await call(ctx, 'set_product_info', { product: 'hummus', trackAmount: false });
-      expect(data.foodproducts.get('fp-hummus')).toMatchObject({ trackAmount: false });
-      await call(ctx, 'set_product_info', { product: 'hummus', packSize: null });
+      data.foodproducts.set('fp-staropramen-beer-6-pack', { id: 'fp-staropramen-beer-6-pack', name: 'Staropramen beer 6-pack', type: 'drink', storage: 'fridge', packSize: 6, packLabel: 'can' });
+      await call(ctx, 'set_product_info', { product: 'staropramen', packSize: null });
       expect([...data.inbox.values()][0]).toMatchObject({ changes: { packSize: null } });
     });
 
