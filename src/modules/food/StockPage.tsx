@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { FoodTabs } from './FoodTabs';
@@ -8,15 +8,9 @@ import { batchesToCheck } from './stock';
 import { stockEntries, storageOf, storagesInUse } from './stockEntries';
 import { StockSheet, type SheetAct } from './StockSheet';
 import { StockTile } from './StockTile';
+import { StockToast, type Toast } from './StockToast';
 import { tileInfo } from './stockTiles';
-import { STORAGES, type FoodProduct, type FoodReceipt, type StockEvent, type Storage } from './types';
-
-const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' } as const;
-
-interface Toast {
-  text: string;
-  undo?: StockEvent | StockEvent[];
-}
+import { STORAGES, STORAGE_LABELS, type FoodProduct, type FoodReceipt, type StockEvent, type Storage } from './types';
 
 /**
  * Everything you buy, as a grid of pictures: what you have first (the things to use soon at the top of each section),
@@ -43,12 +37,7 @@ export function StockPage({
   const [place, setPlace] = useState<Storage | 'all'>('all');
   const close = useCallback(() => setSelId(null), []);
 
-  // The toast fades on its own; an undo that is not taken stays a plain count history.
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 7000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const clearToast = useCallback(() => setToast(null), []);
 
   const have = entries.filter((e) => e.stock.quantity > 0);
   const out = entries.filter((e) => e.stock.quantity === 0);
@@ -62,7 +51,11 @@ export function StockPage({
   const bySoonest = (a: (typeof have)[number], b: (typeof have)[number]) => tileInfo(a, day).sortKey - tileInfo(b, day).sortKey || a.product.name.localeCompare(b.product.name);
 
   async function act(a: SheetAct) {
-    await onEvent(a.event);
+    try {
+      for (const e of [a.event].flat()) await onEvent(e);
+    } catch {
+      return setToast({ text: 'That couldn’t be saved. Try again.' });
+    }
     setToast({ text: a.text, undo: a.undo });
     if (a.done) setSelId(null);
   }
@@ -142,27 +135,19 @@ export function StockPage({
         <StockSheet
           key={selected.product.id}
           entry={selected}
+          events={events.filter((e) => e.productId === selected.product.id)}
           onAct={act}
           onPhoto={(photo) => onProduct(productRecord(selected.product, products.find((p) => p.id === selected.product.id), { photo: photo ?? undefined, hasPhoto: !!photo }, new Date().toISOString()))}
           onClose={close}
         />
       )}
-      {toast && (
-        <div className="food-toast" role="status">
-          <span>{toast.text}</span>
-          {toast.undo && (
-            <button
-              type="button"
-              onClick={async () => {
-                for (const e of [toast.undo].flat()) if (e) await onEvent(e);
-                setToast(null);
-              }}
-            >
-              Undo
-            </button>
-          )}
-        </div>
-      )}
+      <StockToast
+        toast={toast}
+        onDone={clearToast}
+        onUndo={async (undo) => {
+          for (const e of undo) await onEvent(e);
+        }}
+      />
     </>
   );
 }

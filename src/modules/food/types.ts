@@ -71,6 +71,8 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
 export const STORAGES = ['fridge', 'pantry', 'freezer', 'home'] as const;
 export type Storage = (typeof STORAGES)[number];
 
+export const STORAGE_LABELS: Record<Storage, string> = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' };
+
 /**
  * What you or Claude know about a product beyond its receipts. The id comes from the cleaned name
  * (`productId()`), so the same product on different receipts is the same record. Created on demand;

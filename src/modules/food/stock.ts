@@ -82,6 +82,10 @@ export interface HistoryEntry {
   eventId?: string;
   /** The event was kept out of the statistics (it still changed the stock). */
   untracked?: boolean;
+  /** When the event was recorded (ISO timestamp), to order what happened on the same day and to show the time. */
+  at?: string;
+  /** The event's day is only when it was logged: it happened at some unknown time before (see `StockEvent.undated`). */
+  undated?: boolean;
 }
 
 export type StockStatus = 'ok' | 'use-soon' | 'check' | 'low' | 'out';
@@ -146,8 +150,8 @@ function consume(batches: Work[], amount: number, key: (b: Work) => string, took
 }
 
 /** Adds a line to a batch's history, taking the date, source and statistics flag from the event. */
-function log(b: Work, e: StockEvent, entry: Omit<HistoryEntry, 'date' | 'source' | 'eventId' | 'untracked'>): void {
-  b.history.push({ date: e.date, ...entry, source: e.source, eventId: e.id, ...(e.untracked ? { untracked: true } : {}) });
+function log(b: Work, e: StockEvent, entry: Omit<HistoryEntry, 'date' | 'source' | 'eventId' | 'untracked' | 'at' | 'undated'>): void {
+  b.history.push({ date: e.date, ...entry, source: e.source, eventId: e.id, at: e.createdAt, ...(e.untracked ? { untracked: true } : {}), ...(e.undated ? { undated: true } : {}) });
 }
 
 /**

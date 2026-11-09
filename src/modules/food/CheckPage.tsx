@@ -1,6 +1,6 @@
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { batchOrigin } from './BatchList';
+import { batchOrigin } from './batchView';
 import { batchesToCheck, daysBetween, formatAmount, type Batch } from './stock';
 import { stockEntries } from './stockEntries';
 import { dayText } from './stockTiles';

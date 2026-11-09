@@ -1,28 +1,24 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { money, shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { BatchList, type BatchAct } from './BatchList';
-import { PictureControl } from './PictureControl';
 import { comparePrices, offerShare, priceUnit } from './prices';
 import { productRecord } from './productEdits';
-import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, unitLabel, type ProductSummary } from './products';
-import { formatAmount, formatQty, levelOptions, stockOf, usesSince } from './stock';
-import { keepOutOfStats, partLeftEvent, stockEvent } from './stockActions';
-import { StatsSwitch } from './StatsSwitch';
+import { ProductStock, type StockAct } from './ProductStock';
+import { averageUnitPrice, defaultStorage, perUnit, pluralize, pricePerItem, type ProductSummary } from './products';
+import { stockOf, usesSince } from './stock';
+import { StockToast, type Toast } from './StockToast';
+import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, STORAGE_LABELS, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
 
-import { PRODUCT_TYPES, PRODUCT_TYPE_LABELS, STORAGES, type FoodProduct, type ProductType, type StockEvent, type Storage } from './types';
-
-const STORAGE_LABELS = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' } as const;
-
-/** One product: how it is tracked, and every time you bought it. */
-const EVENT_TEXT = { use: 'Used', toss: 'Threw out', count: 'Counted', expiry: 'Use by', freeze: 'Froze', thaw: 'Took out' } as const;
-
+/**
+ * One product: an overview added up from its batches, every purchase as a batch of its own, everything that
+ * happened (`ProductStock`), then how it is tracked, what it costs where, and the receipts it was on.
+ */
 export function ProductView({
   product,
   record,
   events,
   onSave,
-  onEvent: sendEvent,
+  onEvent,
 }: {
   product: ProductSummary;
   record?: FoodProduct;
@@ -32,14 +28,16 @@ export function ProductView({
 }) {
   const stock = stockOf(product, product.purchases, events, today());
   const uses = stock.tracked ? 0 : usesSince(events, product.purchases[0]?.date);
-  const ask = (question: string, fallback: string): number | undefined => {
-    const n = Number((window.prompt(question, fallback) ?? '').trim().replace(',', '.'));
-    return Number.isFinite(n) && n >= 0 && n < 10_000 ? n : undefined;
-  };
-  const [note, setNote] = useState<BatchAct | null>(null);
-  // While this is on, what you log still changes the stock but is kept out of the statistics.
-  const [quiet, setQuiet] = useState(false);
-  const onEvent = (e: StockEvent) => sendEvent(quiet ? keepOutOfStats(e) : e);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const clearToast = useCallback(() => setToast(null), []);
+  async function act(a: StockAct) {
+    try {
+      for (const e of [a.event].flat()) await onEvent(e);
+    } catch {
+      return setToast({ text: 'That couldn’t be saved. Try again.' });
+    }
+    setToast({ text: a.text, undo: a.undo });
+  }
   const comparison = comparePrices(product, today());
   const offers = offerShare(product);
   const [days, setDays] = useState(product.shelfLifeDays ? String(product.shelfLifeDays) : '');
@@ -68,110 +66,9 @@ export function ProductView({
 
   return (
     <>
-      <PictureControl product={product} className="food-art-hero" size={72} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
-      <h1 className="page-title">{product.name}</h1>
-      <p className="muted small">
-        Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
-        {product.packSize ? ' per pack' : perUnit(product.unit)}
-        {product.packSize && ` · ${money(pricePerItem(averageUnitPrice(product), product.packSize))} per ${product.packLabel || 'item'}`}
-      </p>
+      <ProductStock product={product} stock={stock} events={events} uses={uses} onAct={act} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
 
-      <section className="food-gap">
-        <p className="food-total">
-          {stock.tracked ? formatAmount(stock.quantity, product.unit) : stock.quantity > 0 ? 'Have it' : 'Out'}
-          {stock.tracked && <span className="muted small">{unitLabel(product, stock.quantity) || ' in stock'}</span>}
-        </p>
-        <p className="muted small">{[stock.status === 'ok' ? '' : stock.status.replace('-', ' '), stock.useBy ? `use by ${shortDate(stock.useBy)}` : '', !stock.tracked && uses > 0 ? `used ${uses}× since you bought it` : ''].filter(Boolean).join(' · ')}</p>
-        <div className="chips food-gap">
-          {stock.tracked ? (
-            <>
-              <button
-                type="button"
-                className="chip"
-                onClick={() => {
-                  const n = ask(`How much ${product.name} did you use?`, '1');
-                  if (n) onEvent(stockEvent(product.id, 'use', n, 'app'));
-                }}
-              >
-                Used some
-              </button>
-              {levelOptions(stock.quantity, product.unit, product.packSize).map((l) => (
-                <button
-                  key={l.fraction}
-                  type="button"
-                  className="chip"
-                  onClick={() => {
-                    const e = partLeftEvent(product.id, product.unit, stock, l.fraction, 'app');
-                    if (e) onEvent(e);
-                  }}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </>
-          ) : (
-            <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'use', 1, 'app'))}>
-              Used it
-            </button>
-          )}
-          <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 0, 'app'))}>
-            Finished
-          </button>
-          <button type="button" className="chip" disabled={stock.quantity <= 0} onClick={() => onEvent(stockEvent(product.id, 'toss', stock.quantity, 'app'))}>
-            Threw out
-          </button>
-          {stock.tracked ? (
-            <button
-              type="button"
-              className="chip"
-              onClick={() => {
-                const n = ask(`How many ${product.name} do you have now?`, formatQty(stock.quantity));
-                if (n !== undefined) onEvent(stockEvent(product.id, 'count', n, 'app'));
-              }}
-            >
-              I have…
-            </button>
-          ) : (
-            <button type="button" className="chip" onClick={() => onEvent(stockEvent(product.id, 'count', 1, 'app'))}>
-              Have it
-            </button>
-          )}
-        </div>
-        <StatsSwitch off={quiet} onChange={setQuiet} />
-      </section>
-
-      {stock.tracked && (stock.batches.length > 0 || stock.pastBatches.length > 0) && (
-        <>
-          <h2 className="small muted food-h2">Batches</h2>
-          <BatchList
-            product={product}
-            stock={stock}
-            showPast
-            onAct={(a) => {
-              onEvent(a.event);
-              setNote(a);
-            }}
-          />
-          {note && (
-            <p className="muted small food-batch-note" role="status">
-              {note.text}
-              {note.undo && (
-                <button
-                  type="button"
-                  className="chip"
-                  onClick={() => {
-                    for (const e of [note.undo!].flat()) onEvent(e);
-                    setNote(null);
-                  }}
-                >
-                  Undo
-                </button>
-              )}
-            </p>
-          )}
-        </>
-      )}
-
+      <h2 className="small muted food-h2">How it is tracked</h2>
       <div className="form">
       <div className="field">
         <span>Type</span>
@@ -253,24 +150,12 @@ export function ProductView({
         </>
       )}
 
-      {events.length > 0 && (
-        <>
-          <h2 className="small muted food-h2">Activity</h2>
-          <ul className="game-list">
-            {[...events]
-              .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
-              .slice(0, 8)
-              .map((e) => (
-                <li key={e.id} className="game-line">
-                  {EVENT_TEXT[e.type]} {e.type === 'expiry' ? shortDate(e.useBy ?? e.date) : e.type === 'count' && e.quantity === 0 ? (e.undated ? '→ used earlier' : '→ finished') : !product.trackAmount && e.type !== 'count' ? '' : `${formatAmount(e.quantity, product.unit)}${unitLabel(product, e.quantity)}`}
-                  <span className="muted small">{[e.undated ? 'date unknown' : shortDate(e.date), e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean).join(' · ')}</span>
-                </li>
-              ))}
-          </ul>
-        </>
-      )}
-
       <h2 className="small muted food-h2">Purchases</h2>
+      <p className="muted small">
+        Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
+        {product.packSize ? ' per pack' : perUnit(product.unit)}
+        {product.packSize && ` · ${money(pricePerItem(averageUnitPrice(product), product.packSize))} per ${product.packLabel || 'item'}`}
+      </p>
       <ul className="game-list">
         {product.purchases.map((x, i) => (
           <li key={i}>
@@ -284,6 +169,13 @@ export function ProductView({
           </li>
         ))}
       </ul>
+      <StockToast
+        toast={toast}
+        onDone={clearToast}
+        onUndo={async (undo) => {
+          for (const e of undo) await onEvent(e);
+        }}
+      />
     </>
   );
 }
