@@ -4,7 +4,7 @@ import { productRecord } from './productEdits';
 import { ProductInfo } from './ProductInfo';
 import { ProductStock, type StockAct } from './ProductStock';
 import type { ProductSummary } from './products';
-import { stockOf, usesSince } from './stock';
+import { stockOf } from './stock';
 import { StockToast, type Toast } from './StockToast';
 import type { FoodProduct, StockEvent } from './types';
 
@@ -26,7 +26,6 @@ export function ProductView({
   onEvent(e: StockEvent): Promise<void>;
 }) {
   const stock = stockOf(product, product.purchases, events, today());
-  const uses = stock.tracked ? 0 : usesSince(events, product.purchases[0]?.date);
   const [toast, setToast] = useState<Toast | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
   async function act(a: StockAct) {
@@ -42,7 +41,7 @@ export function ProductView({
 
   return (
     <>
-      <ProductStock product={product} stock={stock} events={events} uses={uses} onAct={act} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
+      <ProductStock product={product} stock={stock} onAct={act} onPhoto={(photo) => save({ photo: photo ?? undefined, hasPhoto: !!photo })} />
       <ProductInfo product={product} record={record} onSave={onSave} />
       <StockToast
         toast={toast}

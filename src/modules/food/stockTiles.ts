@@ -11,7 +11,7 @@ export const freshnessLevel = (days: number): Level => (days <= 1 ? 'urgent' : d
 export const dayText = (days: number): string => (days < 0 ? 'Past date' : days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`);
 
 export interface TileInfo {
-  /** Short amount on the tile: "12", "0.91 kg", "½", "Have". */
+  /** Short amount on the tile: "12", "0.91 kg", "½". */
   badge: string;
   /** What a screen reader says: "Staropramen beer 6-pack, 12 cans". */
   label: string;
@@ -28,8 +28,8 @@ export function tileInfo(entry: Entry, today: string): TileInfo {
   const { product: p, stock: s } = entry;
   // Everything you ever bought is on the grid; what is gone is greyed out, after what you have.
   if (s.quantity <= 0) return { badge: 'Out', label: `${p.name}, used up`, sortKey: 2000 };
-  const badge = !s.tracked ? 'Have' : `${formatAmount(s.quantity, p.unit)}${p.unit === 'pc' ? '' : ` ${p.unit}`}`;
-  const label = `${p.name}, ${s.tracked ? `${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}` : 'have it'}`;
+  const badge = `${formatAmount(s.quantity, p.unit)}${p.unit === 'pc' ? '' : ` ${p.unit}`}`;
+  const label = `${p.name}, ${formatAmount(s.quantity, p.unit)}${unitLabel(p, s.quantity)}`;
   // Thawed food is to be used first: it is marked, and goes before everything else on the grid.
   const thawedBy = s.batches.filter((b) => b.thawed && b.useBy).map((b) => b.useBy!).sort()[0];
   if (s.thawedQuantity > 0 && thawedBy) {

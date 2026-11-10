@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -94,6 +94,7 @@ describe('protocol', () => {
       'add_wolt_orders',
       'add_takeout_orders',
       'add_rides',
+      'log_work',
       'list_stock',
       'shopping_list',
       'product_prices',
@@ -242,6 +243,34 @@ describe('show_photos', () => {
   it('works on read-only deployments', async () => {
     const { ctx } = setup({ readOnly: true }, photoSeed);
     expect((await call(ctx, 'show_photos', { itemIds: ['blazer'] })).isError).toBe(false);
+  });
+});
+
+describe('log_work', () => {
+  it('stores arrival, departure and the place as fresh events', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'log_work', { date: '2026-10-25', place: 'trip', arrive: '8:45', leave: '17:30' });
+    expect(r.isError).toBeFalsy();
+    expect([...data.workevents.values()].map((e) => [e.type, e.place, e.time])).toEqual([
+      ['arrive', 'trip', '08:45'],
+      ['leave', 'trip', '17:30'],
+      ['trip', undefined, '00:00'],
+    ]);
+    // Same call again lands on the same records.
+    await call(ctx, 'log_work', { date: '2026-10-25', place: 'trip', arrive: '08:45', leave: '17:30' });
+    expect(data.workevents.size).toBe(3);
+  });
+
+  it('logs just a place, and rejects bad input and read-only', async () => {
+    const { ctx, data } = setup();
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'home' })).isError).toBeFalsy();
+    expect([...data.workevents.values()].map((e) => e.type)).toEqual(['home']);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'moon' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'office', arrive: '25:00' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'office', arrive: '17:00', leave: '09:00' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-12-25', place: 'office' })).isError).toBe(true);
+    const ro = setup({ readOnly: true });
+    expect((await call(ro.ctx, 'log_work', { date: '2026-10-25', place: 'office' })).isError).toBe(true);
   });
 });
 
@@ -616,23 +645,19 @@ describe('add_grocery_receipt', () => {
         { name: 'Chicken fillet', quantity: 0.5, unit: 'kg', unitPrice: 6, productType: 'fresh', storage: 'fridge', shelfLifeDays: 2 },
         { name: 'Beer', kind: 'alcohol', quantity: 1, unitPrice: 2, productType: 'bogus', storage: 'attic', shelfLifeDays: -3 },
         { name: 'Bag', kind: 'bag', quantity: 1, unitPrice: 0.2 },
-        { name: 'Cumin', quantity: 1, unitPrice: 1.5, trackAmount: false },
         { name: 'Cider 4-pack', kind: 'alcohol', quantity: 1, unitPrice: 6, packSize: 4, packLabel: 'bottle' },
         { name: 'Odd pack', quantity: 1, unitPrice: 6, packSize: 1, packLabel: 'x' },
         { name: 'Weighed pack', quantity: 0.5, unit: 'kg', unitPrice: 6, packSize: 4 },
-        { name: 'Rice', quantity: 1, unitPrice: 1.5, trackAmount: 'no' },
       ],
     });
-    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cumin', 'Cider 4-pack', 'Odd pack', 'Weighed pack', 'Rice']);
+    expect(r.json().newProducts).toEqual(['Chicken fillet', 'Beer', 'Cider 4-pack', 'Odd pack', 'Weighed pack']);
     expect(data.foodproducts.get('fp-cider-4-pack')).toMatchObject({ packSize: 4, packLabel: 'bottle' });
     expect(data.foodproducts.get('fp-odd-pack')!.packSize).toBeUndefined();
     expect(data.foodproducts.get('fp-weighed-pack')!.packSize).toBeUndefined();
-    expect(data.foodproducts.get('fp-cumin')).toMatchObject({ trackAmount: false });
-    expect(data.foodproducts.get('fp-rice')!.trackAmount).toBeUndefined();
     expect(data.foodproducts.get('fp-chicken-fillet')).toMatchObject({ name: 'Chicken fillet', type: 'fresh', storage: 'fridge', shelfLifeDays: 2 });
     expect(data.foodproducts.get('fp-beer')).toMatchObject({ type: 'drink', storage: 'pantry' });
     expect(data.foodproducts.get('fp-beer')!.shelfLifeDays).toBeUndefined();
-    expect(data.foodproducts.size).toBe(7);
+    expect(data.foodproducts.size).toBe(5);
   });
 
   it('never edits an existing product and reuses the name given to the same printed text', async () => {
@@ -791,21 +816,6 @@ describe('food stock', () => {
     expect((await call(ctx, 'use_stock', { product: 'hummus', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
   });
 
-  it('spices and the like are only have-it-or-out: a use is logged but never lowers them', async () => {
-    const { ctx, data } = seed();
-    data.foodreceipts.set('food-3', receipt('food-3', '2026-10-22', [L('Smoked paprika', 1)]));
-    data.foodproducts.set('fp-smoked-paprika', { id: 'fp-smoked-paprika', name: 'Smoked paprika', type: 'staple', storage: 'pantry', trackAmount: false });
-    expect((await call(ctx, 'list_stock', { query: 'paprika' })).json()).toMatchObject([{ name: 'Smoked paprika', tracking: 'have it or out (no amount)', have: true, status: 'ok' }]);
-    for (let i = 0; i < 3; i++) {
-      expect((await call(ctx, 'use_stock', { product: 'paprika', quantity: 5 })).json()).toMatchObject({ recorded: 'use', have: true });
-    }
-    expect([...data.foodstock.values()].map((e) => [e.type, e.quantity])).toEqual([['use', 1], ['use', 1], ['use', 1]]);
-    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'some_left', fractionLeft: 0.5 })).isError).toBe(true);
-    expect((await call(ctx, 'use_stock', { product: 'paprika', action: 'finish' })).json()).toMatchObject({ have: false });
-    expect((await call(ctx, 'list_stock', { query: 'paprika' })).text).toMatch(/Nothing matches/);
-    expect((await call(ctx, 'count_stock', { product: 'paprika', quantity: 1 })).json()).toMatchObject({ counted: 'Smoked paprika', have: true });
-  });
-
   describe('product pictures', () => {
     const photo = 'data:image/jpeg;base64,AAAA';
     const candidates = [{ code: '3850131003398', name: 'Staropramen', brand: 'Staropramen', quantity: '0,5 l', country: 'croatia', imageUrl: 'https://images.openfoodfacts.org/images/products/385/013/100/3398/front_hr.3.400.jpg' }];
@@ -899,11 +909,10 @@ describe('food stock', () => {
       ]);
     });
 
-    it('can clear a pack size, and turn counting off for spices', async () => {
+    it('can clear a pack size', async () => {
       const { ctx, data } = beer();
-      await call(ctx, 'set_product_info', { product: 'hummus', trackAmount: false });
-      expect(data.foodproducts.get('fp-hummus')).toMatchObject({ trackAmount: false });
-      await call(ctx, 'set_product_info', { product: 'hummus', packSize: null });
+      data.foodproducts.set('fp-staropramen-beer-6-pack', { id: 'fp-staropramen-beer-6-pack', name: 'Staropramen beer 6-pack', type: 'drink', storage: 'fridge', packSize: 6, packLabel: 'can' });
+      await call(ctx, 'set_product_info', { product: 'staropramen', packSize: null });
       expect([...data.inbox.values()][0]).toMatchObject({ changes: { packSize: null } });
     });
 
