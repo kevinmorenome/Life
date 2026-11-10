@@ -3,7 +3,7 @@ import type { DayWear } from '../clothes/calendar';
 import type { Checkin } from './types';
 
 /** One place: Swarm's venue id when there is one, else the name in its city. */
-export function venueKey(c: Checkin): string {
+export function venueKey(c: Pick<Checkin, 'venueId' | 'venue' | 'city'>): string {
   return c.venueId ?? `${c.venue.toLowerCase()}|${(c.city ?? '').toLowerCase()}`;
 }
 
