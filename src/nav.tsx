@@ -25,7 +25,7 @@ export function activeTab(route: string[]): AppTab['id'] {
   if (!a || a === 'calendar' || (a === 'clothes' && b === 'today')) return 'calendar';
   if (a === 'clothes') return 'closet';
   if (a === 'games') return 'games';
-  if (a === 'food') return 'food';
+  if (a === 'food' || a === 'recipes') return 'food';
   if (a === 'trips') return 'trips';
   if (a === 'stats') return 'stats';
   return 'more';

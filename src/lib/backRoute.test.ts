@@ -44,6 +44,13 @@ describe('parentRoute', () => {
     expect(p('/trips/t1/edit')).toBe('/trips/t1');
     expect(p('/trips/t1/day/2026-10-29')).toBe('/trips/t1');
     expect(p('/settings')).toBe('/more');
+  });
+
+  it('goes back through the recipes', () => {
+    expect(p('/recipes')).toBeUndefined();
+    expect(p('/recipes/new')).toBe('/recipes');
+    expect(p('/recipes/r1')).toBe('/recipes');
+    expect(p('/recipes/r1/edit')).toBe('/recipes/r1');
     expect(p('/settings/closet-review')).toBe('/settings');
     expect(p('/settings/closet-review/season')).toBe('/settings/closet-review');
   });
