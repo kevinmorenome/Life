@@ -20,10 +20,12 @@ import {
 } from './placeStats';
 import type { Checkin } from './types';
 import { CountriesStatsRoute } from '../countries/CountriesStatsRoute';
+import { YearReviewTab } from './YearReviewTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'trends', label: 'Trends' },
+  { id: 'year', label: 'Year' },
   { id: 'countries', label: 'Countries' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -79,6 +81,8 @@ export function PlacesStatsRoute({ tab: routeTab }: { tab?: string }) {
           <Overview checkins={checkins.items} wears={wears} now={now} />
         ) : tab === 'trends' ? (
           <Trends checkins={checkins.items} now={now} />
+        ) : tab === 'year' ? (
+          <YearReviewTab checkins={checkins.items} now={now} />
         ) : (
           <CountriesStatsRoute />
         )}

@@ -14,6 +14,10 @@ import { comparePrices, offerShare, priceUnit } from '../src/modules/food/prices
 import { REASON_LABELS, shoppingList } from '../src/modules/food/shopping';
 import { formatQty, originBatch, partLeft, stockOf, type Batch, type Stock } from '../src/modules/food/stock';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
+import { buildDigest, type WornNames } from '../src/modules/checkins/digest';
+import { filterCheckins, newestFirst, venueHistory, type PlaceCheckin } from '../src/modules/checkins/placesQuery';
+import { buildDays } from '../src/modules/work/work';
+import type { WorkDay, WorkEvent } from '../src/modules/work/types';
 import { parseGroceryReceipt } from './groceries';
 import { parseRides } from './rides';
 import { PLACES, parseWorkLog } from './workLog';
@@ -341,6 +345,53 @@ export const TOOLS = [
     },
   },
   {
+    name: 'list_checkins',
+    description:
+      'Where the user was: their Swarm check-ins (and places from itinerary plans), newest first. Use it for "where was I last Tuesday?", "where did I go in March?", "what did I do on 2026-10-04?" or "show my coffee places in Zagreb". Give `date` for one day, or `from` / `to` for a range, and/or words (query) that must appear in the venue name, category, city or note. Turn "last Tuesday" into a date yourself. Returns each visit with its time, venue, category and city, and with includeWorn what was logged as worn on those days. Read only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD, one local day (same as from = to).' },
+        from: { type: 'string', description: 'YYYY-MM-DD, first day.' },
+        to: { type: 'string', description: 'YYYY-MM-DD, last day.' },
+        query: { type: 'string', description: 'Words that must all match the venue, category, city or note, e.g. "coffee".' },
+        category: { type: 'string', description: 'Part of the venue category, e.g. "Restaurant".' },
+        city: { type: 'string' },
+        country: { type: 'string' },
+        includeWorn: { type: 'boolean', description: 'Add what was worn on each of those days.' },
+        limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Default 30.' },
+      },
+    },
+  },
+  {
+    name: 'venue_history',
+    description:
+      'The history of a place the user has checked in to: how many times, the first and last visit, and the most recent days they went. Use it for "when did I last go to X?", "how often do I go to X?" or "when was I first at X?". Finds places by words in the venue name, category or city and groups the check-ins by place. With includeWorn it also shows what was worn on the most recent of those days ("what did I wear when I went to X"). Read only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Words that must all match, e.g. "cafe nero".' },
+        city: { type: 'string' },
+        country: { type: 'string' },
+        includeWorn: { type: 'boolean', description: 'Add what was worn on the latest visit days.' },
+        limit: { type: 'integer', minimum: 1, maximum: 20, description: 'How many places, most recently visited first. Default 5.' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'weekly_digest',
+    description:
+      'A summary of a stretch of days (a week by default): places visited and new ones, how it compares with the period before, outfits and pieces worn and which days were not logged, office / home / business-trip days with the average time at the office, and, when there is anything, takeout and rides spent (euro), grocery shopping, what was watched (days are UTC), music listened to and games played. Use it when the user asks "how was my week?" or for a weekly digest. It covers the 7 days ending `end` (default: yesterday, UTC), so for the last full week pass the Sunday as `end`. Write the digest from these numbers; do not invent anything that is not here. To get it every week, the user can set up a scheduled task that runs this tool. Read only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        end: { type: 'string', description: 'YYYY-MM-DD, last day of the period. Default yesterday.' },
+        days: { type: 'integer', minimum: 1, maximum: 31, description: 'Length of the period. Default 7.' },
+      },
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -547,6 +598,12 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addRides(args, ctx);
     case 'log_work':
       return ctx.readOnly ? fail(READ_ONLY) : logWork(args, ctx);
+    case 'list_checkins':
+      return listCheckins(args, ctx);
+    case 'venue_history':
+      return venueHistoryTool(args, ctx);
+    case 'weekly_digest':
+      return weeklyDigest(args, ctx);
     case 'shopping_list':
       return shoppingListTool(ctx);
     case 'product_prices':
@@ -635,6 +692,29 @@ function itemSummary(r: Row) {
   };
 }
 
+/** Date → names of the outfits worn and of the pieces worn outside them, from `since` on. */
+function wornByDay(items: Row[], outfits: Row[], since = ''): Map<string, WornNames> {
+  const log = new Map<string, WornNames>();
+  const day = (d: string) => log.get(d) ?? (log.set(d, { outfits: [], items: [] }), log.get(d)!);
+  const inOutfits = new Map<string, Set<string>>();
+  for (const o of outfits) {
+    for (const d of new Set(wearsOf(o))) {
+      if (d < since) continue;
+      day(d).outfits.push(String(o.name ?? '(unnamed outfit)'));
+      const ids = inOutfits.get(d) ?? new Set<string>();
+      for (const id of strings(o.itemIds)) ids.add(id);
+      inOutfits.set(d, ids);
+    }
+  }
+  for (const i of items) {
+    for (const d of new Set(wearsOf(i))) {
+      if (d < since) continue;
+      if (!inOutfits.get(d)?.has(i.id)) day(d).items.push(String(i.name));
+    }
+  }
+  return log;
+}
+
 // ---- reads ----
 
 async function findItems(args: Args, { store }: ToolContext): Promise<ToolResult> {
@@ -670,16 +750,7 @@ async function getWearLog(args: Args, { store, now }: ToolContext): Promise<Tool
   const since = addDays(utcToday(now), -days);
   const [items, outfits, inbox] = await Promise.all([store.list('clothes'), store.list('outfits'), store.list('inbox')]);
 
-  const log = new Map<string, { outfits: string[]; items: string[] }>();
-  const day = (d: string) => log.get(d) ?? (log.set(d, { outfits: [], items: [] }), log.get(d)!);
-  for (const o of outfits) for (const d of new Set(wearsOf(o))) if (d >= since) day(d).outfits.push(String(o.name ?? '(unnamed outfit)'));
-  for (const i of items) {
-    for (const d of new Set(wearsOf(i))) {
-      if (d < since) continue;
-      const inOutfit = outfits.some((o) => wearsOf(o).includes(d) && strings(o.itemIds).includes(i.id));
-      if (!inOutfit) day(d).items.push(String(i.name));
-    }
-  }
+  const log = wornByDay(items, outfits, since);
 
   const names = new Map([...items, ...outfits].map((r) => [r.id, String(r.name ?? '(unnamed outfit)')]));
   const pending = inbox
@@ -690,6 +761,119 @@ async function getWearLog(args: Args, { store, now }: ToolContext): Promise<Tool
     today_utc: utcToday(now),
     days: [...log.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, v]) => ({ date, ...v })),
     queued_not_yet_in_app: pending,
+  });
+}
+
+const placeCheckins = async (store: RecordStore): Promise<PlaceCheckin[]> =>
+  (await store.list('checkins')).filter((r) => typeof r.venue === 'string' && isRealDate(r.date)).map((r) => ({ ...r, time: typeof r.time === 'string' ? r.time : '' }) as unknown as PlaceCheckin);
+
+/** The `date`, `from` and `to` of a call as one inclusive range, or an error message. */
+function dateRange(args: Args): { from?: string; to?: string } | string {
+  for (const k of ['date', 'from', 'to'] as const) if (args[k] !== undefined && !isRealDate(args[k])) return `${k} must be a real calendar date in YYYY-MM-DD form.`;
+  const from = (args.date ?? args.from) as string | undefined;
+  const to = (args.date ?? args.to) as string | undefined;
+  if (from && to && from > to) return 'from must not be after to.';
+  return { from, to };
+}
+
+async function listCheckins(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const range = dateRange(args);
+  if (typeof range === 'string') return fail(range);
+  const limit = Math.min(Math.max(Number(args.limit) || 30, 1), 100);
+  const found = newestFirst(filterCheckins(await placeCheckins(store), { ...range, query: text(args.query), category: text(args.category), city: text(args.city), country: text(args.country) }));
+  const shown = found.slice(0, limit);
+  const worn = args.includeWorn === true ? wornByDay(await store.list('clothes'), await store.list('outfits')) : undefined;
+  return ok({
+    today_utc: utcToday(now),
+    total: found.length,
+    showing: shown.length,
+    checkins: shown.map((c) => ({
+      date: c.date,
+      ...(c.time ? { time: c.time } : {}),
+      venue: c.venue,
+      ...(c.category ? { category: c.category } : {}),
+      ...(c.city ? { city: c.city } : {}),
+      ...(c.country ? { country: c.country } : {}),
+      ...(c.shout ? { note: c.shout } : {}),
+      ...(c.source === 'plan' ? { fromItineraryPlan: true } : {}),
+    })),
+    ...(worn ? { worn: [...new Set(shown.map((c) => c.date))].map((date) => ({ date, ...(worn.get(date) ?? { outfits: [], items: [] }) })) } : {}),
+    ...(found.length === 0 ? { note: 'No check-ins match. Check-ins come from Swarm, so a place that was not checked in to is not here.' } : {}),
+  });
+}
+
+async function venueHistoryTool(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const query = text(args.query);
+  if (!query) return fail('query is required: words from the place name, e.g. "cafe nero".');
+  const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 20);
+  const matching = filterCheckins(await placeCheckins(store), { query, city: text(args.city), country: text(args.country) });
+  const venues = venueHistory(matching);
+  if (venues.length === 0) return ok('No check-ins match that place.');
+  const worn = args.includeWorn === true ? wornByDay(await store.list('clothes'), await store.list('outfits')) : undefined;
+  return ok({
+    today_utc: utcToday(now),
+    matchingPlaces: venues.length,
+    places: venues.slice(0, limit).map((v) => ({
+      venue: v.name,
+      ...(v.category ? { category: v.category } : {}),
+      ...(v.city ? { city: v.city } : {}),
+      ...(v.country ? { country: v.country } : {}),
+      visits: v.visits,
+      daysVisited: v.days.length,
+      firstVisit: v.first,
+      lastVisit: v.last,
+      recentDays: v.days.slice(-5).reverse(),
+      ...(worn ? { worn: v.days.slice(-5).reverse().map((date) => ({ date, ...(worn.get(date) ?? { outfits: [], items: [] }) })) } : {}),
+    })),
+  });
+}
+
+async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  if (args.end !== undefined && !isRealDate(args.end)) return fail('end must be a real calendar date in YYYY-MM-DD form.');
+  const length = Math.min(Math.max(Math.floor(Number(args.days)) || 7, 1), 31);
+  const end = (args.end as string | undefined) ?? addDays(utcToday(now), -1);
+  const start = addDays(end, -(length - 1));
+  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles] = await Promise.all([
+    placeCheckins(store),
+    store.list('clothes'),
+    store.list('outfits'),
+    store.list('workdays'),
+    store.list('workevents'),
+    store.list('woltorders'),
+    store.list('rides'),
+    store.list('foodreceipts'),
+    store.list('watched'),
+    store.list('musicdays'),
+    store.list('gamenights'),
+    store.list('gametitles'),
+  ]);
+  const titleName = new Map(titles.map((t) => [t.id, String(t.name ?? 'a game')]));
+  const days = buildDays(
+    workdays.map((r) => ({ id: r.id, status: r.status, arrive: r.arrive, leave: r.leave, reason: r.reason }) as unknown as WorkDay),
+    workevents.map((r) => ({ id: r.id, type: r.type, place: r.place, date: r.date, time: r.time }) as unknown as WorkEvent),
+  );
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  const digest = buildDigest({
+    checkins,
+    worn: wornByDay(items, outfits, start),
+    days,
+    start,
+    end,
+    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR') })),
+    rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
+    groceries: receipts
+      .filter((r) => isRealDate(r.date))
+      .map((r) => ({ date: String(r.date), store: String(r.store ?? ''), total: typeof r.total === 'number' ? r.total : (Array.isArray(r.lines) ? r.lines : []).reduce((a: number, l: { paid?: unknown }) => a + num(l?.paid), 0) })),
+    // The worker has no time zone, so a play counts on its UTC day.
+    watched: watched.filter((r) => typeof r.at === 'string').map((r) => ({ date: String(r.at).slice(0, 10), title: String(r.title ?? ''), kind: r.kind === 'movie' ? ('movie' as const) : ('episode' as const) })),
+    music: music.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), plays: num(r.plays), ms: num(r.ms), artists: (Array.isArray(r.topArtists) ? r.topArtists : []).map((a: { name?: unknown; plays?: unknown }) => ({ name: String(a?.name ?? ''), plays: num(a?.plays) })) })),
+    games: nights
+      .filter((n) => isRealDate(n.date))
+      .flatMap((n) => (Array.isArray(n.matches) ? n.matches : []).filter((m: { live?: unknown }) => !m?.live).map((m: { titleId?: unknown }) => ({ date: String(n.date), game: titleName.get(String(m?.titleId)) ?? 'a game' }))),
+  });
+  return ok({
+    ...digest,
+    ...(end >= utcToday(now) ? { note: 'The period includes today or later days, so it is not complete yet.' } : {}),
   });
 }
 

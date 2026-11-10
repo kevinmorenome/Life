@@ -4,6 +4,8 @@ import { useCollection } from '../../lib/useCollection';
 import type { TripitPlan } from '../../../worker/tripitTypes';
 import type { CalendarLayer } from '../types';
 import { byDate, dayLabel } from './checkins';
+import { OnThisDayWidget } from './OnThisDayWidget';
+import { onThisDay } from './onThisDay';
 import { PlacesWidget } from './PlacesWidget';
 import type { Checkin } from './types';
 
@@ -24,8 +26,14 @@ export function useCheckinsCalendarLayer(): CalendarLayer {
       const done = days.get(date) ?? [];
       // The same TripIt plans and check-ins the trip's Itinerary lists, folded the same way.
       const hasPlans = plans.some((p) => !p.removed && p.start <= date && p.end >= date);
-      if (!done.length && !hasPlans) return null;
-      return <PlacesWidget date={date} done={done} plans={plans} />;
+      const before = onThisDay(items, date);
+      if (!done.length && !hasPlans && !before.length) return null;
+      return (
+        <>
+          {(done.length > 0 || hasPlans) && <PlacesWidget date={date} done={done} plans={plans} />}
+          {before.length > 0 && <OnThisDayWidget date={date} years={before} />}
+        </>
+      );
     },
   };
 }

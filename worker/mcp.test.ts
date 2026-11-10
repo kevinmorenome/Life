@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -95,6 +95,9 @@ describe('protocol', () => {
       'add_takeout_orders',
       'add_rides',
       'log_work',
+      'list_checkins',
+      'venue_history',
+      'weekly_digest',
       'list_stock',
       'shopping_list',
       'product_prices',
@@ -1125,5 +1128,102 @@ describe('add_rides', () => {
     data.rides.set('ride-bolt-r1', { ...data.rides.get('ride-bolt-r1')!, to: 'My edit' });
     expect(await call(ctx, [ride, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
     expect(data.rides.get('ride-bolt-r1')).toMatchObject({ to: 'My edit', currency: 'EUR' });
+  });
+});
+
+describe('places and the weekly digest', () => {
+  const CHECKINS: Row[] = [
+    { id: 'swarm-1', venue: 'Cafe Nero', venueId: 'v-nero', category: 'Coffee Shop', city: 'Zagreb', country: 'Croatia', date: '2026-10-20', time: '09:10', source: 'swarm' },
+    { id: 'swarm-2', venue: 'Office', venueId: 'v-office', category: 'Office', city: 'Zagreb', country: 'Croatia', date: '2026-10-20', time: '10:00', source: 'swarm' },
+    { id: 'swarm-3', venue: 'Cafe Nero', venueId: 'v-nero', category: 'Coffee Shop', city: 'Zagreb', country: 'Croatia', date: '2026-10-14', time: '08:30', source: 'swarm' },
+    { id: 'swarm-4', venue: 'Museum', venueId: 'v-museum', category: 'Museum', city: 'Vienna', country: 'Austria', date: '2026-10-24', time: '', source: 'swarm' },
+    { id: 'swarm-5', venue: 'Old pub', venueId: 'v-pub', city: 'Zagreb', date: '2026-09-01', time: '20:00', source: 'swarm' },
+  ];
+  const seed = { clothes: ITEMS, outfits: OUTFITS, checkins: CHECKINS };
+
+  it('list_checkins answers where the user was on a day, newest first, with what was worn', async () => {
+    const { ctx } = setup({}, seed);
+    const r = (await call(ctx, 'list_checkins', { date: '2026-10-20', includeWorn: true })).json();
+    expect(r.total).toBe(2);
+    expect(r.checkins.map((c: { venue: string }) => c.venue)).toEqual(['Office', 'Cafe Nero']);
+    expect(r.worn).toEqual([{ date: '2026-10-20', outfits: ['Work look'], items: [] }]);
+  });
+
+  it('list_checkins filters by words, city and range, and limits', async () => {
+    const { ctx } = setup({}, seed);
+    expect((await call(ctx, 'list_checkins', { query: 'coffee' })).json().total).toBe(2);
+    expect((await call(ctx, 'list_checkins', { city: 'vienna' })).json().checkins[0].venue).toBe('Museum');
+    expect((await call(ctx, 'list_checkins', { from: '2026-10-01', to: '2026-10-31', limit: 2 })).json()).toMatchObject({ total: 4, showing: 2 });
+    expect((await call(ctx, 'list_checkins', { date: '2026-01-01' })).json().note).toMatch(/No check-ins match/);
+  });
+
+  it('list_checkins rejects bad dates', async () => {
+    const { ctx } = setup({}, seed);
+    expect((await call(ctx, 'list_checkins', { date: 'last tuesday' })).isError).toBe(true);
+    expect((await call(ctx, 'list_checkins', { from: '2026-10-02', to: '2026-10-01' })).isError).toBe(true);
+  });
+
+  it('venue_history gives visits, first and last visit and the latest days', async () => {
+    const { ctx } = setup({}, seed);
+    const r = (await call(ctx, 'venue_history', { query: 'nero', includeWorn: true })).json();
+    expect(r.places).toEqual([
+      expect.objectContaining({ venue: 'Cafe Nero', visits: 2, firstVisit: '2026-10-14', lastVisit: '2026-10-20', recentDays: ['2026-10-20', '2026-10-14'] }),
+    ]);
+    expect(r.places[0].worn[0]).toEqual({ date: '2026-10-20', outfits: ['Work look'], items: [] });
+    expect((await call(ctx, 'venue_history', { query: '' })).isError).toBe(true);
+    expect((await call(ctx, 'venue_history', { query: 'nowhere' })).text).toMatch(/No check-ins match/);
+  });
+
+  it('weekly_digest sums up places, outfits and work for the period', async () => {
+    const { ctx } = setup(
+      {},
+      {
+        ...seed,
+        workevents: [{ id: 'e1', type: 'arrive', date: '2026-10-20', time: '09:00', source: 'x' }, { id: 'e2', type: 'leave', date: '2026-10-20', time: '17:00', source: 'x' }],
+        workdays: [{ id: '2026-10-21', status: 'home' }],
+      } as never,
+    );
+    const r = (await call(ctx, 'weekly_digest', { end: '2026-10-25' })).json();
+    expect(r.period).toEqual({ start: '2026-10-19', end: '2026-10-25', days: 7 });
+    expect(r.places).toMatchObject({ checkins: 3, distinctPlaces: 3, daysOut: 2, previousCheckins: 1, countries: ['Croatia', 'Austria'] });
+    expect(r.places.newPlaces.map((p: { name: string }) => p.name)).toEqual(['Office', 'Museum']);
+    expect(r.outfits).toMatchObject({ daysLogged: 1, outfits: [{ name: 'Work look', times: 1 }] });
+    expect(r.outfits.notLogged).toHaveLength(6);
+    expect(r.work).toMatchObject({ officeDays: 1, homeDays: 1, averageAtOffice: '8h 00m' });
+    expect(r.note).toMatch(/not complete yet/);
+  });
+
+  it('weekly_digest defaults to the 7 days ending yesterday and rejects a bad end', async () => {
+    const { ctx } = setup({}, seed);
+    const last = (await call(ctx, 'weekly_digest', {})).json();
+    expect(last.period).toEqual({ start: '2026-10-18', end: '2026-10-24', days: 7 });
+    expect(last.note).toBeUndefined();
+    expect((await call(ctx, 'weekly_digest', { end: 'soon' })).isError).toBe(true);
+    expect((await call(ctx, 'weekly_digest', { end: '2026-10-25', days: 3 })).json().period.days).toBe(3);
+  });
+
+  it('weekly_digest includes the other modules when they have something in the period', async () => {
+    const { ctx } = setup(
+      {},
+      {
+        ...seed,
+        woltorders: [{ id: 'w1', restaurant: "McDonald's - Rotor", date: '2026-10-21', total: 10, currency: 'EUR' }],
+        rides: [{ id: 'r1', provider: 'bolt', date: '2026-10-22', fare: 6, currency: 'EUR' }],
+        foodreceipts: [{ id: 'f1', store: 'Konzum', date: '2026-10-23', lines: [{ paid: 12.5 }, { paid: 2 }] }],
+        watched: [{ id: 'p1', kind: 'episode', title: 'Severance', at: '2026-10-24T20:00:00.000Z' }],
+        musicdays: [{ id: 'm1', date: '2026-10-20', plays: 30, ms: 3_600_000, topArtists: [{ name: 'Bicep', plays: 8 }] }],
+        gametitles: [{ id: 'g1', name: 'Catan' }],
+        gamenights: [{ id: 'n1', date: '2026-10-24', matches: [{ titleId: 'g1' }, { titleId: 'g1', live: true }] }],
+      } as never,
+    );
+    const r = (await call(ctx, 'weekly_digest', { end: '2026-10-25' })).json();
+    expect(r.other).toEqual({
+      takeout: { orders: 1, spentEur: 10, otherCurrencyOrders: 0, places: [{ name: "McDonald's", times: 1 }] },
+      rides: { rides: 1, spentEur: 6, otherCurrencyRides: 0 },
+      groceries: { receipts: 1, spent: 14.5, stores: [{ name: 'Konzum', times: 1 }] },
+      watching: { plays: 1, movies: 0, episodes: 1, top: [{ name: 'Severance', times: 1 }] },
+      music: { plays: 30, hours: 1, daysWithMusic: 1, topArtists: [{ name: 'Bicep', times: 8 }] },
+      games: { games: 1, days: 1, titles: [{ name: 'Catan', times: 1 }] },
+    });
   });
 });

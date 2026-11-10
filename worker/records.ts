@@ -31,9 +31,12 @@ export function insertIfMissingStatement(db: D1Database): D1PreparedStatement {
 
 export type Row = { id: string } & Record<string, unknown>;
 
+/** Stores the MCP tools read from. */
+export type ReadStore = keyof typeof FIELDS;
+
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
-  list(store: 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides'): Promise<Row[]>;
+  list(store: ReadStore): Promise<Row[]>;
   put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
@@ -50,9 +53,16 @@ const FIELDS = {
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
   rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
+  watched: ['kind', 'title', 'at'],
+  musicdays: ['date', 'plays', 'ms', 'topArtists'],
+  gamenights: ['date', 'matches'],
+  gametitles: ['name'],
+  checkins: ['venue', 'venueId', 'category', 'city', 'country', 'shout', 'date', 'time', 'source'],
+  workdays: ['status', 'arrive', 'leave', 'reason'],
+  workevents: ['type', 'place', 'date', 'time'],
 } as const;
 
-const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines']);
+const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'matches']);
 
 export function d1Store(db: D1Database): RecordStore {
   return {
