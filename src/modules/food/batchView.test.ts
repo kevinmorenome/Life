@@ -157,4 +157,13 @@ describe('batches of a product', () => {
       expect(effectiveEvents([use, edit('x1', 'gone', { removed: true })])).toEqual([use]);
     });
   });
+
+  it('a freeze or a finish on an earlier day counts from that day', () => {
+    const freeze = ev('f9', 'freeze', 0.2, '2026-11-07', { batch: 'b:0', createdAt: '2026-11-09T21:00:00.000Z' });
+    const done = ev('d9', 'count', 0, '2026-11-08', { batch: 'c:0', createdAt: '2026-11-09T21:00:01.000Z' });
+    const s = stockOf(product, purchases, [...events, freeze, done], today);
+    expect(s.batches.find((b) => b.id === 'freeze-f9:b:0')).toMatchObject({ quantity: 0.2, frozen: '2026-11-07', useBy: '2027-02-05' });
+    expect(s.pastBatches.map((b) => b.id)).toContain('c:0');
+    expect(pastStatus(s.history['c:0'])).toMatchObject({ text: 'Finished', date: '2026-11-08' });
+  });
 });

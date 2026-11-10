@@ -96,6 +96,15 @@ export function ProductStock({
 
   /* ---- What you can do with one batch ---- */
 
+  /** The same event on the day you say it happened (an event is dated the day it is logged otherwise). */
+  const on = <T extends StockEvent | StockEvent[]>(e: T, date: string | undefined): T => (date ? ((Array.isArray(e) ? e.map((x) => ({ ...x, date })) : { ...e, date }) as T) : e);
+  /** The earliest day something can have happened to a batch: the day it was bought. */
+  const since = (b: Pick<Batch, 'id' | 'date'>) => purchaseOf(p, b)?.date ?? b.date;
+  /** Asks only for the day, then does what `make` returns: finishing and throwing out. */
+  function askWhen(title: string, hint: string, confirm: string, min: string, make: (date: string) => StockAct) {
+    setAsk({ title, hint, amountless: true, when: { min }, step: 1, amount, unit, confirm, onConfirm: (_n, _d, when) => onAct(make(when ?? day)) });
+  }
+
   function useSome(b: Batch) {
     setAsk({
       title: `How much ${p.name} did you use?`,
@@ -107,7 +116,8 @@ export function ProductStock({
       amount,
       unit,
       confirm: 'Use',
-      onConfirm: (n) => onAct({ event: batchEvent(p.id, b.id!, 'use', n, 'app'), text: `${p.name}: used ${amount(n)} of ${batchTitle(p, b).toLowerCase()}`, undo: restoreBatch(b), done: s.quantity - n <= 1e-9 }),
+      when: { min: since(b) },
+      onConfirm: (n, _d, when) => onAct({ event: on(batchEvent(p.id, b.id!, 'use', n, 'app'), when), text: `${p.name}: used ${amount(n)} of ${batchTitle(p, b).toLowerCase()}`, undo: restoreBatch(b), done: s.quantity - n <= 1e-9 }),
     });
   }
 
@@ -124,9 +134,12 @@ export function ProductStock({
       amount,
       unit,
       confirm: freezing ? 'Freeze' : 'Thaw',
-      ...(freezing ? {} : { date: { label: 'Use by', value: thawBy, min: day } }),
-      onConfirm: (n, useBy) => {
-        const event = moveEvent(p.id, b.id!, freezing ? 'freeze' : 'thaw', n, 'app');
+      // A frozen batch can only be taken out after it went in.
+      when: { min: (!freezing && b.frozen) || since(b), label: freezing ? 'Frozen on' : 'Taken out on' },
+      ...(freezing ? {} : { date: { label: 'Use by', value: thawBy, min: since(b), days: THAW_DAYS } }),
+      onConfirm: (n, useBy, when) => {
+        const event = on(moveEvent(p.id, b.id!, freezing ? 'freeze' : 'thaw', n, 'app'), when);
+        const thawBy = addDays(when ?? day, THAW_DAYS);
         const made = `${event.type}-${event.id}:${b.id}`;
         // A use-by other than the usual two days is its own event on the thawed batch, recorded just after the thaw.
         const later = new Date(Date.parse(event.createdAt) + 1).toISOString();
@@ -143,9 +156,9 @@ export function ProductStock({
   const batchMenu = (b: Batch): MenuEntry[] => [
     // Food that was thawed is not frozen again: it is there to be used.
     ...(b.frozen ? [{ label: 'Thaw…', icon: <UndoIcon />, onSelect: () => move(b, false) }] : b.thawed ? [] : [{ label: 'Freeze…', icon: <ClockIcon />, onSelect: () => move(b, true) }]),
-    { label: 'Finished', icon: <CheckIcon />, onSelect: () => onAct({ event: batchEvent(p.id, b.id!, 'count', 0, 'app'), text: `${p.name}: ${batchTitle(p, b).toLowerCase()} finished`, undo: restoreBatch(b), done: s.batches.length === 1 }) },
+    { label: 'Finished…', icon: <CheckIcon />, onSelect: () => askWhen('When did you finish it?', `${batchTitle(p, b)} · ${amount(b.quantity)} left`, 'Finished', since(b), (when) => ({ event: on(batchEvent(p.id, b.id!, 'count', 0, 'app'), when), text: `${p.name}: ${batchTitle(p, b).toLowerCase()} finished`, undo: restoreBatch(b), done: s.batches.length === 1 })) },
     { label: 'Used earlier, date unknown', icon: <UsedIcon />, onSelect: () => onAct({ event: usedEarlierEvent(p.id, b.id!, 'app'), text: `${p.name}: ${batchTitle(p, b).toLowerCase()} used earlier`, undo: restoreBatch(b), done: s.batches.length === 1 }) },
-    { label: 'Discard', icon: <TrashIcon />, danger: true, onSelect: () => onAct({ event: batchEvent(p.id, b.id!, 'toss', b.quantity, 'app'), text: `${p.name}: ${batchTitle(p, b).toLowerCase()} discarded`, undo: restoreBatch(b), done: s.batches.length === 1 }) },
+    { label: 'Discard…', icon: <TrashIcon />, danger: true, onSelect: () => askWhen('When did you throw it out?', `${batchTitle(p, b)} · ${amount(b.quantity)}`, 'Discard', since(b), (when) => ({ event: on(batchEvent(p.id, b.id!, 'toss', b.quantity, 'app'), when), text: `${p.name}: ${batchTitle(p, b).toLowerCase()} discarded`, undo: restoreBatch(b), done: s.batches.length === 1 })) },
   ];
 
   /* ---- What you can do with the product as a whole ---- */
@@ -162,7 +175,8 @@ export function ProductStock({
       amount,
       unit,
       confirm: 'Use',
-      onConfirm: (n) => onAct({ event: stockEvent(p.id, 'use', n, 'app'), text: `${p.name}: used ${amount(n)}`, undo: restore(), done: s.quantity - n <= 1e-9 }),
+      when: { min: oldest },
+      onConfirm: (n, _d, when) => onAct({ event: on(stockEvent(p.id, 'use', n, 'app'), when), text: `${p.name}: used ${amount(n)}`, undo: restore(), done: s.quantity - n <= 1e-9 }),
     });
   }
 
@@ -180,6 +194,8 @@ export function ProductStock({
   }
 
   const several = s.batches.length > 1;
+  // Nothing can have happened before the first purchase.
+  const oldest = p.purchases.reduce((m, x) => (x.date < m ? x.date : m), day);
   const have = s.quantity > 0;
   const productMenu: MenuEntry[] = s.tracked
     ? [
@@ -187,9 +203,9 @@ export function ProductStock({
         { label: 'I have…', icon: <EditIcon />, onSelect: countAll },
         ...(have
           ? [
-              { label: several ? 'Finished all' : 'Finished', icon: <CheckIcon />, onSelect: () => onAct({ event: stockEvent(p.id, 'count', 0, 'app'), text: `${p.name} finished`, undo: restore(), done: true }) },
+              { label: several ? 'Finished all…' : 'Finished…', icon: <CheckIcon />, onSelect: () => askWhen('When did you finish it?', `${amount(s.quantity)} left`, 'Finished', oldest, (when) => ({ event: on(stockEvent(p.id, 'count', 0, 'app'), when), text: `${p.name} finished`, undo: restore(), done: true })) },
               { label: 'Used earlier, date unknown', icon: <UsedIcon />, onSelect: () => onAct({ event: usedEarlierEvent(p.id, undefined, 'app'), text: `${p.name}: used earlier, no date`, undo: restore(), done: true }) },
-              { label: several ? 'Discard all' : 'Discard', icon: <TrashIcon />, danger: true, onSelect: () => onAct({ event: stockEvent(p.id, 'toss', s.quantity, 'app'), text: `${p.name} discarded`, undo: restore(), done: true }) },
+              { label: several ? 'Discard all…' : 'Discard…', icon: <TrashIcon />, danger: true, onSelect: () => askWhen('When did you throw it out?', amount(s.quantity), 'Discard', oldest, (when) => ({ event: on(stockEvent(p.id, 'toss', s.quantity, 'app'), when), text: `${p.name} discarded`, undo: restore(), done: true })) },
             ]
           : []),
         { label: quiet ? 'Count in statistics again' : 'Keep out of statistics', icon: quiet ? <EyeIcon /> : <EyeOffIcon />, onSelect: () => setQuiet(!quiet) },
