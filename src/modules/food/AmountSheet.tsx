@@ -89,7 +89,7 @@ export function AmountSheet({ ask, onClose }: { ask: AmountAsk; onClose(): void 
 
   return createPortal(
     <>
-      <button type="button" className="food-scrim food-scrim-top" aria-label="Cancel" onClick={onClose} />
+      <button type="button" className="food-scrim food-scrim-top amount-scrim" aria-label="Cancel" onClick={onClose} />
       <form
         className="amount-sheet"
         role="dialog"
