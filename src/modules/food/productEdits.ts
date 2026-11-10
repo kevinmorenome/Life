@@ -23,10 +23,6 @@ export function parseProductChanges(input: Record<string, unknown>): ProductChan
     else if (typeof d === 'number' && Number.isFinite(d) && d >= 1 && d <= 3650) out.shelfLifeDays = Math.round(d);
     else return 'shelfLifeDays must be a whole number of days from 1 to 3650 (or null to clear it).';
   }
-  if (input.trackAmount !== undefined) {
-    if (typeof input.trackAmount !== 'boolean') return 'trackAmount must be true (count how many) or false (only have it or out).';
-    out.trackAmount = input.trackAmount;
-  }
   if (input.packSize !== undefined) {
     const n = input.packSize;
     if (n === null) out.packSize = null;
@@ -38,7 +34,7 @@ export function parseProductChanges(input: Record<string, unknown>): ProductChan
     else if (typeof input.packLabel === 'string' && input.packLabel.trim() && input.packLabel.trim().length <= 20) out.packLabel = input.packLabel.trim();
     else return 'packLabel must be a short word (at most 20 characters), e.g. "can", or null to clear it.';
   }
-  return Object.keys(out).length ? out : 'Nothing to change: give at least one of type, storage, shelfLifeDays, trackAmount, packSize, packLabel.';
+  return Object.keys(out).length ? out : 'Nothing to change: give at least one of type, storage, shelfLifeDays, packSize, packLabel.';
 }
 
 /** The product with the changes applied, or the same object when they change nothing. Idempotent. */
@@ -47,7 +43,6 @@ export function withProductChanges(rec: FoodProduct, c: ProductChanges, now: str
   if (c.type && (PRODUCT_TYPES as readonly string[]).includes(c.type)) next.type = c.type as ProductType;
   if (c.storage && (STORAGES as readonly string[]).includes(c.storage)) next.storage = c.storage as Storage;
   if (c.shelfLifeDays !== undefined) next.shelfLifeDays = c.shelfLifeDays ?? undefined;
-  if (c.trackAmount !== undefined) next.trackAmount = c.trackAmount ? undefined : false;
   if (c.packSize !== undefined) next.packSize = c.packSize ?? undefined;
   if (c.packLabel !== undefined) next.packLabel = c.packLabel ?? undefined;
   if (c.photo !== undefined) {
@@ -60,7 +55,7 @@ export function withProductChanges(rec: FoodProduct, c: ProductChanges, now: str
 
 /** The record to save for a product: what is already there, the product as shown (so a first change creates the record with its defaults) and the change. */
 export function productRecord(
-  product: { id: string; name: string; type: ProductType; storage: Storage; shelfLifeDays?: number; trackAmount: boolean; packSize?: number; packLabel?: string; hasPhoto?: boolean },
+  product: { id: string; name: string; type: ProductType; storage: Storage; shelfLifeDays?: number; packSize?: number; packLabel?: string; hasPhoto?: boolean },
   record: FoodProduct | undefined,
   patch: Partial<FoodProduct>,
   now: string,
@@ -72,7 +67,6 @@ export function productRecord(
     type: product.type,
     storage: product.storage,
     shelfLifeDays: product.shelfLifeDays,
-    trackAmount: product.trackAmount ? undefined : false,
     packSize: product.packSize,
     packLabel: product.packLabel,
     hasPhoto: product.hasPhoto,

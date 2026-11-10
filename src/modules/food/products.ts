@@ -96,8 +96,6 @@ export interface ProductSummary {
   type: ProductType;
   storage: Storage;
   shelfLifeDays?: number;
-  /** False: only "have it" or "out", see `FoodProduct.trackAmount`. */
-  trackAmount: boolean;
   /** Items in a pack (pieces only), see `FoodProduct.packSize`. */
   packSize?: number;
   packLabel?: string;
@@ -124,7 +122,7 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: rec?.shelfLifeDays, trackAmount: rec?.trackAmount !== false, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: rec?.shelfLifeDays, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }

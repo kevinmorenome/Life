@@ -62,19 +62,7 @@ export function ProductInfo({ product, record, onSave }: { product: ProductSumma
           ))}
         </div>
       </div>
-      <div className="field">
-        <span>Stock</span>
-        <div className="chips">
-          <button type="button" className="chip" aria-pressed={product.trackAmount} onClick={() => save({ trackAmount: undefined })}>
-            Count how many
-          </button>
-          <button type="button" className="chip" aria-pressed={!product.trackAmount} onClick={() => save({ trackAmount: false })}>
-            Just have it or out
-          </button>
-        </div>
-        <span className="muted small">For spices, oil and sauces: a use is logged but never lowers it; tap Finished when it is all gone.</span>
-      </div>
-      {product.unit === 'pc' && product.trackAmount && (
+      {product.unit === 'pc' && (
         <div className="field-grid">
           <label className="field">
             <span>Items in a pack</span>
