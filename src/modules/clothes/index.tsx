@@ -9,6 +9,8 @@ export const clothesModule: LifeModule = {
   id: 'clothes',
   title: 'Clothes',
   icon: '👕',
+  // The Closet tab in the bottom bar is its home, so it isn't repeated in More.
+  listed: false,
   description: 'Your wardrobe, what you wear, and what it costs per wear.',
   render: (subroute) => <ClothesRoot subroute={subroute} />,
   stats: { label: 'Clothes', render: ([tab]) => <ClothesStatsRoute tab={tab} /> },
