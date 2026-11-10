@@ -1,4 +1,5 @@
 import { addDays } from '../clothes/calendar';
+import type { WorkStatus } from '../work/types';
 import { formatDuration, toMinutes, type DayInfo } from '../work/work';
 import { placeName, round2 } from '../wolt/wolt';
 import { venueKey } from './placeStats';
@@ -37,8 +38,25 @@ export interface NamedCount {
   times: number;
 }
 
+/** What happened on one day of the period, as counts (the week strip draws a dot per kind). */
+export interface DigestDay {
+  date: string;
+  checkins: number;
+  /** Something was logged as worn. */
+  worn: boolean;
+  work?: WorkStatus;
+  takeout: number;
+  rides: number;
+  groceries: number;
+  watched: number;
+  listened: boolean;
+  games: number;
+}
+
 export interface Digest {
   period: { start: string; end: string; days: number };
+  /** One entry per day, oldest first. */
+  daily: DigestDay[];
   places: {
     checkins: number;
     /** Check-ins in the period before this one, of the same length. */
@@ -134,6 +152,18 @@ export function buildDigest({ checkins, worn, days, start, end, ...extras }: Dig
 
   return {
     period: { start, end, days: length },
+    daily: dates.map((date) => ({
+      date,
+      checkins: mine.filter((c) => c.date === date).length,
+      worn: wornDays.includes(date),
+      work: days.get(date)?.status,
+      takeout: (extras.takeout ?? []).filter((o) => o.date === date).length,
+      rides: (extras.rides ?? []).filter((r) => r.date === date).length,
+      groceries: (extras.groceries ?? []).filter((r) => r.date === date).length,
+      watched: (extras.watched ?? []).filter((p) => p.date === date).length,
+      listened: (extras.music ?? []).some((m) => m.date === date && m.plays > 0),
+      games: (extras.games ?? []).filter((g) => g.date === date).length,
+    })),
     places: {
       checkins: mine.length,
       previousCheckins: inRange(checkins, previousStart, previousEnd).length,
