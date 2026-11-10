@@ -3,7 +3,7 @@ import { ChevronIcon } from '../../icons';
 import { ProductInfo } from './ProductInfo';
 import { ProductStock, type StockAct } from './ProductStock';
 import type { Entry } from './stockEntries';
-import type { FoodProduct, StockEvent } from './types';
+import type { FoodProduct } from './types';
 
 export type SheetAct = StockAct;
 
@@ -14,7 +14,6 @@ export type SheetAct = StockAct;
  */
 export function StockSheet({
   entry,
-  events,
   record,
   onAct,
   onPhoto,
@@ -22,7 +21,6 @@ export function StockSheet({
   onClose,
 }: {
   entry: Entry;
-  events: StockEvent[];
   /** The product's own record, when it has one. */
   record?: FoodProduct;
   onAct(a: SheetAct): void;
@@ -30,7 +28,7 @@ export function StockSheet({
   onSave(p: FoodProduct): Promise<void> | void;
   onClose(): void;
 }) {
-  const { product: p, stock: s, uses } = entry;
+  const { product: p, stock: s } = entry;
   const box = useRef<HTMLDivElement>(null);
   const [details, setDetails] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -51,7 +49,7 @@ export function StockSheet({
       <button type="button" className="food-scrim" aria-label="Close" onClick={onClose} />
       <div className="food-sheet" role="dialog" aria-modal="true" aria-label={p.name} tabIndex={-1} ref={box}>
         <div className="food-grip" aria-hidden />
-        <ProductStock product={p} stock={s} events={events} uses={uses} heading="h2" activityLimit={4} onAct={onAct} onPhoto={onPhoto} />
+        <ProductStock product={p} stock={s} heading="h2" activityLimit={4} onAct={onAct} onPhoto={onPhoto} />
         <button ref={toggle} type="button" className={`pstock-link${details ? ' is-open' : ''}`} aria-expanded={details} onClick={() => setDetails(!details)}>
           <span>
             Product details

@@ -135,7 +135,6 @@ export function StockPage({
         <StockSheet
           key={selected.product.id}
           entry={selected}
-          events={events.filter((e) => e.productId === selected.product.id)}
           record={products.find((p) => p.id === selected.product.id)}
           onSave={onProduct}
           onAct={act}

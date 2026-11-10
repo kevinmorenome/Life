@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { activityOf, batchBadges, batchNumber, batchTitle, dueText, expiryBadge, originalQuantity, overviewOf, parseAmount, pastStatus, usedOf } from './batchView';
 import type { ProductSummary, Purchase } from './products';
-import { effectiveEvents, stockOf, usesSince } from './stock';
+import { effectiveEvents, stockOf } from './stock';
 import type { StockEvent } from './types';
 
 const buy = (batch: string, date: string, quantity: number, store = 'Konzum'): Purchase => ({ receiptId: batch.split(':')[0], date, store, quantity, unit: 'kg', unitPrice: 8, paid: quantity * 8, batch });
@@ -74,7 +74,7 @@ describe('batches of a product', () => {
   });
 
   it('lists everything that happened, newest first, with freezing as one line and gone batches kept', () => {
-    const lines = activityOf(product, stock, events, amount, day).map((a) => `${a.date} ${a.text} [${[a.batch, ...a.notes].join(', ')}]`);
+    const lines = activityOf(product, stock, amount, day).map((a) => `${a.date} ${a.text} [${[a.batch, ...a.notes].join(', ')}]`);
     expect(lines).toEqual([
       '2026-11-08 Purchased 0.7 kg [Batch #4, Konzum]',
       '2026-11-07 Used 0.3 kg [Batch #3, via Claude]',
@@ -85,13 +85,6 @@ describe('batches of a product', () => {
       '2026-10-24 Finished the last 0.5 kg [Batch #1]',
       '2026-10-20 Purchased 0.5 kg [Batch #1, Konzum]',
     ]);
-  });
-
-  it('lists purchases and uses of a product that is only have-it-or-out', () => {
-    const have = stockOf({ type: 'staple', trackAmount: false }, purchases.slice(0, 1), [], today);
-    const lines = activityOf(product, have, [ev('u1', 'use', 1, '2026-11-09'), ev('f1', 'count', 0, '2026-11-09', { undated: true, createdAt: '2026-11-09T12:00:00.000Z' })], amount, day);
-    expect(lines.map((a) => a.text)).toEqual(['Used earlier', 'Used', 'Purchased', 'Purchased', 'Purchased', 'Purchased']);
-    expect(lines[0].undated).toBe(true);
   });
 
   it('thawing with a use-by of your own sets it on the thawed batch only', () => {
@@ -142,7 +135,7 @@ describe('batches of a product', () => {
       expect(s.history['b:0'][1]).toMatchObject({ kind: 'used', undated: true, quantity: 0.3 });
       expect(s.batches.find((b) => b.id === 'b:0')).toMatchObject({ quantity: 0.5 });
       const use = ev('u1', 'use', 1, '2026-11-09');
-      expect(usesSince([use, edit('x1', 'u1', { undated: true })])).toBe(0);
+      expect(effectiveEvents([use, edit('x1', 'u1', { undated: true })])[0]).toMatchObject({ undated: true });
     });
 
     it('the newest correction wins, so one with nothing in it puts the event back as it was', () => {
@@ -153,7 +146,7 @@ describe('batches of a product', () => {
 
     it('is never read as an event of its own', () => {
       const use = ev('u1', 'use', 1, '2026-11-09');
-      expect(usesSince([use, edit('x1', 'u1', { removed: true })])).toBe(0);
+      expect(effectiveEvents([use, edit('x1', 'u1', { removed: true })])).toEqual([]);
       expect(effectiveEvents([use, edit('x1', 'gone', { removed: true })])).toEqual([use]);
     });
   });

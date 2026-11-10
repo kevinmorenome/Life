@@ -211,9 +211,7 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
     // A throw-away that names a batch is valued at what that batch cost.
     const batchPrice = e.batch ? p.purchases.find((x) => x.batch === originBatch(e.batch!) && x.unit === p.unit)?.unitPrice : undefined;
     const price = batchPrice ?? averageUnitPrice(p);
-    const unitCost = p.trackAmount ? comparablePrice(price, p) : price;
-    const quantity = p.trackAmount ? e.quantity : 1;
-    const worth = round2(unitCost * quantity);
+    const worth = round2(comparablePrice(price, p) * e.quantity);
     value = round2(value + worth);
     times += 1;
     monthly.set(monthOf(e.date), round2((monthly.get(monthOf(e.date)) ?? 0) + worth));

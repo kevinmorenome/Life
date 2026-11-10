@@ -1,8 +1,8 @@
 import { money, shortDate } from '../../lib/format';
 import { historyNotes, historyText } from './batchHistory';
 import type { ProductSummary, Purchase } from './products';
-import { daysBetween, effectiveEvents, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
-import { STORAGE_LABELS, type StockEvent } from './types';
+import { daysBetween, originBatch, type Batch, type HistoryEntry, type Stock } from './stock';
+import { STORAGE_LABELS } from './types';
 
 /**
  * What the product page and the stock sheet show about batches, worked out from `stockOf()`: a product is a set of
@@ -128,7 +128,6 @@ const plural = (n: number, text: string) => (n === 1 ? text : `${n} ${text.toLow
 export function overviewOf(product: Pick<ProductSummary, 'storage'>, stock: Stock, today: string): Overview {
   const base = { active: 0, soon: 0, past: 0, places: [STORAGE_LABELS[product.storage]] };
   if (stock.quantity <= 0) return { ...base, badges: [{ kind: 'usage', text: 'Used up', tone: 'grey' }] };
-  if (!stock.tracked) return { ...base, badges: [{ kind: 'usage', text: 'In stock', tone: 'green' }] };
 
   const expiry = stock.batches.map((b) => expiryBadge(b, today)?.tone);
   const past = expiry.filter((t) => t === 'red').length;
@@ -187,39 +186,28 @@ export function activityText(h: HistoryEntry, amount: (q: number) => string, day
 
 /**
  * Everything that happened to a product, newest first: each batch's history in one list, so batches that are gone
- * stay in it. Putting food in the freezer is one line (on the batch it came from), not two. Products that are only
- * "have it or out" keep no batches, so their list comes from the purchases and events themselves.
+ * stay in it. Putting food in the freezer is one line (on the batch it came from), not two.
  */
-export function activityOf(product: Pick<ProductSummary, 'purchases'>, stock: Stock, events: StockEvent[], amount: (q: number) => string, day: (iso: string) => string): ActivityItem[] {
+export function activityOf(product: Pick<ProductSummary, 'purchases'>, stock: Stock, amount: (q: number) => string, day: (iso: string) => string): ActivityItem[] {
   type Row = ActivityItem & { at: string };
   const rows: Row[] = [];
-  if (stock.tracked) {
-    const all = Object.entries(stock.history);
-    const moved = new Set(all.flatMap(([, entries]) => entries.filter((h) => h.kind === 'moved-out' && h.eventId).map((h) => h.eventId)));
-    for (const [id, entries] of all) {
-      const purchase = purchaseOf(product, { id });
-      entries.forEach((h, i) => {
-        if ((h.kind === 'frozen' || h.kind === 'thawed') && moved.has(h.eventId)) return;
-        rows.push({
-          key: `${id}-${h.eventId ?? 'p'}-${i}`,
-          date: h.date,
-          at: h.at ?? '',
-          ...(h.undated ? { undated: true } : {}),
-          text: activityText(h, amount, day),
-          tone: h.kind === 'moved-out' ? (h.to === 'freezer' ? 'blue' : 'orange') : (ACTIVITY_TONE[h.kind] ?? 'grey'),
-          batch: batchTitle(product, { id }),
-          notes: [h.kind === 'bought' && purchase ? purchase.store : '', ...historyNotes(h)].filter(Boolean),
-        });
+  const all = Object.entries(stock.history);
+  const moved = new Set(all.flatMap(([, entries]) => entries.filter((h) => h.kind === 'moved-out' && h.eventId).map((h) => h.eventId)));
+  for (const [id, entries] of all) {
+    const purchase = purchaseOf(product, { id });
+    entries.forEach((h, i) => {
+      if ((h.kind === 'frozen' || h.kind === 'thawed') && moved.has(h.eventId)) return;
+      rows.push({
+        key: `${id}-${h.eventId ?? 'p'}-${i}`,
+        date: h.date,
+        at: h.at ?? '',
+        ...(h.undated ? { undated: true } : {}),
+        text: activityText(h, amount, day),
+        tone: h.kind === 'moved-out' ? (h.to === 'freezer' ? 'blue' : 'orange') : (ACTIVITY_TONE[h.kind] ?? 'grey'),
+        batch: batchTitle(product, { id }),
+        notes: [h.kind === 'bought' && purchase ? purchase.store : '', ...historyNotes(h)].filter(Boolean),
       });
-    }
-  } else {
-    for (const p of product.purchases) rows.push({ key: `p-${p.batch}`, date: p.date, at: '', text: 'Purchased', tone: 'green', notes: [p.store] });
-    for (const e of effectiveEvents(events)) {
-      const text = e.type === 'use' ? 'Used' : e.type === 'toss' ? 'Discarded' : e.type === 'count' ? (e.quantity > 0 ? 'Have it again' : e.undated ? 'Used earlier' : 'Finished') : undefined;
-      if (!text) continue;
-      const notes = [e.source === 'claude' ? 'via Claude' : e.source === 'check' ? 'weekly check' : '', e.untracked ? 'not in statistics' : ''].filter(Boolean);
-      rows.push({ key: e.id, date: e.date, at: e.createdAt, ...(e.undated ? { undated: true } : {}), text, tone: e.type === 'toss' ? 'red' : e.type === 'count' && e.quantity <= 0 ? 'green' : 'grey', notes });
-    }
+    });
   }
   return rows.sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at)).map(({ at: _at, ...item }) => item);
 }

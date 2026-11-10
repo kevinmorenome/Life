@@ -58,8 +58,6 @@ function quickAmounts(max: number, unit: ProductSummary['unit'], packSize?: numb
 export function ProductStock({
   product: p,
   stock: s,
-  events,
-  uses,
   heading = 'h1',
   activityLimit = 8,
   onAct: sendAct,
@@ -67,9 +65,7 @@ export function ProductStock({
 }: {
   product: ProductSummary;
   stock: Stock;
-  events: StockEvent[];
   /** Uses since it was last bought, for products that are only "have it". */
-  uses: number;
   heading?: 'h1' | 'h2';
   /** How many lines of activity show before "Show all". */
   activityLimit?: number;
@@ -87,7 +83,7 @@ export function ProductStock({
   const unit = p.unit === 'pc' ? (p.packLabel ? `${p.packLabel}s` : 'pcs') : p.unit;
   const label = (iso: string) => dayLabel(iso, day);
   const overview = overviewOf(p, s, day);
-  const activity = activityOf(p, s, events, amount, label);
+  const activity = activityOf(p, s, amount, label);
   const Name = heading;
   // A count that puts back what there was before: events are never deleted, so "undo" is a newer count.
   const restore = () => stockEvent(p.id, 'count', s.quantity, 'app');
@@ -197,20 +193,18 @@ export function ProductStock({
   // Nothing can have happened before the first purchase.
   const oldest = p.purchases.reduce((m, x) => (x.date < m ? x.date : m), day);
   const have = s.quantity > 0;
-  const productMenu: MenuEntry[] = s.tracked
-    ? [
-        ...(have ? [{ label: 'Use some…', icon: <MinusIcon />, onSelect: useAny }] : []),
-        { label: 'I have…', icon: <EditIcon />, onSelect: countAll },
-        ...(have
-          ? [
-              { label: several ? 'Finished all…' : 'Finished…', icon: <CheckIcon />, onSelect: () => askWhen('When did you finish it?', `${amount(s.quantity)} left`, 'Finished', oldest, (when) => ({ event: on(stockEvent(p.id, 'count', 0, 'app'), when), text: `${p.name} finished`, undo: restore(), done: true })) },
-              { label: 'Used earlier, date unknown', icon: <UsedIcon />, onSelect: () => onAct({ event: usedEarlierEvent(p.id, undefined, 'app'), text: `${p.name}: used earlier, no date`, undo: restore(), done: true }) },
-              { label: several ? 'Discard all…' : 'Discard…', icon: <TrashIcon />, danger: true, onSelect: () => askWhen('When did you throw it out?', amount(s.quantity), 'Discard', oldest, (when) => ({ event: on(stockEvent(p.id, 'toss', s.quantity, 'app'), when), text: `${p.name} discarded`, undo: restore(), done: true })) },
-            ]
-          : []),
-        { label: quiet ? 'Count in statistics again' : 'Keep out of statistics', icon: quiet ? <EyeIcon /> : <EyeOffIcon />, onSelect: () => setQuiet(!quiet) },
-      ]
-    : [];
+  const productMenu: MenuEntry[] = [
+    ...(have ? [{ label: 'Use some…', icon: <MinusIcon />, onSelect: useAny }] : []),
+    { label: 'I have…', icon: <EditIcon />, onSelect: countAll },
+    ...(have
+      ? [
+          { label: several ? 'Finished all…' : 'Finished…', icon: <CheckIcon />, onSelect: () => askWhen('When did you finish it?', `${amount(s.quantity)} left`, 'Finished', oldest, (when) => ({ event: on(stockEvent(p.id, 'count', 0, 'app'), when), text: `${p.name} finished`, undo: restore(), done: true })) },
+          { label: 'Used earlier, date unknown', icon: <UsedIcon />, onSelect: () => onAct({ event: usedEarlierEvent(p.id, undefined, 'app'), text: `${p.name}: used earlier, no date`, undo: restore(), done: true }) },
+          { label: several ? 'Discard all…' : 'Discard…', icon: <TrashIcon />, danger: true, onSelect: () => askWhen('When did you throw it out?', amount(s.quantity), 'Discard', oldest, (when) => ({ event: on(stockEvent(p.id, 'toss', s.quantity, 'app'), when), text: `${p.name} discarded`, undo: restore(), done: true })) },
+        ]
+      : []),
+    { label: quiet ? 'Count in statistics again' : 'Keep out of statistics', icon: quiet ? <EyeIcon /> : <EyeOffIcon />, onSelect: () => setQuiet(!quiet) },
+  ];
 
   /* ---- Pieces ---- */
 
@@ -361,53 +355,26 @@ export function ProductStock({
           <Name className="pstock-name">{p.name}</Name>
           <p className="muted small pstock-where">
             {overview.places.join(' · ')}
-            {!s.tracked && uses > 0 ? ` · used ${uses}× since you bought it` : ''}
           </p>
           <Badges badges={overview.badges} />
         </div>
         {productMenu.length > 0 && <IconMenu entries={productMenu} label={`Actions for all of ${p.name}`} triggerClassName="icon-action pstock-more" />}
       </header>
 
-      {s.tracked ? (
-        <dl className="pstock-stats">
-          <div>
-            <dd>{have ? amount(s.quantity) : 'None'}</dd>
-            <dt>Remaining</dt>
-          </div>
-          <div>
-            <dd>{overview.active}</dd>
-            <dt>Active {overview.active === 1 ? 'batch' : 'batches'}</dt>
-          </div>
-          <div className={overview.past ? 'tone-red' : overview.soon ? 'tone-orange' : ''}>
-            <dd>{attention}</dd>
-            <dt>{overview.past && !overview.soon ? 'Past date' : overview.soon && !overview.past ? 'Expiring soon' : 'To use up'}</dt>
-          </div>
-        </dl>
-      ) : (
-        <div className="chips pstock-have">
-          {have && (
-            <button type="button" className="chip" onClick={() => onAct({ event: stockEvent(p.id, 'use', 1, 'app'), text: `${p.name}: used, still have it` })}>
-              Used it
-            </button>
-          )}
-          {have && (
-            <button type="button" className="chip" onClick={() => onAct({ event: stockEvent(p.id, 'count', 0, 'app'), text: `${p.name} finished`, undo: stockEvent(p.id, 'count', 1, 'app'), done: true })}>
-              Finished
-            </button>
-          )}
-          {have && (
-            <button type="button" className="chip" onClick={() => onAct({ event: stockEvent(p.id, 'toss', 1, 'app'), text: `${p.name} discarded`, undo: stockEvent(p.id, 'count', 1, 'app'), done: true })}>
-              Discard
-            </button>
-          )}
-          {!have && (
-            <button type="button" className="chip" onClick={() => onAct({ event: stockEvent(p.id, 'count', 1, 'app'), text: `${p.name}: have it again`, undo: stockEvent(p.id, 'count', 0, 'app') })}>
-              Have it again
-            </button>
-          )}
+      <dl className="pstock-stats">
+        <div>
+          <dd>{have ? amount(s.quantity) : 'None'}</dd>
+          <dt>Remaining</dt>
         </div>
-      )}
-      {!s.tracked && <p className="muted small pstock-note">Counted as have it or out: a use is logged but never lowers it.</p>}
+        <div>
+          <dd>{overview.active}</dd>
+          <dt>Active {overview.active === 1 ? 'batch' : 'batches'}</dt>
+        </div>
+        <div className={overview.past ? 'tone-red' : overview.soon ? 'tone-orange' : ''}>
+          <dd>{attention}</dd>
+          <dt>{overview.past && !overview.soon ? 'Past date' : overview.soon && !overview.past ? 'Expiring soon' : 'To use up'}</dt>
+        </div>
+      </dl>
       {quiet && (
         <p className="small pstock-quiet" role="status">
           What you log now changes the stock but isn’t counted in statistics.
@@ -418,7 +385,7 @@ export function ProductStock({
       )}
 
       {/* B. Purchase batches: each one on its own */}
-      {s.tracked && (
+      {(
         <section className="pstock-section" aria-label="Purchase batches">
           <div className="pstock-section-head">
             <h2>Purchase batches</h2>
