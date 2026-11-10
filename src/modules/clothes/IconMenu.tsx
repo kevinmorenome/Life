@@ -8,6 +8,8 @@ export interface MenuEntry {
   /** Hash route to open; otherwise `onSelect` runs. */
   path?: string;
   onSelect?: () => void;
+  /** Shown in the danger colour: throwing away, deleting. */
+  danger?: boolean;
 }
 
 /** A round ⋮ button that opens a small floating menu; closes on outside tap or Escape. */
@@ -49,7 +51,7 @@ export function IconMenu({ entries, label = 'More', icon, triggerClassName = 'ic
               <button
                 key={e.label}
                 role="menuitem"
-                className="menu-item"
+                className={e.danger ? 'menu-item menu-danger' : 'menu-item'}
                 onClick={() => {
                   setOpen(false);
                   e.onSelect?.();

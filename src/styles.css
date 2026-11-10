@@ -5588,11 +5588,6 @@ a.game-row + .food-h2 {
   border-radius: 3px;
   background: var(--border);
 }
-.food-sheet-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
 .food-sheet-text {
   min-width: 0;
 }
@@ -5603,18 +5598,6 @@ a.game-row + .food-h2 {
 }
 .food-sheet-text p {
   margin: 0;
-}
-.food-sheet-amount {
-  margin: 0.4rem 0 0.25rem;
-  font-size: 1.75rem;
-  font-weight: 800;
-  line-height: 1;
-}
-.food-fresh {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 0.9rem 0 0;
 }
 .food-actions {
   display: grid;
@@ -5652,13 +5635,6 @@ a.game-row + .food-h2 {
 .food-action:disabled {
   opacity: 0.4;
   cursor: default;
-}
-.food-levels {
-  margin-top: 12px;
-}
-.food-hint {
-  margin: 14px 0 0;
-  line-height: 1.4;
 }
 .food-toast {
   position: fixed;
@@ -5734,11 +5710,6 @@ a.game-row + .food-h2 {
 .food-pic {
   position: relative;
   flex: none;
-}
-.food-art-hero {
-  width: 132px;
-  margin: 0.25rem 0 0.75rem;
-  border-radius: 28px;
 }
 /* The button sits at the picture's corner, close to the screen's left edge: anchor the menu to the picture (left
    aligned, below it) instead of to the button, so it never runs off-screen, and keep it readable over the controls. */
@@ -6059,79 +6030,8 @@ a.game-row + .food-h2 {
 }
 
 /* Food: batches of one product */
-.batch-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.batch {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--glass-line, var(--border));
-}
-.batch-main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-.batch-by {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.batch-by input[type='date'] {
-  font: inherit;
-  min-height: 36px;
-  padding: 0 0.5rem;
-  border-radius: 10px;
-}
-.food-batch-note {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.food-sheet .batch-list {
-  margin-bottom: 0.5rem;
-}
-.batch-tag {
-  font-weight: 500;
-  color: var(--tone-blue);
-}
-.batch-frozen .batch-main > strong {
-  color: var(--text);
-}
-.batch-tag-thawed {
-  color: var(--tone-orange);
-}
-.batch-thawed-note {
-  font-weight: 600;
-}
 
 /* Food: batch history and "not in statistics" */
-.batch {
-  flex-wrap: wrap;
-}
-.batch-main {
-  flex: 1 1 0;
-}
-.batch-details {
-  flex-basis: 100%;
-}
-.batch-details > summary,
-.batch-past > summary {
-  cursor: pointer;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-.batch-past {
-  margin-top: 0.5rem;
-}
 .batch-history {
   list-style: none;
   margin: 0.25rem 0 0.5rem;
@@ -6146,16 +6046,6 @@ a.game-row + .food-h2 {
 }
 .batch-history-date {
   min-width: 3.5rem;
-}
-.batch-gone .batch-main > strong {
-  font-weight: 600;
-}
-.stats-switch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  margin-top: 0.75rem;
 }
 
 /* Trakt plays */
@@ -7620,4 +7510,670 @@ a.game-row + .food-h2 {
 }
 .place-sheet .food-action {
   text-align: left;
+}
+
+/* Food: a product as a set of batches (ProductStock: overview, batch cards, activity) */
+:root {
+  --tone-green: #2e8b57;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tone-green: #6fd08c;
+  }
+}
+:root[data-theme='dark'] {
+  --tone-green: #6fd08c;
+}
+.tone-green {
+  --t: var(--tone-green);
+}
+.tone-orange {
+  --t: var(--tone-orange);
+}
+.tone-red {
+  --t: var(--danger);
+}
+.tone-blue {
+  --t: var(--tone-blue);
+}
+.tone-grey {
+  --t: var(--muted);
+}
+/* Badges: one colour per meaning, always with words. */
+.sbadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sbadge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--t, var(--muted)) 17%, transparent);
+  color: color-mix(in srgb, var(--t, var(--muted)) 72%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.sbadge.tone-grey {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--muted);
+}
+.pstock-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.pstock .food-art-big {
+  width: 84px;
+  border-radius: 24px;
+}
+.pstock-text {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.pstock-name {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.pstock-where {
+  margin: 4px 0 10px;
+}
+.pstock-more {
+  flex: none;
+  margin: -6px -10px 0 -8px;
+}
+.pstock-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--glass-line, var(--border));
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.pstock-stats > div {
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+  border-left: 1px solid var(--glass-line, var(--border));
+}
+.pstock-stats > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.pstock-stats dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 750;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pstock-stats [class^='tone-'] dd {
+  color: var(--t);
+}
+.pstock-stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.pstock-have {
+  margin-top: 16px;
+}
+.pstock-note {
+  margin: 10px 0 0;
+}
+.pstock-quiet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 6px 6px 6px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--tone-orange) 14%, transparent);
+  line-height: 1.35;
+}
+.pstock-quiet button,
+.pstock-all {
+  flex: none;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pstock-all {
+  padding: 0;
+}
+.pstock-section {
+  margin-top: 26px;
+}
+.pstock-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pstock-section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.pstock-empty {
+  margin: 0;
+  line-height: 1.45;
+}
+.pstock-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 18px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--glass-line, var(--border));
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pstock-link > span {
+  display: flex;
+  flex-direction: column;
+}
+.pstock-link .small {
+  font-weight: 400;
+}
+.pstock-link svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+.pstock-link svg {
+  transition: transform 0.15s ease;
+}
+.pstock-link.is-open svg {
+  transform: rotate(180deg);
+}
+.pstock-details > .food-h2:first-child {
+  margin-top: 0.75rem;
+}
+.pstock + .food-h2 {
+  margin-top: 2rem;
+}
+
+/* One purchase = one card. Quiet on purpose: a tint and a hairline, no blur, so the controls on it stand out. */
+.bcard-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bcard {
+  padding: 6px 14px 6px 16px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--text) 3.5%, transparent);
+}
+.bcard-frozen {
+  border-color: color-mix(in srgb, var(--tone-blue) 26%, transparent);
+  background: color-mix(in srgb, var(--tone-blue) 7%, transparent);
+}
+.bcard-past {
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.bcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+.bcard .sbadges {
+  margin: 8px 0 6px;
+}
+.bcard-gone .sbadges {
+  margin: 0;
+}
+.bcard-id {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.bcard-qty {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 750;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  margin-top: -4px;
+}
+.bcard-of {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.bcard-bar {
+  display: block;
+  width: 140px;
+  max-width: 100%;
+  height: 4px;
+  margin: 6px 0 0;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.bcard-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.bcard-meta {
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+.bcard-warn {
+  color: color-mix(in srgb, var(--tone-orange) 72%, var(--text));
+  font-weight: 650;
+}
+.bcard-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-right: -10px;
+}
+.bcard-use {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--glass-edge, var(--border));
+  border-radius: 22px;
+  background: var(--glass-bg, var(--surface));
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.bcard-use:active {
+  transform: scale(0.97);
+}
+.bcard-use svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.bcard-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--glass-line, var(--border));
+}
+/* The use-by date is a value you can tap: the browser's own date picker lies invisibly over it. */
+.bcard-date {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bcard-date > span {
+  text-decoration: underline dotted color-mix(in srgb, var(--text) 35%, transparent);
+  text-underline-offset: 4px;
+}
+.bcard-due {
+  color: var(--muted);
+  font-weight: 500;
+}
+.bcard-past .bcard-due {
+  color: var(--danger);
+}
+.bcard-date input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.bcard-date:focus-within > span {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.bcard-history > summary,
+.bcard-past > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.bcard-history > summary::-webkit-details-marker,
+.bcard-past > summary::-webkit-details-marker {
+  display: none;
+}
+.bcard-history > summary::after,
+.bcard-past > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+.bcard-history[open] > summary::after,
+.bcard-past[open] > summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+.bcard-history[open] {
+  flex-basis: 100%;
+}
+.bcard-past {
+  margin-top: 6px;
+}
+.bcard-past > summary {
+  font-size: 0.875rem;
+}
+.bcard-gone {
+  padding-bottom: 2px;
+  background: none;
+}
+.bcard-gone .bcard-meta {
+  margin-top: 6px;
+}
+.batch-history {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.batch-history li {
+  display: grid;
+  grid-template-columns: 6.75rem minmax(0, 1fr) 44px;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+}
+/* A date you can correct: tap it and the browser's calendar opens (an invisible date field lies over it). */
+.hist-date {
+  position: relative;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  cursor: pointer;
+}
+.hist-date > span {
+  text-decoration: underline dotted color-mix(in srgb, var(--text) 35%, transparent);
+  text-underline-offset: 4px;
+}
+.hist-date input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hist-date:focus-within > span {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.hist-remove {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.hist-remove:active {
+  color: var(--danger);
+}
+.hist-remove svg {
+  width: 18px;
+  height: 18px;
+}
+
+.activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.activity li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.activity li:last-child {
+  border-bottom: 0;
+}
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--t, var(--muted));
+}
+.activity-dot.tone-grey {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+.activity-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+.activity-date {
+  white-space: nowrap;
+}
+
+/* The amount dialog floats in the upper half of the screen, so the keyboard never covers it. */
+.amount-sheet {
+  position: fixed;
+  top: max(12vh, calc(env(safe-area-inset-top) + 16px));
+  right: 16px;
+  left: 16px;
+  z-index: 49;
+  max-width: 420px;
+  max-height: calc(100dvh - 12vh - 16px);
+  margin: 0 auto;
+  padding: 20px;
+  overflow-y: auto;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.3);
+  outline: none;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Glass like the menus: a thin, clear pane that lets the sheet and the page show through, with a bright rim. */
+  .amount-sheet {
+    border: 1px solid var(--glass-rim);
+    background: linear-gradient(160deg, var(--glass-bg), var(--glass-tint));
+    -webkit-backdrop-filter: blur(38px) saturate(190%);
+    backdrop-filter: blur(38px) saturate(190%);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim), inset 0 0 24px var(--glass-glow);
+  }
+  .amount-field {
+    background: color-mix(in srgb, var(--glass-bg) 55%, transparent);
+    border-color: var(--glass-edge);
+    box-shadow: inset 0 1px 3px rgb(31 38 54 / 0.1);
+  }
+  .amount-sheet .btn:not(.btn-primary),
+  .amount-step {
+    background: var(--glass-bg);
+  }
+}
+/* A lighter veil than the sheets': the pane itself is what should stand out, not the dimming. */
+.amount-scrim {
+  background: rgb(20 18 15 / 0.16);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .amount-sheet {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.amount-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+.amount-hint {
+  margin: 4px 0 0;
+}
+.amount-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.amount-step {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--glass-edge, var(--border));
+  border-radius: 50%;
+  background: var(--glass-bg, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+}
+.amount-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.amount-step svg {
+  width: 22px;
+  height: 22px;
+}
+.amount-field {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.amount-field:focus-within {
+  border-color: var(--accent);
+}
+.amount-field input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-size: 2rem;
+  font-weight: 750;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.amount-field input:focus-visible {
+  outline: none;
+}
+.amount-field span {
+  flex: 1;
+  font-weight: 600;
+}
+.amount-note {
+  margin: 8px 0 0;
+  text-align: center;
+}
+.amount-note-bad {
+  color: var(--danger);
+  font-weight: 600;
+}
+.amount-quick {
+  justify-content: center;
+  margin-top: 12px;
+}
+.amount-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.amount-date input {
+  width: auto;
+  min-width: 10rem;
+}
+.amount-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+/* Menus on the batch cards open over text: opaque, and wide enough for their longest line. */
+.pstock .menu-wrap > .menu {
+  z-index: 20;
+  width: max-content;
+  max-width: calc(100vw - 3rem);
+  background: var(--surface);
+}
+.pstock .menu-item {
+  white-space: nowrap;
 }

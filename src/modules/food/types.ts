@@ -71,6 +71,8 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
 export const STORAGES = ['fridge', 'pantry', 'freezer', 'home'] as const;
 export type Storage = (typeof STORAGES)[number];
 
+export const STORAGE_LABELS: Record<Storage, string> = { fridge: 'Fridge', pantry: 'Pantry', freezer: 'Freezer', home: 'Home' };
+
 /**
  * What you or Claude know about a product beyond its receipts. The id comes from the cleaned name
  * (`productId()`), so the same product on different receipts is the same record. Created on demand;
@@ -106,7 +108,7 @@ export interface FoodProduct {
 }
 
 /** What happened to some of a product: eaten/used, thrown away, counted ("I have 3 left", 0 = finished), a use-by date set for a batch, or some of it put in the freezer or taken out again. */
-export type StockEventType = 'use' | 'toss' | 'count' | 'expiry' | 'freeze' | 'thaw';
+export type StockEventType = 'use' | 'toss' | 'count' | 'expiry' | 'freeze' | 'thaw' | 'edit';
 
 /**
  * One thing that changed what you have. Always a fresh record, never edited (a mistake is fixed with a newer
@@ -140,6 +142,20 @@ export interface StockEvent {
    * order of events right; the app shows "date unknown" and no stat reads it as a day something happened.
    */
   undated?: boolean;
+  /**
+   * For `edit` events: the id of the event this corrects. Events are never changed or deleted, so a correction is its
+   * own record: it moves the target to `newDate` (the day it really happened; without one the target keeps its own),
+   * says nobody knows when it happened (`undated` on the edit),
+   * or takes it away (`removed`). The newest edit of a target wins, so undoing one is just another edit. Its
+   * `quantity` is 0. See `effectiveEvents()`.
+   */
+  target?: string;
+  /** For `edit` events: the day (YYYY-MM-DD) the target really happened. `date` is only the day the correction was made. */
+  newDate?: string;
+  /** For `edit` events: the target never happened. */
+  removed?: boolean;
+  /** Set by `effectiveEvents()` on an event whose day was corrected; never stored. */
+  edited?: boolean;
   createdAt: string;
   updatedAt: string;
 }

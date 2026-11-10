@@ -1,7 +1,7 @@
 import { round2 } from './food';
 import { comparablePrice, priceUnit } from './prices';
 import { averageUnitPrice, defaultType, isFoodKind, isStocked, productId, type ProductSummary } from './products';
-import { addDays, daysBetween, originBatch } from './stock';
+import { addDays, daysBetween, effectiveEvents, originBatch } from './stock';
 import { usualInterval } from './shopping';
 import type { FoodProduct, FoodReceipt, LineKind, ProductType, StockEvent } from './types';
 
@@ -202,7 +202,7 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
   const monthly = new Map<string, number>();
   let value = 0;
   let times = 0;
-  for (const e of events) {
+  for (const e of effectiveEvents(events)) {
     if (e.type !== 'toss' || e.quantity <= 0 || e.untracked) continue;
     const p = byId.get(e.productId);
     // Shampoo used up is not food thrown away.
