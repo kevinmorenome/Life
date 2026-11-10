@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles' | 'players' | 'trips' | 'tripitplans';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map(), players: new Map(), trips: new Map(), tripitplans: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -110,6 +110,15 @@ describe('protocol', () => {
       'edit_outfit',
       'edit_item',
       'set_item_photo',
+      'day_summary',
+      'list_game_nights',
+      'game_stats',
+      'list_trips',
+      'trip_itinerary',
+      'list_watched',
+      'music_summary',
+      'closet_stats',
+      'food_stats',
     ]);
     expect(await rpc(ctx, 'notifications/initialized', undefined, true)).toBeNull();
     expect((await rpc(ctx, 'nope')).error.code).toBe(-32601);
