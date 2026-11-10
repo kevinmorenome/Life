@@ -26,7 +26,9 @@ export interface WorkDay {
  */
 export interface WorkEvent {
   id: string;
-  type: 'arrive' | 'leave' | 'home';
+  type: 'arrive' | 'leave' | 'home' | 'office' | 'trip';
+  /** Where an `arrive`/`leave` happened, when it wasn't the office (logged through the MCP `log_work` tool). */
+  place?: 'office' | 'home' | 'trip';
   /** YYYY-MM-DD, local to where the phone was. */
   date: string;
   /** HH:MM, local. */

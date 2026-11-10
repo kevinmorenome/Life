@@ -16,6 +16,7 @@ import { formatQty, originBatch, partLeft, stockOf, type Batch, type Stock } fro
 import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/types';
 import { parseGroceryReceipt } from './groceries';
 import { parseRides } from './rides';
+import { PLACES, parseWorkLog } from './workLog';
 import { parseWoltOrders } from './wolt';
 import type { TakeoutService } from '../src/modules/wolt/types';
 import type { PhotoSearchInput } from './foodPhotos';
@@ -326,6 +327,21 @@ export const TOOLS = [
     },
   },
   {
+    name: 'log_work',
+    description:
+      'Log a work day: where the user worked (place: "office", "home" or "trip" for a business trip) and, optionally, when they started (arrive) and finished (leave), 24-hour local time. Use the user\'s local date. Either time can be given alone and the other added in a later call; calling again with the same values is harmless. Times belong to any kind of day, home and trip days included. This only adds check-ins: a day the user set by hand in the app (or imported from the badge report) keeps its status and times, so say so if the user asks to change one of those. Ask for the place if the user did not say.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD, the user\'s local day' },
+        place: { type: 'string', enum: [...PLACES], description: 'office, home, or trip (business trip)' },
+        arrive: { type: 'string', description: 'HH:MM, when work started' },
+        leave: { type: 'string', description: 'HH:MM, when work finished' },
+      },
+      required: ['date', 'place'],
+    },
+  },
+  {
     name: 'list_stock',
     description:
       'What is in the kitchen: every product that has been bought, with how much is left (in its unit: pieces, kg or l; multipacks such as a 6-pack of beer are counted in single items, e.g. 11 cans; otherwise a fraction like 1.5 means one pack and a half; spices and the like have no amount, only "have it" or out), where it is kept, the use-by date for fresh items and a status (ok, use-soon, check = probably past its date, low, out). Stock is worked out from the grocery receipts minus what was used, thrown away or counted. Use it to answer "do I have X?", "what should I eat soon?" or "what can I cook?", and to find the right product name before use_stock or count_stock. Items that are out are left out unless includeOut is true.',
@@ -531,6 +547,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : args.service === 'bolt' || args.service === 'uber' ? addWoltOrders(args, ctx, args.service) : fail('service must be "bolt" or "uber"');
     case 'add_rides':
       return ctx.readOnly ? fail(READ_ONLY) : addRides(args, ctx);
+    case 'log_work':
+      return ctx.readOnly ? fail(READ_ONLY) : logWork(args, ctx);
     case 'shopping_list':
       return shoppingListTool(ctx);
     case 'product_prices':
@@ -723,6 +741,15 @@ async function showPhotos(args: Args, { store, appUrl }: ToolContext): Promise<T
 }
 
 // ---- writes ----
+
+async function logWork(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const parsed = parseWorkLog(args, now);
+  if ('error' in parsed) return fail(parsed.error);
+  for (const r of parsed.records) await store.put('workevents', r.id, r);
+  const times = parsed.records.filter((r) => r.type === 'arrive' || r.type === 'leave').map((r) => `${r.type} ${r.time}`);
+  const place = parsed.records.at(-1)!.type;
+  return ok(`Logged ${args.date}: ${place === 'trip' ? 'business trip' : place}${times.length ? ' (' + times.join(', ') + ')' : ''}. A day set by hand in the app keeps its own status.`);
+}
 
 async function logWear(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
   if (!isRealDate(args.date)) return fail('date must be a real calendar date in YYYY-MM-DD form.');
