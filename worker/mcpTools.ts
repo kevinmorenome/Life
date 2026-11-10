@@ -383,7 +383,7 @@ export const TOOLS = [
   {
     name: 'weekly_digest',
     description:
-      'A summary of a stretch of days (a week by default): places visited and new ones, how it compares with the period before, outfits and pieces worn and which days were not logged, and office / home / business-trip days with the average time at the office. Use it when the user asks "how was my week?" or for a weekly digest. It covers the 7 days ending `end` (default: yesterday, UTC), so for the last full week pass the Sunday as `end`. Write the digest from these numbers; do not invent anything that is not here. To get it every week, the user can set up a scheduled task that runs this tool. Read only.',
+      'A summary of a stretch of days (a week by default): places visited and new ones, how it compares with the period before, outfits and pieces worn and which days were not logged, office / home / business-trip days with the average time at the office, and, when there is anything, takeout and rides spent (euro), grocery shopping, what was watched (days are UTC), music listened to and games played. Use it when the user asks "how was my week?" or for a weekly digest. It covers the 7 days ending `end` (default: yesterday, UTC), so for the last full week pass the Sunday as `end`. Write the digest from these numbers; do not invent anything that is not here. To get it every week, the user can set up a scheduled task that runs this tool. Read only.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -835,12 +835,44 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
   const length = Math.min(Math.max(Math.floor(Number(args.days)) || 7, 1), 31);
   const end = (args.end as string | undefined) ?? addDays(utcToday(now), -1);
   const start = addDays(end, -(length - 1));
-  const [checkins, items, outfits, workdays, workevents] = await Promise.all([placeCheckins(store), store.list('clothes'), store.list('outfits'), store.list('workdays'), store.list('workevents')]);
+  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles] = await Promise.all([
+    placeCheckins(store),
+    store.list('clothes'),
+    store.list('outfits'),
+    store.list('workdays'),
+    store.list('workevents'),
+    store.list('woltorders'),
+    store.list('rides'),
+    store.list('foodreceipts'),
+    store.list('watched'),
+    store.list('musicdays'),
+    store.list('gamenights'),
+    store.list('gametitles'),
+  ]);
+  const titleName = new Map(titles.map((t) => [t.id, String(t.name ?? 'a game')]));
   const days = buildDays(
     workdays.map((r) => ({ id: r.id, status: r.status, arrive: r.arrive, leave: r.leave, reason: r.reason }) as unknown as WorkDay),
     workevents.map((r) => ({ id: r.id, type: r.type, place: r.place, date: r.date, time: r.time }) as unknown as WorkEvent),
   );
-  const digest = buildDigest({ checkins, worn: wornByDay(items, outfits, start), days, start, end });
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  const digest = buildDigest({
+    checkins,
+    worn: wornByDay(items, outfits, start),
+    days,
+    start,
+    end,
+    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR') })),
+    rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
+    groceries: receipts
+      .filter((r) => isRealDate(r.date))
+      .map((r) => ({ date: String(r.date), store: String(r.store ?? ''), total: typeof r.total === 'number' ? r.total : (Array.isArray(r.lines) ? r.lines : []).reduce((a: number, l: { paid?: unknown }) => a + num(l?.paid), 0) })),
+    // The worker has no time zone, so a play counts on its UTC day.
+    watched: watched.filter((r) => typeof r.at === 'string').map((r) => ({ date: String(r.at).slice(0, 10), title: String(r.title ?? ''), kind: r.kind === 'movie' ? ('movie' as const) : ('episode' as const) })),
+    music: music.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), plays: num(r.plays), ms: num(r.ms), artists: (Array.isArray(r.topArtists) ? r.topArtists : []).map((a: { name?: unknown; plays?: unknown }) => ({ name: String(a?.name ?? ''), plays: num(a?.plays) })) })),
+    games: nights
+      .filter((n) => isRealDate(n.date))
+      .flatMap((n) => (Array.isArray(n.matches) ? n.matches : []).filter((m: { live?: unknown }) => !m?.live).map((m: { titleId?: unknown }) => ({ date: String(n.date), game: titleName.get(String(m?.titleId)) ?? 'a game' }))),
+  });
   return ok({
     ...digest,
     ...(end >= utcToday(now) ? { note: 'The period includes today or later days, so it is not complete yet.' } : {}),

@@ -8177,3 +8177,20 @@ a.game-row + .food-h2 {
 .pstock .menu-item {
   white-space: nowrap;
 }
+
+/* A list of one-line facts that may wrap (the week's digest, the year in review). */
+.digest-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.digest-list li {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.digest-list li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}

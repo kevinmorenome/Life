@@ -67,3 +67,49 @@ describe('buildDigest', () => {
     expect(empty.outfits.notLogged).toEqual(['2026-10-19']);
   });
 });
+
+describe('buildDigest: other modules', () => {
+  const base = { checkins: [], worn: new Map(), days: new Map(), start: '2026-10-19', end: '2026-10-25' };
+
+  it('leaves out modules with nothing in the period', () => {
+    expect(buildDigest(base).other).toEqual({});
+    expect(buildDigest({ ...base, takeout: [{ date: '2026-10-01', place: 'X', total: 5, currency: 'EUR' }] }).other).toEqual({});
+  });
+
+  it('sums takeout and rides in euro, counts other currencies apart and joins branches', () => {
+    const d = buildDigest({
+      ...base,
+      takeout: [
+        { date: '2026-10-20', place: "McDonald's - Rotor", total: 10.5, currency: 'EUR' },
+        { date: '2026-10-21', place: "McDonald's - Ilica", total: 9.5, currency: 'EUR' },
+        { date: '2026-10-22', place: 'Zabka', total: 40, currency: 'PLN' },
+      ],
+      rides: [{ date: '2026-10-23', fare: 7.4, currency: 'EUR' }, { date: '2026-10-24', fare: 30, currency: 'PLN' }],
+    });
+    expect(d.other.takeout).toEqual({ orders: 3, spentEur: 20, otherCurrencyOrders: 1, places: [{ name: "McDonald's", times: 2 }, { name: 'Zabka', times: 1 }] });
+    expect(d.other.rides).toEqual({ rides: 2, spentEur: 7.4, otherCurrencyRides: 1 });
+  });
+
+  it('summarises groceries, watching, music and games', () => {
+    const d = buildDigest({
+      ...base,
+      groceries: [{ date: '2026-10-19', store: 'Konzum', total: 31.2 }, { date: '2026-10-24', store: 'dm', total: 8.8 }, { date: '2026-10-24', store: 'Konzum', total: 10 }],
+      watched: [
+        { date: '2026-10-20', title: 'Severance', kind: 'episode' },
+        { date: '2026-10-21', title: 'Severance', kind: 'episode' },
+        { date: '2026-10-22', title: 'Heat', kind: 'movie' },
+      ],
+      music: [
+        { date: '2026-10-19', plays: 40, ms: 5_400_000, artists: [{ name: 'A', plays: 10 }, { name: 'B', plays: 5 }] },
+        { date: '2026-10-20', plays: 0, ms: 0 },
+        { date: '2026-10-21', plays: 20, ms: 1_800_000, artists: [{ name: 'B', plays: 9 }] },
+      ],
+      games: [{ date: '2026-10-24', game: 'Catan' }, { date: '2026-10-24', game: 'Catan' }, { date: '2026-10-24', game: 'Uno' }],
+    });
+    expect(d.other.groceries).toEqual({ receipts: 3, spent: 50, stores: [{ name: 'Konzum', times: 2 }, { name: 'dm', times: 1 }] });
+    expect(d.other.watching).toEqual({ plays: 3, movies: 1, episodes: 2, top: [{ name: 'Severance', times: 2 }, { name: 'Heat', times: 1 }] });
+    expect(d.other.music).toEqual({ plays: 60, hours: 2, daysWithMusic: 2, topArtists: [{ name: 'B', times: 14 }, { name: 'A', times: 10 }] });
+    expect(d.other.games).toEqual({ games: 3, days: 1, titles: [{ name: 'Catan', times: 2 }, { name: 'Uno', times: 1 }] });
+  });
+});
+

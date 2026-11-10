@@ -1,11 +1,13 @@
 import { GearIcon } from './icons';
 import { href } from './lib/router';
 import { MODULES } from './modules';
+import { WeekDigest } from './WeekDigest';
 
 /** The More tab: modules with pages of their own, and Settings. */
 export function Home() {
   return (
     <>
+      <WeekDigest />
       <ul className="module-grid">
         {MODULES.filter((m) => m.listed !== false).map((m) => (
           <li key={m.id}>

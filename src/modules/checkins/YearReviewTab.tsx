@@ -39,7 +39,7 @@ export function YearReviewTab({ checkins, now }: { checkins: Checkin[]; now: str
           </div>
           {r.checkins > 0 && (
             <Section title="Highlights" note={partial ? 'The year so far.' : undefined}>
-              <ul className="widget-list">
+              <ul className="digest-list">
                 {r.busiestMonth && (
                   <li>
                     <strong>Busiest month</strong> <span className="small">{monthName(r.busiestMonth.month)}, {times(r.busiestMonth.count)} checked in</span>

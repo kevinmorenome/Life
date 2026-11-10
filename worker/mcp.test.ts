@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -1220,5 +1220,30 @@ describe('places and the weekly digest', () => {
     expect(last.note).toBeUndefined();
     expect((await call(ctx, 'weekly_digest', { end: 'soon' })).isError).toBe(true);
     expect((await call(ctx, 'weekly_digest', { end: '2026-10-25', days: 3 })).json().period.days).toBe(3);
+  });
+
+  it('weekly_digest includes the other modules when they have something in the period', async () => {
+    const { ctx } = setup(
+      {},
+      {
+        ...seed,
+        woltorders: [{ id: 'w1', restaurant: "McDonald's - Rotor", date: '2026-10-21', total: 10, currency: 'EUR' }],
+        rides: [{ id: 'r1', provider: 'bolt', date: '2026-10-22', fare: 6, currency: 'EUR' }],
+        foodreceipts: [{ id: 'f1', store: 'Konzum', date: '2026-10-23', lines: [{ paid: 12.5 }, { paid: 2 }] }],
+        watched: [{ id: 'p1', kind: 'episode', title: 'Severance', at: '2026-10-24T20:00:00.000Z' }],
+        musicdays: [{ id: 'm1', date: '2026-10-20', plays: 30, ms: 3_600_000, topArtists: [{ name: 'Bicep', plays: 8 }] }],
+        gametitles: [{ id: 'g1', name: 'Catan' }],
+        gamenights: [{ id: 'n1', date: '2026-10-24', matches: [{ titleId: 'g1' }, { titleId: 'g1', live: true }] }],
+      } as never,
+    );
+    const r = (await call(ctx, 'weekly_digest', { end: '2026-10-25' })).json();
+    expect(r.other).toEqual({
+      takeout: { orders: 1, spentEur: 10, otherCurrencyOrders: 0, places: [{ name: "McDonald's", times: 1 }] },
+      rides: { rides: 1, spentEur: 6, otherCurrencyRides: 0 },
+      groceries: { receipts: 1, spent: 14.5, stores: [{ name: 'Konzum', times: 1 }] },
+      watching: { plays: 1, movies: 0, episodes: 1, top: [{ name: 'Severance', times: 1 }] },
+      music: { plays: 30, hours: 1, daysWithMusic: 1, topArtists: [{ name: 'Bicep', times: 8 }] },
+      games: { games: 1, days: 1, titles: [{ name: 'Catan', times: 1 }] },
+    });
   });
 });

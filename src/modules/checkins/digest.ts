@@ -1,5 +1,6 @@
 import { addDays } from '../clothes/calendar';
 import { formatDuration, toMinutes, type DayInfo } from '../work/work';
+import { placeName, round2 } from '../wolt/wolt';
 import { venueKey } from './placeStats';
 import type { PlaceCheckin } from './placesQuery';
 
@@ -10,7 +11,18 @@ export interface WornNames {
   items: string[];
 }
 
-export interface DigestInput {
+/** What the other modules add, already reduced to what the digest needs. Anything left out is simply not summarised. */
+export interface DigestExtras {
+  takeout?: { date: string; place: string; total: number; currency: string }[];
+  rides?: { date: string; fare: number; currency: string }[];
+  groceries?: { date: string; store: string; total: number }[];
+  watched?: { date: string; title: string; kind: 'movie' | 'episode' }[];
+  music?: { date: string; plays: number; ms: number; artists?: { name: string; plays: number }[] }[];
+  /** One entry per game played (a match), with the game's name. */
+  games?: { date: string; game: string }[];
+}
+
+export interface DigestInput extends DigestExtras {
   checkins: PlaceCheckin[];
   worn: Map<string, WornNames>;
   /** From `buildDays()`: what is known of each work day. */
@@ -55,6 +67,15 @@ export interface Digest {
     /** Average time between arriving and leaving on office days with both times, e.g. "8h 12m". */
     averageAtOffice?: string;
   };
+  /** Only the parts that have something in the period. */
+  other: {
+    takeout?: { orders: number; spentEur: number; otherCurrencyOrders: number; places: NamedCount[] };
+    rides?: { rides: number; spentEur: number; otherCurrencyRides: number };
+    groceries?: { receipts: number; spent: number; stores: NamedCount[] };
+    watching?: { plays: number; movies: number; episodes: number; top: NamedCount[] };
+    music?: { plays: number; hours: number; daysWithMusic: number; topArtists: NamedCount[] };
+    games?: { games: number; days: number; titles: NamedCount[] };
+  };
 }
 
 /** Every date from `start` to `end`, inclusive (empty when `end` is before `start`). */
@@ -75,7 +96,7 @@ function tally(names: string[]): NamedCount[] {
 const countStatus = (days: Map<string, DayInfo>, dates: string[], status: string) => dates.filter((d) => days.get(d)?.status === status).length;
 
 /** A summary of one stretch of days: where you went, what you wore and how you worked. Pure, so it is easy to test. */
-export function buildDigest({ checkins, worn, days, start, end }: DigestInput): Digest {
+export function buildDigest({ checkins, worn, days, start, end, ...extras }: DigestInput): Digest {
   const dates = datesBetween(start, end);
   const length = dates.length;
   const previousStart = addDays(start, -length);
@@ -133,6 +154,7 @@ export function buildDigest({ checkins, worn, days, start, end }: DigestInput): 
       loosePieces: tally(dates.flatMap((d) => worn.get(d)?.items ?? [])).slice(0, 5),
       byDay: wornDays.map((d) => ({ date: d, outfits: worn.get(d)!.outfits, items: worn.get(d)!.items })),
     },
+    other: otherSections(extras, start, end),
     work: {
       officeDays: atOffice.length,
       homeDays: countStatus(days, dates, 'home'),
@@ -142,4 +164,49 @@ export function buildDigest({ checkins, worn, days, start, end }: DigestInput): 
       ...(spans.length ? { averageAtOffice: formatDuration(spans.reduce((a, b) => a + b, 0) / spans.length) } : {}),
     },
   };
+}
+
+const EUR = 'EUR';
+
+/** The other modules' numbers for the period; a module with nothing in it is left out. */
+function otherSections(x: DigestExtras, start: string, end: string): Digest['other'] {
+  const out: Digest['other'] = {};
+
+  const orders = inRange(x.takeout ?? [], start, end);
+  if (orders.length) {
+    const euro = orders.filter((o) => o.currency === EUR);
+    out.takeout = { orders: orders.length, spentEur: round2(euro.reduce((a, o) => a + o.total, 0)), otherCurrencyOrders: orders.length - euro.length, places: tally(orders.map((o) => placeName(o.place))).slice(0, 3) };
+  }
+
+  const rides = inRange(x.rides ?? [], start, end);
+  if (rides.length) {
+    const euro = rides.filter((r) => r.currency === EUR);
+    out.rides = { rides: rides.length, spentEur: round2(euro.reduce((a, r) => a + r.fare, 0)), otherCurrencyRides: rides.length - euro.length };
+  }
+
+  const receipts = inRange(x.groceries ?? [], start, end);
+  if (receipts.length) out.groceries = { receipts: receipts.length, spent: round2(receipts.reduce((a, r) => a + r.total, 0)), stores: tally(receipts.map((r) => r.store)).slice(0, 3) };
+
+  const plays = inRange(x.watched ?? [], start, end);
+  if (plays.length) {
+    const movies = plays.filter((p) => p.kind === 'movie').length;
+    out.watching = { plays: plays.length, movies, episodes: plays.length - movies, top: tally(plays.map((p) => p.title)).slice(0, 3) };
+  }
+
+  const listened = inRange(x.music ?? [], start, end).filter((d) => d.plays > 0);
+  if (listened.length) {
+    const artists = new Map<string, number>();
+    for (const d of listened) for (const a of d.artists ?? []) artists.set(a.name, (artists.get(a.name) ?? 0) + a.plays);
+    out.music = {
+      plays: listened.reduce((a, d) => a + d.plays, 0),
+      hours: Math.round((listened.reduce((a, d) => a + d.ms, 0) / 3_600_000) * 10) / 10,
+      daysWithMusic: listened.length,
+      topArtists: [...artists].map(([name, times]) => ({ name, times })).sort((a, b) => b.times - a.times || a.name.localeCompare(b.name)).slice(0, 3),
+    };
+  }
+
+  const games = inRange(x.games ?? [], start, end);
+  if (games.length) out.games = { games: games.length, days: new Set(games.map((g) => g.date)).size, titles: tally(games.map((g) => g.game)).slice(0, 3) };
+
+  return out;
 }
