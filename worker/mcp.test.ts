@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -94,6 +94,7 @@ describe('protocol', () => {
       'add_wolt_orders',
       'add_takeout_orders',
       'add_rides',
+      'log_work',
       'list_stock',
       'shopping_list',
       'product_prices',
@@ -242,6 +243,34 @@ describe('show_photos', () => {
   it('works on read-only deployments', async () => {
     const { ctx } = setup({ readOnly: true }, photoSeed);
     expect((await call(ctx, 'show_photos', { itemIds: ['blazer'] })).isError).toBe(false);
+  });
+});
+
+describe('log_work', () => {
+  it('stores arrival, departure and the place as fresh events', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'log_work', { date: '2026-10-25', place: 'trip', arrive: '8:45', leave: '17:30' });
+    expect(r.isError).toBeFalsy();
+    expect([...data.workevents.values()].map((e) => [e.type, e.place, e.time])).toEqual([
+      ['arrive', 'trip', '08:45'],
+      ['leave', 'trip', '17:30'],
+      ['trip', undefined, '00:00'],
+    ]);
+    // Same call again lands on the same records.
+    await call(ctx, 'log_work', { date: '2026-10-25', place: 'trip', arrive: '08:45', leave: '17:30' });
+    expect(data.workevents.size).toBe(3);
+  });
+
+  it('logs just a place, and rejects bad input and read-only', async () => {
+    const { ctx, data } = setup();
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'home' })).isError).toBeFalsy();
+    expect([...data.workevents.values()].map((e) => e.type)).toEqual(['home']);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'moon' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'office', arrive: '25:00' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-10-25', place: 'office', arrive: '17:00', leave: '09:00' })).isError).toBe(true);
+    expect((await call(ctx, 'log_work', { date: '2026-12-25', place: 'office' })).isError).toBe(true);
+    const ro = setup({ readOnly: true });
+    expect((await call(ro.ctx, 'log_work', { date: '2026-10-25', place: 'office' })).isError).toBe(true);
   });
 });
 

@@ -26,6 +26,19 @@ describe('buildDays', () => {
     expect(d.get('2026-10-07')?.status).toBe('office');
   });
 
+  it('takes the place from logged check-ins: a business trip beats the office, home times stay home', () => {
+    const at = (type: WorkEvent['type'], date: string, time: string, place?: WorkEvent['place']): WorkEvent => ({ ...ev(type, date, time), place });
+    const d = buildDays([], [
+      at('arrive', '2026-10-05', '09:00', 'home'),
+      at('leave', '2026-10-05', '17:00', 'home'),
+      at('home', '2026-10-05', '00:00'),
+      at('arrive', '2026-10-06', '09:00', 'trip'),
+      at('office', '2026-10-06', '00:00'),
+    ]);
+    expect(d.get('2026-10-05')).toEqual({ status: 'home', manual: false, arrive: '09:00', leave: '17:00' });
+    expect(d.get('2026-10-06')?.status).toBe('trip');
+  });
+
   it('lets a day set by hand win while keeping the reported times', () => {
     const d = buildDays([day('2026-10-05', 'off')], [ev('arrive', '2026-10-05', '09:00')]);
     expect(d.get('2026-10-05')).toEqual({ status: 'off', manual: true, arrive: '09:00' });

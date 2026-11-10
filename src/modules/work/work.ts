@@ -22,6 +22,9 @@ export function buildDays(days: WorkDay[], events: WorkEvent[]): Map<string, Day
     if (!v) out.set(d, (v = { manual: false }));
     return v;
   };
+  // A business trip beats the office, which beats home (an end-of-day "home" check-in only
+  // says where you ended up, not that you didn't go in).
+  const rank: Record<WorkStatus, number> = { off: 0, home: 1, office: 2, trip: 3 };
   for (const e of events) {
     const v = get(e.date);
     if (e.type === 'arrive') {
@@ -29,11 +32,8 @@ export function buildDays(days: WorkDay[], events: WorkEvent[]): Map<string, Day
     } else if (e.type === 'leave') {
       if (!v.leave || e.time > v.leave) v.leave = e.time;
     }
-    if (e.type === 'home') {
-      if (!v.status) v.status = 'home';
-    } else {
-      v.status = 'office';
-    }
+    const status: WorkStatus = e.type === 'home' || e.type === 'trip' || e.type === 'office' ? e.type : (e.place ?? 'office');
+    if (!v.status || rank[status] > rank[v.status]) v.status = status;
   }
   for (const d of days) {
     const v = get(d.id);
