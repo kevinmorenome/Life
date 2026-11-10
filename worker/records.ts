@@ -45,24 +45,27 @@ export interface RecordStore {
 // Records can carry large photo data URLs, so only the fields the tools need
 // are extracted in SQL rather than loading whole rows into the Worker.
 const FIELDS = {
-  clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears'],
+  clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears', 'price', 'purchaseDate', 'createdAt'],
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
   inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
   foodreceipts: ['store', 'date', 'total', 'lines'],
   foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
-  foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt'],
+  foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt', 'batch', 'source', 'useBy', 'untracked', 'undated', 'target', 'newDate', 'removed'],
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
   rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
-  watched: ['kind', 'title', 'at'],
-  musicdays: ['date', 'plays', 'ms', 'topArtists'],
-  gamenights: ['date', 'matches'],
-  gametitles: ['name'],
+  watched: ['kind', 'title', 'at', 'season', 'number', 'episodeTitle'],
+  musicdays: ['date', 'plays', 'ms', 'topArtists', 'topTracks'],
+  gamenights: ['date', 'location', 'notes', 'playerIds', 'matches', 'createdAt'],
+  gametitles: ['name', 'rule'],
+  players: ['name'],
+  trips: ['name', 'destination', 'country', 'startDate', 'endDate', 'tripitRef', 'swarmRef'],
+  tripitplans: ['kind', 'title', 'start', 'startTime', 'end', 'endTime', 'location', 'tripRef', 'removed'],
   checkins: ['venue', 'venueId', 'category', 'city', 'country', 'shout', 'date', 'time', 'source'],
   workdays: ['status', 'arrive', 'leave', 'reason'],
   workevents: ['type', 'place', 'date', 'time'],
 } as const;
 
-const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'matches']);
+const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'topTracks', 'matches', 'playerIds']);
 
 export function d1Store(db: D1Database): RecordStore {
   return {
