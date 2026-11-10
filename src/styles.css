@@ -38,6 +38,11 @@
   box-sizing: border-box;
 }
 
+/* The page never scrolls sideways: wide things scroll inside their own box. */
+html,
+body {
+  overflow-x: clip;
+}
 body {
   margin: 0;
   background: var(--bg);
@@ -87,7 +92,8 @@ ul {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.35rem 8px 0.25rem 16px;
+  /* The gear (.icon-btn) pulls 10px into this padding, so its edge ends at the screen edge instead of past it. */
+  padding: 0.35rem 10px 0.25rem 16px;
   padding-top: max(0.35rem, env(safe-area-inset-top));
 }
 .brand-page {
@@ -2831,6 +2837,8 @@ progress {
 .item-rows li,
 .hbars li {
   min-width: 0;
+  /* An auto column would grow to a long label's full width instead of letting it ellipsize. */
+  grid-template-columns: minmax(0, 1fr);
 }
 .hbar-label {
   min-width: 0;
@@ -4566,6 +4574,8 @@ button.detail-row {
 }
 .place-head {
   display: grid;
+  /* A button sizes its grid to the content, so a long place name would stretch the row past the screen. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.25rem;
   width: 100%;
   min-height: 44px;
