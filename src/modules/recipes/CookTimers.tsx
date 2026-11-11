@@ -107,8 +107,11 @@ export function useCookTimers() {
     setNow(Date.now());
     setTimers((cur) => cur.map((t) => (t.id === id ? { ...t, done: false, silenced: false, left: undefined, endsAt: Date.now() + seconds * 1000 } : t)));
   };
+  /** When a step's timer was sent to the iPhone: the time it rings there, by `${step}-${seconds}` (this visit only). */
+  const [onPhone, setOnPhone] = useState<Record<string, number>>({});
+  const sentToPhone = (step: number, seconds: number) => setOnPhone((cur) => ({ ...cur, [`${step}-${seconds}`]: Date.now() + seconds * 1000 }));
   const leftOf = (t: RunningTimer) => (t.done ? 0 : t.endsAt ? (t.endsAt - now) / 1000 : t.left ?? 0);
-  return { timers, ringing, start, toggle, remove, silence, extend, leftOf };
+  return { timers, ringing, start, toggle, remove, silence, extend, leftOf, onPhone, sentToPhone };
 }
 
 export type CookTimers = ReturnType<typeof useCookTimers>;
@@ -145,6 +148,7 @@ export function TimerStrip({ timers: t, except }: { timers: CookTimers; except?:
  */
 export function StepTimerCard({ step, timer, timers: t }: { step: number; timer: StepTimer; timers: CookTimers }) {
   const { settings } = useSettings();
+  if (settings.iphoneTimer) return <PhoneTimerCard step={step} timer={timer} timers={t} />;
   const x = t.timers.find((r) => r.step === step && r.seconds === timer.seconds);
   const left = x ? t.leftOf(x) : timer.seconds;
   // A snoozed timer can have more left than it started with; the bar then just starts over from empty.
@@ -184,12 +188,35 @@ export function StepTimerCard({ step, timer, timers: t }: { step: number; timer:
           </>
         )}
       </div>
-      {/* The iPhone's own timer (Settings → iPhone timer): what is left of this one if it runs, else its full time. */}
-      {settings.iphoneTimer && (
-        <a className="btn btn-ghost cook-iphone-btn" href={shortcutTimerUrl(x && !x.done ? t.leftOf(x) : timer.seconds)}>
-          <PhoneIcon /> Set on iPhone{x && !x.done ? ` (${clock(t.leftOf(x))} left)` : ''}
-        </a>
+    </div>
+  );
+}
+
+/**
+ * A step's timer when the iPhone timer is set up (Settings → iPhone timer): no countdown in the app, just the length
+ * and Start on iPhone, which runs the "Life timer" Shortcut so the phone's own Clock timer rings. Afterwards it says
+ * when it rings there; tapping again sends it again (the iPhone keeps one timer, so a new one replaces it).
+ */
+function PhoneTimerCard({ step, timer, timers: t }: { step: number; timer: StepTimer; timers: CookTimers }) {
+  const ringsAt = t.onPhone[`${step}-${timer.seconds}`];
+  const at = ringsAt ? new Date(ringsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  return (
+    <div className="cook-card cook-timer-card" aria-label={`Timer for ${timer.label}`}>
+      <div className="cook-card-head">
+        <h2>
+          <ClockIcon /> Cooking timer
+        </h2>
+        <span className="cook-card-label">{timer.label}</span>
+      </div>
+      <p className="cook-clock">{clock(timer.seconds)}</p>
+      {ringsAt && (
+        <p className="small cook-phone-note" role="status">
+          <PhoneIcon /> On your iPhone · rings at {at}
+        </p>
       )}
+      <a className={`btn ${ringsAt ? '' : 'btn-primary '}cook-timer-btn cook-phone-start`} href={shortcutTimerUrl(timer.seconds)} onClick={() => t.sentToPhone(step, timer.seconds)}>
+        <PhoneIcon /> {ringsAt ? 'Start again on iPhone' : 'Start on iPhone'}
+      </a>
     </div>
   );
 }

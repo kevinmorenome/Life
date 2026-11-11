@@ -9479,20 +9479,26 @@ button.cook-next:active {
   font-size: 1.1rem;
 }
 /* iPhone timer: the Shortcut link on a timer card, and the setup steps in Settings. */
-.cook-iphone-btn {
+.cook-phone-start {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  color: var(--accent);
   text-decoration: none;
 }
-.cook-iphone-btn svg {
+.cook-phone-start svg,
+.cook-phone-note svg {
   width: 18px;
   height: 18px;
+}
+.cook-phone-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+  color: var(--accent);
+  font-weight: 650;
 }
 .iphone-steps {
   display: grid;

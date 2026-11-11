@@ -3,7 +3,7 @@ import { shortcutTimerUrl, TIMER_SHORTCUT } from './cooking';
 
 /**
  * Settings → iPhone timer: how to make the "Life timer" Shortcut that starts the iPhone's own Clock timer, a test that
- * runs it for 5 seconds, and the switch that shows "Set on iPhone" on the cooking timers. Nothing about the phone is
+ * runs it for 5 seconds, and the switch that makes cooking timers start on the iPhone instead of counting in the app. Nothing about the phone is
  * stored or sent anywhere; the app only opens a `shortcuts://` link.
  */
 export function IphoneTimerSection() {
@@ -33,10 +33,14 @@ export function IphoneTimerSection() {
           Test: 5-second timer
         </a>
         <button type="button" className={on ? 'btn' : 'btn btn-primary'} onClick={() => void update({ iphoneTimer: !on })}>
-          {on ? 'Hide “Set on iPhone”' : 'It works: show “Set on iPhone”'}
+          {on ? 'Use the app’s timer instead' : 'It works: use the iPhone timer'}
         </button>
       </div>
-      {on && <p className="small">Cooking timers now show a “Set on iPhone” button.</p>}
+      {on ? (
+        <p className="small">Cooking timers now start on your iPhone. The app’s own timer and alarm are off.</p>
+      ) : (
+        <p className="muted small">Until then, cooking timers count down in the app and ring while it is open.</p>
+      )}
     </section>
   );
 }
