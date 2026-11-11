@@ -286,3 +286,36 @@ export const LayersIcon = () => (
     <path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8 12 3.5ZM3.5 12.5 12 17l8.5-4.5M3.5 16.5 12 21l8.5-4.5" />
   </Icon>
 );
+
+/** A covered pot with steam: recipes. */
+export const PotIcon = () => (
+  <Icon>
+    <path d="M4 11h16v3.5a5.5 5.5 0 0 1-5.5 5.5h-5A5.5 5.5 0 0 1 4 14.5V11Z" />
+    <path d="M2.5 11h19M10 8.5h4" />
+    <path d="M9 3.5c-.6.8-.6 1.7 0 2.5M12 3c-.6.8-.6 1.7 0 2.5M15 3.5c-.6.8-.6 1.7 0 2.5" />
+  </Icon>
+);
+
+/** Fork and knife: servings. */
+export const ForkKnifeIcon = () => (
+  <Icon>
+    <path d="M6 3v7a2 2 0 0 0 2 2v9M10 3v7a2 2 0 0 1-2 2M8 3v6" />
+    <path d="M17 21V3c-2 1.2-3 3.6-3 7v3h3" />
+  </Icon>
+);
+
+/** A price-tag shape: tags. */
+export const TagIcon = () => (
+  <Icon>
+    <path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.2 7.2a1 1 0 0 1-1.4 0l-8.4-8.2Z" />
+    <circle cx="8" cy="8" r="1.4" />
+  </Icon>
+);
+
+/** Three lines with bullets: steps. */
+export const ListIcon = () => (
+  <Icon>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" strokeWidth={2.6} />
+  </Icon>
+);

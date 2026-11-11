@@ -3,7 +3,7 @@
 // sync and backups still see the full record with its `photo` data URL (see db.ts).
 
 /** Stores whose records can carry a `photo`. */
-export const PHOTO_STORES = ['clothes', 'foodproducts'] as const;
+export const PHOTO_STORES = ['clothes', 'foodproducts', 'recipes'] as const;
 export const isPhotoStore = (store: string): boolean => (PHOTO_STORES as readonly string[]).includes(store);
 
 export const photoKey = (store: string, id: string): string => `${store}:${id}`;
