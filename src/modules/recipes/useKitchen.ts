@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSettings } from '../../lib/settings';
 import { useCollection } from '../../lib/useCollection';
+import { stockEvent } from '../food/stockActions';
 import { stockEntries } from '../food/stockEntries';
 import type { FoodProduct, FoodReceipt, StockEvent } from '../food/types';
 import { stapleKey, stockMap } from './availability';
@@ -23,7 +24,11 @@ export function useKitchen() {
     const cur = settings.pantryStaples ?? [];
     return update({ pantryStaples: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key].sort() });
   };
-  return { loading: receipts.loading || records.loading || events.loading, products, stocked, staples, toggleStaple };
+  /** Takes what was used for a dish off the stock: fresh `use` events dated today, one per product (never edits). */
+  const logUses = async (uses: { productId: string; quantity: number }[], note: string) => {
+    for (const u of uses) await events.save({ ...stockEvent(u.productId, 'use', u.quantity, 'app'), note });
+  };
+  return { loading: receipts.loading || records.loading || events.loading, products, stocked, staples, toggleStaple, logUses };
 }
 
 export type Kitchen = ReturnType<typeof useKitchen>;

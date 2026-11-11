@@ -8552,6 +8552,10 @@ button.recipe-pill {
   font-size: 0.75rem;
 }
 .recipe-stepper {
+  /* Opens upwards, over the title, so it never covers Start cooking under the pills. */
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom left;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -8985,4 +8989,155 @@ button.recipe-pill {
   border: 0;
   background: none;
   cursor: pointer;
+}
+/* Cooking a recipe (#216): one thing at a time, big, with Back / Next in a sticky glass bar at the bottom. */
+.recipe-cook-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 16px;
+  text-decoration: none;
+}
+.recipe-cook-btn svg {
+  width: 22px;
+  height: 22px;
+}
+.cook {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+.cook-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cook-title {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.cook-title strong {
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cook-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 22px;
+}
+.cook-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.cook-dots .is-done {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.cook-dots .is-on {
+  width: 22px;
+  background: var(--accent);
+}
+.cook-kicker {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cook-heading {
+  margin: 0 0 12px;
+  font-size: 1.6rem;
+}
+.cook-step {
+  margin: 8px 0 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.cook-ingredients label {
+  min-height: 54px;
+  font-size: 1.1rem;
+}
+.cook-note {
+  margin: 0 0 12px;
+}
+.cook-uses {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cook-uses li {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.cook-use-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cook-use-text > * {
+  overflow-wrap: anywhere;
+}
+.cook-hint {
+  color: color-mix(in srgb, var(--tone-orange) 75%, var(--text));
+}
+.cook-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cook-amount input {
+  width: 6em;
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cook-amount input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.cook-unit {
+  min-width: 2.5em;
+  color: var(--muted);
+}
+.cook-skipped {
+  margin: 12px 0 0;
+}
+.cook-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--glass-edge);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+}
+.cook-bar .btn-primary {
+  min-width: 120px;
+  min-height: 48px;
+}
+.cook-bar .btn svg {
+  width: 18px;
+  height: 18px;
+}
+.cook-skip {
+  margin-top: 8px;
+  padding: 0;
 }

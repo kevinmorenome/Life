@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CameraIcon, ClockIcon, EditIcon, ForkKnifeIcon, ImageIcon, LayersIcon, MinusIcon, PlusIcon, PotIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
+import { shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { HeartIcon } from '../clothes/icons';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
@@ -141,7 +142,11 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
       )}
 
       <h1 className="recipe-title">{recipe.name}</h1>
-      {recipe.tags.length > 0 && <p className="muted small recipe-tags-line">{recipe.tags.join(' · ')}</p>}
+      {(recipe.tags.length > 0 || recipe.cooked?.length) && (
+        <p className="muted small recipe-tags-line">
+          {[recipe.tags.join(' · '), recipe.cooked?.length ? `Cooked ${recipe.cooked.length === 1 ? 'once' : `${recipe.cooked.length} times`}, last ${shortDate(recipe.cooked[recipe.cooked.length - 1])}` : ''].filter(Boolean).join(' · ')}
+        </p>
+      )}
 
       <div className="recipe-pills">
         <ServingsPill base={recipe.servings} servings={servings} onChange={setServings} />
@@ -152,6 +157,10 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
           <Pill icon={<PotIcon />} value={formatMinutes(recipe.cookTime) || '—'} label="Cook" />
         </div>
       </div>
+
+      <a className="btn btn-primary recipe-cook-btn" href={href(`/recipes/${recipe.id}/cook/${servings}`)}>
+        <PotIcon /> Start cooking
+      </a>
 
       {recipe.description && <p className="recipe-description">{recipe.description}</p>}
 

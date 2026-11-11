@@ -13,5 +13,5 @@ export const recipesModule: LifeModule = {
   render: (subroute) => <RecipesRoot subroute={subroute} />,
   actions: [{ label: 'New recipe', icon: <PlusIcon />, path: () => '/recipes/new' }],
   // The form has its own bottom actions.
-  hideNav: ([first, second]) => first === 'new' || second === 'edit',
+  hideNav: ([first, second]) => first === 'new' || second === 'edit' || second === 'cook',
 };

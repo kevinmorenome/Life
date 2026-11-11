@@ -51,6 +51,7 @@ describe('parentRoute', () => {
     expect(p('/recipes/new')).toBe('/recipes');
     expect(p('/recipes/r1')).toBe('/recipes');
     expect(p('/recipes/r1/edit')).toBe('/recipes/r1');
+    expect(p('/recipes/r1/cook/4')).toBe('/recipes/r1');
     expect(p('/settings/closet-review')).toBe('/settings');
     expect(p('/settings/closet-review/season')).toBe('/settings/closet-review');
   });
