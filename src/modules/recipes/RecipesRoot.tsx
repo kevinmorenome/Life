@@ -1,4 +1,5 @@
 import { useCollection } from '../../lib/useCollection';
+import { CookNow } from './CookNow';
 import { CookView } from './CookView';
 import { RecipeForm } from './RecipeForm';
 import { RecipeList } from './RecipeList';
@@ -7,7 +8,7 @@ import { RecipeView } from './RecipeView';
 import type { Recipe } from './types';
 import { useKitchen } from './useKitchen';
 
-/** `#/recipes`, `#/recipes/new`, `#/recipes/<id>`, `#/recipes/<id>/edit`. */
+/** `#/recipes`, `#/recipes/now`, `#/recipes/new`, `#/recipes/<id>`, `#/recipes/<id>/edit`. */
 export function RecipesRoot({ subroute }: { subroute: string[] }) {
   const recipes = useCollection<Recipe>('recipes');
   const kitchen = useKitchen();
@@ -15,6 +16,7 @@ export function RecipesRoot({ subroute }: { subroute: string[] }) {
 
   if (recipes.loading || kitchen.loading) return <p className="muted">Loading…</p>;
   const tags = allTags(recipes.items);
+  if (first === 'now') return <CookNow recipes={recipes.items} kitchen={kitchen} />;
   if (first === 'new') return <RecipeForm knownTags={tags} kitchen={kitchen} onSave={recipes.save} />;
   if (first) {
     const recipe = recipes.items.find((r) => r.id === first);

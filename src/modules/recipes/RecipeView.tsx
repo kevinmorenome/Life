@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CameraIcon, ClockIcon, EditIcon, ForkKnifeIcon, ImageIcon, LayersIcon, MinusIcon, PlusIcon, PotIcon, TrashIcon } from '../../icons';
+import { CameraIcon, CartIcon, ClockIcon, EditIcon, ForkKnifeIcon, ImageIcon, LayersIcon, MinusIcon, PlusIcon, PotIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
-import { shortDate } from '../../lib/format';
+import { shortDate, today } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
+import { useCollection } from '../../lib/useCollection';
+import type { ShoppingAdd } from '../food/types';
 import { HeartIcon } from '../clothes/icons';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
 import { checkRecipe, moreText, type IngredientCheck } from './availability';
 import { ingredientAmount, scaleIngredients } from './ingredients';
 import { RecipePicture } from './RecipePicture';
 import { duplicateRecipe, formatMinutes } from './recipes';
+import { planAdds } from './shoppingAdds';
 import type { Recipe } from './types';
 import { usePhotoPicker } from './usePhotoPicker';
 import type { Kitchen } from './useKitchen';
@@ -83,6 +86,15 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
   const edit = `/recipes/${recipe.id}/edit`;
   const save = (patch: Partial<Recipe>) => onSave({ ...recipe, ...patch, updatedAt: new Date().toISOString() });
   const picker = usePhotoPicker((photo) => save({ photo }));
+  const adds = useCollection<ShoppingAdd>('shoppingadds');
+  const [added, setAdded] = useState('');
+
+  /** Puts what is lacking on the shopping list, once: adding again, or from another recipe, never repeats a line. */
+  async function addMissing() {
+    const plan = planAdds(recipe, check.lacking, adds.items, today(), new Date().toISOString());
+    for (const a of plan.save) await adds.save(a);
+    setAdded(plan.added === 0 ? 'Everything missing is already on your shopping list.' : `Added ${plan.added === 1 ? '1 thing' : `${plan.added} things`} to your shopping list${plan.already ? ` (${plan.already} already there)` : ''}.`);
+  }
 
   async function duplicate() {
     const copy = duplicateRecipe(recipe, newId, new Date().toISOString());
@@ -170,7 +182,7 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
             </button>
           </p>
         )}
-        {recipe.ingredients.length > 0 && <StockSummary lacking={check.lacking} />}
+        {recipe.ingredients.length > 0 && <StockSummary lacking={check.lacking} onAdd={() => void addMissing()} message={added} />}
         {recipe.ingredients.length === 0 ? (
           <p className="muted small recipe-empty">No ingredients yet. Tap ＋ to add them.</p>
         ) : (
@@ -222,7 +234,7 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
 }
 
 /** Above the ingredients: whether the stock covers the recipe, in words. */
-function StockSummary({ lacking }: { lacking: IngredientCheck[] }) {
+function StockSummary({ lacking, onAdd, message }: { lacking: IngredientCheck[]; onAdd(): void; message: string }) {
   if (!lacking.length)
     return (
       <p className="small recipe-summary tone-green" role="status">
@@ -232,9 +244,19 @@ function StockSummary({ lacking }: { lacking: IngredientCheck[] }) {
   const names = lacking.map((c) => c.ingredient.name);
   const list = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(names.length === 2 ? ' and ' : ', ');
   return (
-    <p className="small recipe-summary tone-orange" role="status">
-      {lacking.length === 1 ? 'Lacking 1 thing' : `Lacking ${lacking.length} things`}: {list}.
-    </p>
+    <>
+      <p className="small recipe-summary tone-orange" role="status">
+        {lacking.length === 1 ? 'Lacking 1 thing' : `Lacking ${lacking.length} things`}: {list}.
+      </p>
+      <button type="button" className="btn recipe-add-missing" onClick={onAdd}>
+        <CartIcon /> Add missing to shopping list
+      </button>
+      {message && (
+        <p className="small muted recipe-added" role="status">
+          {message} <a href={href('/food/shopping')}>Open the list</a>
+        </p>
+      )}
+    </>
   );
 }
 
