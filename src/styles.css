@@ -8462,7 +8462,8 @@ a.game-row + .food-h2 {
   gap: 6px;
 }
 .recipe-step-actions .icon-btn,
-.recipe-add-step {
+.recipe-add-step,
+.recipe-lens-btn {
   margin-right: 0;
   padding: 0;
   border: 1px solid var(--glass-edge);
@@ -8474,6 +8475,90 @@ a.game-row + .food-h2 {
 .recipe-up svg {
   transform: rotate(180deg);
 }
-.recipe-step-actions .icon-btn:disabled {
+.recipe-step-actions .icon-btn:disabled,
+.recipe-lens-btn:disabled {
   opacity: 0.35;
+}
+
+/* Ingredients in the form: the name on its own line, then amount · unit · Optional · remove, then a note. */
+.recipe-ing-edit {
+  display: grid;
+  gap: 0;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+.recipe-ing-edit li {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.recipe-ing-edit li:first-child {
+  padding-top: 4px;
+}
+.recipe-ing-edit input {
+  min-width: 0;
+  width: 100%;
+}
+.recipe-ing-amount {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.recipe-ing-amount select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+.recipe-ing-amount input:disabled {
+  opacity: 0.5;
+}
+.recipe-ing-amount input[aria-invalid='true'] {
+  border-color: var(--danger, #c0392b);
+}
+.recipe-ing-opt {
+  min-height: 44px;
+  white-space: nowrap;
+}
+.recipe-ing-note {
+  font-size: 0.875rem;
+}
+.recipe-ing-error {
+  margin: 0;
+  color: var(--danger, #c0392b);
+}
+.recipe-ing-notes {
+  display: block;
+}
+/* The servings stepper beside Ingredients: two small glass lenses around the number. */
+.recipe-serves {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.recipe-serves .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.recipe-serves-n {
+  min-width: 5.5em;
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.recipe-scaled {
+  margin: -2px 0 10px;
+}
+.recipe-reset {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
 }

@@ -2,20 +2,23 @@ import { useState, type FormEvent } from 'react';
 import { ChevronIcon, PlusIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { navigate } from '../../lib/router';
+import { badQuantities, fromDrafts, isMeasured, toDraft, type IngredientDraft } from './ingredients';
 import { cleanSteps, moveItem, parseTags } from './recipes';
-import type { Recipe } from './types';
+import { RECIPE_UNIT_LABELS, RECIPE_UNITS, type Recipe, type RecipeUnit } from './types';
 
 interface Props {
   existing?: Recipe;
   onSave: (r: Recipe) => Promise<void>;
 }
 
+const blankIngredient = (): IngredientDraft => ({ id: newId(), name: '', quantity: '', unit: 'g', optional: false, notes: '' });
+
 const minutes = (text: string): number | undefined => {
   const n = Math.round(Number(text));
   return text.trim() && Number.isFinite(n) && n > 0 ? n : undefined;
 };
 
-/** New or edit: name, description, servings, times, tags and the steps in order. Ingredients come with #205. */
+/** New or edit: name, description, servings, times, tags, the ingredients with their amounts, and the steps in order. */
 export function RecipeForm({ existing, onSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
@@ -24,15 +27,24 @@ export function RecipeForm({ existing, onSave }: Props) {
   const [cook, setCook] = useState(existing?.cookTime ? String(existing.cookTime) : '');
   const [tags, setTags] = useState(existing?.tags.join(', ') ?? '');
   const [steps, setSteps] = useState<string[]>(existing?.steps.length ? existing.steps : ['']);
+  const [ingredients, setIngredients] = useState<IngredientDraft[]>(() => (existing?.ingredients.length ? existing.ingredients.map(toDraft) : [blankIngredient()]));
+  const [showErrors, setShowErrors] = useState(false);
+  const bad = badQuantities(ingredients);
   const back = existing ? `/recipes/${existing.id}` : '/recipes';
 
   const setStep = (i: number, text: string) => setSteps((cur) => cur.map((s, j) => (j === i ? text : s)));
+  const setIngredient = (id: string, patch: Partial<IngredientDraft>) => setIngredients((cur) => cur.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  const removeIngredient = (id: string) => setIngredients((cur) => (cur.length === 1 ? [blankIngredient()] : cur.filter((d) => d.id !== id)));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (bad.length) {
+      setShowErrors(true);
+      document.getElementById(`ing-q-${bad[0]}`)?.focus();
+      return;
+    }
     const now = new Date().toISOString();
     const recipe: Recipe = {
-      ingredients: [],
       ...existing,
       id: existing?.id ?? newId(),
       name: name.trim(),
@@ -41,6 +53,7 @@ export function RecipeForm({ existing, onSave }: Props) {
       prepTime: minutes(prep),
       cookTime: minutes(cook),
       tags: parseTags(tags),
+      ingredients: fromDrafts(ingredients),
       steps: cleanSteps(steps),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -78,6 +91,67 @@ export function RecipeForm({ existing, onSave }: Props) {
         <span>Tags, separated by commas</span>
         <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="dinner, quick, vegetarian" />
       </label>
+      <div className="field">
+        <span>Ingredients</span>
+        <ul className="recipe-ing-edit">
+          {ingredients.map((d, i) => {
+            const invalid = showErrors && bad.includes(d.id);
+            return (
+              <li key={d.id}>
+                <input
+                  className="recipe-ing-name"
+                  value={d.name}
+                  onChange={(e) => setIngredient(d.id, { name: e.target.value })}
+                  placeholder={i === 0 ? 'Tortellini' : 'Ingredient'}
+                  aria-label={`Ingredient ${i + 1}`}
+                  autoComplete="off"
+                />
+                <div className="recipe-ing-amount">
+                  <input
+                    id={`ing-q-${d.id}`}
+                    value={isMeasured(d.unit) || d.unit === 'pinch' ? d.quantity : ''}
+                    disabled={d.unit === 'to taste'}
+                    onChange={(e) => setIngredient(d.id, { quantity: e.target.value })}
+                    inputMode="decimal"
+                    placeholder={d.unit === 'to taste' ? '—' : 'Amount'}
+                    aria-label={`Amount of ingredient ${i + 1}`}
+                    aria-invalid={invalid || undefined}
+                    aria-describedby={invalid ? `ing-err-${d.id}` : undefined}
+                  />
+                  <select value={d.unit} onChange={(e) => setIngredient(d.id, { unit: e.target.value as RecipeUnit })} aria-label={`Unit of ingredient ${i + 1}`}>
+                    {RECIPE_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {RECIPE_UNIT_LABELS[u]}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="chip recipe-ing-opt" aria-pressed={d.optional} onClick={() => setIngredient(d.id, { optional: !d.optional })}>
+                    Optional
+                  </button>
+                  <button type="button" className="icon-btn recipe-lens-btn" aria-label={`Remove ingredient ${i + 1}`} onClick={() => removeIngredient(d.id)}>
+                    <TrashIcon />
+                  </button>
+                </div>
+                {invalid && (
+                  <p id={`ing-err-${d.id}`} className="small recipe-ing-error" role="alert">
+                    Can’t read this amount. Use a number like 200, 0.5, 1/2 or 1½.
+                  </p>
+                )}
+                <input
+                  className="recipe-ing-note"
+                  value={d.notes}
+                  onChange={(e) => setIngredient(d.id, { notes: e.target.value })}
+                  placeholder="Note, e.g. finely chopped (optional)"
+                  aria-label={`Note for ingredient ${i + 1}`}
+                />
+              </li>
+            );
+          })}
+        </ul>
+        <button type="button" className="icon-btn recipe-add-step" aria-label="Add an ingredient" onClick={() => setIngredients((cur) => [...cur, blankIngredient()])}>
+          <PlusIcon />
+        </button>
+      </div>
       <div className="field">
         <span>Steps</span>
         <ol className="recipe-step-edit">

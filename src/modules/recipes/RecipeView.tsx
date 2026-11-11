@@ -1,10 +1,12 @@
-import { EditIcon, LayersIcon, TrashIcon } from '../../icons';
+import { useState } from 'react';
+import { EditIcon, LayersIcon, MinusIcon, PlusIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { IconMenu } from '../clothes/IconMenu';
+import { ingredientAmount, scaleIngredients } from './ingredients';
 import { duplicateRecipe, formatMinutes } from './recipes';
 import { RecipeThumb } from './RecipeThumb';
-import type { Recipe, RecipeIngredient } from './types';
+import type { Recipe } from './types';
 
 interface Props {
   recipe: Recipe;
@@ -12,14 +14,14 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
 }
 
-const amount = (i: RecipeIngredient): string =>
-  i.quantity === undefined ? (i.unit === 'piece' ? '' : i.unit) : i.unit === 'piece' ? String(i.quantity) : `${i.quantity} ${i.unit}`;
-
 /**
  * One dish, laid out like a product page: picture and name on top with the edit and ⋮ lenses, three stat tiles
- * (servings, prep, cook), then the ingredients and the numbered steps as flat hairline sections.
+ * (servings, prep, cook), then the ingredients and the numbered steps as flat hairline sections. The − / + beside
+ * Ingredients scales the amounts to another number of servings, on this page only: the recipe itself is unchanged.
  */
 export function RecipeView({ recipe, onSave, onDelete }: Props) {
+  const [servings, setServings] = useState(recipe.servings);
+  const scaled = scaleIngredients(recipe.ingredients, recipe.servings, servings);
   async function duplicate() {
     const copy = duplicateRecipe(recipe, newId, new Date().toISOString());
     await onSave(copy);
@@ -75,19 +77,40 @@ export function RecipeView({ recipe, onSave, onDelete }: Props) {
       <section className="pstock-section" aria-label="Ingredients">
         <div className="pstock-section-head">
           <h2>Ingredients</h2>
-          {recipe.ingredients.length > 0 && <span className="muted small">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'item' : 'items'}</span>}
+          {recipe.ingredients.length > 0 && (
+            <span className="recipe-serves" role="group" aria-label="Servings to cook">
+              <button type="button" className="icon-btn recipe-lens-btn" aria-label="One serving fewer" disabled={servings <= 1} onClick={() => setServings((n) => Math.max(1, n - 1))}>
+                <MinusIcon />
+              </button>
+              <span className="recipe-serves-n" aria-live="polite">
+                {servings} {servings === 1 ? 'serving' : 'servings'}
+              </span>
+              <button type="button" className="icon-btn recipe-lens-btn" aria-label="One serving more" disabled={servings >= 99} onClick={() => setServings((n) => Math.min(99, n + 1))}>
+                <PlusIcon />
+              </button>
+            </span>
+          )}
         </div>
+        {servings !== recipe.servings && (
+          <p className="muted small recipe-scaled">
+            Amounts for {servings} instead of {recipe.servings}.{' '}
+            <button type="button" className="recipe-reset" onClick={() => setServings(recipe.servings)}>
+              Back to {recipe.servings}
+            </button>
+          </p>
+        )}
         {recipe.ingredients.length === 0 ? (
-          <p className="muted small pstock-empty">No ingredients yet.</p>
+          <p className="muted small pstock-empty">No ingredients yet. Add them with the edit button above.</p>
         ) : (
           <ul className="recipe-ingredients">
-            {recipe.ingredients.map((i) => (
+            {scaled.map((i) => (
               <li key={i.id}>
                 <span>
                   {i.name}
                   {i.optional && <span className="muted small"> · optional</span>}
+                  {i.notes && <span className="muted small recipe-ing-notes">{i.notes}</span>}
                 </span>
-                <span className="muted">{amount(i)}</span>
+                <span className="muted">{ingredientAmount(i)}</span>
               </li>
             ))}
           </ul>
