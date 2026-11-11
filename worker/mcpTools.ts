@@ -28,6 +28,7 @@ import type { PhotoSearchResult } from './openfoodfacts';
 import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './receipt';
 import type { RecordStore, Row } from './records';
 import { READ_TOOLS, callReadTool } from './readTools';
+import { RECIPE_TOOLS, callRecipeTool } from './recipeTools';
 import { addDays, dateRange, fail, isRealDate, lastWorn, ok, placeCheckins, strings, text, timesWorn, utcToday, wornByDay, type Args } from './toolUtil';
 
 export interface ToolContext {
@@ -565,6 +566,7 @@ export const TOOLS = [
     },
   },
   ...READ_TOOLS,
+  ...RECIPE_TOOLS,
 ] as const;
 
 export async function callTool(name: string, args: Args, ctx: ToolContext): Promise<ToolResult> {
@@ -626,7 +628,7 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
     case 'edit_item':
       return ctx.readOnly ? fail(READ_ONLY) : editItem(args, ctx);
     default:
-      return (await callReadTool(name, args, ctx)) ?? fail(`Unknown tool: ${name}`);
+      return (await callReadTool(name, args, ctx)) ?? (await callRecipeTool(name, args, ctx)) ?? fail(`Unknown tool: ${name}`);
   }
 }
 
