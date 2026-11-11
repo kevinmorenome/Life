@@ -6751,6 +6751,7 @@ a.game-row + .food-h2 {
   --c-watch: #d81b8a;
   --c-rides: #1e88e5;
   --c-music: #1db954;
+  --c-cook: #b8761a;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -6765,6 +6766,7 @@ a.game-row + .food-h2 {
     --c-watch: #ff6ab8;
     --c-rides: #4aa8ff;
     --c-music: #1ed760;
+    --c-cook: #f0b45a;
   }
 }
 :root[data-theme="dark"] {
@@ -6779,6 +6781,7 @@ a.game-row + .food-h2 {
   --c-watch: #ff6ab8;
   --c-rides: #4aa8ff;
   --c-music: #1ed760;
+  --c-cook: #f0b45a;
 }
 .dot.mark-office {
   background: var(--c-office);
@@ -9506,4 +9509,82 @@ button.cook-next:active {
   margin: 8px 0;
   padding-left: 1.3rem;
   line-height: 1.45;
+}
+
+/* Cooking on the calendar (#218): its own colour, like every kind of entry. */
+.dot.mark-cook {
+  background: var(--c-cook);
+  box-shadow: none;
+}
+.day-badge.mark-cook {
+  color: var(--c-cook);
+  background: color-mix(in srgb, var(--c-cook) 16%, var(--bg));
+}
+.pill.mark-cook {
+  background: color-mix(in srgb, var(--c-cook) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-cook .pill-icon {
+  color: var(--c-cook);
+}
+.widget-cook {
+  --w: var(--c-cook);
+}
+
+/* Stats → Recipes: the stream of cooking, a dated list with each dish's picture. */
+.cook-stream {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cook-stream-date {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+.cook-stream li.is-new-day {
+  margin-top: 12px;
+}
+.cook-stream li:first-child {
+  margin-top: 0;
+}
+.cook-stream-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  color: var(--text);
+  text-decoration: none;
+}
+.cook-stream-pic {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+.cook-stream-text {
+  display: grid;
+  min-width: 0;
+}
+.cook-stream-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cook-first {
+  color: var(--c-cook);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.cook-stream-more {
+  margin-top: 12px;
+}
+.cook-again a {
+  color: var(--text);
+  font-weight: 650;
 }
