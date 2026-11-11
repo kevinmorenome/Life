@@ -1,19 +1,23 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react';
-import { CameraIcon, ForkKnifeIcon, GripIcon, ImageIcon, ListIcon, PlusIcon, PotIcon, TagIcon, TrashIcon } from '../../icons';
+import { CartIcon, CameraIcon, ForkKnifeIcon, GripIcon, ImageIcon, ListIcon, PlusIcon, PotIcon, TagIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
 import { navigate } from '../../lib/router';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
 import { PencilIcon } from '../clothes/icons';
+import { matchProduct, stapleKey, suggestProducts } from './availability';
 import { badAmounts, fromDrafts, toDraft, type IngredientDraft } from './ingredients';
 import { RecipePicture } from './RecipePicture';
 import { cleanSteps, moveItem, parseTags } from './recipes';
 import type { Recipe } from './types';
 import { usePhotoPicker } from './usePhotoPicker';
+import type { Kitchen } from './useKitchen';
 
 interface Props {
   existing?: Recipe;
   /** Tags used by any recipe, offered as chips under the field. */
   knownTags?: string[];
+  /** Products bought and the pantry staples, to link ingredients to. */
+  kitchen?: Pick<Kitchen, 'products' | 'staples'>;
   onSave: (r: Recipe) => Promise<void>;
 }
 
@@ -36,7 +40,7 @@ const blankStep = (): StepDraft => ({ id: newId(), text: '' });
  * times; tags (typed, or tapped from the ones in use); ingredients as a name and an amount ("250 g", "1/2 cup",
  * "to taste"; "(optional)" after the name); steps you drag by the grip. Empty rows are left out when saving.
  */
-export function RecipeForm({ existing, knownTags = [], onSave }: Props) {
+export function RecipeForm({ existing, knownTags = [], kitchen, onSave }: Props) {
   const [name, setName] = useState(existing?.name ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
   const [servings, setServings] = useState(String(existing?.servings ?? 2));
@@ -49,6 +53,9 @@ export function RecipeForm({ existing, knownTags = [], onSave }: Props) {
   const [photo, setPhoto] = useState<string | null | undefined>(undefined);
   const [showErrors, setShowErrors] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
+  /** The ingredient whose name field has focus: it shows product suggestions. */
+  const [typing, setTyping] = useState<string | null>(null);
+  const products = kitchen?.products ?? [];
   const stepList = useRef<HTMLOListElement>(null);
   const picker = usePhotoPicker((p) => setPhoto(p));
   const bad = badAmounts(ingredients);
@@ -247,9 +254,12 @@ export function RecipeForm({ existing, knownTags = [], onSave }: Props) {
                   <input
                     id={`ing-n-${d.id}`}
                     value={d.name}
-                    onChange={(e) => setIngredient(d.id, { name: e.target.value })}
+                    onChange={(e) => setIngredient(d.id, { name: e.target.value, ...(d.productId ? { productId: null } : {}) })}
+                    onFocus={() => setTyping(d.id)}
+                    onBlur={() => setTyping((t) => (t === d.id ? null : t))}
                     placeholder={i === 0 ? 'Add ingredient…' : 'Ingredient'}
                     aria-label={`Ingredient ${i + 1}`}
+                    aria-describedby={`ing-link-${d.id}`}
                     autoComplete="off"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -276,6 +286,30 @@ export function RecipeForm({ existing, knownTags = [], onSave }: Props) {
                     }}
                   />
                 </div>
+                {typing === d.id && !d.productId && (() => {
+                  const hits = suggestProducts(d.name.replace(/\(optional\)/i, ''), products);
+                  return hits.length > 0 ? (
+                    <ul className="menu recipe-suggest" aria-label="Products you have bought">
+                      {hits.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className="menu-item"
+                            onPointerDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              const optional = /\(optional\)\s*$/i.test(d.name);
+                              setIngredient(d.id, { name: optional ? `${p.name} (optional)` : p.name, productId: p.id });
+                              document.getElementById(`ing-a-${d.id}`)?.focus();
+                            }}
+                          >
+                            <CartIcon /> {p.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null;
+                })()}
+                <IngredientLink draft={d} products={products} staples={kitchen?.staples} onUnlink={() => setIngredient(d.id, { productId: null })} />
                 {invalid && (
                   <p id={`ing-err-${d.id}`} className="small recipe-ing-error" role="alert">
                     Can’t read this amount. Try 250 g, 1/2 cup, 2 tbsp, 3, a pinch or to taste.
@@ -324,5 +358,31 @@ export function RecipeForm({ existing, knownTags = [], onSave }: Props) {
         <p className="muted small recipe-hint">Drag a step by its handle to move it. Clear a step to remove it.</p>
       </section>
     </form>
+  );
+}
+
+/** Under an ingredient: the product it is linked to (with Unlink), else the one its name matches, else nothing. */
+function IngredientLink({ draft, products, staples, onUnlink }: { draft: IngredientDraft; products: Kitchen['products']; staples?: Set<string>; onUnlink(): void }) {
+  const name = draft.name.replace(/\(optional\)\s*$/i, '').trim();
+  const id = `ing-link-${draft.id}`;
+  if (!name) return <span id={id} hidden />;
+  if (staples?.has(stapleKey(name))) return <p id={id} className="muted small recipe-link">Always in your pantry</p>;
+  const linked = draft.productId ? products.find((p) => p.id === draft.productId) : undefined;
+  if (linked)
+    return (
+      <p id={id} className="small recipe-link recipe-linked">
+        <CartIcon /> <span>Linked to {linked.name}</span>
+        <button type="button" className="recipe-reset" onClick={onUnlink}>
+          Unlink
+        </button>
+      </p>
+    );
+  const match = matchProduct(name, products);
+  return match ? (
+    <p id={id} className="muted small recipe-link">
+      Matches {match.name} by name
+    </p>
+  ) : (
+    <span id={id} hidden />
   );
 }

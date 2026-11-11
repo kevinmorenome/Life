@@ -4,14 +4,17 @@ import { newId } from '../../lib/db';
 import { href, navigate } from '../../lib/router';
 import { HeartIcon } from '../clothes/icons';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
+import { checkRecipe, moreText, type IngredientCheck } from './availability';
 import { ingredientAmount, scaleIngredients } from './ingredients';
 import { RecipePicture } from './RecipePicture';
 import { duplicateRecipe, formatMinutes } from './recipes';
 import type { Recipe } from './types';
 import { usePhotoPicker } from './usePhotoPicker';
+import type { Kitchen } from './useKitchen';
 
 interface Props {
   recipe: Recipe;
+  kitchen: Pick<Kitchen, 'products' | 'stocked' | 'staples' | 'toggleStaple'>;
   onSave: (r: Recipe) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
@@ -72,10 +75,11 @@ function ServingsPill({ base, servings, onChange }: { base: number; servings: nu
  * prep, cook), the ingredients with boxes to tick off while you cook (on this page only) and the numbered steps.
  * The heart and ⋮ float at the top right; ＋ beside a heading opens the form.
  */
-export function RecipeView({ recipe, onSave, onDelete }: Props) {
+export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
   const [servings, setServings] = useState(recipe.servings);
   const [ticked, setTicked] = useState<Set<string>>(() => new Set());
   const scaled = scaleIngredients(recipe.ingredients, recipe.servings, servings);
+  const check = checkRecipe(scaled, kitchen.stocked, kitchen.products, kitchen.staples);
   const edit = `/recipes/${recipe.id}/edit`;
   const save = (patch: Partial<Recipe>) => onSave({ ...recipe, ...patch, updatedAt: new Date().toISOString() });
   const picker = usePhotoPicker((photo) => save({ photo }));
@@ -166,23 +170,28 @@ export function RecipeView({ recipe, onSave, onDelete }: Props) {
             </button>
           </p>
         )}
+        {recipe.ingredients.length > 0 && <StockSummary lacking={check.lacking} />}
         {recipe.ingredients.length === 0 ? (
           <p className="muted small recipe-empty">No ingredients yet. Tap ＋ to add them.</p>
         ) : (
           <ul className="recipe-ingredients">
-            {scaled.map((i) => (
-              <li key={i.id} className={ticked.has(i.id) ? 'is-ticked' : undefined}>
-                <label>
-                  <input type="checkbox" className="recipe-check" checked={ticked.has(i.id)} onChange={() => toggle(i.id)} />
-                  <span className="recipe-ing-text">
-                    {i.name}
-                    {i.optional && ' (optional)'}
-                    {i.notes && <span className="muted small recipe-ing-notes">{i.notes}</span>}
-                  </span>
-                  <span className="muted recipe-ing-qty">{ingredientAmount(i)}</span>
-                </label>
-              </li>
-            ))}
+            {check.items.map((c) => {
+              const i = c.ingredient;
+              return (
+                <li key={i.id} className={ticked.has(i.id) ? 'is-ticked' : undefined}>
+                  <label>
+                    <input type="checkbox" className="recipe-check" checked={ticked.has(i.id)} onChange={() => toggle(i.id)} aria-label={`${i.name}: done`} />
+                    <span className="recipe-ing-text">
+                      {i.name}
+                      {i.optional && ' (optional)'}
+                      {i.notes && <span className="muted small recipe-ing-notes">{i.notes}</span>}
+                    </span>
+                    <span className="muted recipe-ing-qty">{ingredientAmount(i)}</span>
+                  </label>
+                  <StockStatus check={c} onStaple={() => void kitchen.toggleStaple(i.name)} editPath={edit} />
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -209,6 +218,51 @@ export function RecipeView({ recipe, onSave, onDelete }: Props) {
           </ol>
         )}
       </section>
+    </div>
+  );
+}
+
+/** Above the ingredients: whether the stock covers the recipe, in words. */
+function StockSummary({ lacking }: { lacking: IngredientCheck[] }) {
+  if (!lacking.length)
+    return (
+      <p className="small recipe-summary tone-green" role="status">
+        You have everything for this.
+      </p>
+    );
+  const names = lacking.map((c) => c.ingredient.name);
+  const list = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(names.length === 2 ? ' and ' : ', ');
+  return (
+    <p className="small recipe-summary tone-orange" role="status">
+      {lacking.length === 1 ? 'Lacking 1 thing' : `Lacking ${lacking.length} things`}: {list}.
+    </p>
+  );
+}
+
+/**
+ * Under an ingredient's amount: what the stock says, as a badge with words (never colour alone). Tapping it opens a
+ * menu to mark the ingredient as always in the pantry (or not), or to link it to a product in the form.
+ */
+function StockStatus({ check: c, onStaple, editPath }: { check: IngredientCheck; onStaple(): void; editPath: string }) {
+  const unit = c.ingredient.unit;
+  const [text, tone] = c.staple
+    ? ['Always have', 'grey']
+    : c.state === 'available'
+      ? [c.unverified ? 'In stock · not measured' : 'In stock', 'green']
+      : c.state === 'partial'
+        ? [`Need ${moreText(c.more ?? 0, unit)}`, 'orange']
+        : c.ingredient.optional
+          ? ['None · optional', 'grey']
+          : ['Missing', 'red'];
+  const from = c.product && !c.staple ? `${c.matched ? 'Matched' : 'Linked'} to ${c.product.name}` : undefined;
+  const entries: MenuEntry[] = [
+    { label: c.staple ? 'Not always in my pantry' : 'Always in my pantry', icon: <PotIcon />, onSelect: onStaple },
+    { label: c.product && !c.matched ? 'Change the product…' : 'Link to a product…', icon: <EditIcon />, path: editPath },
+  ];
+  return (
+    <div className="recipe-status">
+      {from && <span className="muted recipe-status-from">{from}</span>}
+      <IconMenu entries={entries} label={`${c.ingredient.name}: ${text}. Options`} icon={<span className={`sbadge tone-${tone}`}>{text}</span>} triggerClassName="recipe-status-btn" />
     </div>
   );
 }

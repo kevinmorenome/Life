@@ -139,7 +139,9 @@ export interface IngredientDraft {
   id: string;
   name: string;
   amount: string;
-  /** What the form doesn't show (notes, product link, substitutions) rides along unchanged. */
+  /** The food product it is linked to; null = unlinked (also clears a stored link), undefined = as stored. */
+  productId?: string | null;
+  /** What the form doesn't show (notes, substitutions) rides along unchanged. */
   base?: RecipeIngredient;
 }
 
@@ -147,6 +149,7 @@ export const toDraft = (i: RecipeIngredient): IngredientDraft => ({
   id: i.id,
   name: i.optional ? `${i.name} (optional)` : i.name,
   amount: amountText(i),
+  productId: i.productId ?? null,
   base: i,
 });
 
@@ -163,8 +166,10 @@ export function fromDrafts(drafts: IngredientDraft[]): RecipeIngredient[] {
     const name = d.name.replace(OPTIONAL, '').trim().replace(/\s+/g, ' ');
     const amount = parseAmount(d.amount);
     if (!name || !amount) continue;
-    const { quantity: _q, optional: _o, unit: _u, ...kept } = d.base ?? ({} as Partial<RecipeIngredient>);
+    const { quantity: _q, optional: _o, unit: _u, productId: storedLink, ...kept } = d.base ?? ({} as Partial<RecipeIngredient>);
     const ing: RecipeIngredient = { ...kept, id: d.id, name, unit: amount.unit };
+    const link = d.productId === undefined ? storedLink : d.productId;
+    if (link) ing.productId = link;
     if (amount.quantity !== undefined) ing.quantity = amount.quantity;
     if (optional) ing.optional = true;
     out.push(ing);
