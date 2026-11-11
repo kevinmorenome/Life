@@ -7,6 +7,8 @@ export interface AppSettings {
   id: 'app';
   /** ISO 4217 code used to display all prices. */
   currency: string;
+  /** Recipes: ingredients you always have (salt, oil, water…), by `stapleKey()`; they never count as missing. */
+  pantryStaples?: string[];
   /** Work module: the monthly number of days (default 7) and whether it is a minimum of office days or a cap on home days. */
   workTarget?: number;
   workTargetKind?: 'min-office' | 'max-home';

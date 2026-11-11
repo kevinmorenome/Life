@@ -142,3 +142,13 @@ describe('drafts', () => {
     expect(badAmounts([draft({ id: 'a', amount: 'lots' }), draft({ id: 'b', name: '', amount: 'lots' }), draft({ id: 'c', amount: '2 g' })])).toEqual(['a']);
   });
 });
+
+describe('product links in drafts', () => {
+  const base: RecipeIngredient = { id: 'i', name: 'Pesto', unit: 'tbsp', quantity: 4, productId: 'fp-pesto' };
+  it('keeps, changes or clears the link', () => {
+    expect(fromDrafts([toDraft(base)])[0].productId).toBe('fp-pesto');
+    expect(fromDrafts([{ ...toDraft(base), productId: 'fp-pesto-rosso' }])[0].productId).toBe('fp-pesto-rosso');
+    expect(fromDrafts([{ ...toDraft(base), productId: null }])[0]).not.toHaveProperty('productId');
+    expect(fromDrafts([{ id: 'n', name: 'Basil', amount: '', productId: 'fp-basil' }])[0].productId).toBe('fp-basil');
+  });
+});
