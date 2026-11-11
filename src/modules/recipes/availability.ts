@@ -16,6 +16,14 @@ function wordsMatch(ingredient: string[], product: string[]): boolean {
   return ingredient.every((w) => product.some((p) => p === w || stem(p) === stem(w) || (w.length >= 4 && p.startsWith(w))));
 }
 
+/** A product's normalised name, worked out once per product: ranking hundreds of recipes asks for it thousands of times. */
+const nameKeys = new WeakMap<ProductSummary, string>();
+const nameKey = (p: ProductSummary): string => {
+  let k = nameKeys.get(p);
+  if (k === undefined) nameKeys.set(p, (k = normalizeKey(p.name)));
+  return k;
+};
+
 /**
  * The product an unlinked ingredient stands for, matched by name: the same name first, else a product whose name has
  * every word of the ingredient ("Tortellini" → "Tortellini sa sirom"), the one bought most recently. None when nothing
@@ -24,12 +32,12 @@ function wordsMatch(ingredient: string[], product: string[]): boolean {
 export function matchProduct(name: string, products: ProductSummary[]): ProductSummary | undefined {
   const key = normalizeKey(name);
   if (!key) return undefined;
-  const exact = products.find((p) => normalizeKey(p.name) === key);
+  const exact = products.find((p) => nameKey(p) === key);
   if (exact) return exact;
   const words = key.split(' ');
   const newest = (p: ProductSummary) => p.purchases[0]?.date ?? '';
   return products
-    .filter((p) => wordsMatch(words, normalizeKey(p.name).split(' ')))
+    .filter((p) => wordsMatch(words, nameKey(p).split(' ')))
     .sort((a, b) => newest(b).localeCompare(newest(a)) || a.name.length - b.name.length)[0];
 }
 
