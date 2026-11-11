@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductSummary } from '../food/products';
 import type { Unit } from '../food/types';
 import type { IngredientCheck } from './availability';
-import { cookLines, inProductUnit, markCooked, usesToLog } from './cooking';
+import { cookLines, inProductUnit, markCooked, parseUsed, startingAmounts, usesToLog } from './cooking';
 import type { Recipe, RecipeIngredient } from './types';
 
 const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [] });
@@ -61,5 +61,26 @@ describe('markCooked', () => {
     const r = { id: 'r', cooked: ['2026-11-01'] } as Recipe;
     expect(markCooked(markCooked(r, '2026-11-11', 'now'), '2026-11-11', 'now').cooked).toEqual(['2026-11-01', '2026-11-11']);
     expect(markCooked({ id: 'r' } as Recipe, '2026-11-11', 'now').cooked).toEqual(['2026-11-11']);
+  });
+});
+
+describe('startingAmounts', () => {
+  const lines = cookLines([check({ name: 'Pasta', quantity: 200, unit: 'g' }, pasta), check({ name: 'Eggs', quantity: 3, unit: 'piece' }, eggs)], leftOf);
+  it('keeps every pre-filled amount when nothing was ticked', () => {
+    expect(startingAmounts(lines, new Set())).toEqual({ Pasta: 0.2, Eggs: 3 });
+  });
+  it('starts what was left unticked at 0', () => {
+    expect(startingAmounts(lines, new Set(['Pasta']))).toEqual({ Pasta: 0.2, Eggs: 0 });
+  });
+});
+
+describe('parseUsed', () => {
+  it('reads none as 0, not as a mistake', () => {
+    expect(parseUsed('0')).toBe(0);
+    expect(parseUsed('0,0')).toBe(0);
+    expect(parseUsed('')).toBe(0);
+    expect(parseUsed('0.2')).toBe(0.2);
+    expect(parseUsed('½')).toBe(0.5);
+    expect(parseUsed('lots')).toBeNaN();
   });
 });

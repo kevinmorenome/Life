@@ -9141,3 +9141,23 @@ button.recipe-pill {
   margin-top: 8px;
   padding: 0;
 }
+/* Recipe page ingredients: no checkbox (that is the cooking checklist), just the name and amount, then the stock badge. */
+.recipe-ing-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 0;
+}
+.recipe-ingredients .recipe-ing-line + .recipe-status {
+  margin-left: 0;
+}
+/* In the cooking checklist a tick means "taken out, I'm using it", so it is not struck through like a finished item. */
+.cook-ingredients .is-ticked .recipe-ing-text,
+.cook-ingredients .is-ticked .recipe-ing-qty {
+  text-decoration: none;
+}
+.cook-ingredients .is-ticked .recipe-ing-text {
+  color: var(--text);
+}

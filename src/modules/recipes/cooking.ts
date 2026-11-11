@@ -1,6 +1,6 @@
 import type { ProductSummary } from '../food/products';
 import type { IngredientCheck } from './availability';
-import { amountText } from './ingredients';
+import { amountText, parseQuantity } from './ingredients';
 import type { Recipe, RecipeIngredient } from './types';
 import { toBase } from './units';
 
@@ -59,6 +59,17 @@ export function cookLines(checks: IngredientCheck[], leftOf: (productId: string)
   });
 }
 
+/**
+ * Where "What did you use?" starts: the pre-filled amounts, except that once you have ticked anything on the
+ * "Get everything ready" checklist, what you left unticked starts at 0 (you didn't take it out, so you didn't use it).
+ * Ticking nothing at all leaves every amount as pre-filled.
+ */
+export function startingAmounts(lines: CookLine[], ticked: Set<string>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const l of lines) out[l.ingredient.id] = ticked.size && !ticked.has(l.ingredient.id) ? 0 : l.amount;
+  return out;
+}
+
 /** The uses to log once you confirm: one per tracked line with something to take off, never more than is there. */
 export function usesToLog(lines: CookLine[], amounts: Record<string, number>): { productId: string; quantity: number }[] {
   const out: { productId: string; quantity: number }[] = [];
@@ -68,6 +79,13 @@ export function usesToLog(lines: CookLine[], amounts: Record<string, number>): {
     if (q > 0) out.push({ productId: l.product.id, quantity: q });
   }
   return out;
+}
+
+/** An amount typed on "What did you use?": like a recipe amount ("0.2", "½", "1 1/2"), but empty or 0 means none. NaN when unreadable. */
+export function parseUsed(text: string): number {
+  const t = text.trim().replace(',', '.');
+  if (!t || /^0*\.?0*$/.test(t)) return 0;
+  return parseQuantity(t) ?? 0;
 }
 
 /** The recipe with a day it was cooked added (kept in order, once per day). */

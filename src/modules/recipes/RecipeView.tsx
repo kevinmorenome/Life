@@ -78,7 +78,6 @@ function ServingsPill({ base, servings, onChange }: { base: number; servings: nu
  */
 export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
   const [servings, setServings] = useState(recipe.servings);
-  const [ticked, setTicked] = useState<Set<string>>(() => new Set());
   const scaled = scaleIngredients(recipe.ingredients, recipe.servings, servings);
   const check = checkRecipe(scaled, kitchen.stocked, kitchen.products, kitchen.staples);
   const edit = `/recipes/${recipe.id}/edit`;
@@ -102,14 +101,6 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
     { label: 'Choose a photo', icon: <ImageIcon />, onSelect: picker.choosePhoto },
     ...(recipe.hasPhoto || recipe.photo ? [{ label: 'Remove the photo', icon: <TrashIcon />, danger: true, onSelect: () => void save({ photo: undefined, hasPhoto: false }) }] : []),
   ];
-
-  const toggle = (id: string) =>
-    setTicked((cur) => {
-      const next = new Set(cur);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div className="recipe-page">
@@ -187,16 +178,15 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
             {check.items.map((c) => {
               const i = c.ingredient;
               return (
-                <li key={i.id} className={ticked.has(i.id) ? 'is-ticked' : undefined}>
-                  <label>
-                    <input type="checkbox" className="recipe-check" checked={ticked.has(i.id)} onChange={() => toggle(i.id)} aria-label={`${i.name}: done`} />
+                <li key={i.id}>
+                  <div className="recipe-ing-line">
                     <span className="recipe-ing-text">
                       {i.name}
                       {i.optional && ' (optional)'}
                       {i.notes && <span className="muted small recipe-ing-notes">{i.notes}</span>}
                     </span>
                     <span className="muted recipe-ing-qty">{ingredientAmount(i)}</span>
-                  </label>
+                  </div>
                   <StockStatus check={c} onStaple={() => void kitchen.toggleStaple(i.name)} editPath={edit} />
                 </li>
               );

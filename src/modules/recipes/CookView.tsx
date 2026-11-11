@@ -6,8 +6,8 @@ import { CloseIcon } from '../clothes/icons';
 import { unitLabel } from '../food/products';
 import { formatAmount } from '../food/stock';
 import { checkRecipe } from './availability';
-import { cookLines, markCooked, recipeAmount, usesToLog, type CookLine } from './cooking';
-import { ingredientAmount, parseQuantity, scaleIngredients } from './ingredients';
+import { cookLines, markCooked, parseUsed, recipeAmount, startingAmounts, usesToLog, type CookLine } from './cooking';
+import { ingredientAmount, scaleIngredients } from './ingredients';
 import type { Recipe } from './types';
 import type { Kitchen } from './useKitchen';
 
@@ -66,12 +66,23 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
   const [lines] = useState(() =>
     cookLines(checkRecipe(scaled, kitchen.stocked, kitchen.products, kitchen.staples).items, (id) => kitchen.stocked.get(id)?.stock.quantity ?? 0),
   );
-  const [typed, setTyped] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((l) => [l.ingredient.id, l.amount ? formatAmount(l.amount, l.product?.unit ?? 'pc') : '0'])));
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  /** Amounts you changed yourself on "What did you use?": the checklist no longer resets those. */
+  const [edited, setEdited] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const back = `/recipes/${recipe.id}`;
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    // Arriving at "What did you use?": start from the checklist (unticked = 0) for every amount not changed by hand.
+    if (page !== last) return;
+    const start = startingAmounts(lines, ticked);
+    setTyped((t) => {
+      const next = { ...t };
+      for (const l of lines) if (!edited.has(l.ingredient.id)) next[l.ingredient.id] = start[l.ingredient.id] ? formatAmount(start[l.ingredient.id], l.product?.unit ?? 'pc') : '0';
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -85,10 +96,14 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
 
   const tracked = lines.filter((l) => !l.notTracked);
   const skipped = lines.filter((l) => l.notTracked);
-  const amounts = Object.fromEntries(tracked.map((l) => [l.ingredient.id, parseQuantity(typed[l.ingredient.id] ?? '') ?? 0]));
+  const amounts = Object.fromEntries(tracked.map((l) => [l.ingredient.id, parseUsed(typed[l.ingredient.id] ?? '')]));
   const bad = tracked.filter((l) => Number.isNaN(amounts[l.ingredient.id])).map((l) => l.ingredient.id);
 
-  const setAmount = (l: CookLine, n: number) => setTyped((t) => ({ ...t, [l.ingredient.id]: formatAmount(Math.min(l.left, Math.max(0, Math.round(n * 1000) / 1000)), l.product!.unit) }));
+  const markEdited = (id: string) => setEdited((cur) => (cur.has(id) ? cur : new Set(cur).add(id)));
+  const setAmount = (l: CookLine, n: number) => {
+    markEdited(l.ingredient.id);
+    setTyped((t) => ({ ...t, [l.ingredient.id]: formatAmount(Math.min(l.left, Math.max(0, Math.round(n * 1000) / 1000)), l.product!.unit) }));
+  };
   const stepOf = (l: CookLine) => (l.product!.unit === 'pc' ? (l.left < 1 ? 0.25 : 1) : l.left <= 0.2 ? 0.01 : 0.05);
 
   async function finish(takeOff: boolean) {
@@ -128,6 +143,7 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
         <section aria-label="Ingredients">
           <p className="cook-kicker">Get everything ready</p>
           <h1 className="cook-heading">Ingredients</h1>
+          <p className="muted small cook-note">Tick each one as you take it out. What you leave unticked is set to 0 when you finish, so it stays in your stock.</p>
           {scaled.length === 0 ? (
             <p className="muted">This recipe has no ingredients.</p>
           ) : (
@@ -163,7 +179,10 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
         <section aria-label="What did you use?">
           <p className="cook-kicker">Done cooking?</p>
           <h1 className="cook-heading">What did you use?</h1>
-          <p className="muted small cook-note">These amounts come off your stock when you finish. Change any of them, or set 0 for what you didn’t use.</p>
+          <p className="muted small cook-note">
+            These amounts come off your stock when you finish. Change any of them, or set 0 for what you didn’t use.
+            {ticked.size > 0 && ' What you didn’t tick at the start is already at 0.'}
+          </p>
           {tracked.length > 0 && (
             <ul className="cook-uses">
               {tracked.map((l) => {
@@ -187,7 +206,10 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
                       </button>
                       <input
                         value={typed[l.ingredient.id] ?? ''}
-                        onChange={(e) => setTyped((t) => ({ ...t, [l.ingredient.id]: e.target.value }))}
+                        onChange={(e) => {
+                          markEdited(l.ingredient.id);
+                          setTyped((t) => ({ ...t, [l.ingredient.id]: e.target.value }));
+                        }}
                         inputMode="decimal"
                         aria-label={`${l.ingredient.name} used, in ${p.unit === 'pc' ? 'pieces' : p.unit}`}
                         aria-invalid={invalid || undefined}
