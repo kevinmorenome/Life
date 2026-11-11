@@ -11,6 +11,7 @@ export const FILTER_KINDS = [
   { id: 'music', label: 'Music' },
   { id: 'games', label: 'Games' },
   { id: 'cook', label: 'Cooking' },
+  { id: 'book', label: 'Books' },
 ] as const;
 
 const IDS: string[] = FILTER_KINDS.map((k) => k.id);

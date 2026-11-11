@@ -6752,6 +6752,7 @@ a.game-row + .food-h2 {
   --c-rides: #1e88e5;
   --c-music: #1db954;
   --c-cook: #b8761a;
+  --c-book: #2f7d6d;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -6767,6 +6768,7 @@ a.game-row + .food-h2 {
     --c-rides: #4aa8ff;
     --c-music: #1ed760;
     --c-cook: #f0b45a;
+    --c-book: #5fd0b8;
   }
 }
 :root[data-theme="dark"] {
@@ -6782,6 +6784,7 @@ a.game-row + .food-h2 {
   --c-rides: #4aa8ff;
   --c-music: #1ed760;
   --c-cook: #f0b45a;
+  --c-book: #5fd0b8;
 }
 .dot.mark-office {
   background: var(--c-office);
@@ -9587,4 +9590,115 @@ button.cook-next:active {
 .cook-again a {
   color: var(--text);
   font-weight: 650;
+}
+
+/* Books (Goodreads import): its own colour on the calendar, like every kind of entry. */
+.dot.mark-book {
+  background: var(--c-book);
+  box-shadow: none;
+}
+.day-badge.mark-book {
+  color: var(--c-book);
+  background: color-mix(in srgb, var(--c-book) 16%, var(--bg));
+}
+.pill.mark-book {
+  background: color-mix(in srgb, var(--c-book) 16%, var(--bg));
+  color: var(--text);
+  box-shadow: none;
+}
+.pill.mark-book .pill-icon {
+  color: var(--c-book);
+}
+.widget-book {
+  --w: var(--c-book);
+}
+.books-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0 14px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: var(--glass-bg, var(--surface));
+  border: 1px solid var(--glass-line, var(--border));
+}
+.books-search svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--muted, currentColor);
+}
+.books-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.book-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.book-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  color: var(--text);
+  text-decoration: none;
+}
+.book-spine {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 56px;
+  border-radius: 6px 10px 10px 6px;
+  background: color-mix(in srgb, var(--c-book) 18%, var(--bg));
+  color: var(--c-book);
+  font-weight: 700;
+}
+.book-text {
+  display: grid;
+  min-width: 0;
+}
+.book-text > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-stars {
+  color: var(--c-cook);
+  letter-spacing: 1px;
+}
+.book-stars-off {
+  opacity: 0.25;
+}
+.books-more {
+  margin: 12px 0;
+}
+.book-review {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.book-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.book-facts dd {
+  margin: 0;
+}
+.book-day-row {
+  display: grid;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
 }
