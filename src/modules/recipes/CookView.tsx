@@ -7,7 +7,7 @@ import { unitLabel } from '../food/products';
 import { formatAmount } from '../food/stock';
 import { checkRecipe } from './availability';
 import { cookLines, markCooked, parseUsed, recipeAmount, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog, type CookLine } from './cooking';
-import { StepTimerCard, TimerStrip, useCookTimers } from './CookTimers';
+import { AlarmSheet, StepTimerCard, TimerStrip, useCookTimers } from './CookTimers';
 import { ingredientAmount, scaleIngredients } from './ingredients';
 import type { Recipe } from './types';
 import type { Kitchen } from './useKitchen';
@@ -160,6 +160,7 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
         ))}
       </div>
       <TimerStrip timers={timers} except={page > 0 && page < last ? page : undefined} />
+      <AlarmSheet timers={timers} titleOf={(step) => splitStep(steps[step - 1] ?? '').title} />
 
       {page === 0 && (
         <section aria-label="Ingredients">

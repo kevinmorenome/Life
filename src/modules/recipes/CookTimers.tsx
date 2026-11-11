@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClockIcon } from '../../icons';
 import { CloseIcon } from '../clothes/icons';
+import { alarmUrl } from './alarm';
 import { clock, type StepTimer } from './cooking';
 
 /** A timer started from a step. Counting down from `endsAt`, or paused with `left` seconds; `done` once it ran out. */
@@ -13,37 +14,21 @@ export interface RunningTimer {
   endsAt?: number;
   left?: number;
   done?: boolean;
-}
-
-/** A short two-tone beep through Web Audio; the context is made on the tap that starts a timer, so iPhone lets it play later. */
-function beep(ctx: AudioContext | undefined) {
-  if (!ctx) return;
-  for (const [at, f] of [
-    [0, 880],
-    [0.25, 660],
-    [0.5, 880],
-  ] as const) {
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.value = f;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-    g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + at + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.2);
-    o.connect(g).connect(ctx.destination);
-    o.start(ctx.currentTime + at);
-    o.stop(ctx.currentTime + at + 0.22);
-  }
+  /** The alarm of a timer that ran out was stopped. */
+  silenced?: boolean;
 }
 
 /**
  * The timers of a cooking session: they keep counting while you move between steps (and while the app is in the
- * background, since they count to a time, not by ticks), and buzz and beep when they run out.
+ * background, since they count to a time, not by ticks). When one runs out the alarm rings (`alarm.ts`, looping) and
+ * the phone buzzes every couple of seconds until you Stop it or add a minute; `ringing` is what still rings.
  */
 export function useCookTimers() {
   const [timers, setTimers] = useState<RunningTimer[]>([]);
   const [now, setNow] = useState(() => Date.now());
-  const audio = useRef<AudioContext | undefined>(undefined);
+  const sound = useRef<HTMLAudioElement | undefined>(undefined);
   const running = timers.some((t) => t.endsAt && !t.done);
+  const ringing = timers.filter((t) => t.done && !t.silenced);
 
   useEffect(() => {
     if (!running) return;
@@ -51,24 +36,57 @@ export function useCookTimers() {
     return () => clearInterval(id);
   }, [running]);
 
-  // Mark the ones that ran out, once, and tell you.
+  // Mark the ones that ran out.
   useEffect(() => {
     const out = timers.filter((t) => t.endsAt && !t.done && t.endsAt <= now);
     if (!out.length) return;
     setTimers((cur) => cur.map((t) => (out.some((o) => o.id === t.id) ? { ...t, done: true, endsAt: undefined, left: 0 } : t)));
-    navigator.vibrate?.([300, 150, 300, 150, 300]);
-    beep(audio.current);
   }, [now, timers]);
 
-  useEffect(() => () => void audio.current?.close(), []);
+  // Ring while any timer is done and not stopped: the looping alarm, and a buzz every 2 s where the phone can.
+  const isRinging = ringing.length > 0;
+  useEffect(() => {
+    if (!isRinging) return;
+    const a = sound.current;
+    if (a) {
+      a.currentTime = 0;
+      a.loop = true;
+      void a.play().catch(() => {});
+    }
+    const buzz = () => navigator.vibrate?.([400, 200, 400]);
+    buzz();
+    const id = setInterval(buzz, 2000);
+    return () => {
+      clearInterval(id);
+      a?.pause();
+      navigator.vibrate?.(0);
+    };
+  }, [isRinging]);
+
+  useEffect(() => () => sound.current?.pause(), []);
 
   const start = (step: number, t: StepTimer) => {
+    // Made and started on this tap, while the browser allows sound, so it can ring later without one (iPhone).
     try {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!audio.current && Ctx) audio.current = new Ctx();
-      void audio.current?.resume();
+      if (!sound.current) {
+        const a = new Audio(alarmUrl());
+        a.preload = 'auto';
+        sound.current = a;
+      }
+      const a = sound.current;
+      a.muted = true;
+      void a
+        .play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        })
+        .catch(() => {
+          a.muted = false;
+        });
     } catch {
-      // No sound then; the vibration and the pill still say it.
+      // No sound then; the buzz and the "Time's up" screen still say it.
     }
     setNow(Date.now());
     setTimers((cur) => [...cur, { id: `${step}-${t.seconds}-${Date.now()}`, step, seconds: t.seconds, label: t.label, endsAt: Date.now() + t.seconds * 1000 }]);
@@ -81,8 +99,15 @@ export function useCookTimers() {
       }),
     );
   const remove = (id: string) => setTimers((cur) => cur.filter((t) => t.id !== id));
+  /** Stops the alarm of a timer that ran out; it stays as "Done!" until you clear it. */
+  const silence = (id: string) => setTimers((cur) => cur.map((t) => (t.id === id ? { ...t, silenced: true } : t)));
+  /** A finished timer runs again for `seconds` more (snooze); it stays the same step's timer (`seconds` is how it was started). */
+  const extend = (id: string, seconds: number) => {
+    setNow(Date.now());
+    setTimers((cur) => cur.map((t) => (t.id === id ? { ...t, done: false, silenced: false, left: undefined, endsAt: Date.now() + seconds * 1000 } : t)));
+  };
   const leftOf = (t: RunningTimer) => (t.done ? 0 : t.endsAt ? (t.endsAt - now) / 1000 : t.left ?? 0);
-  return { timers, start, toggle, remove, leftOf };
+  return { timers, ringing, start, toggle, remove, silence, extend, leftOf };
 }
 
 export type CookTimers = ReturnType<typeof useCookTimers>;
@@ -120,7 +145,8 @@ export function TimerStrip({ timers: t, except }: { timers: CookTimers; except?:
 export function StepTimerCard({ step, timer, timers: t }: { step: number; timer: StepTimer; timers: CookTimers }) {
   const x = t.timers.find((r) => r.step === step && r.seconds === timer.seconds);
   const left = x ? t.leftOf(x) : timer.seconds;
-  const done = Math.min(1, Math.max(0, 1 - left / timer.seconds));
+  // A snoozed timer can have more left than it started with; the bar then just starts over from empty.
+  const done = Math.min(1, Math.max(0, 1 - left / Math.max(timer.seconds, left)));
   return (
     <div className={`cook-card cook-timer-card${x?.done ? ' is-done' : ''}`} role="timer" aria-label={`Timer for ${timer.label}`}>
       <div className="cook-card-head">
@@ -140,6 +166,11 @@ export function StepTimerCard({ step, timer, timers: t }: { step: number; timer:
           </button>
         ) : (
           <>
+            {x.done && !x.silenced && (
+              <button type="button" className="btn btn-primary cook-timer-btn" onClick={() => t.silence(x.id)}>
+                Stop alarm
+              </button>
+            )}
             {!x.done && (
               <button type="button" className="btn cook-timer-btn" onClick={() => t.toggle(x.id)}>
                 {x.endsAt ? 'Pause' : 'Resume'}
@@ -150,6 +181,40 @@ export function StepTimerCard({ step, timer, timers: t }: { step: number; timer:
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Time's up": a full-screen sheet over cooking while an alarm rings, so it can't be missed: which step and timer,
+ * a big Stop, and +1 min to let it go on a little. Several at once are listed together.
+ */
+export function AlarmSheet({ timers: t, titleOf }: { timers: CookTimers; titleOf: (step: number) => string }) {
+  if (!t.ringing.length) return null;
+  return (
+    <div className="cook-alarm" role="alertdialog" aria-modal="true" aria-labelledby="cook-alarm-title">
+      <div className="cook-alarm-card">
+        <span className="cook-alarm-icon" aria-hidden="true">
+          <ClockIcon />
+        </span>
+        <h2 id="cook-alarm-title">Time’s up!</h2>
+        {t.ringing.map((x) => (
+          <div key={x.id} className="cook-alarm-item">
+            <p>
+              <strong>Step {x.step}</strong> · {titleOf(x.step)}
+            </p>
+            <p className="muted small">{x.label} timer</p>
+            <div className="cook-alarm-actions">
+              <button type="button" className="btn cook-timer-btn" onClick={() => t.extend(x.id, 60)}>
+                +1 min
+              </button>
+              <button type="button" className="btn btn-primary cook-timer-btn" onClick={() => t.silence(x.id)} autoFocus>
+                Stop
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

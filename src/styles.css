@@ -9398,3 +9398,83 @@ button.cook-next:active {
 .cook-next-last {
   margin: 6px 0 0;
 }
+/* "Time's up": a frosted sheet over cooking while an alarm rings. */
+.cook-alarm {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: rgb(10 14 20 / 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.cook-alarm-card {
+  width: min(100%, 420px);
+  padding: 24px 20px 20px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 32px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  text-align: center;
+}
+.cook-alarm-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+.cook-alarm-icon svg {
+  width: 40px;
+  height: 40px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-alarm-icon {
+    animation: cook-ring 0.9s ease-in-out infinite;
+  }
+}
+@keyframes cook-ring {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  20% {
+    transform: rotate(-14deg) scale(1.06);
+  }
+  40% {
+    transform: rotate(14deg) scale(1.06);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+}
+.cook-alarm-card h2 {
+  margin: 14px 0 6px;
+  font-size: 1.8rem;
+}
+.cook-alarm-item {
+  padding-top: 12px;
+}
+.cook-alarm-item + .cook-alarm-item {
+  margin-top: 12px;
+  border-top: 1px solid var(--glass-line, var(--border));
+}
+.cook-alarm-item p {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+.cook-alarm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.cook-alarm-actions .btn {
+  min-height: 54px;
+  font-size: 1.1rem;
+}
