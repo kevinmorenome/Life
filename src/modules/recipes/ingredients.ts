@@ -80,45 +80,93 @@ export function scaleIngredients(ingredients: RecipeIngredient[], from: number, 
   return ingredients.map((i) => (i.quantity !== undefined && isMeasured(i.unit) ? { ...i, quantity: i.quantity * f } : i));
 }
 
-/** An ingredient row as the form holds it: the amount as typed. */
+const UNIT_WORDS: [RecipeUnit, string[]][] = [
+  ['fl oz', ['fl oz', 'fl. oz', 'floz', 'fluid ounce', 'fluid ounces']],
+  ['g', ['g', 'gr', 'gram', 'grams', 'gramme', 'grammes']],
+  ['kg', ['kg', 'kilo', 'kilos', 'kilogram', 'kilograms']],
+  ['ml', ['ml', 'millilitre', 'millilitres', 'milliliter', 'milliliters']],
+  ['l', ['l', 'litre', 'litres', 'liter', 'liters']],
+  ['oz', ['oz', 'ounce', 'ounces']],
+  ['cup', ['cup', 'cups', 'c']],
+  ['tsp', ['tsp', 'teaspoon', 'teaspoons', 't']],
+  ['tbsp', ['tbsp', 'tbs', 'tablespoon', 'tablespoons', 'T']],
+  ['piece', ['pc', 'pcs', 'piece', 'pieces', 'x']],
+  ['pinch', ['pinch', 'pinches']],
+];
+
+function unitOf(word: string): RecipeUnit | undefined {
+  const w = word.trim().replace(/\.$/, '');
+  // "T" (tablespoon) and "t" (teaspoon) differ only by case; everything else is matched in lower case.
+  for (const [unit, words] of UNIT_WORDS) if (words.includes(w) && (w === 'T' || w === 't')) return unit;
+  const lower = w.toLowerCase();
+  for (const [unit, words] of UNIT_WORDS) if (words.includes(lower)) return unit;
+  return undefined;
+}
+
+/**
+ * The amount field as typed, number and unit together: "250 g", "250g", "1/2 cup", "1½ tbsp", "2" (pieces),
+ * "to taste", "a pinch", "2 pinches", or nothing. Null when it can't be read, so the form can say so.
+ */
+export function parseAmount(text: string): { quantity?: number; unit: RecipeUnit } | null {
+  const t = text.trim().replace(/\s+/g, ' ');
+  if (!t) return { unit: 'piece' };
+  const lower = t.toLowerCase();
+  if (lower === 'to taste') return { unit: 'to taste' };
+  if (lower === 'pinch' || lower === 'a pinch') return { quantity: 1, unit: 'pinch' };
+  const m = /^([\d.,/ ¼½¾⅓⅔⅛]*[\d¼½¾⅓⅔⅛])\s*([a-zA-Z][a-zA-Z .]*)?$/.exec(t);
+  if (!m) return null;
+  const quantity = parseQuantity(m[1]);
+  if (quantity === undefined || Number.isNaN(quantity)) return null;
+  if (!m[2]) return { quantity, unit: 'piece' };
+  const unit = unitOf(m[2]);
+  if (!unit || unit === 'to taste') return null;
+  return { quantity, unit };
+}
+
+/** What the amount field shows for a saved ingredient: exact (no rounding), read back the same by `parseAmount()`. */
+export function amountText(i: Pick<RecipeIngredient, 'quantity' | 'unit'>): string {
+  if (i.unit === 'to taste') return 'to taste';
+  if (i.unit === 'pinch') return !i.quantity || i.quantity === 1 ? 'a pinch' : `${formatQuantity(i.quantity, 'pinch')} pinches`;
+  if (i.quantity === undefined) return i.unit === 'piece' ? '' : i.unit;
+  const exact = i.unit === 'g' || i.unit === 'ml' || i.unit === 'kg' || i.unit === 'l' ? String(Number(i.quantity.toFixed(3))) : formatQuantity(i.quantity, i.unit);
+  return i.unit === 'piece' ? exact : `${exact} ${i.unit}`;
+}
+
+const OPTIONAL = /\s*\(optional\)\s*$/i;
+
+/** An ingredient row as the form holds it: its name (with "(optional)" when it is) and its amount, as typed. */
 export interface IngredientDraft {
   id: string;
   name: string;
-  quantity: string;
-  unit: RecipeUnit;
-  optional: boolean;
-  notes: string;
-  /** What the form doesn't show (product link, substitutions) rides along unchanged. */
+  amount: string;
+  /** What the form doesn't show (notes, product link, substitutions) rides along unchanged. */
   base?: RecipeIngredient;
 }
 
 export const toDraft = (i: RecipeIngredient): IngredientDraft => ({
   id: i.id,
-  name: i.name,
-  quantity: i.quantity === undefined ? '' : formatQuantity(i.quantity, i.unit === 'g' || i.unit === 'ml' ? 'kg' : i.unit),
-  unit: i.unit,
-  optional: Boolean(i.optional),
-  notes: i.notes ?? '',
+  name: i.optional ? `${i.name} (optional)` : i.name,
+  amount: amountText(i),
   base: i,
 });
 
-/** The rows that can't be saved: an amount that isn't a positive number. Rows without a name are simply dropped. */
-export function badQuantities(drafts: IngredientDraft[]): string[] {
-  return drafts.filter((d) => d.name.trim() && Number.isNaN(parseQuantity(d.quantity))).map((d) => d.id);
+/** The rows that can't be saved: an amount that can't be read. Rows without a name are simply dropped. */
+export function badAmounts(drafts: IngredientDraft[]): string[] {
+  return drafts.filter((d) => d.name.replace(OPTIONAL, '').trim() && parseAmount(d.amount) === null).map((d) => d.id);
 }
 
-/** Form rows back to ingredients: unnamed rows dropped, amounts read, no amount for pinch / to taste, fields kept. */
+/** Form rows back to ingredients: unnamed rows dropped, "(optional)" read off the name, amounts read, other fields kept. */
 export function fromDrafts(drafts: IngredientDraft[]): RecipeIngredient[] {
   const out: RecipeIngredient[] = [];
   for (const d of drafts) {
-    const name = d.name.trim().replace(/\s+/g, ' ');
-    if (!name) continue;
-    const q = parseQuantity(d.quantity);
-    const { quantity: _q, optional: _o, notes: _n, ...kept } = d.base ?? ({} as Partial<RecipeIngredient>);
-    const ing: RecipeIngredient = { ...kept, id: d.id, name, unit: d.unit };
-    if (q !== undefined && !Number.isNaN(q) && d.unit !== 'to taste') ing.quantity = q;
-    if (d.optional) ing.optional = true;
-    if (d.notes.trim()) ing.notes = d.notes.trim();
+    const optional = OPTIONAL.test(d.name);
+    const name = d.name.replace(OPTIONAL, '').trim().replace(/\s+/g, ' ');
+    const amount = parseAmount(d.amount);
+    if (!name || !amount) continue;
+    const { quantity: _q, optional: _o, unit: _u, ...kept } = d.base ?? ({} as Partial<RecipeIngredient>);
+    const ing: RecipeIngredient = { ...kept, id: d.id, name, unit: amount.unit };
+    if (amount.quantity !== undefined) ing.quantity = amount.quantity;
+    if (optional) ing.optional = true;
     out.push(ing);
   }
   return out;

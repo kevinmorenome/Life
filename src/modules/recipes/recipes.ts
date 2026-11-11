@@ -58,3 +58,40 @@ export function duplicateRecipe(r: Recipe, newId: () => string, now: string): Re
 export function sortRecipes(recipes: Recipe[]): Recipe[] {
   return [...recipes].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.createdAt.localeCompare(b.createdAt));
 }
+
+/** Words without accents or case, so "cevapi" finds "Ćevapi". */
+const fold = (s: string): string => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+export interface RecipeFilter {
+  /** Words that must all appear in the name, an ingredient or a tag. */
+  text: string;
+  /** Any of these tags (none = every recipe). */
+  tags: string[];
+  favorites: boolean;
+}
+
+export const NO_FILTER: RecipeFilter = { text: '', tags: [], favorites: false };
+
+/** The recipes that match, favourites first, then by name. */
+export function searchRecipes(recipes: Recipe[], f: RecipeFilter): Recipe[] {
+  const words = fold(f.text).split(/\s+/).filter(Boolean);
+  const hits = recipes.filter((r) => {
+    if (f.favorites && !r.favorite) return false;
+    if (f.tags.length && !f.tags.some((t) => r.tags.includes(t))) return false;
+    if (!words.length) return true;
+    const hay = fold([r.name, ...r.ingredients.map((i) => i.name), ...r.tags].join(' '));
+    return words.every((w) => hay.includes(w));
+  });
+  const sorted = sortRecipes(hits);
+  return [...sorted.filter((r) => r.favorite), ...sorted.filter((r) => !r.favorite)];
+}
+
+/** Every tag in use, most used first, then by name. */
+export function allTags(recipes: Recipe[]): string[] {
+  const n = new Map<string, number>();
+  for (const r of recipes) for (const t of r.tags) n.set(t, (n.get(t) ?? 0) + 1);
+  return [...n.keys()].sort((a, b) => n.get(b)! - n.get(a)! || a.localeCompare(b));
+}
+
+/** How many filter choices are on (for the badge on the filter button). */
+export const filterCount = (f: RecipeFilter): number => f.tags.length + (f.favorites ? 1 : 0);

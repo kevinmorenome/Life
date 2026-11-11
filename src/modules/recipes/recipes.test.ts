@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanSteps, duplicateRecipe, formatMinutes, moveItem, parseTags, sortRecipes, totalMinutes } from './recipes';
+import { allTags, cleanSteps, duplicateRecipe, filterCount, formatMinutes, moveItem, NO_FILTER, parseTags, searchRecipes, sortRecipes, totalMinutes, type RecipeFilter } from './recipes';
 import type { Recipe } from './types';
 
 const recipe = (over: Partial<Recipe> = {}): Recipe => ({
@@ -83,5 +83,32 @@ describe('sortRecipes', () => {
   it('sorts by name ignoring case and accents', () => {
     const names = sortRecipes([recipe({ id: 'a', name: 'zucchini' }), recipe({ id: 'b', name: 'Ćevapi' }), recipe({ id: 'c', name: 'apple pie' })]).map((r) => r.name);
     expect(names).toEqual(['apple pie', 'Ćevapi', 'zucchini']);
+  });
+});
+
+describe('searchRecipes', () => {
+  const list = [
+    recipe({ id: 'a', name: 'Pesto tortellini', tags: ['dinner', 'quick'], favorite: false, ingredients: [{ id: '1', name: 'Pesto', unit: 'g' }] }),
+    recipe({ id: 'b', name: 'Ćevapi', tags: ['dinner'], favorite: true, ingredients: [{ id: '2', name: 'Minced beef', unit: 'g' }] }),
+    recipe({ id: 'c', name: 'Banana bread', tags: ['baking'], favorite: false, ingredients: [] }),
+  ];
+  const ids = (f: Partial<RecipeFilter>) => searchRecipes(list, { ...NO_FILTER, ...f }).map((r) => r.id);
+
+  it('puts favourites first', () => {
+    expect(ids({})).toEqual(['b', 'c', 'a']);
+  });
+  it('finds by name, ingredient or tag, ignoring accents', () => {
+    expect(ids({ text: 'cevapi' })).toEqual(['b']);
+    expect(ids({ text: 'beef' })).toEqual(['b']);
+    expect(ids({ text: 'baking' })).toEqual(['c']);
+    expect(ids({ text: 'pesto tort' })).toEqual(['a']);
+  });
+  it('filters by tags and favourites', () => {
+    expect(ids({ tags: ['quick', 'baking'] })).toEqual(['c', 'a']);
+    expect(ids({ favorites: true })).toEqual(['b']);
+  });
+  it('lists tags by use', () => {
+    expect(allTags(list)).toEqual(['dinner', 'baking', 'quick']);
+    expect(filterCount({ text: 'x', tags: ['a'], favorites: true })).toBe(2);
   });
 });
