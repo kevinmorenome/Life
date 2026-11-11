@@ -77,6 +77,13 @@ export function RecipeForm({ existing, knownTags = [], kitchen, onSave }: Props)
     setSteps((cur) => [...cur, s]);
     focusLater(`step-${s.id}`);
   }
+  /** Links an ingredient row to a product: the row takes the product's name (keeping "(optional)"), then the amount gets focus. */
+  function pick(d: IngredientDraft, p: Kitchen['products'][number]) {
+    const optional = /\(optional\)\s*$/i.test(d.name);
+    setIngredient(d.id, { name: optional ? `${p.name} (optional)` : p.name, productId: p.id });
+    setTyping(null);
+    document.getElementById(`ing-a-${d.id}`)?.focus();
+  }
   const addTag = (t: string) => setTags(typedTags.length ? `${typedTags.join(', ')}, ${t}` : t);
 
   // Dragging a step by its grip: the row under the finger takes its place as it moves.
@@ -256,7 +263,9 @@ export function RecipeForm({ existing, knownTags = [], kitchen, onSave }: Props)
                     value={d.name}
                     onChange={(e) => setIngredient(d.id, { name: e.target.value, ...(d.productId ? { productId: null } : {}) })}
                     onFocus={() => setTyping(d.id)}
-                    onBlur={() => setTyping((t) => (t === d.id ? null : t))}
+                    // Hidden a moment later, not at once: on iPhone the field loses focus before the tap on a
+                    // suggestion arrives, and a list removed at once would swallow the tap.
+                    onBlur={() => setTimeout(() => setTyping((t) => (t === d.id ? null : t)), 200)}
                     placeholder={i === 0 ? 'Add ingredient…' : 'Ingredient'}
                     aria-label={`Ingredient ${i + 1}`}
                     aria-describedby={`ing-link-${d.id}`}
@@ -295,11 +304,14 @@ export function RecipeForm({ existing, knownTags = [], kitchen, onSave }: Props)
                           <button
                             type="button"
                             className="menu-item"
-                            onPointerDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              const optional = /\(optional\)\s*$/i.test(d.name);
-                              setIngredient(d.id, { name: optional ? `${p.name} (optional)` : p.name, productId: p.id });
-                              document.getElementById(`ing-a-${d.id}`)?.focus();
+                            // Picked as soon as the finger touches it (Safari moves focus, and the keyboard
+                            // closing shifts the page, before a click would arrive); Enter / Space still click.
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              pick(d, p);
+                            }}
+                            onClick={(e) => {
+                              if (e.detail === 0) pick(d, p);
                             }}
                           >
                             <CartIcon /> {p.name}
