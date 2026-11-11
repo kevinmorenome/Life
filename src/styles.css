@@ -8552,6 +8552,10 @@ button.recipe-pill {
   font-size: 0.75rem;
 }
 .recipe-stepper {
+  /* Opens upwards, over the title, so it never covers Start cooking under the pills. */
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom left;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -8985,4 +8989,521 @@ button.recipe-pill {
   border: 0;
   background: none;
   cursor: pointer;
+}
+/* Cooking a recipe (#216): one thing at a time, big, with Back / Next in a sticky glass bar at the bottom. */
+.recipe-cook-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 16px;
+  text-decoration: none;
+}
+.recipe-cook-btn svg {
+  width: 22px;
+  height: 22px;
+}
+.cook {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+.cook-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cook-title {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.cook-title strong {
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cook-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 22px;
+}
+.cook-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.cook-dots .is-done {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.cook-dots .is-on {
+  width: 22px;
+  background: var(--accent);
+}
+.cook-kicker {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cook-heading {
+  margin: 0 0 12px;
+  font-size: 1.6rem;
+}
+.cook-ingredients label {
+  min-height: 54px;
+  font-size: 1.1rem;
+}
+.cook-note {
+  margin: 0 0 12px;
+}
+.cook-uses {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cook-uses li {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.cook-use-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cook-use-text > * {
+  overflow-wrap: anywhere;
+}
+.cook-hint {
+  color: color-mix(in srgb, var(--tone-orange) 75%, var(--text));
+}
+.cook-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cook-amount input {
+  width: 6em;
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cook-amount input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.cook-unit {
+  min-width: 2.5em;
+  color: var(--muted);
+}
+.cook-skipped {
+  margin: 12px 0 0;
+}
+.cook-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--glass-edge);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+}
+.cook-bar .btn-primary {
+  min-width: 120px;
+  min-height: 48px;
+}
+.cook-bar .btn svg {
+  width: 18px;
+  height: 18px;
+}
+.cook-skip {
+  margin-top: 8px;
+  padding: 0;
+}
+/* Recipe page ingredients: no checkbox (that is the cooking checklist), just the name and amount, then the stock badge. */
+.recipe-ing-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 0;
+}
+.recipe-ingredients .recipe-ing-line + .recipe-status {
+  margin-left: 0;
+}
+/* In the cooking checklist a tick means "taken out, I'm using it", so it is not struck through like a finished item. */
+.cook-ingredients .is-ticked .recipe-ing-text,
+.cook-ingredients .is-ticked .recipe-ing-qty {
+  text-decoration: none;
+}
+.cook-ingredients .is-ticked .recipe-ing-text {
+  color: var(--text);
+}
+/* Cooking steps fill the screen with what helps at the stove: timers from the step's text, the ingredients it names, and the next step. */
+.cook {
+  touch-action: pan-y;
+}
+.cook-timer-start svg,
+.cook-timer svg {
+  width: 20px;
+  height: 20px;
+}
+.cook-timers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -8px 0 18px;
+}
+.cook-timer {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.cook-timer button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.cook-timer-main {
+  gap: 8px;
+  padding: 0 4px 0 14px;
+}
+.cook-timer-main strong {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.cook-timer-step {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.cook-timer-x {
+  justify-content: center;
+  width: 40px;
+}
+.cook-timer-x svg {
+  width: 16px;
+  height: 16px;
+}
+.cook-timer.is-paused strong {
+  color: var(--muted);
+}
+.cook-timer.is-done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+.cook-timer.is-done .cook-timer-step {
+  color: inherit;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-timer.is-done {
+    animation: cook-pulse 1s ease-in-out infinite;
+  }
+}
+@keyframes cook-pulse {
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Cooking step (after the user's mockup): the instruction as a title and a description, then cards for the
+   ingredients this step uses, its timers and what comes next. These cards are the one place in cooking where content
+   sits on a tinted plate, because the user asked for this look. */
+.cook-timer svg {
+  width: 20px;
+  height: 20px;
+}
+.cook-step-title {
+  margin: 4px 0 6px;
+  font-size: 1.75rem;
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.cook-step-rest {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.cook-step-title + .cook-card {
+  margin-top: 18px;
+}
+.cook-card {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.cook-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.cook-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.cook-card-head h2 svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+.cook-card-label {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cook-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.cook-mini {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cook-mini li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 1.1rem;
+}
+.cook-mini li + li {
+  border-top: 1px solid var(--glass-line, var(--border));
+}
+.cook-mini li > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cook-mini strong {
+  flex: none;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.cook-clock {
+  margin: 4px 0 10px;
+  color: var(--accent);
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cook-bar-track {
+  display: block;
+  height: 6px;
+  margin-bottom: 12px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+  overflow: hidden;
+}
+.cook-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.5s linear;
+}
+.cook-timer-actions {
+  display: flex;
+  gap: 8px;
+}
+.cook-timer-btn {
+  flex: 1;
+  min-height: 46px;
+}
+.cook-timer-card.is-done {
+  border-color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-timer-card.is-done .cook-clock {
+    animation: cook-pulse 1s ease-in-out infinite;
+  }
+}
+.cook-next {
+  cursor: pointer;
+}
+button.cook-next:active {
+  transform: scale(0.99);
+}
+.cook-next-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+.cook-next-row > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  transform: rotate(-90deg);
+}
+.cook-next-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cook-next-text > * {
+  overflow-wrap: anywhere;
+}
+.cook-next-text strong {
+  font-size: 1.05rem;
+}
+.cook-next-last {
+  margin: 6px 0 0;
+}
+/* "Time's up": a frosted sheet over cooking while an alarm rings. */
+.cook-alarm {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: rgb(10 14 20 / 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.cook-alarm-card {
+  width: min(100%, 420px);
+  padding: 24px 20px 20px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 32px;
+  background: linear-gradient(180deg, var(--glass-bg-strong), var(--glass-bg));
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  backdrop-filter: var(--glass-blur-heavy, var(--glass-blur));
+  text-align: center;
+}
+.cook-alarm-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+.cook-alarm-icon svg {
+  width: 40px;
+  height: 40px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-alarm-icon {
+    animation: cook-ring 0.9s ease-in-out infinite;
+  }
+}
+@keyframes cook-ring {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  20% {
+    transform: rotate(-14deg) scale(1.06);
+  }
+  40% {
+    transform: rotate(14deg) scale(1.06);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+}
+.cook-alarm-card h2 {
+  margin: 14px 0 6px;
+  font-size: 1.8rem;
+}
+.cook-alarm-item {
+  padding-top: 12px;
+}
+.cook-alarm-item + .cook-alarm-item {
+  margin-top: 12px;
+  border-top: 1px solid var(--glass-line, var(--border));
+}
+.cook-alarm-item p {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+.cook-alarm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.cook-alarm-actions .btn {
+  min-height: 54px;
+  font-size: 1.1rem;
+}
+/* iPhone timer: the Shortcut link on a timer card, and the setup steps in Settings. */
+.cook-phone-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  text-decoration: none;
+}
+.cook-phone-start svg,
+.cook-phone-note svg {
+  width: 18px;
+  height: 18px;
+}
+.cook-phone-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+  color: var(--accent);
+  font-weight: 650;
+}
+.iphone-steps {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding-left: 1.3rem;
+  line-height: 1.45;
 }

@@ -21,6 +21,7 @@ import { TripitImportSection } from './modules/trips/TripitImportSection';
 import { TripitSection } from './modules/trips/TripitSection';
 import { TraktSection } from './modules/watching/TraktSection';
 import { MoveTakeoutSection } from './modules/wolt/MoveTakeoutSection';
+import { IphoneTimerSection } from './modules/recipes/IphoneTimerSection';
 import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
 import type { WorkDay } from './modules/work/types';
 import { useSettings } from './lib/settings';
@@ -223,6 +224,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       <TripitImportSection />
       <StatsfmSection />
       <MoveTakeoutSection />
+      <IphoneTimerSection />
       <PerfSection />
       {PREVIEW_LABEL && (
         <section className="card">

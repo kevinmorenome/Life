@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CameraIcon, ClockIcon, EditIcon, ForkKnifeIcon, ImageIcon, LayersIcon, MinusIcon, PlusIcon, PotIcon, TrashIcon } from '../../icons';
 import { newId } from '../../lib/db';
+import { shortDate } from '../../lib/format';
 import { href, navigate } from '../../lib/router';
 import { HeartIcon } from '../clothes/icons';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
@@ -77,7 +78,6 @@ function ServingsPill({ base, servings, onChange }: { base: number; servings: nu
  */
 export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
   const [servings, setServings] = useState(recipe.servings);
-  const [ticked, setTicked] = useState<Set<string>>(() => new Set());
   const scaled = scaleIngredients(recipe.ingredients, recipe.servings, servings);
   const check = checkRecipe(scaled, kitchen.stocked, kitchen.products, kitchen.staples);
   const edit = `/recipes/${recipe.id}/edit`;
@@ -101,14 +101,6 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
     { label: 'Choose a photo', icon: <ImageIcon />, onSelect: picker.choosePhoto },
     ...(recipe.hasPhoto || recipe.photo ? [{ label: 'Remove the photo', icon: <TrashIcon />, danger: true, onSelect: () => void save({ photo: undefined, hasPhoto: false }) }] : []),
   ];
-
-  const toggle = (id: string) =>
-    setTicked((cur) => {
-      const next = new Set(cur);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div className="recipe-page">
@@ -141,7 +133,11 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
       )}
 
       <h1 className="recipe-title">{recipe.name}</h1>
-      {recipe.tags.length > 0 && <p className="muted small recipe-tags-line">{recipe.tags.join(' · ')}</p>}
+      {(recipe.tags.length > 0 || recipe.cooked?.length) && (
+        <p className="muted small recipe-tags-line">
+          {[recipe.tags.join(' · '), recipe.cooked?.length ? `Cooked ${recipe.cooked.length === 1 ? 'once' : `${recipe.cooked.length} times`}, last ${shortDate(recipe.cooked[recipe.cooked.length - 1])}` : ''].filter(Boolean).join(' · ')}
+        </p>
+      )}
 
       <div className="recipe-pills">
         <ServingsPill base={recipe.servings} servings={servings} onChange={setServings} />
@@ -152,6 +148,10 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
           <Pill icon={<PotIcon />} value={formatMinutes(recipe.cookTime) || '—'} label="Cook" />
         </div>
       </div>
+
+      <a className="btn btn-primary recipe-cook-btn" href={href(`/recipes/${recipe.id}/cook/${servings}`)}>
+        <PotIcon /> Start cooking
+      </a>
 
       {recipe.description && <p className="recipe-description">{recipe.description}</p>}
 
@@ -178,16 +178,15 @@ export function RecipeView({ recipe, kitchen, onSave, onDelete }: Props) {
             {check.items.map((c) => {
               const i = c.ingredient;
               return (
-                <li key={i.id} className={ticked.has(i.id) ? 'is-ticked' : undefined}>
-                  <label>
-                    <input type="checkbox" className="recipe-check" checked={ticked.has(i.id)} onChange={() => toggle(i.id)} aria-label={`${i.name}: done`} />
+                <li key={i.id}>
+                  <div className="recipe-ing-line">
                     <span className="recipe-ing-text">
                       {i.name}
                       {i.optional && ' (optional)'}
                       {i.notes && <span className="muted small recipe-ing-notes">{i.notes}</span>}
                     </span>
                     <span className="muted recipe-ing-qty">{ingredientAmount(i)}</span>
-                  </label>
+                  </div>
                   <StockStatus check={c} onStaple={() => void kitchen.toggleStaple(i.name)} editPath={edit} />
                 </li>
               );
