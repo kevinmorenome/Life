@@ -9,6 +9,8 @@ export interface AppSettings {
   currency: string;
   /** Recipes: ingredients you always have (salt, oil, water…), by `stapleKey()`; they never count as missing. */
   pantryStaples?: string[];
+  /** Recipes: the "Life timer" Shortcut is set up on the iPhone, so cooking timers offer "Set on iPhone". */
+  iphoneTimer?: boolean;
   /** Work module: the monthly number of days (default 7) and whether it is a minimum of office days or a cap on home days. */
   workTarget?: number;
   workTargetKind?: 'min-office' | 'max-home';

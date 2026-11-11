@@ -319,3 +319,11 @@ export const ListIcon = () => (
     <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" strokeWidth={2.6} />
   </Icon>
 );
+
+/** A phone: things that happen on the phone itself. */
+export const PhoneIcon = () => (
+  <Icon>
+    <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+    <path d="M11 18.5h2" />
+  </Icon>
+);

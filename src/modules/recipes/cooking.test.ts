@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductSummary } from '../food/products';
 import type { Unit } from '../food/types';
 import type { IngredientCheck } from './availability';
-import { clock, cookLines, inProductUnit, markCooked, parseUsed, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
+import { clock, cookLines, inProductUnit, markCooked, parseUsed, shortcutTimerUrl, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
 import type { Recipe, RecipeIngredient } from './types';
 
 const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [] });
@@ -124,5 +124,12 @@ describe('splitStep', () => {
     expect(splitStep('Add 2 tbsp. of oil')).toEqual({ title: 'Add 2 tbsp. of oil' });
     const long = 'Bring a kettle of water to a boil and place the cashews in a bowl with enough boiling water. Then wait.';
     expect(splitStep(long)).toEqual({ title: long });
+  });
+});
+
+describe('shortcutTimerUrl', () => {
+  it('runs the Life timer Shortcut with the seconds', () => {
+    expect(shortcutTimerUrl(600)).toBe('shortcuts://run-shortcut?name=Life%20timer&input=text&text=600');
+    expect(shortcutTimerUrl(0.4)).toBe('shortcuts://run-shortcut?name=Life%20timer&input=text&text=1');
   });
 });

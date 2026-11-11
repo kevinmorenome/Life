@@ -161,3 +161,14 @@ export function splitStep(text: string): { title: string; rest?: string } {
   if (!m || m[1].length > 70) return { title: t };
   return { title: m[1].replace(/\.$/, ''), rest: m[2] };
 }
+
+/** The name the iPhone Shortcut must have (Settings → iPhone timer explains how to make it). */
+export const TIMER_SHORTCUT = 'Life timer';
+
+/**
+ * The link that runs the "Life timer" Shortcut with a number of seconds, which starts the iPhone's own Clock timer
+ * (lock screen, alarm sound, works with the browser closed). Apple's documented `shortcuts://run-shortcut` scheme.
+ */
+export function shortcutTimerUrl(seconds: number, name = TIMER_SHORTCUT): string {
+  return `shortcuts://run-shortcut?name=${encodeURIComponent(name)}&input=text&text=${Math.max(1, Math.round(seconds))}`;
+}

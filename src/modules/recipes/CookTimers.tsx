@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ClockIcon } from '../../icons';
+import { ClockIcon, PhoneIcon } from '../../icons';
 import { CloseIcon } from '../clothes/icons';
+import { useSettings } from '../../lib/settings';
 import { alarmUrl } from './alarm';
-import { clock, type StepTimer } from './cooking';
+import { clock, shortcutTimerUrl, type StepTimer } from './cooking';
 
 /** A timer started from a step. Counting down from `endsAt`, or paused with `left` seconds; `done` once it ran out. */
 export interface RunningTimer {
@@ -143,6 +144,7 @@ export function TimerStrip({ timers: t, except }: { timers: CookTimers; except?:
  * Resume and Reset. It is the same timer as the pill other steps show, so it keeps going when you move on.
  */
 export function StepTimerCard({ step, timer, timers: t }: { step: number; timer: StepTimer; timers: CookTimers }) {
+  const { settings } = useSettings();
   const x = t.timers.find((r) => r.step === step && r.seconds === timer.seconds);
   const left = x ? t.leftOf(x) : timer.seconds;
   // A snoozed timer can have more left than it started with; the bar then just starts over from empty.
@@ -182,6 +184,12 @@ export function StepTimerCard({ step, timer, timers: t }: { step: number; timer:
           </>
         )}
       </div>
+      {/* The iPhone's own timer (Settings → iPhone timer): what is left of this one if it runs, else its full time. */}
+      {settings.iphoneTimer && (
+        <a className="btn btn-ghost cook-iphone-btn" href={shortcutTimerUrl(x && !x.done ? t.leftOf(x) : timer.seconds)}>
+          <PhoneIcon /> Set on iPhone{x && !x.done ? ` (${clock(t.leftOf(x))} left)` : ''}
+        </a>
+      )}
     </div>
   );
 }
