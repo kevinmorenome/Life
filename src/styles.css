@@ -9161,3 +9161,148 @@ button.recipe-pill {
 .cook-ingredients .is-ticked .recipe-ing-text {
   color: var(--text);
 }
+/* Cooking steps fill the screen with what helps at the stove: timers from the step's text, the ingredients it names, and the next step. */
+.cook {
+  touch-action: pan-y;
+}
+.cook-step {
+  margin-bottom: 18px;
+}
+.cook-timer-offers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.cook-timer-start {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 24px;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.cook-timer-start svg,
+.cook-timer svg {
+  width: 20px;
+  height: 20px;
+}
+.cook-timers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -8px 0 18px;
+}
+.cook-timer {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.cook-timer button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.cook-timer-main {
+  gap: 8px;
+  padding: 0 4px 0 14px;
+}
+.cook-timer-main strong {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.cook-timer-step {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.cook-timer-x {
+  justify-content: center;
+  width: 40px;
+}
+.cook-timer-x svg {
+  width: 16px;
+  height: 16px;
+}
+.cook-timer.is-paused strong {
+  color: var(--muted);
+}
+.cook-timer.is-done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+.cook-timer.is-done .cook-timer-step {
+  color: inherit;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-timer.is-done {
+    animation: cook-pulse 1s ease-in-out infinite;
+  }
+}
+@keyframes cook-pulse {
+  50% {
+    transform: scale(1.05);
+  }
+}
+.cook-block {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--glass-line, var(--border));
+}
+.cook-block-title {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cook-mini {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cook-mini li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 1.1rem;
+}
+.cook-mini li > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cook-mini li > :last-child {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.cook-next-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.cook-next-last {
+  margin: 0;
+}

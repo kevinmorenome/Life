@@ -96,3 +96,56 @@ export function markCooked(recipe: Recipe, day: string, now: string): Recipe {
 
 /** The recipe's own amount, for "recipe: 250 g" next to a guess. */
 export const recipeAmount = (i: RecipeIngredient): string => amountText(i);
+
+const UNIT_SECONDS: [RegExp, number][] = [
+  [/^(h|hr|hrs|hour|hours|sat|sata|sati|hora|horas|stunde|stunden)$/, 3600],
+  [/^(m|min|mins|minute|minutes|minuta|minute|minutos|minuten)$/, 60],
+  [/^(s|sec|secs|second|seconds|sekundi|segundos|sekunden)$/, 1],
+];
+
+/** A timer a step offers: "10 minutes" → 600 s. For a range ("8-10 min") it is the longer end, so nothing comes out raw. */
+export interface StepTimer {
+  seconds: number;
+  /** As written, for the button: "10 minutes". */
+  label: string;
+}
+
+/** The durations a step mentions ("Boil for 10 minutes", "bake 1 hour", "rest 30 sec", "8–10 min"), each once, in order. */
+export function stepTimers(text: string): StepTimer[] {
+  const out: StepTimer[] = [];
+  const re = /(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|to|or)\s*(\d+(?:[.,]\d+)?))?\s*([a-zA-Z]+)\b/g;
+  for (const m of text.matchAll(re)) {
+    const unit = UNIT_SECONDS.find(([r]) => r.test(m[3].toLowerCase()));
+    if (!unit) continue;
+    const n = Number((m[2] ?? m[1]).replace(',', '.'));
+    const seconds = Math.round(n * unit[1]);
+    if (seconds <= 0 || seconds > 24 * 3600 || out.some((t) => t.seconds === seconds)) continue;
+    out.push({ seconds, label: m[0].trim() });
+  }
+  return out;
+}
+
+/** "9:05", "1:02:00": what a running timer shows. */
+export function clock(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+
+/** Words of a name, lower case without accents, with a plural "s"/"es" dropped, for matching a step's text. */
+const stems = (s: string): string[] =>
+  s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 3)
+    .map((w) => w.replace(/(es|s)$/, ''));
+
+/** The ingredients a step mentions by name (any word of the name, whole words only, so "oil" is not found in "boil"). */
+export function stepIngredients<T extends Pick<RecipeIngredient, 'name'>>(text: string, ingredients: T[]): T[] {
+  const words = new Set(stems(text));
+  return ingredients.filter((i) => stems(i.name).some((w) => words.has(w)));
+}

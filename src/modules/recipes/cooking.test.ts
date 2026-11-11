@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductSummary } from '../food/products';
 import type { Unit } from '../food/types';
 import type { IngredientCheck } from './availability';
-import { cookLines, inProductUnit, markCooked, parseUsed, startingAmounts, usesToLog } from './cooking';
+import { clock, cookLines, inProductUnit, markCooked, parseUsed, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
 import type { Recipe, RecipeIngredient } from './types';
 
 const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [] });
@@ -82,5 +82,35 @@ describe('parseUsed', () => {
     expect(parseUsed('0.2')).toBe(0.2);
     expect(parseUsed('½')).toBe(0.5);
     expect(parseUsed('lots')).toBeNaN();
+  });
+});
+
+describe('stepTimers', () => {
+  it('finds the times a step mentions', () => {
+    expect(stepTimers('Boil de tortellini during 10 minutes')).toEqual([{ seconds: 600, label: '10 minutes' }]);
+    expect(stepTimers('Bake 1 hour, then rest 30 sec')).toEqual([
+      { seconds: 3600, label: '1 hour' },
+      { seconds: 30, label: '30 sec' },
+    ]);
+    expect(stepTimers('Simmer 8-10 min')).toEqual([{ seconds: 600, label: '8-10 min' }]);
+    expect(stepTimers('Simmer 1,5 h')).toEqual([{ seconds: 5400, label: '1,5 h' }]);
+  });
+  it('ignores numbers that are not times', () => {
+    expect(stepTimers('Add 200 g pasta and 2 eggs')).toEqual([]);
+    expect(stepTimers('Heat the oven to 180 degrees')).toEqual([]);
+  });
+  it('shows a countdown', () => {
+    expect(clock(545)).toBe('9:05');
+    expect(clock(3720)).toBe('1:02:00');
+    expect(clock(-3)).toBe('0:00');
+  });
+});
+
+describe('stepIngredients', () => {
+  const list = [{ name: 'Tortellini' }, { name: 'Olive oil' }, { name: 'Eggs' }, { name: 'Parmesan' }];
+  it('finds the ingredients named in a step, whole words only', () => {
+    expect(stepIngredients('Boil de tortellini during 10 minutes', list).map((i) => i.name)).toEqual(['Tortellini']);
+    expect(stepIngredients('Drain, add a little olive oil and the egg', list).map((i) => i.name)).toEqual(['Olive oil', 'Eggs']);
+    expect(stepIngredients('Bring the water to the boil', list)).toEqual([]);
   });
 });

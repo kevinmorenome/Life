@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { CheckIcon, MinusIcon, PlusIcon } from '../../icons';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { CheckIcon, ClockIcon, MinusIcon, PlusIcon } from '../../icons';
 import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { CloseIcon } from '../clothes/icons';
 import { unitLabel } from '../food/products';
 import { formatAmount } from '../food/stock';
 import { checkRecipe } from './availability';
-import { cookLines, markCooked, parseUsed, recipeAmount, startingAmounts, usesToLog, type CookLine } from './cooking';
+import { cookLines, markCooked, parseUsed, recipeAmount, startingAmounts, stepIngredients, stepTimers, usesToLog, type CookLine } from './cooking';
+import { TimerStrip, useCookTimers } from './CookTimers';
 import { ingredientAmount, scaleIngredients } from './ingredients';
 import type { Recipe } from './types';
 import type { Kitchen } from './useKitchen';
@@ -58,6 +59,8 @@ const WHY: Record<NonNullable<CookLine['notTracked']>, string> = {
  */
 export function CookView({ recipe, servings, kitchen, onSave }: Props) {
   useWakeLock();
+  const timers = useCookTimers();
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const scaled = scaleIngredients(recipe.ingredients, recipe.servings, servings);
   const steps = recipe.steps;
   const last = steps.length + 1; // 0 = ingredients, 1..n = steps, n + 1 = what did you use
@@ -122,8 +125,25 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
       return next;
     });
 
+  // Swiping sideways turns the page like a carousel (left = next, right = back); vertical scrolling is left alone.
+  const swipeStart = (e: PointerEvent) => {
+    swipe.current = (e.target as HTMLElement).closest('input:not([type=checkbox]), textarea') ? null : { x: e.clientX, y: e.clientY };
+  };
+  const swipeEnd = (e: PointerEvent) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(e.clientY - s.y) * 1.5) return;
+    setPage((p) => (dx < 0 ? Math.min(last, p + 1) : Math.max(0, p - 1)));
+  };
+
+  const stepText = page > 0 && page < last ? steps[page - 1] : '';
+  const offered = stepTimers(stepText).filter((t) => !timers.timers.some((x) => x.step === page && x.seconds === t.seconds));
+  const mentioned = stepIngredients(stepText, scaled);
+
   return (
-    <div className="cook">
+    <div className="cook" data-no-swipe-back onPointerDown={swipeStart} onPointerUp={swipeEnd} onPointerCancel={() => (swipe.current = null)}>
       <div className="cook-top">
         <div className="cook-title">
           <span className="muted small">{servings === recipe.servings ? `${servings} ${servings === 1 ? 'serving' : 'servings'}` : `${servings} servings (recipe: ${recipe.servings})`}</span>
@@ -138,6 +158,7 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
           <span key={i} className={i === page ? 'is-on' : i < page ? 'is-done' : undefined} />
         ))}
       </div>
+      <TimerStrip timers={timers} />
 
       {page === 0 && (
         <section aria-label="Ingredients">
@@ -171,7 +192,42 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
           <p className="cook-kicker">
             Step {page} of {steps.length}
           </p>
-          <p className="cook-step">{steps[page - 1]}</p>
+          <p className="cook-step">{stepText}</p>
+          {offered.length > 0 && (
+            <div className="cook-timer-offers">
+              {offered.map((t) => (
+                <button key={t.seconds} type="button" className="recipe-glass cook-timer-start" onClick={() => timers.start(page, t)}>
+                  <ClockIcon /> Start {t.label} timer
+                </button>
+              ))}
+            </div>
+          )}
+          {mentioned.length > 0 && (
+            <div className="cook-block">
+              <h2 className="cook-block-title">In this step</h2>
+              <ul className="cook-mini">
+                {mentioned.map((i) => (
+                  <li key={i.id}>
+                    <span>{i.name}</span>
+                    <span className="muted">{ingredientAmount(i)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="cook-block cook-next">
+            <h2 className="cook-block-title">Up next</h2>
+            {page < steps.length ? (
+              <button type="button" className="cook-next-step" onClick={() => setPage(page + 1)}>
+                <span className="recipe-step-no" aria-hidden="true">
+                  {page + 1}
+                </span>
+                <span>{steps[page]}</span>
+              </button>
+            ) : (
+              <p className="muted cook-next-last">That’s the last step. Then: what did you use?</p>
+            )}
+          </div>
         </section>
       )}
 
