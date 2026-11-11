@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductSummary } from '../food/products';
 import type { Unit } from '../food/types';
 import type { IngredientCheck } from './availability';
-import { clock, cookLines, inProductUnit, markCooked, parseUsed, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
+import { clock, cookLines, inProductUnit, markCooked, parseUsed, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
 import type { Recipe, RecipeIngredient } from './types';
 
 const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [] });
@@ -112,5 +112,17 @@ describe('stepIngredients', () => {
     expect(stepIngredients('Boil de tortellini during 10 minutes', list).map((i) => i.name)).toEqual(['Tortellini']);
     expect(stepIngredients('Drain, add a little olive oil and the egg', list).map((i) => i.name)).toEqual(['Olive oil', 'Eggs']);
     expect(stepIngredients('Bring the water to the boil', list)).toEqual([]);
+  });
+});
+
+describe('splitStep', () => {
+  it('uses a short first sentence as the title', () => {
+    expect(splitStep('Boil the tortellini. Cook in salted water until tender, about 10 minutes.')).toEqual({ title: 'Boil the tortellini', rest: 'Cook in salted water until tender, about 10 minutes.' });
+  });
+  it('keeps a one-sentence or long step whole', () => {
+    expect(splitStep('Boil de tortellini during 10 minutes')).toEqual({ title: 'Boil de tortellini during 10 minutes' });
+    expect(splitStep('Add 2 tbsp. of oil')).toEqual({ title: 'Add 2 tbsp. of oil' });
+    const long = 'Bring a kettle of water to a boil and place the cashews in a bowl with enough boiling water. Then wait.';
+    expect(splitStep(long)).toEqual({ title: long });
   });
 });

@@ -149,3 +149,15 @@ export function stepIngredients<T extends Pick<RecipeIngredient, 'name'>>(text: 
   const words = new Set(stems(text));
   return ingredients.filter((i) => stems(i.name).some((w) => words.has(w)));
 }
+
+/**
+ * A step shown as a title and a description, like a recipe card: its first sentence is the title when more follows
+ * and it is short enough to read at a glance (≤ 70 characters); otherwise the whole step is the title.
+ */
+export function splitStep(text: string): { title: string; rest?: string } {
+  const t = text.trim();
+  // A new sentence starts with a capital letter, so "2 tbsp. of oil" is not split at the abbreviation.
+  const m = /^(.+?[.!?])\s+(\p{Lu}[\s\S]*)$/u.exec(t);
+  if (!m || m[1].length > 70) return { title: t };
+  return { title: m[1].replace(/\.$/, ''), rest: m[2] };
+}

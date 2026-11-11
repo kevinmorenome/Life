@@ -9055,13 +9055,6 @@ button.recipe-pill {
   margin: 0 0 12px;
   font-size: 1.6rem;
 }
-.cook-step {
-  margin: 8px 0 0;
-  font-size: 1.6rem;
-  font-weight: 600;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
 .cook-ingredients label {
   min-height: 54px;
   font-size: 1.1rem;
@@ -9165,24 +9158,6 @@ button.recipe-pill {
 .cook {
   touch-action: pan-y;
 }
-.cook-step {
-  margin-bottom: 18px;
-}
-.cook-timer-offers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 22px;
-}
-.cook-timer-start {
-  min-height: 48px;
-  padding: 0 18px;
-  border-radius: 24px;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
 .cook-timer-start svg,
 .cook-timer svg {
   width: 20px;
@@ -9251,58 +9226,175 @@ button.recipe-pill {
     transform: scale(1.05);
   }
 }
-.cook-block {
-  margin-top: 22px;
-  padding-top: 14px;
-  border-top: 1px solid var(--glass-line, var(--border));
+
+/* Cooking step (after the user's mockup): the instruction as a title and a description, then cards for the
+   ingredients this step uses, its timers and what comes next. These cards are the one place in cooking where content
+   sits on a tinted plate, because the user asked for this look. */
+.cook-timer svg {
+  width: 20px;
+  height: 20px;
 }
-.cook-block-title {
-  margin: 0 0 8px;
+.cook-step-title {
+  margin: 4px 0 6px;
+  font-size: 1.75rem;
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.cook-step-rest {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.cook-step-title + .cook-card {
+  margin-top: 18px;
+}
+.cook-card {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.cook-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.cook-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.cook-card-head h2 svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+.cook-card-label {
   color: var(--muted);
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+.cook-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
 .cook-mini {
   display: grid;
-  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .cook-mini li {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   padding: 6px 0;
   font-size: 1.1rem;
 }
+.cook-mini li + li {
+  border-top: 1px solid var(--glass-line, var(--border));
+}
 .cook-mini li > :first-child {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.cook-mini li > :last-child {
+.cook-mini strong {
   flex: none;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
 }
-.cook-next-step {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  width: 100%;
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 1.05rem;
-  line-height: 1.4;
-  text-align: left;
-  overflow-wrap: anywhere;
+.cook-clock {
+  margin: 4px 0 10px;
+  color: var(--accent);
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cook-bar-track {
+  display: block;
+  height: 6px;
+  margin-bottom: 12px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+  overflow: hidden;
+}
+.cook-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.5s linear;
+}
+.cook-timer-actions {
+  display: flex;
+  gap: 8px;
+}
+.cook-timer-btn {
+  flex: 1;
+  min-height: 46px;
+}
+.cook-timer-card.is-done {
+  border-color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cook-timer-card.is-done .cook-clock {
+    animation: cook-pulse 1s ease-in-out infinite;
+  }
+}
+.cook-next {
   cursor: pointer;
 }
+button.cook-next:active {
+  transform: scale(0.99);
+}
+.cook-next-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+.cook-next-row > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  transform: rotate(-90deg);
+}
+.cook-next-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cook-next-text > * {
+  overflow-wrap: anywhere;
+}
+.cook-next-text strong {
+  font-size: 1.05rem;
+}
 .cook-next-last {
-  margin: 0;
+  margin: 6px 0 0;
 }

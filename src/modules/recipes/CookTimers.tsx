@@ -87,12 +87,16 @@ export function useCookTimers() {
 
 export type CookTimers = ReturnType<typeof useCookTimers>;
 
-/** The running timers, as glass pills under the progress dots: tap one to pause or go on, ✕ to drop it. */
-export function TimerStrip({ timers: t }: { timers: CookTimers }) {
-  if (!t.timers.length) return null;
+/**
+ * Timers from other steps, as glass pills under the progress dots, so you see them wherever you are: tap one to pause
+ * or go on, ✕ to drop it. The current step's own timers are on its card instead (`except`).
+ */
+export function TimerStrip({ timers: t, except }: { timers: CookTimers; except?: number }) {
+  const shown = t.timers.filter((x) => x.step !== except);
+  if (!shown.length) return null;
   return (
     <div className="cook-timers" role="status" aria-live="polite">
-      {t.timers.map((x) => (
+      {shown.map((x) => (
         <span key={x.id} className={`recipe-glass cook-timer${x.done ? ' is-done' : x.endsAt ? '' : ' is-paused'}`}>
           <button type="button" className="cook-timer-main" onClick={() => t.toggle(x.id)} aria-label={x.done ? `Step ${x.step} timer done` : `${x.endsAt ? 'Pause' : 'Resume'} the step ${x.step} timer, ${clock(t.leftOf(x))} left`}>
             <ClockIcon />
@@ -105,6 +109,48 @@ export function TimerStrip({ timers: t }: { timers: CookTimers }) {
           </button>
         </span>
       ))}
+    </div>
+  );
+}
+
+/**
+ * A step's timer as a card: what it is for, the big countdown, a bar that fills as it runs, and Start, then Pause /
+ * Resume and Reset. It is the same timer as the pill other steps show, so it keeps going when you move on.
+ */
+export function StepTimerCard({ step, timer, timers: t }: { step: number; timer: StepTimer; timers: CookTimers }) {
+  const x = t.timers.find((r) => r.step === step && r.seconds === timer.seconds);
+  const left = x ? t.leftOf(x) : timer.seconds;
+  const done = Math.min(1, Math.max(0, 1 - left / timer.seconds));
+  return (
+    <div className={`cook-card cook-timer-card${x?.done ? ' is-done' : ''}`} role="timer" aria-label={`Timer for ${timer.label}`}>
+      <div className="cook-card-head">
+        <h2>
+          <ClockIcon /> Cooking timer
+        </h2>
+        <span className="cook-card-label">{timer.label}</span>
+      </div>
+      <p className="cook-clock">{x?.done ? 'Done!' : clock(left)}</p>
+      <span className="cook-bar-track" aria-hidden="true">
+        <span style={{ width: `${done * 100}%` }} />
+      </span>
+      <div className="cook-timer-actions">
+        {!x ? (
+          <button type="button" className="btn cook-timer-btn" onClick={() => t.start(step, timer)}>
+            Start timer
+          </button>
+        ) : (
+          <>
+            {!x.done && (
+              <button type="button" className="btn cook-timer-btn" onClick={() => t.toggle(x.id)}>
+                {x.endsAt ? 'Pause' : 'Resume'}
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost cook-timer-btn" onClick={() => t.remove(x.id)}>
+              {x.done ? 'Clear' : 'Reset'}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

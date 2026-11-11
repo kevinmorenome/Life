@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { CheckIcon, ClockIcon, MinusIcon, PlusIcon } from '../../icons';
+import { CheckIcon, ChevronIcon, MinusIcon, PlusIcon } from '../../icons';
 import { today } from '../../lib/format';
 import { navigate } from '../../lib/router';
 import { CloseIcon } from '../clothes/icons';
 import { unitLabel } from '../food/products';
 import { formatAmount } from '../food/stock';
 import { checkRecipe } from './availability';
-import { cookLines, markCooked, parseUsed, recipeAmount, startingAmounts, stepIngredients, stepTimers, usesToLog, type CookLine } from './cooking';
-import { TimerStrip, useCookTimers } from './CookTimers';
+import { cookLines, markCooked, parseUsed, recipeAmount, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog, type CookLine } from './cooking';
+import { StepTimerCard, TimerStrip, useCookTimers } from './CookTimers';
 import { ingredientAmount, scaleIngredients } from './ingredients';
 import type { Recipe } from './types';
 import type { Kitchen } from './useKitchen';
@@ -139,7 +139,8 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
   };
 
   const stepText = page > 0 && page < last ? steps[page - 1] : '';
-  const offered = stepTimers(stepText).filter((t) => !timers.timers.some((x) => x.step === page && x.seconds === t.seconds));
+  const split = splitStep(stepText);
+  const nextSplit = page > 0 && page < steps.length ? splitStep(steps[page]) : undefined;
   const mentioned = stepIngredients(stepText, scaled);
 
   return (
@@ -158,7 +159,7 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
           <span key={i} className={i === page ? 'is-on' : i < page ? 'is-done' : undefined} />
         ))}
       </div>
-      <TimerStrip timers={timers} />
+      <TimerStrip timers={timers} except={page > 0 && page < last ? page : undefined} />
 
       {page === 0 && (
         <section aria-label="Ingredients">
@@ -188,46 +189,56 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
       )}
 
       {page > 0 && page < last && (
-        <section aria-label={`Step ${page} of ${steps.length}`} aria-live="polite">
+        <section className="cook-stepview" aria-label={`Step ${page} of ${steps.length}`} aria-live="polite">
           <p className="cook-kicker">
             Step {page} of {steps.length}
           </p>
-          <p className="cook-step">{stepText}</p>
-          {offered.length > 0 && (
-            <div className="cook-timer-offers">
-              {offered.map((t) => (
-                <button key={t.seconds} type="button" className="recipe-glass cook-timer-start" onClick={() => timers.start(page, t)}>
-                  <ClockIcon /> Start {t.label} timer
-                </button>
-              ))}
-            </div>
-          )}
+          <h1 className="cook-step-title">{split.title}</h1>
+          {split.rest && <p className="cook-step-rest">{split.rest}</p>}
+
           {mentioned.length > 0 && (
-            <div className="cook-block">
-              <h2 className="cook-block-title">In this step</h2>
+            <div className="cook-card">
+              <div className="cook-card-head">
+                <h2>In this step</h2>
+                <span className="cook-chip">
+                  {mentioned.length} {mentioned.length === 1 ? 'ingredient' : 'ingredients'}
+                </span>
+              </div>
               <ul className="cook-mini">
                 {mentioned.map((i) => (
                   <li key={i.id}>
                     <span>{i.name}</span>
-                    <span className="muted">{ingredientAmount(i)}</span>
+                    <strong>{ingredientAmount(i)}</strong>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <div className="cook-block cook-next">
-            <h2 className="cook-block-title">Up next</h2>
-            {page < steps.length ? (
-              <button type="button" className="cook-next-step" onClick={() => setPage(page + 1)}>
+
+          {stepTimers(stepText).map((t) => (
+            <StepTimerCard key={t.seconds} step={page} timer={t} timers={timers} />
+          ))}
+
+          {page < steps.length ? (
+            <button type="button" className="cook-card cook-next" onClick={() => setPage(page + 1)} aria-label={`Up next, step ${page + 1}: ${steps[page]}`}>
+              <span className="cook-card-label">Up next</span>
+              <span className="cook-next-row">
                 <span className="recipe-step-no" aria-hidden="true">
                   {page + 1}
                 </span>
-                <span>{steps[page]}</span>
-              </button>
-            ) : (
+                <span className="cook-next-text">
+                  <strong>{nextSplit!.title}</strong>
+                  {nextSplit!.rest && <span className="muted">{nextSplit!.rest}</span>}
+                </span>
+                <ChevronIcon />
+              </span>
+            </button>
+          ) : (
+            <div className="cook-card cook-next">
+              <span className="cook-card-label">Up next</span>
               <p className="muted cook-next-last">That’s the last step. Then: what did you use?</p>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -309,7 +320,7 @@ export function CookView({ recipe, servings, kitchen, onSave }: Props) {
         )}
         {page < last ? (
           <button type="button" className="btn btn-primary" onClick={() => setPage(page + 1)}>
-            {page === 0 ? (steps.length ? 'Start' : 'Done') : page === steps.length ? 'Done' : 'Next'}
+            {page === 0 ? (steps.length ? 'Start' : 'Done') : page === steps.length ? 'Done' : 'Next →'}
           </button>
         ) : (
           <button type="button" className="btn btn-primary" disabled={busy || bad.length > 0} onClick={() => void finish(true)}>
