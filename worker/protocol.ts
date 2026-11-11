@@ -110,7 +110,19 @@ export interface ProductEditRequest extends RequestBase {
   changes: ProductChanges;
 }
 
-export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest | PhotoRequest | ProductEditRequest;
+/**
+ * A recipe was cooked on a day (Claude's `log_cooked`). The app adds the day to `Recipe.cooked` after a pull
+ * (`applyCooked`), never the Worker, which doesn't edit existing records; applying twice changes nothing.
+ * `itemIds` / `outfitIds` stay empty.
+ */
+export interface CookedRequest extends RequestBase {
+  type: 'cooked';
+  recipeId: string;
+  /** YYYY-MM-DD */
+  date: string;
+}
+
+export type InboxRequest = WearRequest | TagRequest | OutfitEditRequest | ItemEditRequest | PhotoRequest | ProductEditRequest | CookedRequest;
 
 export const MAX_PUSH = 50;
 export const PULL_LIMIT = 100;

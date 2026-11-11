@@ -37,7 +37,7 @@ export type ReadStore = keyof typeof FIELDS;
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
   list(store: ReadStore): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides', id: string, record: object): Promise<void>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'recipes', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -47,7 +47,7 @@ export interface RecordStore {
 const FIELDS = {
   clothes: ['name', 'category', 'brand', 'color', 'status', 'tags', 'wears', 'priorWears', 'price', 'purchaseDate', 'createdAt'],
   outfits: ['name', 'itemIds', 'tags', 'wears', 'priorWears'],
-  inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error'],
+  inbox: ['type', 'date', 'itemIds', 'outfitIds', 'tags', 'appliedAt', 'error', 'recipeId'],
   foodreceipts: ['store', 'date', 'total', 'lines'],
   foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt', 'batch', 'source', 'useBy', 'untracked', 'undated', 'target', 'newDate', 'removed'],
@@ -63,9 +63,12 @@ const FIELDS = {
   checkins: ['venue', 'venueId', 'category', 'city', 'country', 'shout', 'date', 'time', 'source'],
   workdays: ['status', 'arrive', 'leave', 'reason'],
   workevents: ['type', 'place', 'date', 'time'],
+  // Never the photo: recipes are listed for the tools without their pictures.
+  recipes: ['name', 'description', 'ingredients', 'steps', 'servings', 'prepTime', 'cookTime', 'tags', 'favorite', 'cooked', 'createdAt'],
+  settings: ['pantryStaples'],
 } as const;
 
-const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'topTracks', 'matches', 'playerIds']);
+const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'topTracks', 'matches', 'playerIds', 'ingredients', 'steps', 'cooked', 'pantryStaples']);
 
 export function d1Store(db: D1Database): RecordStore {
   return {

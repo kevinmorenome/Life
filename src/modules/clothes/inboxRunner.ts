@@ -4,6 +4,8 @@ import { itemPhoto } from '../../lib/image';
 import { applyProductEdits } from '../food/productEdits';
 import { blobOf, packshotPhoto } from '../food/productPhoto';
 import type { FoodProduct } from '../food/types';
+import { applyCooked } from '../recipes/cookedInbox';
+import type { Recipe } from '../recipes/types';
 import { applyInbox, preparePhotos } from './inbox';
 import type { ClothingItem, Outfit } from './types';
 
@@ -11,9 +13,10 @@ import type { ClothingItem, Outfit } from './types';
 export async function processInbox(): Promise<void> {
   const all = await getAll<InboxRequest>('inbox');
   if (all.length === 0) return;
-  // Food product edits have their own rules; everything else is the clothes inbox.
-  const requests = all.filter((r) => r.type !== 'product-edit');
+  // Food product edits and cooked recipes have their own rules; everything else is the clothes inbox.
+  const requests = all.filter((r) => r.type !== 'product-edit' && r.type !== 'cooked');
   await processProductEdits(all);
+  await processCooked(all);
   if (requests.length === 0) return;
   const [items, outfits] = await Promise.all([getAll<ClothingItem>('clothes'), getAll<Outfit>('outfits')]);
 
@@ -50,4 +53,14 @@ async function processProductEdits(all: InboxRequest[]): Promise<void> {
   for (const r of result.requests) await put('inbox', r);
   for (const id of result.expired) await remove('inbox', id);
   if (result.products.length) notify('foodproducts');
+}
+
+/** Applies `cooked` requests (Claude's `log_cooked`): the day is added to the recipe's cooked days. */
+async function processCooked(all: InboxRequest[]): Promise<void> {
+  if (!all.some((r) => r.type === 'cooked')) return;
+  const result = applyCooked(all, await getAll<Recipe>('recipes'), new Date());
+  for (const r of result.recipes) await put('recipes', r);
+  for (const r of result.requests) await put('inbox', r);
+  for (const id of result.expired) await remove('inbox', id);
+  if (result.recipes.length) notify('recipes');
 }
