@@ -1,4 +1,4 @@
-import type { LifeModule } from '../types';
+import { ENTERTAINMENT, type LifeModule } from '../types';
 import { BooksRoot } from './BooksRoot';
 import { BooksStatsRoute } from './BooksStatsRoute';
 import { useBooksCalendarLayer } from './useBooksLayer';
@@ -13,5 +13,5 @@ export const booksModule: LifeModule = {
   render: (subroute) => <BooksRoot subroute={subroute} />,
   actions: [],
   calendarLayer: useBooksCalendarLayer,
-  stats: { label: 'Books', render: () => <BooksStatsRoute /> },
+  stats: { label: 'Books', group: ENTERTAINMENT, render: () => <BooksStatsRoute /> },
 };

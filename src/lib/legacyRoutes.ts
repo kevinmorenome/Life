@@ -13,6 +13,8 @@ export function legacyRedirect(route: string[]): string | null {
     if (MONTH.test(c) || DATE.test(c)) return `/calendar/${c}`;
   }
   if (a === 'clothes' && b === 'stats') return `/stats/clothes${c ? `/${c}` : ''}`;
+  // Watching, Music and Books share the Entertainment tab.
+  if (a === 'stats' && (b === 'watching' || b === 'music' || b === 'books')) return `/stats/entertainment/${route.slice(1).join('/')}`;
   if (a === 'stats' && b === 'countries') return '/stats/checkins/countries';
   if (a === 'work') {
     if (b === 'stats') return '/stats/work';
