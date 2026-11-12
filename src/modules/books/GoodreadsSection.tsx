@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getAll, notify, put } from '../../lib/db';
-import { today } from '../../lib/format';
-import { fillCovers, lookupCover, needsCover } from './cover';
+import { needsCover } from './cover';
 import { parseGoodreads, planImport } from './importers/goodreads';
 import type { Book } from './types';
+import { useFindCovers } from './useFindCovers';
 
 /**
  * Settings → Import from Goodreads: choose the CSV from Goodreads' Export Library. Importing the same file twice changes nothing.
@@ -12,35 +12,11 @@ import type { Book } from './types';
 export function GoodreadsSection() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState('');
+  const covers = useFindCovers();
   const [withoutCovers, setWithoutCovers] = useState(0);
 
   const countMissing = () => getAll<Book>('books').then((all) => setWithoutCovers(all.filter(needsCover).length));
   useEffect(() => void countMissing(), []);
-
-  /** Returns a sentence about how the lookup went. */
-  async function findCovers(): Promise<string> {
-    const all = await getAll<Book>('books');
-    const total = all.filter(needsCover).length;
-    if (total === 0) return '';
-    let saved = 0;
-    const run = await fillCovers(all, {
-      lookup: lookupCover,
-      save: async (b) => {
-        await put('books', b);
-        if (++saved % 10 === 0) notify('books');
-      },
-      onProgress: (done, of) => setProgress(`Finding covers… ${done} of ${of}`),
-      now: new Date().toISOString(),
-      day: today(),
-    });
-    notify('books');
-    setProgress('');
-    const parts = [`found ${run.found} ${run.found === 1 ? 'cover' : 'covers'}`];
-    if (run.missing) parts.push(`${run.missing} not on Open Library`);
-    if (run.failed) parts.push('stopped because Open Library couldn’t be reached; try again later');
-    return ` Covers: ${parts.join(', ')}.`;
-  }
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -55,12 +31,11 @@ export function GoodreadsSection() {
       if (skipped) parts.push(`${skipped} rows skipped`);
       const done = `Imported ${books.length} books: ${parts.join(', ')}.`;
       setMessage(done);
-      setMessage(done + (await findCovers()));
+      setMessage(`${done} ${await covers.find()}`.trim());
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Import failed');
     } finally {
       setBusy(false);
-      setProgress('');
       void countMissing();
     }
   }
@@ -69,7 +44,7 @@ export function GoodreadsSection() {
     setBusy(true);
     setMessage('');
     try {
-      setMessage((await findCovers()).trim());
+      setMessage(await covers.find());
     } finally {
       setBusy(false);
       void countMissing();
@@ -94,7 +69,7 @@ export function GoodreadsSection() {
           </button>
         )}
       </div>
-      {progress && <p className="small" role="status">{progress}</p>}
+      {covers.progress && <p className="small" role="status">{covers.progress}</p>}
       {message && <p className="small">{message}</p>}
     </section>
   );

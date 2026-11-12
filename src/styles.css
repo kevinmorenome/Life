@@ -9612,16 +9612,149 @@ button.cook-next:active {
 .widget-book {
   --w: var(--c-book);
 }
-.books-search {
+.book-day-row {
+  display: grid;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Books: covers, stars, and the My books list after Goodreads. */
+.book-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--c-book) 18%, var(--bg));
+  color: var(--c-book);
+  font-weight: 700;
+  border-radius: 4px 8px 8px 4px;
+}
+.book-cover > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.book-cover.has-photo {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.22);
+}
+.book-cover-title {
+  display: -webkit-box;
+  padding: 8px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.book-stars {
+  color: var(--c-cook);
+  letter-spacing: 1px;
+}
+.book-stars-lg {
+  font-size: 1.75rem;
+  letter-spacing: 3px;
+}
+.book-stars-off {
+  opacity: 0.25;
+}
+
+.books-title {
+  margin-bottom: 8px;
+}
+.books-year {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 12px 0;
-  padding: 0 14px;
+  justify-content: space-between;
   min-height: 44px;
+  border-bottom: 1px solid var(--glass-line, var(--border));
+  color: var(--text);
+  text-decoration: none;
+}
+.books-year svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted, currentColor);
+}
+.books-reading h2 {
+  margin: 16px 0 10px;
+  font-size: 1.0625rem;
+}
+.books-shelf-row {
+  display: flex;
+  gap: 14px;
+  margin: 0 -16px;
+  padding: 0 16px 6px;
+  overflow-x: auto;
+  list-style: none;
+  scroll-snap-type: x proximity;
+}
+.books-shelf-row li {
+  flex: none;
+  width: 104px;
+  scroll-snap-align: start;
+}
+.books-shelf-row a {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  text-decoration: none;
+}
+.book-shelf-cover {
+  width: 104px;
+  height: 156px;
+}
+.book-shelf-title {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.books-chips {
+  display: flex;
+  gap: 8px;
+  margin: 14px -16px 0;
+  padding: 0 16px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.books-chips .chip {
+  flex: none;
+  white-space: nowrap;
+}
+.chip-count {
+  margin-left: 2px;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+.books-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0;
+}
+.books-bar .icon-btn {
+  flex: none;
+  margin-right: 0;
+}
+.books-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-line, var(--border));
   border-radius: 999px;
   background: var(--glass-bg, var(--surface));
-  border: 1px solid var(--glass-line, var(--border));
 }
 .books-search svg {
   flex: none;
@@ -9632,11 +9765,47 @@ button.cook-next:active {
 .books-search input {
   flex: 1;
   min-width: 0;
+  padding: 0;
   border: 0;
   background: transparent;
+  box-shadow: none;
   color: var(--text);
   font: inherit;
   outline: none;
+}
+.menu-blank {
+  display: inline-block;
+  width: 20px;
+}
+.books-covers-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.book-tile {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+.book-tile-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+}
+.book-tile .book-stars {
+  font-size: 0.75rem;
+  letter-spacing: 0;
 }
 .book-list {
   display: grid;
@@ -9646,43 +9815,131 @@ button.cook-next:active {
 }
 .book-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 8px 0;
+  gap: 14px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--glass-line, var(--border));
   color: var(--text);
   text-decoration: none;
 }
-.book-spine {
-  display: grid;
+.book-row-cover {
   flex: none;
-  place-items: center;
-  width: 40px;
-  height: 56px;
-  border-radius: 6px 10px 10px 6px;
-  background: color-mix(in srgb, var(--c-book) 18%, var(--bg));
-  color: var(--c-book);
-  font-weight: 700;
+  width: 64px;
+  height: 96px;
+  font-size: 1.5rem;
 }
 .book-text {
   display: grid;
+  align-content: start;
+  gap: 2px;
   min-width: 0;
 }
-.book-text > * {
+.book-row-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
+.book-text > .small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.book-stars {
-  color: var(--c-cook);
-  letter-spacing: 1px;
-}
-.book-stars-off {
-  opacity: 0.25;
-}
 .books-more {
   margin: 12px 0;
+}
+
+/* One book. */
+.book-hero {
+  position: relative;
+  width: 170px;
+  margin: 8px auto 18px;
+}
+.book-hero-cover {
+  width: 170px;
+  height: 255px;
+  border-radius: 6px 12px 12px 6px;
+  font-size: 3rem;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 0.25);
+}
+.book-hero .menu-wrap {
+  position: absolute;
+  right: -14px;
+  bottom: -10px;
+}
+.book-hero .icon-btn {
+  margin-right: 0;
+}
+.book-center {
+  text-align: center;
+}
+.book-head {
+  text-align: center;
+}
+.book-head h1 {
+  margin: 0 0 2px;
+}
+.book-author {
+  margin: 4px 0 8px;
+  font-size: 1.0625rem;
+}
+.book-avg {
+  margin: 0 0 10px;
+}
+.book-avg-star {
+  color: var(--c-cook);
+}
+.book-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-book) 16%, var(--bg));
+  color: var(--text);
+  font-weight: 650;
+}
+.book-status svg {
+  width: 18px;
+  height: 18px;
+  color: var(--c-book);
+}
+.book-rate {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 18px 0 4px;
+}
+.book-figures {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  margin: 16px 0;
+  border-block: 1px solid var(--glass-line, var(--border));
+}
+.book-figures > div {
+  display: grid;
+  gap: 2px;
+  padding: 12px 6px;
+  text-align: center;
+}
+.book-figures > div + div {
+  border-left: 1px solid var(--glass-line, var(--border));
+}
+.book-figures dd {
+  margin: 0;
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-figures dt {
+  order: 2;
+}
+.book-shelves {
+  justify-content: center;
 }
 .book-review {
   margin: 0;
@@ -9695,46 +9952,4 @@ button.cook-next:active {
 }
 .book-facts dd {
   margin: 0;
-}
-.book-day-row {
-  display: grid;
-  min-width: 0;
-  color: var(--text);
-  text-decoration: none;
-}
-.book-cover {
-  position: relative;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--c-book) 18%, var(--bg));
-  color: var(--c-book);
-  font-weight: 700;
-}
-.book-cover > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.book-cover.has-photo {
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
-}
-.book-hero {
-  position: relative;
-  width: 150px;
-  margin: 8px auto 16px;
-}
-.book-hero-cover {
-  width: 150px;
-  height: 225px;
-  border-radius: 6px 12px 12px 6px;
-  font-size: 3rem;
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.22);
-}
-.book-hero .menu-wrap {
-  position: absolute;
-  right: -14px;
-  bottom: -10px;
 }

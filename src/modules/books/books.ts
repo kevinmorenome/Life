@@ -2,7 +2,7 @@
 
 import type { Book, Shelf } from './types';
 
-export const SHELF_LABELS: Record<Shelf, string> = { read: 'Read', 'currently-reading': 'Reading', 'to-read': 'To read', other: 'Other' };
+export const SHELF_LABELS: Record<Shelf, string> = { read: 'Read', 'currently-reading': 'Currently reading', 'to-read': 'Want to read', other: 'Other' };
 
 /** "Dune (Dune, #1)" → the title and its series; a title with no bracket at the end is returned as it is. */
 export function splitTitle(title: string): { title: string; series?: string } {
@@ -135,4 +135,54 @@ export function rereads(books: Book[]): Book[] {
   return onShelf(books, 'read')
     .filter((b) => (b.readCount ?? 1) > 1)
     .sort((a, b) => (b.readCount ?? 0) - (a.readCount ?? 0) || a.title.localeCompare(b.title));
+}
+
+export type SortKey = 'recent' | 'added' | 'title' | 'author' | 'rating';
+export const SORTS: { id: SortKey; label: string }[] = [
+  { id: 'recent', label: 'Recently read' },
+  { id: 'added', label: 'Date added' },
+  { id: 'rating', label: 'My rating' },
+  { id: 'title', label: 'Title' },
+  { id: 'author', label: 'Author' },
+];
+
+const byText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+
+/** A sorted copy. "Recently read" puts the latest finish date first (books with no date, then, by when they were added); the others break ties by title. */
+export function sortBooks(books: Book[], key: SortKey): Book[] {
+  const desc = (a?: string, b?: string) => (b ?? '').localeCompare(a ?? '');
+  const compare: Record<SortKey, (a: Book, b: Book) => number> = {
+    recent: (a, b) => desc(a.dateRead, b.dateRead) || desc(a.dateAdded, b.dateAdded),
+    added: (a, b) => desc(a.dateAdded, b.dateAdded),
+    rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || desc(a.dateRead, b.dateRead),
+    title: (a, b) => byText(splitTitle(a.title).title, splitTitle(b.title).title),
+    author: (a, b) => byText(a.author, b.author),
+  };
+  return books.slice().sort((a, b) => compare[key](a, b) || byText(a.title, b.title));
+}
+
+export interface ShelfFilter {
+  /** `all`, a shelf (`read`…) or `tag:<your own shelf>`. */
+  id: string;
+  label: string;
+  count: number;
+}
+
+/** The chips over the list, like Goodreads' shelves: All, Read, Currently reading, Want to read (only those with books), then your own shelves, most books first. */
+export function shelfFilters(books: Book[], maxTags = 12): ShelfFilter[] {
+  const out: ShelfFilter[] = [{ id: 'all', label: 'All', count: books.length }];
+  for (const shelf of ['read', 'currently-reading', 'to-read', 'other'] as Shelf[]) {
+    const count = onShelf(books, shelf).length;
+    if (count) out.push({ id: shelf, label: SHELF_LABELS[shelf], count });
+  }
+  const tags = new Map<string, number>();
+  for (const b of books) for (const t of b.shelves ?? []) tags.set(t, (tags.get(t) ?? 0) + 1);
+  [...tags].sort((a, b) => b[1] - a[1] || byText(a[0], b[0])).slice(0, maxTags).forEach(([t, count]) => out.push({ id: `tag:${t}`, label: t, count }));
+  return out;
+}
+
+export function inShelf(books: Book[], id: string): Book[] {
+  if (id === 'all') return books;
+  if (id.startsWith('tag:')) return books.filter((b) => b.shelves?.includes(id.slice(4)));
+  return books.filter((b) => b.shelf === id);
 }

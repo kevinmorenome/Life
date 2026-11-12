@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byDate, extremes, perMonth, perYear, ratingCounts, readNewestFirst, rereads, searchBooks, splitTitle, summarize, topAuthors, yearsRead } from './books';
+import { byDate, extremes, inShelf, perMonth, perYear, ratingCounts, readNewestFirst, rereads, searchBooks, shelfFilters, sortBooks, splitTitle, summarize, topAuthors, yearsRead } from './books';
 import type { Book } from './types';
 
 let n = 0;
@@ -87,5 +87,35 @@ describe('ratings, authors, extremes, rereads', () => {
   });
   it('lists books read more than once', () => {
     expect(rereads(list).map((b) => b.title)).toEqual(['Dune (Dune, #1)']);
+  });
+});
+
+describe('sortBooks', () => {
+  const b = [
+    book('Beta', { author: 'Zed', dateRead: '2025-01-01', dateAdded: '2024-01-01', rating: 3 }),
+    book('Alpha (S, #1)', { author: 'Amy', dateRead: '2026-01-01', dateAdded: '2023-01-01', rating: 5 }),
+    book('Gamma', { author: 'Bob', shelf: 'to-read', dateAdded: '2026-06-01' }),
+  ];
+  const titles = (key: Parameters<typeof sortBooks>[1]) => sortBooks(b, key).map((x) => splitTitle(x.title).title);
+  it('sorts by the key and does not change the list', () => {
+    expect(titles('recent')).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(titles('added')).toEqual(['Gamma', 'Beta', 'Alpha']);
+    expect(titles('rating')).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(titles('title')).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(titles('author')).toEqual(['Alpha', 'Gamma', 'Beta']);
+    expect(b[0].title).toBe('Beta');
+  });
+});
+
+describe('shelfFilters / inShelf', () => {
+  const b = [book('A', { shelves: ['fantasy', 'favorites'] }), book('B', { shelf: 'to-read', shelves: ['fantasy'] }), book('C', { shelf: 'currently-reading' })];
+  it('lists All, the shelves that have books and your own shelves by size', () => {
+    expect(shelfFilters(b).map((f) => [f.id, f.count])).toEqual([['all', 3], ['read', 1], ['currently-reading', 1], ['to-read', 1], ['tag:fantasy', 2], ['tag:favorites', 1]]);
+    expect(shelfFilters(b, 1).filter((f) => f.id.startsWith('tag:'))).toHaveLength(1);
+  });
+  it('filters by a shelf or one of your own', () => {
+    expect(inShelf(b, 'all')).toHaveLength(3);
+    expect(inShelf(b, 'to-read').map((x) => x.title)).toEqual(['B']);
+    expect(inShelf(b, 'tag:fantasy').map((x) => x.title)).toEqual(['A', 'B']);
   });
 });
