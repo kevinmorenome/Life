@@ -138,11 +138,20 @@ export interface ImportPlan {
   unchanged: number;
 }
 
-const sameContent = (a: Book, b: Book) => JSON.stringify({ ...a, createdAt: '', updatedAt: '' }) === JSON.stringify({ ...b, createdAt: '', updatedAt: '' });
+/** Fields the app adds itself (the cover): an import never compares, replaces or drops them. */
+const LOCAL = ['photo', 'hasPhoto', 'coverMissing'] as const;
+
+/** A book's Goodreads data only (no cover, no timestamps), with sorted keys, for comparing. */
+const content = (b: Book): string => {
+  const { createdAt: _c, updatedAt: _u, ...rest } = b;
+  for (const k of LOCAL) delete rest[k];
+  return JSON.stringify(Object.fromEntries(Object.entries(rest).sort(([x], [y]) => x.localeCompare(y))));
+};
+const sameContent = (a: Book, b: Book) => content(a) === content(b);
 
 /**
  * Which books to write: new ones, and ones whose Goodreads data changed (the older `createdAt` is kept).
- * A book that is the same as the stored one is left alone, so re-importing doesn't touch (or sync) anything.
+ * A book that is the same as the stored one is left alone (its cover never counts), so re-importing doesn't touch (or sync) anything.
  */
 export function planImport(parsed: Book[], existing: Book[]): ImportPlan {
   const stored = new Map(existing.map((b) => [b.id, b]));
@@ -154,7 +163,8 @@ export function planImport(parsed: Book[], existing: Book[]): ImportPlan {
       plan.added++;
     } else if (sameContent(old, book)) plan.unchanged++;
     else {
-      plan.write.push({ ...book, createdAt: old.createdAt });
+      const kept = Object.fromEntries(LOCAL.filter((k) => old[k] !== undefined).map((k) => [k, old[k]]));
+      plan.write.push({ ...book, ...kept, createdAt: old.createdAt });
       plan.updated++;
     }
   }

@@ -101,6 +101,16 @@ describe('planImport', () => {
     const again = parseGoodreads(SAMPLE_EXPORT, '2027-01-01T00:00:00.000Z').books;
     expect(planImport(again, stored)).toMatchObject({ write: [], unchanged: 5 });
   });
+  it('ignores the cover when comparing, and keeps it when a book changes', () => {
+    const stored: Book[] = parsed.map((b) => ({ ...b, hasPhoto: true, coverMissing: undefined, createdAt: 'old' }));
+    expect(planImport(parsed, stored)).toMatchObject({ write: [], unchanged: 5 });
+    stored[0] = { ...stored[0], rating: 1 };
+    const plan = planImport(parsed, stored);
+    expect(plan.write).toHaveLength(1);
+    expect(plan.write[0]).toMatchObject({ id: 'gr-101', rating: 5, hasPhoto: true, createdAt: 'old' });
+    const missing: Book[] = parsed.map((b) => ({ ...b, coverMissing: '2026-11-11', title: b.title + ' (old)' }));
+    expect(planImport(parsed, missing).write[0].coverMissing).toBe('2026-11-11');
+  });
   it('updates a changed book and keeps when it was first added', () => {
     const stored: Book[] = parsed.map((b) => ({ ...b, createdAt: 'old' }));
     stored[2] = { ...stored[2], shelf: 'currently-reading' };

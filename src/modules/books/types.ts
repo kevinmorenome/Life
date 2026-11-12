@@ -32,6 +32,11 @@ export interface Book {
   review?: string;
   /** Times you read it, when Goodreads says more than one. */
   readCount?: number;
+  /** The cover, a small data URL; locally `hasPhoto` instead (a photo store, see `photoSplit.ts`). Not from Goodreads: found on Open Library or added by hand. */
+  photo?: string;
+  hasPhoto?: boolean;
+  /** The day Open Library had no cover for it, so the app doesn't keep asking. */
+  coverMissing?: string;
   source: 'goodreads';
   createdAt: string;
   updatedAt: string;

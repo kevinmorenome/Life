@@ -9702,3 +9702,39 @@ button.cook-next:active {
   color: var(--text);
   text-decoration: none;
 }
+.book-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--c-book) 18%, var(--bg));
+  color: var(--c-book);
+  font-weight: 700;
+}
+.book-cover > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.book-cover.has-photo {
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+}
+.book-hero {
+  position: relative;
+  width: 150px;
+  margin: 8px auto 16px;
+}
+.book-hero-cover {
+  width: 150px;
+  height: 225px;
+  border-radius: 6px 12px 12px 6px;
+  font-size: 3rem;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.22);
+}
+.book-hero .menu-wrap {
+  position: absolute;
+  right: -14px;
+  bottom: -10px;
+}

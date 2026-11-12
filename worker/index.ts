@@ -1,6 +1,7 @@
 import { authorize, type AuthEnv } from './auth';
 import { checkinAuthorized, handleCheckin, isCheckinPath, type CheckinEnv } from './checkin';
 import { handleMcp, mcpAuthorized, type McpEnv } from './mcp';
+import { handleBookCover } from './bookCovers';
 import { handleFoodPhotoImage, handleFoodPhotos, searchAllPhotos } from './foodPhotos';
 import { fetchPhoto } from './receipt';
 import { d1Store, upsertStatement } from './records';
@@ -103,6 +104,9 @@ export default {
       });
     }
 
+    if (url.pathname === '/api/books/cover' && request.method === 'GET') {
+      return handleBookCover(url, (i, init) => fetch(i, init));
+    }
     if (url.pathname === '/api/food/photos' && request.method === 'GET') {
       return handleFoodPhotos(url, (i, init) => fetch(i, init));
     }

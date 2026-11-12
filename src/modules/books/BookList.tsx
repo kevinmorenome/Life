@@ -3,6 +3,7 @@ import { SearchIcon } from '../../icons';
 import { shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
 import { authorLine, onShelf, readNewestFirst, searchBooks, SHELF_LABELS, splitTitle } from './books';
+import { BookCover } from './BookCover';
 import { Stars } from './Stars';
 import type { Book, Shelf } from './types';
 
@@ -55,9 +56,7 @@ export function BookList({ books }: { books: Book[] }) {
             return (
               <li key={b.id}>
                 <a className="book-row" href={href(`/books/${b.id}`)}>
-                  <span className="book-spine" aria-hidden>
-                    {title.slice(0, 1).toUpperCase()}
-                  </span>
+                  <BookCover book={b} className="book-spine" />
                   <span className="book-text">
                     <strong>{title}</strong>
                     <span className="muted small">{[authorLine(b), series].filter(Boolean).join(' · ')}</span>
