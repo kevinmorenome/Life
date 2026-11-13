@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClockIcon, SearchIcon } from '../../icons';
+import { ClockIcon, PotIcon, SearchIcon } from '../../icons';
 import { href } from '../../lib/router';
 import { HeartIcon, SlidersIcon } from '../clothes/icons';
 import { FoodTabs } from '../food/FoodTabs';
@@ -38,6 +38,9 @@ export function RecipeList({ recipes, onSave }: Props) {
         </div>
       ) : (
         <>
+          <a className="btn recipe-now-link" href={href('/recipes/now')}>
+            <PotIcon /> What can I cook now?
+          </a>
           <div className="search-row recipe-search">
             <label className="recipe-search-box">
               <SearchIcon />

@@ -9588,3 +9588,79 @@ button.cook-next:active {
   color: var(--text);
   font-weight: 650;
 }
+
+/* Recipes: add what is lacking to the shopping list, and the Cook now view (#210, #211) */
+.recipe-add-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 0 8px;
+}
+.recipe-add-missing svg {
+  width: 20px;
+  height: 20px;
+}
+.recipe-added {
+  margin: 0 0 8px;
+}
+.shop-for {
+  color: var(--muted);
+}
+.shop-remove {
+  flex: none;
+  margin-left: auto;
+}
+.now-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.now-list li {
+  border-bottom: 1px solid var(--glass-line, var(--border));
+}
+.now-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: none;
+}
+.now-row .recipe-pic {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+.now-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.now-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.now-soon {
+  color: var(--accent);
+}
+.now-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.now-h {
+  margin: 16px 0 0;
+}
+.recipe-now-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 0 8px;
+  text-decoration: none;
+}
