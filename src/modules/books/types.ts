@@ -37,7 +37,10 @@ export interface Book {
   hasPhoto?: boolean;
   /** The day Open Library had no cover for it, so the app doesn't keep asking. */
   coverMissing?: string;
-  source: 'goodreads';
+  /** Fields you changed here on a Goodreads book (shelf, rating, dateRead…): a later import leaves them as you set them. */
+  edited?: string[];
+  /** `goodreads` = from an export; `manual` = a book you added in the app (id `ol-<Open Library work>` or `book-<uuid>`). */
+  source: 'goodreads' | 'manual';
   createdAt: string;
   updatedAt: string;
 }

@@ -72,6 +72,17 @@ describe('findCover', () => {
   });
 });
 
+describe('findCover by cover id', () => {
+  it('asks for the cover id first, and only takes a whole number', async () => {
+    const { doFetch, asked } = net({ '/id/777-L.jpg': imageRes });
+    expect(await findCover({ coverId: 777, isbn13: '9780441172719' }, doFetch)).not.toBeNull();
+    expect(asked).toHaveLength(1);
+    const none = net({});
+    await findCover({ coverId: 1.5 }, none.doFetch);
+    expect(none.asked).toEqual([]);
+  });
+});
+
 describe('handleBookCover', () => {
   it('answers the image, 404 for none and 502 for a failure', async () => {
     const ok = await handleBookCover(new URL('https://x/api/books/cover?isbn13=9780441172719'), net({ '/isbn/': imageRes }).doFetch);

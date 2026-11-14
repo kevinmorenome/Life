@@ -6,6 +6,8 @@ const AGENT = 'LifeApp/1.0 (personal life tracker; https://github.com/kevinmoren
 const MAX_IMAGE_BYTES = 2_500_000;
 
 export interface CoverQuery {
+  /** Open Library's cover id (from the book search): tried first. */
+  coverId?: number;
   isbn13?: string;
   isbn?: string;
   title?: string;
@@ -51,6 +53,10 @@ async function image(url: string, doFetch: typeof fetch): Promise<Cover | null> 
 
 /** The cover of a book by its ISBNs, else the first search result with a cover whose title is the same. Null when there is none; throws when Open Library can't be reached. */
 export async function findCover(q: CoverQuery, doFetch: typeof fetch = fetch): Promise<Cover | null> {
+  if (Number.isInteger(q.coverId) && q.coverId! > 0 && q.coverId! < 1e10) {
+    const found = await image(byId(q.coverId!), doFetch);
+    if (found) return found;
+  }
   for (const isbn of [q.isbn13, q.isbn]) {
     if (!isbn || !ISBN.test(isbn)) continue;
     const found = await image(byIsbn(isbn), doFetch);
@@ -78,7 +84,7 @@ const json = (body: unknown, status: number) => new Response(JSON.stringify(body
 /** GET /api/books/cover?isbn13=&isbn=&title=&author= → the cover's image, 404 when there is none, 502 when Open Library can't be reached. */
 export async function handleBookCover(url: URL, doFetch: typeof fetch = fetch): Promise<Response> {
   const p = url.searchParams;
-  const q: CoverQuery = { isbn13: p.get('isbn13') ?? undefined, isbn: p.get('isbn') ?? undefined, title: (p.get('title') ?? '').slice(0, 200), author: (p.get('author') ?? '').slice(0, 120) };
+  const q: CoverQuery = { coverId: Number(p.get('id')) || undefined, isbn13: p.get('isbn13') ?? undefined, isbn: p.get('isbn') ?? undefined, title: (p.get('title') ?? '').slice(0, 200), author: (p.get('author') ?? '').slice(0, 120) };
   try {
     const cover = await findCover(q, doFetch);
     if (!cover) return json({ error: 'No cover found.' }, 404);

@@ -22,8 +22,9 @@ export const withoutCover = (b: Book, day: string, now: string): Book => {
 };
 
 /** The cover as a small data URL, or null when Open Library has none. Throws when it can't be asked (offline, no Worker): that is not "no cover". */
-export async function lookupCover(b: Book): Promise<string | null> {
+export async function lookupCover(b: Book, coverId?: number): Promise<string | null> {
   const params = new URLSearchParams({ title: splitTitle(b.title).title, author: b.author });
+  if (coverId) params.set('id', String(coverId));
   if (b.isbn13) params.set('isbn13', b.isbn13);
   if (b.isbn) params.set('isbn', b.isbn);
   const res = await fetch(`/api/books/cover?${params}`);

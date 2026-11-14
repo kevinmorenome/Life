@@ -141,13 +141,16 @@ export interface ImportPlan {
 /** Fields the app adds itself (the cover): an import never compares, replaces or drops them. */
 const LOCAL = ['photo', 'hasPhoto', 'coverMissing'] as const;
 
-/** A book's Goodreads data only (no cover, no timestamps), with sorted keys, for comparing. */
-const content = (b: Book): string => {
+/** A book's Goodreads data only (no cover, no timestamps, nothing you changed by hand: `skip`), with sorted keys, for comparing. */
+const content = (b: Book, skip: ReadonlySet<string>): string => {
   const { createdAt: _c, updatedAt: _u, ...rest } = b;
-  for (const k of LOCAL) delete rest[k];
-  return JSON.stringify(Object.fromEntries(Object.entries(rest).sort(([x], [y]) => x.localeCompare(y))));
+  const kept = Object.entries(rest).filter(([k]) => !skip.has(k));
+  return JSON.stringify(Object.fromEntries(kept.sort(([x], [y]) => x.localeCompare(y))));
 };
-const sameContent = (a: Book, b: Book) => content(a) === content(b);
+const sameContent = (old: Book, fresh: Book) => {
+  const skip = new Set<string>([...LOCAL, 'edited', ...(old.edited ?? [])]);
+  return content(old, skip) === content(fresh, skip);
+};
 
 /**
  * Which books to write: new ones, and ones whose Goodreads data changed (the older `createdAt` is kept).
@@ -164,7 +167,15 @@ export function planImport(parsed: Book[], existing: Book[]): ImportPlan {
     } else if (sameContent(old, book)) plan.unchanged++;
     else {
       const kept = Object.fromEntries(LOCAL.filter((k) => old[k] !== undefined).map((k) => [k, old[k]]));
-      plan.write.push({ ...book, ...kept, createdAt: old.createdAt });
+      const merged: Record<string, unknown> = { ...book, ...kept, createdAt: old.createdAt };
+      // What you changed here stays as you set it, even when Goodreads says something else (or nothing).
+      for (const field of old.edited ?? []) {
+        const mine = (old as unknown as Record<string, unknown>)[field];
+        if (mine === undefined) delete merged[field];
+        else merged[field] = mine;
+      }
+      if (old.edited) merged.edited = old.edited;
+      plan.write.push(merged as unknown as Book);
       plan.updated++;
     }
   }

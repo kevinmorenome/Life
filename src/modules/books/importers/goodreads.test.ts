@@ -111,6 +111,19 @@ describe('planImport', () => {
     const missing: Book[] = parsed.map((b) => ({ ...b, coverMissing: '2026-11-11', title: b.title + ' (old)' }));
     expect(planImport(parsed, missing).write[0].coverMissing).toBe('2026-11-11');
   });
+  it('leaves what you changed by hand as you set it', () => {
+    const stored: Book[] = parsed.map((b) => ({ ...b, createdAt: 'old' }));
+    // Hand edit: moved Dune to "to-read" and dropped its finish date; Goodreads still says read.
+    const { dateRead: _d, ...rest } = stored[0];
+    stored[0] = { ...rest, shelf: 'to-read', edited: ['shelf', 'dateRead'] };
+    expect(planImport(parsed, stored)).toMatchObject({ write: [], unchanged: 5 });
+    // Something else changes on Goodreads: the update arrives, your fields stay.
+    const next = parsed.map((b, i) => (i === 0 ? { ...b, rating: 3 } : b));
+    const plan = planImport(next, stored);
+    expect(plan.write).toHaveLength(1);
+    expect(plan.write[0]).toMatchObject({ id: 'gr-101', rating: 3, shelf: 'to-read', edited: ['shelf', 'dateRead'] });
+    expect(plan.write[0].dateRead).toBeUndefined();
+  });
   it('updates a changed book and keeps when it was first added', () => {
     const stored: Book[] = parsed.map((b) => ({ ...b, createdAt: 'old' }));
     stored[2] = { ...stored[2], shelf: 'currently-reading' };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckIcon, ListIcon, SearchIcon } from '../../icons';
+import { CheckIcon, ListIcon, PlusIcon, SearchIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
@@ -73,17 +73,27 @@ export function BookList({ books }: { books: Book[] }) {
     return (
       <div className="empty">
         <h1>Books</h1>
-        <p className="muted">Nothing here yet. On Goodreads, open My Books → Import and export → Export Library, then choose that file in Settings → Import from Goodreads.</p>
-        <a className="btn btn-primary" href={href('/settings')}>
-          Open Settings
-        </a>
+        <p className="muted">Nothing here yet. Add a book, or on Goodreads open My Books → Import and export → Export Library and choose that file in Settings → Import from Goodreads.</p>
+        <div className="form-actions start">
+          <a className="btn btn-primary" href={href('/books/add')}>
+            Add a book
+          </a>
+          <a className="btn" href={href('/settings')}>
+            Import from Goodreads
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <h1 className="books-title">My books</h1>
+      <div className="books-head">
+        <h1 className="books-title">My books</h1>
+        <a className="icon-btn books-add" href={href('/books/add')} aria-label="Add a book">
+          <PlusIcon />
+        </a>
+      </div>
       {thisYear.books > 0 && (
         <a className="books-year" href={href('/stats/entertainment/books')}>
           <span>

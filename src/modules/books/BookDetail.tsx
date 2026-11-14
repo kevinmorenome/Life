@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { CameraIcon, CheckIcon, ImageIcon, SearchIcon, TrashIcon } from '../../icons';
+import { ChevronDownIcon } from '../clothes/icons';
 import { shortDate, today } from '../../lib/format';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
 import { usePhotoPicker } from '../recipes/usePhotoPicker';
 import { authorLine, SHELF_LABELS, splitTitle } from './books';
+import { moveToShelf, rate, setFinished } from './bookEdits';
+import { RatingInput } from './RatingInput';
 import { BookCover } from './BookCover';
 import { lookupCover, withCover, withoutCover } from './cover';
-import { Stars } from './Stars';
 import type { Book } from './types';
 
 /**
  * One book, read only, after Goodreads' book page: the cover, title and author, the average rating, where it stands on your
- * shelves, your own rating, pages / published / format, your review and the rest of what Goodreads says.
+ * shelves, your own rating, pages / published / format, your review and the rest of what Goodreads says. The shelf, your rating
+ * and the day you finished are changed right here.
  */
-export function BookDetail({ book: b, onSave }: { book: Book; onSave: (b: Book) => Promise<void> }) {
+export function BookDetail({ book: b, onSave, onRemove }: { book: Book; onSave: (b: Book) => Promise<void>; onRemove: () => Promise<void> }) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const picker = usePhotoPicker((photo) => onSave(withCover(b, photo, new Date().toISOString())));
@@ -39,7 +42,16 @@ export function BookDetail({ book: b, onSave }: { book: Book; onSave: (b: Book) 
     { label: 'Take a photo', icon: <CameraIcon />, onSelect: picker.takePhoto },
     { label: 'Choose a photo', icon: <ImageIcon />, onSelect: picker.choosePhoto },
     ...(hasCover ? [{ label: 'Remove the cover', icon: <TrashIcon />, onSelect: () => void onSave(withoutCover(b, today(), new Date().toISOString())) }] : []),
+    // A Goodreads book would come back with the next import; only one you added yourself can be removed.
+    ...(b.source === 'manual'
+      ? [{ label: 'Remove from my books', icon: <TrashIcon />, danger: true, onSelect: () => confirm(`Remove “${title}” from your books?`) && void onRemove() }]
+      : []),
   ];
+  const shelfEntries: MenuEntry[] = (['to-read', 'currently-reading', 'read'] as const).map((s) => ({
+    label: SHELF_LABELS[s],
+    icon: b.shelf === s ? <CheckIcon /> : <span className="menu-blank" />,
+    onSelect: () => void onSave(moveToShelf(b, s, today(), new Date().toISOString())),
+  }));
 
   const figures: [string, string | undefined][] = [
     ['Pages', b.pages ? b.pages.toLocaleString() : undefined],
@@ -77,18 +89,36 @@ export function BookDetail({ book: b, onSave }: { book: Book; onSave: (b: Book) 
             <strong>{b.avgRating.toFixed(2)}</strong> <span className="muted small">Goodreads rating</span>
           </p>
         )}
-        <p className="book-status">
-          {b.shelf === 'read' && <CheckIcon />}
-          {stateLine}
-        </p>
+        <IconMenu
+          entries={shelfEntries}
+          label={`Shelf: ${stateLine}. Change`}
+          icon={
+            <>
+              {b.shelf === 'read' && <CheckIcon />}
+              {stateLine}
+              <ChevronDownIcon />
+            </>
+          }
+          triggerClassName="book-status"
+        />
       </div>
 
-      {b.rating && (
-        <div className="book-rate">
-          <span className="muted small">Your rating</span>
-          <Stars rating={b.rating} size="lg" />
-        </div>
-      )}
+      <div className="book-rate">
+        <span className="muted small">{b.rating ? 'Your rating' : 'Rate this book'}</span>
+        <RatingInput rating={b.rating} onRate={(n) => void onSave(rate(b, n, new Date().toISOString()))} />
+        {b.shelf === 'read' && (
+          <label className="book-date">
+            <span>{b.dateRead ? `Finished ${shortDate(b.dateRead)}` : 'Add the day you finished'}</span>
+            <input
+              type="date"
+              value={b.dateRead ?? ''}
+              max={today()}
+              aria-label="Day you finished"
+              onChange={(e) => e.target.value && void onSave(setFinished(b, e.target.value, today(), new Date().toISOString()))}
+            />
+          </label>
+        )}
+      </div>
 
       {figures.some(([, v]) => v) && (
         <dl className="book-figures">
@@ -135,7 +165,11 @@ export function BookDetail({ book: b, onSave }: { book: Book; onSave: (b: Book) 
           </dl>
         </section>
       )}
-      <p className="muted small">From your Goodreads export. Import a newer export in Settings to update it.</p>
+      <p className="muted small">
+        {b.source === 'manual'
+          ? 'Added here by hand.'
+          : `From your Goodreads export. Import a newer export in Settings to update it${b.edited?.length ? '; what you changed here stays as you set it' : ''}.`}
+      </p>
     </>
   );
 }
