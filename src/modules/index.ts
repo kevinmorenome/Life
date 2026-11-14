@@ -1,5 +1,6 @@
 import { checkinsModule } from './checkins';
 import { watchingModule } from './watching';
+import { booksModule } from './books';
 import { clothesModule } from './clothes';
 import { countriesModule } from './countries';
 import { foodModule } from './food';
@@ -13,4 +14,4 @@ import { recipesModule } from './recipes';
 import { workModule } from './work';
 
 // Register new feature modules here; they show up on Home and in the nav.
-export const MODULES: LifeModule[] = [clothesModule, tripsModule, workModule, checkinsModule, countriesModule, gamesModule, foodModule, woltModule, ridesModule, watchingModule, musicModule, recipesModule];
+export const MODULES: LifeModule[] = [clothesModule, tripsModule, workModule, checkinsModule, countriesModule, gamesModule, foodModule, woltModule, ridesModule, watchingModule, musicModule, recipesModule, booksModule];

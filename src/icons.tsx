@@ -232,6 +232,14 @@ export const FilmIcon = () => (
   </Icon>
 );
 
+/** An open book. */
+export const BookIcon = () => (
+  <Icon>
+    <path d="M12 6.5C10.5 5.3 8.2 4.5 4.5 4.5v13c3.7 0 6 .8 7.5 2 1.5-1.2 3.8-2 7.5-2v-13c-3.7 0-6 .8-7.5 2Z" />
+    <path d="M12 6.5v13" />
+  </Icon>
+);
+
 export const DiceIcon = () => (
   <Icon>
     <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />

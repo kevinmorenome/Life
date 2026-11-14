@@ -1,4 +1,4 @@
-import type { LifeModule } from '../types';
+import { ENTERTAINMENT, type LifeModule } from '../types';
 import { useWatchedCalendarLayer } from './useWatchedLayer';
 import { WatchingStatsRoute } from './WatchingStatsRoute';
 
@@ -13,5 +13,5 @@ export const watchingModule: LifeModule = {
   render: () => null,
   actions: [],
   calendarLayer: useWatchedCalendarLayer,
-  stats: { label: 'Watching', render: () => <WatchingStatsRoute /> },
+  stats: { label: 'Watching', group: ENTERTAINMENT, render: () => <WatchingStatsRoute /> },
 };
