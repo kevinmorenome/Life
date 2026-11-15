@@ -9592,7 +9592,6 @@ button.cook-next:active {
   font-weight: 650;
 }
 
-<<<<<<< HEAD
 /* Books (Goodreads import): its own colour on the calendar, like every kind of entry. */
 .dot.mark-book {
   background: var(--c-book);
@@ -10053,7 +10052,6 @@ button.book-status svg:last-child {
 .book-head .menu-wrap {
   display: inline-block;
 }
-=======
 /* Recipes: add what is lacking to the shopping list, and the Cook now view (#210, #211) */
 .recipe-add-missing {
   display: inline-flex;
@@ -10129,4 +10127,3 @@ button.book-status svg:last-child {
   margin: 0 0 8px;
   text-decoration: none;
 }
->>>>>>> a166b27 (Recipes: Cook now suggestions and adding missing ingredients to the shopping list)
