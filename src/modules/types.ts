@@ -40,9 +40,14 @@ export interface CalendarLayer {
   daySection?(date: string): ReactNode;
 }
 
+/** The Stats tab that Watching, Music and Books share. */
+export const ENTERTAINMENT = { id: 'entertainment', label: 'Entertainment' } as const;
+
 /** A module's page in the Stats tab, under its own heading. */
 export interface ModuleStats {
   label: string;
+  /** Modules with the same group share one Stats tab (`#/stats/<group id>/<module id>`), with a switch between them. */
+  group?: { id: string; label: string };
   /** `subroute` is what follows `#/stats/<module id>`. */
   render(subroute: string[]): ReactNode;
 }

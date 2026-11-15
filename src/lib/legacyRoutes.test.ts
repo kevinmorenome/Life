@@ -15,6 +15,13 @@ describe('legacyRedirect', () => {
     expect(go('/clothes/calendar/2026-10-29/items')).toBeNull();
   });
 
+  it('moves Watching, Music and Books stats under Entertainment', () => {
+    expect(go('/stats/music')).toBe('/stats/entertainment/music');
+    expect(go('/stats/watching')).toBe('/stats/entertainment/watching');
+    expect(go('/stats/books')).toBe('/stats/entertainment/books');
+    expect(go('/stats/entertainment/books')).toBeNull();
+  });
+
   it('moves stats under /stats', () => {
     expect(go('/clothes/stats')).toBe('/stats/clothes');
     expect(go('/clothes/stats/spending')).toBe('/stats/clothes/spending');
