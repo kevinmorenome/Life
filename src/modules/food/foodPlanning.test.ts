@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { depositSummary, monthlyFoodSpend, rebuyStats, savedByOffers, shoppingHabits, spendByCategory, spendByStore, wasteSummary, weekStart, weeklyFoodSpend } from './foodStats';
 import { cheaperElsewhere, comparePrices, offerShare, priceHistory, regularUnitPrice, storePrices } from './prices';
 import { groupByStore, shoppingList, usualInterval, usualQuantity } from './shopping';
+import { countedReceipts } from './food';
 import { productSummaries } from './products';
 import { stockEntries } from './stockEntries';
 import type { FoodProduct, FoodReceipt, ReceiptLine, StockEvent } from './types';
@@ -183,5 +184,40 @@ describe('food stats', () => {
     expect(w.top.map((t) => t.name)).toEqual(['Apples', 'Milk']); // both 1.00: ties by name
     expect(w.share).toBeCloseTo(2 / 7, 5);
     expect(rebuyStats(products)).toMatchObject([{ name: 'Milk', purchases: 2, spent: 2 }]);
+  });
+});
+
+describe('stock you already owned before the app', () => {
+  const owned = receipt({ id: 'owned-1', store: 'Owned before the app', date: '2026-11-01', carriedOver: true, lines: [line({ name: 'Pasta', quantity: 2, unitPrice: 0, discount: 0, paid: 0 })] });
+  const bought = receipt({ id: 'real-1', date: '2026-10-20', lines: [line({ name: 'Pasta', quantity: 1, unitPrice: 1.5, paid: 1.5 })] });
+
+  it('is stock, but not a purchase: no price, rhythm or average from it', () => {
+    const [p] = productSummaries([bought, owned], []);
+    expect(p.stockPurchases.map((x) => [x.receiptId, x.carriedOver ?? false])).toEqual([['owned-1', true], ['real-1', false]]);
+    expect(p.purchases.map((x) => x.receiptId)).toEqual(['real-1']);
+    expect(stockEntries([bought, owned], [], [], '2026-11-02')[0].stock.quantity).toBe(3);
+    expect(comparePrices(p, '2026-11-02')?.prices.map((x) => x.regular)).toEqual([1.5]);
+    expect(rebuyStats([p])).toEqual([]); // one real purchase: no rhythm
+  });
+  it('can be the only thing known about a product', () => {
+    const [p] = productSummaries([owned], []);
+    expect(p.purchases).toEqual([]);
+    expect(stockEntries([owned], [], [], '2026-11-02')[0].stock.quantity).toBe(2);
+    expect(shoppingList(stockEntries([owned], [], [], '2026-11-02'), '2026-11-02')).toEqual([]);
+  });
+  it('is left out of the receipts the spend, calendar and digest read', () => {
+    expect(countedReceipts([bought, owned]).map((r) => r.id)).toEqual(['real-1']);
+    expect(monthlyFoodSpend(countedReceipts([bought, owned]), '2026-11', 2).map((m) => m.trips)).toEqual([1, 0]);
+  });
+  it('is not food thrown away, whether the toss named the batch or came off whatever expires first', () => {
+    const products = productSummaries([owned], []);
+    const named = { ...toss('fp-pasta', 1, '2026-11-05'), batch: 'owned-1:0' };
+    const unnamed = toss('fp-pasta', 1, '2026-11-06');
+    expect(wasteSummary(products, [named, unnamed], [], '2026-11', 1)).toMatchObject({ value: 0, times: 0 });
+  });
+  it('does not hide a real toss when real stock is used up first', () => {
+    const products = productSummaries([bought, owned], []);
+    // The real pack expires/was bought first (oldest), so an unnamed toss takes that one.
+    expect(wasteSummary(products, [toss('fp-pasta', 1, '2026-11-05')], [bought], '2026-11', 1).times).toBe(1);
   });
 });

@@ -5,7 +5,7 @@ import type { IngredientCheck } from './availability';
 import { clock, cookLines, inProductUnit, markCooked, parseUsed, shortcutTimerUrl, splitStep, startingAmounts, stepIngredients, stepTimers, usesToLog } from './cooking';
 import type { Recipe, RecipeIngredient } from './types';
 
-const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [] });
+const product = (id: string, unit: Unit): ProductSummary => ({ id, name: id, kind: 'food', unit, type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [], stockPurchases: [] });
 const ing = (over: Partial<RecipeIngredient>): RecipeIngredient => ({ id: over.name ?? 'x', name: 'x', unit: 'g', ...over });
 const check = (i: Partial<RecipeIngredient>, p?: ProductSummary, staple = false): IngredientCheck => ({ ingredient: ing(i), state: 'available', product: p, staple });
 

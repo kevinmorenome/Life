@@ -12,7 +12,7 @@ export interface Entry {
 export function stockEntries(receipts: FoodReceipt[], products: FoodProduct[], events: StockEvent[], day = today()): Entry[] {
   return productSummaries(receipts, products).map((product) => {
     const mine = events.filter((e) => e.productId === product.id);
-    const stock = stockOf(product, product.purchases, mine, day);
+    const stock = stockOf(product, product.stockPurchases, mine, day);
     return { product, stock };
   });
 }

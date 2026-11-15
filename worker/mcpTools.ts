@@ -19,6 +19,7 @@ import { filterCheckins, newestFirst, venueHistory } from '../src/modules/checki
 import { buildDays } from '../src/modules/work/work';
 import type { WorkDay, WorkEvent } from '../src/modules/work/types';
 import { parseGroceryReceipt } from './groceries';
+import { OWNED_STORE, parseOwnedItems } from './ownedStock';
 import { parseRides } from './rides';
 import { PLACES, parseWorkLog } from './workLog';
 import { parseWoltOrders } from './wolt';
@@ -441,6 +442,40 @@ export const TOOLS = [
     },
   },
   {
+    name: 'add_owned_stock',
+    description:
+      'Put things the user already owned BEFORE they started using the app into the stock: they send a photo of a product (or tell you what is in the fridge or pantry) and you add it, so it shows in Stock with its use-by and the weekly check. This is NOT a purchase: there is no price, no store and no shopping day, and it stays out of every statistic (spending, prices, how often it is bought, the calendar, food thrown away), because the data is not clean. Never use it for something bought now or for a receipt (use add_grocery_receipt: it has the price and counts). Before adding, call list_stock and reuse the exact name of a product that already exists so it becomes a batch of that product, not a duplicate; if the product is already in stock and the user only says how many there are, use count_stock instead. Read the name, brand and size from the photo (put the name as a clean product name like "Oat drink 3.5%" and the printed text in rawName), the amount (quantity = packs or pieces, kg/l for loose or weighed goods), and the use-by or best-before date if it is printed (useBy, YYYY-MM-DD; if you cannot read it, leave it out rather than guess). For a new product also give productType, storage, shelfLifeDays and, for a multipack, packSize and packLabel. If you are unsure what the product is, ask the user. One call can hold several items. Adding the same product again on the same day changes nothing (use count_stock to change the amount).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD, default today. The day it is added to the stock (there is no backdating).' },
+        items: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 40,
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Cleaned-up product name, or the exact name of an existing product' },
+              rawName: { type: 'string', description: 'The text printed on the pack' },
+              kind: { type: 'string', enum: ['food', 'alcohol', 'household'] },
+              quantity: { type: 'number', exclusiveMinimum: 0, description: 'Packs or pieces; kg or l for loose or weighed goods' },
+              unit: { type: 'string', enum: [...UNITS] },
+              useBy: { type: 'string', description: 'Use-by / best-before date printed on the pack, YYYY-MM-DD' },
+              productType: { type: 'string', enum: [...PRODUCT_TYPES], description: 'Only used the first time this product is seen.' },
+              storage: { type: 'string', enum: [...STORAGES], description: 'Only used the first time this product is seen.' },
+              shelfLifeDays: { type: 'integer', minimum: 1, description: 'Only used the first time this product is seen.' },
+              packSize: { type: 'integer', minimum: 2, maximum: 100, description: 'Items in one multipack. Only used the first time this product is seen.' },
+              packLabel: { type: 'string', description: 'What one item in the pack is called, singular. Only with packSize.' },
+            },
+            required: ['name', 'quantity'],
+          },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  {
     name: 'count_stock',
     description:
       'Set how much of a product there really is, e.g. "I have 3 beers left" or after checking the fridge. This replaces what the stock was worked out to be from that day on. Use 0 for none left. Only when the user tells you the number.',
@@ -611,6 +646,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return listStock(args, ctx);
     case 'use_stock':
       return ctx.readOnly ? fail(READ_ONLY) : useStock(args, ctx);
+    case 'add_owned_stock':
+      return addOwnedStock(args, ctx);
     case 'count_stock':
       return ctx.readOnly ? fail(READ_ONLY) : countStock(args, ctx);
     case 'set_product_info':
@@ -801,7 +838,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR') })),
     rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
     groceries: receipts
-      .filter((r) => isRealDate(r.date))
+      .filter((r) => isRealDate(r.date) && !r.carriedOver)
       .map((r) => ({ date: String(r.date), store: String(r.store ?? ''), total: typeof r.total === 'number' ? r.total : (Array.isArray(r.lines) ? r.lines : []).reduce((a: number, l: { paid?: unknown }) => a + num(l?.paid), 0) })),
     // The worker has no time zone, so a play counts on its UTC day.
     watched: watched.filter((r) => typeof r.at === 'string').map((r) => ({ date: String(r.at).slice(0, 10), title: String(r.title ?? ''), kind: r.kind === 'movie' ? ('movie' as const) : ('episode' as const) })),
@@ -1182,7 +1219,7 @@ async function stockState(store: RecordStore, now: Date) {
   const today = utcToday(now);
   const products = productSummaries(receipts, records);
   const stockFor = (p: ProductSummary): Stock =>
-    stockOf(p, p.purchases, events.filter((e) => e.productId === p.id), today);
+    stockOf(p, p.stockPurchases, events.filter((e) => e.productId === p.id), today);
   return { products, records, events, today, stockFor };
 }
 
@@ -1205,7 +1242,7 @@ function describeProduct(p: ProductSummary, s: Stock, hasPicture: boolean) {
     ...(s.thawedQuantity > 0 ? { thawed: s.thawedQuantity, note: 'Thawed: use this first, do not refreeze.' } : {}),
     // Several purchases are kept apart, each with its own use-by: name one with boughtOn in use_stock.
     ...(s.batches.length > 1
-      ? { batches: s.batches.map((b) => ({ boughtOn: p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.thawed ? { thawedOn: b.thawed } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) })) }
+      ? { batches: s.batches.map((b) => ({ boughtOn: p.stockPurchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date, quantity: b.quantity, ...(b.frozen ? { frozenOn: b.frozen } : {}), ...(b.thawed ? { thawedOn: b.thawed } : {}), ...(b.useBy ? { useBy: b.useBy } : {}) })) }
       : {}),
     ...(s.lastConfirmed ? { lastBoughtOrCounted: s.lastConfirmed } : {}),
   };
@@ -1297,7 +1334,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   if (boughtOn) {
     if (!isRealDate(boughtOn)) return fail('boughtOn must be YYYY-MM-DD.');
     if (action === 'some_left') return fail('some_left applies to the pack in use, not to a batch. Use action "use" with a quantity.');
-    const dateOf = (b: Batch) => p.purchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date;
+    const dateOf = (b: Batch) => p.stockPurchases.find((x) => x.batch === (b.id ? originBatch(b.id) : undefined))?.date ?? b.date;
     const state = (b: Batch) => (b.frozen ? ', frozen' : b.thawed ? ', thawed' : '');
     const list = stockBefore.batches.map((b) => `${dateOf(b)}: ${formatQty(b.quantity)}${state(b)}${b.useBy ? ` (use by ${b.useBy})` : ''}`).join('; ');
     let named = stockBefore.batches.filter((b) => b.id && dateOf(b) === boughtOn);
@@ -1353,7 +1390,7 @@ async function useStock(args: Args, { store, now, newId }: ToolContext): Promise
   const stamp = now.toISOString();
   const event: StockEvent = { id: newId(), productId: p.id, type, quantity, date, source: 'claude', ...(batch?.id ? { batch: batch.id } : {}), ...(action === 'finish' && args.dateUnknown === true ? { undated: true } : {}), ...(args.notInStats === true ? { untracked: true } : {}), note: text(args.note, 500), createdAt: stamp, updatedAt: stamp };
   await store.put('foodstock', event.id, event);
-  const left = stockOf(p, p.purchases, [...events.filter((e) => e.productId === p.id), event], today);
+  const left = stockOf(p, p.stockPurchases, [...events.filter((e) => e.productId === p.id), event], today);
   return ok({
     recorded: action,
     product: p.name,
@@ -1442,6 +1479,56 @@ async function setProductPhoto(args: Args, { store, now, newId, fetchPhoto: down
   };
   await store.put('inbox', request.id, request);
   return ok({ product: p.name, queued: 'picture', applied: 'when the app next syncs', note: 'Queued, not shown yet: the app downscales it and removes the background when it next syncs.' });
+}
+
+/**
+ * Stock the user already owned before the app. Each item is a receipt flagged `carriedOver` (no price, no shopping day, left out
+ * of every statistic) with one line, so the batch has an id and stock, use-by and the weekly check work as for anything bought.
+ */
+async function addOwnedStock(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {
+  const { items, rejected } = parseOwnedItems(args.items);
+  if (items.length === 0) return fail('Give at least one item with a name and a quantity above 0.');
+  const today = utcToday(now);
+  const date = eventDate(args.date, today);
+  if (!date) return fail('date must be YYYY-MM-DD.');
+  if (date > today) return fail('date cannot be in the future.');
+  const stamp = now.toISOString();
+  const known = new Set((await store.list('foodproducts')).map((r) => r.id));
+  const receipts = new Set((await store.list('foodreceipts')).map((r) => r.id));
+  const added: { product: string; quantity: number; unit: string; useBy?: string }[] = [];
+  const created: string[] = [];
+  const already: string[] = [];
+  for (const it of items) {
+    const pid = productId(it.name);
+    const id = `owned-${date}-${pid}`;
+    if (receipts.has(id)) {
+      already.push(it.name);
+      continue;
+    }
+    receipts.add(id);
+    if (!known.has(pid)) {
+      known.add(pid);
+      const type = it.type ?? defaultType(it.kind, it.unit);
+      const product: FoodProduct = { id: pid, name: it.name, type, storage: it.storage ?? defaultStorage(type, it.kind), shelfLifeDays: it.shelfLifeDays, ...(it.unit === 'pc' && it.packSize ? { packSize: it.packSize, packLabel: it.packLabel } : {}), createdAt: stamp, updatedAt: stamp };
+      await store.put('foodproducts', pid, product);
+      created.push(it.name);
+    }
+    const line = { name: it.name, ...(it.rawName ? { rawName: it.rawName } : {}), kind: it.kind, quantity: it.quantity, unit: it.unit, unitPrice: 0, discount: 0, paid: 0 };
+    const receipt: FoodReceipt = { id, store: OWNED_STORE, date, lines: [line], carriedOver: true, createdAt: stamp, updatedAt: stamp };
+    await store.put('foodreceipts', id, receipt);
+    if (it.useBy) {
+      const event: StockEvent = { id: newId(), productId: pid, type: 'expiry', quantity: 0, date, source: 'claude', batch: `${id}:0`, useBy: it.useBy, createdAt: stamp, updatedAt: stamp };
+      await store.put('foodstock', event.id, event);
+    }
+    added.push({ product: it.name, quantity: it.quantity, unit: it.unit === 'pc' ? 'pieces' : it.unit, ...(it.useBy ? { useBy: it.useBy } : {}) });
+  }
+  return ok({
+    added,
+    ...(created.length ? { newProducts: created } : {}),
+    ...(already.length ? { alreadyAdded: already, note: 'Those were added earlier today: use count_stock to change the amount.' } : {}),
+    ...(rejected.length ? { rejected, warning: 'Some items were left out (no name or no quantity): add them again.' } : {}),
+    note: 'These count in stock only: no price, no spending, no shopping day and no waste or rhythm statistics.',
+  });
 }
 
 async function countStock(args: Args, { store, now, newId }: ToolContext): Promise<ToolResult> {

@@ -5,8 +5,8 @@ import { stockOf } from './stock';
 import { storagesInUse, type Entry } from './stockEntries';
 
 const entry = (over: Partial<ProductSummary>, bought = '2026-10-31', qty = 1): Entry => {
-  const product: ProductSummary = { id: 'fp-x', name: 'Thing', kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
-  return { product, stock: stockOf(product, product.purchases, [], '2026-11-02') };
+  const product: ProductSummary = { id: 'fp-x', name: 'Thing', kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], stockPurchases: [{ batch: 'r:0', receiptId: 'r', date: bought, store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
+  return { product, stock: stockOf(product, product.stockPurchases, [], '2026-11-02') };
 };
 
 describe('freshness words', () => {
@@ -58,7 +58,7 @@ describe('thawed food on the grid', () => {
   const ev = (type: 'freeze' | 'thaw', batch: string, date: string, id: string) => ({ id, productId: 'fp-x', type, quantity: 1, date, source: 'app' as const, batch, createdAt: `${date}T10:00:00Z`, updatedAt: '' });
   const make = (type: 'staple' | 'fresh') => {
     const e = entry({ type, name: 'Chicken' }, '2026-10-20');
-    const stock = stockOf(e.product, e.product.purchases, [ev('freeze', 'r:0', '2026-10-21', 'f'), ev('thaw', 'freeze-f:r:0', '2026-11-02', 't')], '2026-11-02');
+    const stock = stockOf(e.product, e.product.stockPurchases, [ev('freeze', 'r:0', '2026-10-21', 'f'), ev('thaw', 'freeze-f:r:0', '2026-11-02', 't')], '2026-11-02');
     return { ...e, stock };
   };
 
@@ -87,6 +87,6 @@ describe('the places offered by the stock filter', () => {
     expect(storagesInUse([])).toEqual([]);
     const frozen = entry({ id: 'fp-d', storage: 'fridge', type: 'fresh' }, '2026-10-20');
     const ev = { id: 'f', productId: 'fp-d', type: 'freeze' as const, quantity: 1, date: '2026-10-21', source: 'app' as const, batch: 'r:0', createdAt: '2026-10-21T10:00:00Z', updatedAt: '' };
-    expect(storagesInUse([{ ...frozen, stock: stockOf(frozen.product, frozen.product.purchases, [ev], '2026-11-02') }])).toEqual(['freezer']);
+    expect(storagesInUse([{ ...frozen, stock: stockOf(frozen.product, frozen.product.stockPurchases, [ev], '2026-11-02') }])).toEqual(['freezer']);
   });
 });

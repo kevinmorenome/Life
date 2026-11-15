@@ -122,7 +122,7 @@ async function kitchen({ store, now }: ToolContext) {
   const settings = await store.list('settings');
   const today = utcToday(now);
   const products = productSummaries(receipts, records);
-  const stocked = new Map<string, StockedProduct>(products.map((p) => [p.id, { product: p, stock: stockOf(p, p.purchases, events.filter((e) => e.productId === p.id), today) }]));
+  const stocked = new Map<string, StockedProduct>(products.map((p) => [p.id, { product: p, stock: stockOf(p, p.stockPurchases, events.filter((e) => e.productId === p.id), today) }]));
   const staples = new Set(strings(settings.find((s) => s.id === 'app')?.pantryStaples));
   for (const r of recipes) {
     r.ingredients = Array.isArray(r.ingredients) ? r.ingredients : [];

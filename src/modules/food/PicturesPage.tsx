@@ -61,7 +61,7 @@ export function PicturesPage({ receipts, products, events, onProduct }: { receip
       <h2>{p.name}</h2>
       <p className="muted small">
         {p.storage[0].toUpperCase()}
-        {p.storage.slice(1)} · bought {shortDate(p.purchases[0].date)}
+        {p.storage.slice(1)} · {p.purchases[0] ? `bought ${shortDate(p.purchases[0].date)}` : 'owned before the app'}
       </p>
       <div className="food-pass-actions">
         <button type="button" className="btn btn-primary" onClick={picker.takePhoto} disabled={picker.busy}>

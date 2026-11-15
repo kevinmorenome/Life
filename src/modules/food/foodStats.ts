@@ -1,7 +1,7 @@
 import { round2 } from './food';
 import { comparablePrice, priceUnit } from './prices';
 import { averageUnitPrice, defaultType, isFoodKind, isStocked, productId, type ProductSummary } from './products';
-import { addDays, daysBetween, effectiveEvents, originBatch } from './stock';
+import { addDays, daysBetween, effectiveEvents, originBatch, stockOf } from './stock';
 import { usualInterval } from './shopping';
 import type { FoodProduct, FoodReceipt, LineKind, ProductType, StockEvent } from './types';
 
@@ -202,8 +202,10 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
   const monthly = new Map<string, number>();
   let value = 0;
   let times = 0;
+  // Stock you already owned (`carriedOver`) isn't clean data: what came off it, however it was logged, is no waste figure.
+  const owned = eventsOnOwnedStock(products, events, `${nowMonth}-01`);
   for (const e of effectiveEvents(events)) {
-    if (e.type !== 'toss' || e.quantity <= 0 || e.untracked) continue;
+    if (e.type !== 'toss' || e.quantity <= 0 || e.untracked || owned.has(e.id)) continue;
     const p = byId.get(e.productId);
     // Shampoo used up is not food thrown away.
     if (!p || p.kind === 'household') continue;
@@ -224,6 +226,24 @@ export function wasteSummary(products: ProductSummary[], events: StockEvent[], r
   const spent = receipts.reduce((s, r) => s + r.lines.filter((l) => isFoodKind(l.kind)).reduce((a, l) => a + l.paid, 0), 0);
   const perMonth = Array.from({ length: months }, (_, i) => addMonths(nowMonth, i - months + 1)).map((key) => ({ key, value: monthly.get(key) ?? 0 }));
   return { value, times, share: spent > 0 ? value / spent : undefined, perMonth, top: [...per.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, 10) };
+}
+
+/**
+ * The ids of the events that took something off a batch you already owned before the app (`Purchase.carriedOver`), whether
+ * the event named the batch or just came off whatever expires first: the stock history says which batch each one touched.
+ */
+export function eventsOnOwnedStock(products: ProductSummary[], events: StockEvent[], day: string): Set<string> {
+  const out = new Set<string>();
+  for (const p of products) {
+    const owned = new Set(p.stockPurchases.filter((x) => x.carriedOver).map((x) => x.batch));
+    if (owned.size === 0) continue;
+    const stock = stockOf(p, p.stockPurchases, events.filter((e) => e.productId === p.id), day);
+    for (const [id, history] of Object.entries(stock.history)) {
+      if (!owned.has(originBatch(id))) continue;
+      for (const h of history) if (h.eventId && h.kind !== 'bought') out.add(h.eventId);
+    }
+  }
+  return out;
 }
 
 export interface Rebuy {

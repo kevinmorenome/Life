@@ -26,29 +26,30 @@ const EPS = 1e-9;
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /** The purchase a batch came from (also for the frozen and thawed parts of it); undefined for stock that only came from a count. */
-export function purchaseOf(product: Pick<ProductSummary, 'purchases'>, b: Pick<Batch, 'id'>): Purchase | undefined {
+export function purchaseOf(product: Pick<ProductSummary, 'stockPurchases'>, b: Pick<Batch, 'id'>): Purchase | undefined {
   const origin = b.id ? originBatch(b.id) : undefined;
-  return origin ? product.purchases.find((p) => p.batch === origin) : undefined;
+  return origin ? product.stockPurchases.find((p) => p.batch === origin) : undefined;
 }
 
 /** Where a batch came from in one line: "bought 31 Oct 2026 · Konzum · €1.89 / kg", or "counted …" for stock that only came from a count. */
-export function batchOrigin(product: Pick<ProductSummary, 'purchases'>, b: Batch): string {
+export function batchOrigin(product: Pick<ProductSummary, 'stockPurchases'>, b: Batch): string {
   const purchase = purchaseOf(product, b);
   if (!purchase) return `counted ${shortDate(b.date)}`;
+  if (purchase.carriedOver) return `owned before the app · added ${shortDate(purchase.date)}`;
   return `bought ${shortDate(purchase.date)} · ${purchase.store} · ${money(purchase.unitPrice)}${purchase.unit === 'pc' ? '' : ` / ${purchase.unit}`}`;
 }
 
 /** Purchases are numbered in the order they were bought, so a batch keeps its number as newer ones arrive. */
-export function batchNumber(product: Pick<ProductSummary, 'purchases'>, b: Pick<Batch, 'id'>): number | undefined {
+export function batchNumber(product: Pick<ProductSummary, 'stockPurchases'>, b: Pick<Batch, 'id'>): number | undefined {
   const purchase = purchaseOf(product, b);
   if (!purchase) return undefined;
   // The list is newest first; turned around, purchases of the same day keep the order of their receipts.
-  const oldestFirst = [...product.purchases].reverse().sort((x, y) => x.date.localeCompare(y.date));
+  const oldestFirst = [...product.stockPurchases].reverse().sort((x, y) => x.date.localeCompare(y.date));
   return oldestFirst.indexOf(purchase) + 1;
 }
 
 /** "Batch #2"; stock that only came from a count has no purchase to number. */
-export function batchTitle(product: Pick<ProductSummary, 'purchases'>, b: Pick<Batch, 'id'>): string {
+export function batchTitle(product: Pick<ProductSummary, 'stockPurchases'>, b: Pick<Batch, 'id'>): string {
   const n = batchNumber(product, b);
   return n ? `Batch #${n}` : 'Counted stock';
 }
@@ -188,7 +189,7 @@ export function activityText(h: HistoryEntry, amount: (q: number) => string, day
  * Everything that happened to a product, newest first: each batch's history in one list, so batches that are gone
  * stay in it. Putting food in the freezer is one line (on the batch it came from), not two.
  */
-export function activityOf(product: Pick<ProductSummary, 'purchases'>, stock: Stock, amount: (q: number) => string, day: (iso: string) => string): ActivityItem[] {
+export function activityOf(product: Pick<ProductSummary, 'stockPurchases'>, stock: Stock, amount: (q: number) => string, day: (iso: string) => string): ActivityItem[] {
   type Row = ActivityItem & { at: string };
   const rows: Row[] = [];
   const all = Object.entries(stock.history);

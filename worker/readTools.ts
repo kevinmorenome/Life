@@ -454,7 +454,7 @@ async function daySummary(args: Args, ctx: ToolContext): Promise<ToolResult> {
   if (orders.length) out.takeout = orders.map((r) => ({ ...(r.time ? { time: r.time } : {}), restaurant: r.restaurant, total: num(r.total), currency: r.currency ?? 'EUR' }));
   const rideList = rides.filter((r) => r.date === date);
   if (rideList.length) out.rides = rideList.map((r) => ({ ...(r.time ? { time: r.time } : {}), provider: r.provider, ...(r.from ? { from: r.from } : {}), ...(r.to ? { to: r.to } : {}), fare: num(r.fare), currency: r.currency ?? 'EUR' }));
-  const shops = receipts.filter((r) => r.date === date);
+  const shops = receipts.filter((r) => r.date === date && !r.carriedOver);
   if (shops.length) {
     out.groceries = shops.map((r) => ({
       store: r.store,
@@ -537,15 +537,17 @@ async function foodStats(args: Args, { store, now }: ToolContext): Promise<ToolR
   const today = utcToday(now);
   const nowMonth = today.slice(0, 7);
   const [receiptRows, productRows, eventRows] = await Promise.all([store.list('foodreceipts'), store.list('foodproducts'), store.list('foodstock')]);
-  const receipts = receiptRows
+  const everyReceipt = receiptRows
     .filter((r) => isRealDate(r.date) && Array.isArray(r.lines))
     .map((r) => ({ ...r, store: String(r.store ?? ''), lines: (r.lines as object[]).map((l) => ({ discount: 0, ...l })) }) as unknown as FoodReceipt);
+  // Stock you already owned (`carriedOver`) is not a purchase: it is left out of every figure here, and of what was thrown away.
+  const receipts = everyReceipt.filter((r) => !r.carriedOver);
   if (receipts.length === 0) return ok('No grocery receipts yet.');
   const spend = monthlyFoodSpend(receipts, nowMonth, months);
   const since = `${spend[0].key}-01`;
   const period = receipts.filter((r) => r.date >= since);
   const records = productRows as unknown as FoodProduct[];
-  const waste = wasteSummary(productSummaries(receipts, records), eventRows as unknown as StockEvent[], period, nowMonth, months);
+  const waste = wasteSummary(productSummaries(everyReceipt, records), eventRows as unknown as StockEvent[], period, nowMonth, months);
   const total = round2(spend.reduce((s, p) => s + p.spent, 0));
   const habits = shoppingHabits(period);
   return ok({

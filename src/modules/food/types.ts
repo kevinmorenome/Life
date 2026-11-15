@@ -52,6 +52,12 @@ export interface FoodReceipt {
   total?: number;
   lines: ReceiptLine[];
   notes?: string;
+  /**
+   * Not a purchase: something you already had before you started tracking (added by Claude from a photo, `add_owned_stock`).
+   * It makes a batch of stock and nothing else: no price, no shopping day, so no spend, price, rhythm, calendar or
+   * waste figure reads it (`countedReceipts()`, `Purchase.carriedOver`). The data isn't clean, so the stats leave it out.
+   */
+  carriedOver?: boolean;
   createdAt: string;
   updatedAt: string;
 }

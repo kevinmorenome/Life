@@ -1,6 +1,7 @@
 import { useCollection } from '../../lib/useCollection';
 import { CheckPage } from './CheckPage';
 import { PicturesPage } from './PicturesPage';
+import { countedReceipts } from './food';
 import { ProductView } from './ProductView';
 import { productSummaries } from './products';
 import { ProductsPage } from './ProductsPage';
@@ -36,5 +37,5 @@ export function FoodRoot({ subroute }: { subroute: string[] }) {
     if (!product) return <p className="muted">That product isn’t on any receipt.</p>;
     return <ProductView key={product.id} product={product} record={products.items.find((p) => p.id === second)} events={events.items.filter((e) => e.productId === second)} onSave={products.save} onEvent={events.save} />;
   }
-  return <ReceiptList receipts={receipts.items} />;
+  return <ReceiptList receipts={countedReceipts(receipts.items)} />;
 }
