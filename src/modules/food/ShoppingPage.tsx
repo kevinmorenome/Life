@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { money, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { useCollection } from '../../lib/useCollection';
+import { CloseIcon } from '../clothes/icons';
 import { FoodTabs } from './FoodTabs';
 import { formatQty } from './stock';
-import { REASON_LABELS, groupByStore, shoppingList, type ShoppingItem } from './shopping';
+import { REASON_LABELS, groupByStore, shoppingList, withAdds, type ShoppingItem } from './shopping';
 import { stockEntries } from './stockEntries';
-import type { FoodProduct, FoodReceipt, StockEvent } from './types';
+import type { FoodProduct, FoodReceipt, ShoppingAdd, StockEvent } from './types';
 
 const KEY = 'life.food.shopping.ticked';
 
@@ -33,7 +35,11 @@ const amount = (i: ShoppingItem): string => (i.unit === 'pc' ? `${formatQty(i.qu
 export function ShoppingPage({ receipts, products, events }: { receipts: FoodReceipt[]; products: FoodProduct[]; events: StockEvent[] }) {
   const day = today();
   const [ticked, setTicked] = useState(() => loadTicked(day));
-  const items = useMemo(() => shoppingList(stockEntries(receipts, products, events, day), day), [receipts, products, events, day]);
+  const adds = useCollection<ShoppingAdd>('shoppingadds');
+  const items = useMemo(() => {
+    const entries = stockEntries(receipts, products, events, day);
+    return withAdds(shoppingList(entries, day), adds.items, entries);
+  }, [receipts, products, events, day, adds.items]);
   const groups = useMemo(() => groupByStore(items), [items]);
 
   const toggle = (id: string) =>
@@ -43,6 +49,9 @@ export function ShoppingPage({ receipts, products, events }: { receipts: FoodRec
       saveTicked(day, next);
       return next;
     });
+
+  /** Takes back what was added by hand (from a recipe); what the stock says is needed stays. */
+  const removeAdd = (addId: string) => adds.remove(addId);
 
   if (items.length === 0) {
     return (
@@ -76,14 +85,20 @@ export function ShoppingPage({ receipts, products, events }: { receipts: FoodRec
                   <span className="muted small">
                     {[
                       REASON_LABELS[i.reason],
-                      amount(i),
+                      i.reason === 'recipe' ? '' : amount(i),
                       i.price ? `${money(i.price.regular)}${i.per}` : '',
                       i.saving ? `${money(i.saving)} cheaper than where you bought it last` : '',
                     ]
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
+                  {i.for && i.for.length > 0 && <span className="small shop-for">For {i.for.join(' · ')}</span>}
                 </a>
+                {i.addId && (
+                  <button type="button" className="icon-btn shop-remove" aria-label={`Take ${i.name} off the list`} onClick={() => void removeAdd(i.addId!)}>
+                    <CloseIcon />
+                  </button>
+                )}
               </li>
             ))}
           </ul>

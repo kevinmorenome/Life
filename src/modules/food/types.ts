@@ -153,3 +153,30 @@ export interface StockEvent {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Why something was put on the shopping list by hand: "for Carbonara, 200 g more". */
+export interface ShoppingNote {
+  /** The thing it is for (a recipe's id), so adding the same recipe again replaces its line instead of repeating it. */
+  forId: string;
+  /** What to show: the recipe's name. */
+  forName: string;
+  /** How much is needed, as text in the ingredient's own unit ("200 g more", "250 g"). */
+  amount?: string;
+}
+
+/**
+ * An entry added to the shopping list, in the `shoppingadds` store (a small synced record: the list itself stays derived
+ * from receipts and stock). The id is made from the product or the name, so adding the same thing twice is one entry
+ * with a note for each recipe. It goes away when you remove it, or when the product is bought after it was added.
+ */
+export interface ShoppingAdd {
+  id: string;
+  name: string;
+  /** The food product (`fp-…` id), when known; then buying it clears the entry. */
+  productId?: string;
+  notes: ShoppingNote[];
+  /** The day it was added (YYYY-MM-DD). */
+  addedOn: string;
+  createdAt: string;
+  updatedAt: string;
+}
