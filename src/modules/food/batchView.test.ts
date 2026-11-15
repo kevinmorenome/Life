@@ -7,7 +7,7 @@ import type { StockEvent } from './types';
 const buy = (batch: string, date: string, quantity: number, store = 'Konzum'): Purchase => ({ receiptId: batch.split(':')[0], date, store, quantity, unit: 'kg', unitPrice: 8, paid: quantity * 8, batch });
 // Newest first, like `productSummaries()` gives them.
 const purchases = [buy('c:0', '2026-11-08', 0.7), buy('b:0', '2026-11-06', 0.8, 'Lidl'), buy('a:0', '2026-10-31', 1), buy('z:0', '2026-10-20', 0.5)];
-const product = { type: 'fresh', storage: 'fridge', purchases } as unknown as ProductSummary;
+const product = { type: 'fresh', storage: 'fridge', purchases, stockPurchases: purchases } as unknown as ProductSummary;
 const ev = (id: string, type: StockEvent['type'], quantity: number, date: string, extra: Partial<StockEvent> = {}): StockEvent => ({ id, productId: 'p', type, quantity, date, source: 'app', createdAt: `${date}T10:00:0${id.length}.000Z`, updatedAt: date, ...extra });
 const events = [
   ev('e0', 'count', 0, '2026-10-24', { batch: 'z:0' }),

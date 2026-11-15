@@ -94,3 +94,6 @@ export function draftToLine(d: LineDraft): ReceiptLine | undefined {
   const discount = parseNumber(d.discount) ?? 0;
   return { name, rawName: d.rawName, kind: d.kind, quantity, unit: d.unit, unitPrice, discount, paid: linePaid(quantity, unitPrice) };
 }
+
+/** The receipts that are real purchases: what spend, prices, the calendar and the digest read. Stock you already owned (`carriedOver`) is left out. */
+export const countedReceipts = <R extends { carriedOver?: boolean }>(receipts: R[]): R[] => (receipts.some((r) => r.carriedOver) ? receipts.filter((r) => !r.carriedOver) : receipts);

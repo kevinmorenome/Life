@@ -6,7 +6,7 @@ import type { ShoppingAdd } from '../food/types';
 import type { IngredientCheck } from './availability';
 import { planAdds } from './shoppingAdds';
 
-const milk: ProductSummary = { id: 'fp-milk', name: 'Milk', kind: 'food', unit: 'l', type: 'staple', storage: 'fridge', hasPhoto: false, custom: false, purchases: [{ receiptId: 'r', date: '2026-11-01', store: 'Konzum', quantity: 1, unit: 'l', unitPrice: 1, paid: 1, batch: 'r:0' }] };
+const milk: ProductSummary = { id: 'fp-milk', name: 'Milk', kind: 'food', unit: 'l', type: 'staple', storage: 'fridge', hasPhoto: false, custom: false, purchases: [{ receiptId: 'r', date: '2026-11-01', store: 'Konzum', quantity: 1, unit: 'l', unitPrice: 1, paid: 1, batch: 'r:0' }], stockPurchases: [{ receiptId: 'r', date: '2026-11-01', store: 'Konzum', quantity: 1, unit: 'l', unitPrice: 1, paid: 1, batch: 'r:0' }] };
 const stock: Stock = { quantity: 1, batches: [], frozenQuantity: 0, thawedQuantity: 0, history: {}, pastBatches: [], status: 'ok' };
 const missing = (name: string, product?: ProductSummary, over: Partial<IngredientCheck> = {}): IngredientCheck => ({ ingredient: { id: name, name, quantity: 200, unit: 'g' }, state: 'missing', ...(product ? { product } : {}), ...over });
 const recipe = { id: 'r1', name: 'Carbonara' };
@@ -52,7 +52,7 @@ describe('withAdds', () => {
     expect(list[0]).toMatchObject({ reason: 'out', for: ['Carbonara: 200 g'], addId: 'shop-fp-milk' });
   });
   it('drops an entry whose product was bought after it was added', () => {
-    const bought = { ...milk, purchases: [{ ...milk.purchases[0], date: '2026-11-12' }] };
+    const bought = { ...milk, purchases: [{ ...milk.purchases[0], date: '2026-11-12' }], stockPurchases: [{ ...milk.purchases[0], date: '2026-11-12' }] };
     expect(withAdds([], [add({ id: 'shop-fp-milk', productId: 'fp-milk', name: 'Milk' })], [{ product: bought, stock }])).toEqual([]);
   });
   it('keeps one added before an older purchase', () => {

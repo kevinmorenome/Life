@@ -191,7 +191,7 @@ export function ProductStock({
 
   const several = s.batches.length > 1;
   // Nothing can have happened before the first purchase.
-  const oldest = p.purchases.reduce((m, x) => (x.date < m ? x.date : m), day);
+  const oldest = p.stockPurchases.reduce((m, x) => (x.date < m ? x.date : m), day);
   const have = s.quantity > 0;
   const productMenu: MenuEntry[] = [
     ...(have ? [{ label: 'Use some…', icon: <MinusIcon />, onSelect: useAny }] : []),

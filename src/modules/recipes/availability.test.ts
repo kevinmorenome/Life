@@ -15,6 +15,7 @@ const product = (name: string, unit: Unit, date = '2026-11-01', rawName?: string
   hasPhoto: false,
   custom: false,
   purchases: [{ receiptId: 'r', date, store: 'Konzum', quantity: 1, unit, unitPrice: 1, paid: 1, batch: 'r:0', rawName }],
+  stockPurchases: [{ receiptId: 'r', date, store: 'Konzum', quantity: 1, unit, unitPrice: 1, paid: 1, batch: 'r:0', rawName }],
 });
 const stock = (quantity: number): Stock => ({ quantity, batches: [], frozenQuantity: 0, thawedQuantity: 0, history: {}, pastBatches: [], status: quantity > 0 ? 'ok' : 'out' });
 

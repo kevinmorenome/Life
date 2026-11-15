@@ -16,6 +16,7 @@ const product = (name: string, unit: Unit = 'pc'): ProductSummary => ({
   hasPhoto: false,
   custom: false,
   purchases: [{ receiptId: 'r', date: '2026-11-01', store: 'Konzum', quantity: 1, unit, unitPrice: 1, paid: 1, batch: 'r:0' }],
+  stockPurchases: [{ receiptId: 'r', date: '2026-11-01', store: 'Konzum', quantity: 1, unit, unitPrice: 1, paid: 1, batch: 'r:0' }],
 });
 const stock = (quantity: number, useBy?: string): Stock => ({ quantity, batches: [], frozenQuantity: 0, thawedQuantity: 0, history: {}, pastBatches: [], status: quantity > 0 ? 'ok' : 'out', ...(useBy ? { useBy } : {}) });
 

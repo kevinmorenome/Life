@@ -25,7 +25,7 @@ export function ProductView({
   onSave(p: FoodProduct): Promise<void>;
   onEvent(e: StockEvent): Promise<void>;
 }) {
-  const stock = stockOf(product, product.purchases, events, today());
+  const stock = stockOf(product, product.stockPurchases, events, today());
   const [toast, setToast] = useState<Toast | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
   async function act(a: StockAct) {

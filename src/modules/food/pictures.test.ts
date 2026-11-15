@@ -5,8 +5,8 @@ import { stockOf } from './stock';
 import type { Entry } from './stockEntries';
 
 const entry = (name: string, over: Partial<ProductSummary> = {}, qty = 1): Entry => {
-  const product: ProductSummary = { id: `fp-${name}`, name, kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: '2026-10-31', store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
-  return { product, stock: stockOf(product, product.purchases, [], '2026-11-02') };
+  const product: ProductSummary = { id: `fp-${name}`, name, kind: 'food', unit: 'pc', type: 'staple', storage: 'pantry', hasPhoto: false, custom: false, purchases: [{ batch: 'r:0', receiptId: 'r', date: '2026-10-31', store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], stockPurchases: [{ batch: 'r:0', receiptId: 'r', date: '2026-10-31', store: 'K', quantity: qty, unit: 'pc', unitPrice: 1, paid: qty }], ...over };
+  return { product, stock: stockOf(product, product.stockPurchases, [], '2026-11-02') };
 };
 
 describe('needsPicture', () => {

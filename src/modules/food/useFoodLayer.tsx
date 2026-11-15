@@ -6,13 +6,14 @@ import { href } from '../../lib/router';
 import { useCollection } from '../../lib/useCollection';
 import { isWoltTakeoutReceipt } from '../wolt/fromReceipts';
 import type { CalendarLayer } from '../types';
-import { receiptTotal } from './food';
+import { countedReceipts, receiptTotal } from './food';
 import type { FoodReceipt } from './types';
 
 /** Grocery receipts by day, without Wolt takeout orders that still sit in the food log (the Takeout layer shows those). */
 export function receiptsByDay(receipts: FoodReceipt[]): Map<string, FoodReceipt[]> {
   const days = new Map<string, FoodReceipt[]>();
-  for (const r of receipts) {
+  // Stock you already owned (`carriedOver`) is not a shopping day.
+  for (const r of countedReceipts(receipts)) {
     if (isWoltTakeoutReceipt(r)) continue;
     days.set(r.date, [...(days.get(r.date) ?? []), r]);
   }

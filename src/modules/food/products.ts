@@ -86,6 +86,8 @@ export interface Purchase {
   discount?: number;
   /** The text printed on the receipt for this line, e.g. "PIVO STAROPRAMEN 6PA". */
   rawName?: string;
+  /** From a receipt flagged `carriedOver`: stock only, never a price or a purchase day. */
+  carriedOver?: boolean;
 }
 
 export interface ProductSummary {
@@ -103,8 +105,10 @@ export interface ProductSummary {
   hasPhoto: boolean;
   /** True when someone set the type/storage (there is a product record), false when they are defaults. */
   custom: boolean;
-  /** Newest first. */
+  /** Real purchases, newest first: what prices, rhythm and spend are read from. Empty for something you only owned before the app. */
   purchases: Purchase[];
+  /** Every batch of stock, newest first: the purchases plus what you already owned (`carriedOver`). Stock is worked out from these. */
+  stockPurchases: Purchase[];
 }
 
 /** Every stocked product that appears on a receipt, with its purchases (newest first) and what is known about it. */
@@ -118,15 +122,16 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
       if (!isStocked(l.kind)) continue;
       const id = productId(l.name);
       const rec = records.get(id);
-      const purchase: Purchase = { batch: `${r.id}:${i}`, receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid, discount: l.discount, rawName: l.rawName };
+      const purchase: Purchase = { batch: `${r.id}:${i}`, receiptId: r.id, date: r.date, time: r.time, store: r.store, quantity: l.quantity, unit: l.unit, unitPrice: l.unitPrice, paid: l.paid, discount: l.discount, rawName: l.rawName, ...(r.carriedOver ? { carriedOver: true } : {}) };
       let p = byId.get(id);
       if (!p) {
         const type = rec?.type ?? defaultType(l.kind, l.unit);
-        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: rec?.shelfLifeDays, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [] };
+        p = { id, name: l.name, kind: l.kind, unit: l.unit, type, storage: rec?.storage ?? defaultStorage(type, l.kind), shelfLifeDays: rec?.shelfLifeDays, packSize: packSizeOf(rec, l.unit), packLabel: rec?.packLabel, hasPhoto: !!(rec?.hasPhoto || rec?.photo), custom: !!rec, purchases: [], stockPurchases: [] };
         byId.set(id, p);
         newest.set(id, r.date);
       }
-      p.purchases.push(purchase);
+      p.stockPurchases.push(purchase);
+      if (!r.carriedOver) p.purchases.push(purchase);
       if (r.date > newest.get(id)!) {
         newest.set(id, r.date);
         p.name = l.name;
@@ -136,8 +141,12 @@ export function productSummaries(receipts: FoodReceipt[], products: FoodProduct[
     }
   }
   const out = [...byId.values()];
-  for (const p of out) p.purchases.sort((a, b) => b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? ''));
-  return out.sort((a, b) => b.purchases[0].date.localeCompare(a.purchases[0].date) || a.name.localeCompare(b.name));
+  const newestFirst = (a: Purchase, b: Purchase) => b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? '');
+  for (const p of out) {
+    p.purchases.sort(newestFirst);
+    p.stockPurchases.sort(newestFirst);
+  }
+  return out.sort((a, b) => b.stockPurchases[0].date.localeCompare(a.stockPurchases[0].date) || a.name.localeCompare(b.name));
 }
 
 /** " / kg", " / l" or " each", to follow a price. */

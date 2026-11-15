@@ -110,12 +110,17 @@ export function ProductInfo({ product, record, onSave }: { product: ProductSumma
         </>
       )}
 
-      <h2 className="small muted food-h2">Purchases</h2>
-      <p className="muted small">
-        Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
-        {product.packSize ? ' per pack' : perUnit(product.unit)}
-        {product.packSize && ` · ${money(pricePerItem(averageUnitPrice(product), product.packSize))} per ${product.packLabel || 'item'}`}
-      </p>
+      {product.stockPurchases.some((x) => x.carriedOver) && (
+        <p className="muted small">Some of this was already yours before the app. It counts in stock, but not in prices, spending, how often you buy it or what was thrown away.</p>
+      )}
+      {product.purchases.length > 0 && <h2 className="small muted food-h2">Purchases</h2>}
+      {product.purchases.length > 0 && (
+        <p className="muted small">
+          Bought {product.purchases.length}× · average {money(averageUnitPrice(product))}
+          {product.packSize ? ' per pack' : perUnit(product.unit)}
+          {product.packSize && ` · ${money(pricePerItem(averageUnitPrice(product), product.packSize))} per ${product.packLabel || 'item'}`}
+        </p>
+      )}
       <ul className="game-list">
         {product.purchases.map((x, i) => (
           <li key={i}>

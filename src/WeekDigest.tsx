@@ -50,7 +50,7 @@ export function WeekDigest() {
     const extras: DigestExtras = {
       takeout: takeout.map((o) => ({ date: o.date, place: o.restaurant, total: o.total, currency: o.currency })),
       rides: rides.map((r) => ({ date: r.date, fare: r.fare, currency: r.currency })),
-      groceries: receipts.filter((r) => !isWoltTakeoutReceipt(r)).map((r) => ({ date: r.date, store: r.store, total: r.total ?? r.lines.reduce((a, l) => a + l.paid, 0) })),
+      groceries: receipts.filter((r) => !isWoltTakeoutReceipt(r) && !r.carriedOver).map((r) => ({ date: r.date, store: r.store, total: r.total ?? r.lines.reduce((a, l) => a + l.paid, 0) })),
       watched: plays.map((p) => ({ date: when(p).date, title: p.title, kind: p.kind })),
       music: music.map((m) => ({ date: m.date, plays: m.plays, ms: m.ms, artists: m.topArtists.map((a) => ({ name: a.name, plays: a.plays })) })),
       games: nights.flatMap((n) => n.matches.filter((m: Match) => !m.live).map((m) => ({ date: n.date, game: title.get(m.titleId) ?? 'a game' }))),

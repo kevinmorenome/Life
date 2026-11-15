@@ -24,7 +24,7 @@ const days = (n?: number) => (n ? (n === 7 ? 'weekly' : `every ${n} days`) : '')
 export function FoodStatsRoute({ tab: routeTab }: { tab?: string }) {
   const all = useCollection<FoodReceipt>('foodreceipts');
   // Wolt takeout still filed as a food receipt is counted under Takeout, not here.
-  const receipts = { ...all, items: useMemo(() => all.items.filter((r) => !isWoltTakeoutReceipt(r)), [all.items]) };
+  const receipts = { ...all, items: useMemo(() => all.items.filter((r) => !isWoltTakeoutReceipt(r) && !r.carriedOver), [all.items]) };
   const products = useCollection<FoodProduct>('foodproducts');
   const events = useCollection<StockEvent>('foodstock');
   const tab: TabId = TABS.find((t) => t.id === routeTab)?.id ?? 'overview';

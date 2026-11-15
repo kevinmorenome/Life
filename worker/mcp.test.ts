@@ -102,6 +102,7 @@ describe('protocol', () => {
       'shopping_list',
       'product_prices',
       'use_stock',
+      'add_owned_stock',
       'count_stock',
       'set_product_info',
       'find_product_photo',
@@ -1238,5 +1239,33 @@ describe('places and the weekly digest', () => {
       music: { plays: 30, hours: 1, daysWithMusic: 1, topArtists: [{ name: 'Bicep', times: 8 }] },
       games: { games: 1, days: 1, titles: [{ name: 'Catan', times: 1 }] },
     });
+  });
+});
+
+describe('add_owned_stock', () => {
+  it('adds stock that was owned before the app: a flagged receipt, a new product, the printed use-by, no price', async () => {
+    const { ctx, data } = setup();
+    const r = await call(ctx, 'add_owned_stock', { items: [{ name: 'Oat drink 3.5%', rawName: 'OAT DRINK', quantity: 2, productType: 'staple', storage: 'pantry', useBy: '2027-01-15' }] });
+    expect(r.isError).toBeFalsy();
+    const receipt = data.foodreceipts.get('owned-2026-10-25-fp-oat-drink-3-5') as unknown as { carriedOver?: boolean; lines: { unitPrice: number; paid: number }[]; store: string };
+    expect(receipt).toMatchObject({ carriedOver: true, store: 'Owned before the app' });
+    expect(receipt.lines[0]).toMatchObject({ unitPrice: 0, paid: 0 });
+    expect(data.foodproducts.get('fp-oat-drink-3-5')).toMatchObject({ type: 'staple', storage: 'pantry' });
+    expect([...data.foodstock.values()]).toMatchObject([{ type: 'expiry', batch: 'owned-2026-10-25-fp-oat-drink-3-5:0', useBy: '2027-01-15' }]);
+    const stock = (await call(ctx, 'list_stock', {})).json() as { name: string; quantity: number; useBy?: string }[];
+    expect(stock).toMatchObject([{ name: 'Oat drink 3.5%', quantity: 2, useBy: '2027-01-15' }]);
+  });
+  it('is left out of the statistics tools', async () => {
+    const { ctx } = setup();
+    await call(ctx, 'add_owned_stock', { items: [{ name: 'Pasta', quantity: 3 }] });
+    expect((await call(ctx, 'food_stats', {})).text).toContain('No grocery receipts yet.');
+    expect((await call(ctx, 'shopping_list', {})).text).toContain('Nothing to');
+  });
+  it('adds the same product on the same day only once, and refuses nothing to add', async () => {
+    const { ctx } = setup();
+    await call(ctx, 'add_owned_stock', { items: [{ name: 'Pasta', quantity: 3 }] });
+    const again = (await call(ctx, 'add_owned_stock', { items: [{ name: 'Pasta', quantity: 3 }] })).json() as { alreadyAdded: string[] };
+    expect(again.alreadyAdded).toEqual(['Pasta']);
+    expect((await call(ctx, 'add_owned_stock', { items: [{ name: '', quantity: 1 }] })).isError).toBe(true);
   });
 });
