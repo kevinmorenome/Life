@@ -7,3 +7,9 @@ dist
 whering-export*.json
 life-import*.json
 life-backup*.json
+
+# Impeccable (local/Copilot)
+.claude/settings.local.json
+.github/agents/
+.github/hooks/
+.github/skills/
