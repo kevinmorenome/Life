@@ -3,7 +3,7 @@
 // details are one fresh `takeoutdetails` record per order (adding again changes nothing) and each like / note is a fresh
 // `dishfeedback` record, the newest one for a dish winning. Item lines are in the order's currency.
 
-import { dishLines, filterLines, latestFeedback, mergeFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
+import { dishLines, filterLines, groupByDish, latestFeedback, mergeFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
 import { itemsSubtotal } from '../src/modules/wolt/receiptPdf';
 import type { DishFeedback, TakeoutDetail, TakeoutItem, TakeoutService } from '../src/modules/wolt/types';
 import { round2 } from '../src/modules/wolt/wolt';
@@ -274,12 +274,17 @@ async function search(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const { orders, details, lines, feedback } = await load(ctx);
   const found = filterLines(lines, { query: text(args.query), venue: text(args.venue), ...r });
   const limit = limitOf(args.limit, 15, 100);
-  const dishes = topDishes(found).slice(0, limit).map((d) => ({
-    ...d,
-    ...(d.spent === 0 ? { spent: undefined } : {}),
-    feedback: [...new Set(found.filter((l) => l.dish === d.dish).map((l) => l.key))].map((k) => feedback.get(k)).find((f) => f?.verdict || f?.note) ?? undefined,
-    priceOverTime: priceTrend(found, d.dish).length >= 2 ? priceTrend(found, d.dish) : undefined,
-  }));
+  const groups = groupByDish(found);
+  const dishes = topDishes(found).slice(0, limit).map((d) => {
+    const group = groups.get(d.dish.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim()) ?? [];
+    const trend = priceTrend(group, d.dish);
+    return {
+      ...d,
+      ...(d.spent === 0 ? { spent: undefined } : {}),
+      feedback: [...new Set(group.map((l) => l.key))].map((k) => feedback.get(k)).find((f) => f?.verdict || f?.note) ?? undefined,
+      priceOverTime: trend.length >= 2 ? trend : undefined,
+    };
+  });
   return ok({
     matches: found.length,
     dishes,

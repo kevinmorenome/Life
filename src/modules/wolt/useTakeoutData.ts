@@ -11,6 +11,7 @@ export function useTakeoutData() {
   const groups = useCollection<DishGroup>('dishgroups');
   const feedback = useCollection<DishFeedback>('dishfeedback');
   const lines = useMemo(() => dishLines(orders, details.items, groups.items), [orders, details.items, groups.items]);
+  const dishOf = useMemo(() => new Map(lines.map((l) => [l.key, l.dish])), [lines]);
   const verdicts = useMemo(() => latestFeedback(feedback.items), [feedback.items]);
   const detailOf = useMemo(() => new Map(details.items.map((d) => [d.orderId, d])), [details.items]);
 
@@ -41,5 +42,5 @@ export function useTakeoutData() {
     [groups.items, saveGroup, removeGroup],
   );
 
-  return { orders: orders as WoltOrder[], details: details.items, detailOf, lines, verdicts, rate, regroup, loading: l1 || details.loading || groups.loading || feedback.loading };
+  return { orders: orders as WoltOrder[], details: details.items, detailOf, dishOf, lines, verdicts, rate, regroup, loading: l1 || details.loading || groups.loading || feedback.loading };
 }

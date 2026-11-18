@@ -4,9 +4,8 @@ import { Empty, HBars, Section } from '../clothes/charts';
 import { filterLines, topDishes, topVenues } from './dishes';
 import { OrderItems } from './OrderItems';
 import { useTakeoutData } from './useTakeoutData';
-import { placeName } from './wolt';
+import { eur, placeName } from './wolt';
 
-const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 /** Everything ever ordered at one venue (branches combined) and how often. */
 export function VenueView({ venue }: { venue: string }) {

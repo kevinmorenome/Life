@@ -21,7 +21,7 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
         {detail.items.map((i, n) => {
           const key = dishKey(order.restaurant, i.name);
           const fb = data.verdicts.get(key);
-          const group = data.lines.find((l) => l.key === key)?.dish;
+          const group = data.dishOf.get(key);
           const shown = group && group !== i.name.replace(/\s+/g, ' ').trim() ? group : i.name;
           return (
             <li key={n}>

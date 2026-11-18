@@ -6,10 +6,8 @@ import { Empty, HBars, ReadoutColumns, Section, Toggle, type Bar } from '../clot
 import { filterLines, itemSpendPerMonth, repeatPrices, topDishes, topVenues, unratedDishes } from './dishes';
 import { OrderItems } from './OrderItems';
 import { useTakeoutData } from './useTakeoutData';
-import { placeName } from './wolt';
+import { count, eur, placeName } from './wolt';
 
-const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
-const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00Z').toLocaleDateString(undefined, { month: 'short', year: '2-digit', timeZone: 'UTC' });
 
 /** What you order: top dishes and venues from the item lines, with filters, price changes and what is still to rate. */

@@ -133,17 +133,28 @@ export function priceTrend(lines: DishLine[], dish: string): PricePoint[] {
 
 /** Dishes ordered at least `min` times whose unit price changed, with first and latest price. */
 export function repeatPrices(lines: DishLine[], min = 3): { dish: string; times: number; first: number; latest: number; change: number }[] {
-  const dishes = new Set(lines.map((l) => norm(l.dish)));
   const out = [];
-  for (const k of dishes) {
-    const pts = priceTrend(lines.filter((l) => norm(l.dish) === k), k);
+  for (const group of groupByDish(lines).values()) {
+    const pts = priceTrend(group, group[0].dish);
     if (pts.length < min) continue;
     const first = pts[0].unitPrice;
     const latest = pts[pts.length - 1].unitPrice;
     if (first === latest) continue;
-    out.push({ dish: lines.find((l) => norm(l.dish) === k)!.dish, times: pts.length, first, latest, change: round2(latest - first) });
+    out.push({ dish: group[0].dish, times: pts.length, first, latest, change: round2(latest - first) });
   }
   return out.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+}
+
+/** Lines grouped by dish name (accents, case and spacing ignored), so per-dish work needs one pass over the lines. */
+export function groupByDish(lines: DishLine[]): Map<string, DishLine[]> {
+  const out = new Map<string, DishLine[]>();
+  for (const l of lines) {
+    const k = norm(l.dish);
+    const g = out.get(k);
+    if (g) g.push(l);
+    else out.set(k, [l]);
+  }
+  return out;
 }
 
 /** Euro spend on items per month, first to `endMonth`. */

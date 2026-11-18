@@ -8,9 +8,9 @@ import { WoltStatsRoute } from './WoltStatsRoute';
 // they show on the calendar and in Stats → Takeout. Wolt grocery orders are not takeout: they go to the food log.
 export const woltModule: LifeModule = {
   id: 'wolt',
-  title: 'Takeout',
+  title: 'What I eat',
   icon: <BagIcon />,
-  description: 'Takeout and restaurant deliveries ordered through Wolt, Bolt Food or Uber Eats.',
+  description: 'What you order for takeout (Wolt, Bolt Food, Uber Eats): top dishes, venues and what you liked.',
   render: (subroute) => <TakeoutRoot subroute={subroute} />,
   actions: [],
   calendarLayer: useWoltCalendarLayer,
