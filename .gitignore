@@ -9,3 +9,4 @@ life-import*.json
 life-backup*.json
 takeout-items.cache.json
 takeout-payloads/
+takeout-items.decisions.json
