@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { EditIcon, ThumbDownIcon, ThumbUpIcon } from '../../icons';
-import { dishKey, feesOf } from './dishes';
+import { dishKey, feesOf, mineOf } from './dishes';
 import type { TakeoutDetail, WoltOrder } from './types';
 import type { useTakeoutData } from './useTakeoutData';
 import { placeName } from './wolt';
@@ -21,14 +21,16 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
         {detail.items.map((i, n) => {
           const key = dishKey(order.restaurant, i.name);
           const fb = data.verdicts.get(key);
+          const mine = mineOf(i.qty, data.shares.get(order.id), n);
           const group = data.dishOf.get(key);
           const shown = group && group !== i.name.replace(/\s+/g, ' ').trim() ? group : i.name;
           return (
             <li key={n}>
-              <span className="item-qty">{i.qty}×</span>
+              <span className="item-qty">{mine === i.qty ? `${i.qty}×` : `${mine}/${i.qty}×`}</span>
               <span className="item-name">
                 {shown}
                 {shown !== i.name && <span className="muted small"> · printed: {i.name}</span>}
+                {mine < i.qty && <span className="muted small item-note">{mine === 0 ? 'For someone else, not counted in What I eat' : `${mine} of ${i.qty} yours, the rest for someone else`}</span>}
                 {fb?.note && <span className="muted small item-note">“{fb.note}”</span>}
               </span>
               <span className="item-price">{price(i.linePrice, order.currency)}</span>
@@ -43,7 +45,7 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
                   <EditIcon />
                 </button>
               </span>
-              {open === key && <ItemEditor venue={venue} raw={i.name} group={shown !== i.name ? shown : ''} note={fb?.note ?? ''} data={data} onDone={() => setOpen(null)} />}
+              {open === key && <ItemEditor venue={venue} raw={i.name} orderId={order.id} index={n} qty={i.qty} mine={mine} group={shown !== i.name ? shown : ''} note={fb?.note ?? ''} data={data} onDone={() => setOpen(null)} />}
             </li>
           );
         })}
@@ -58,19 +60,25 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
   );
 }
 
-function ItemEditor({ venue, raw, group, note, data, onDone }: { venue: string; raw: string; group: string; note: string; data: Data; onDone: () => void }) {
+function ItemEditor({ venue, raw, orderId, index, qty, mine, group, note, data, onDone }: { venue: string; raw: string; orderId: string; index: number; qty: number; mine: number; group: string; note: string; data: Data; onDone: () => void }) {
   const [g, setG] = useState(group);
   const [n, setN] = useState(note);
+  const [m, setM] = useState(mine);
   return (
     <form
       className="item-editor"
       onSubmit={async (e) => {
         e.preventDefault();
         if (n.trim() !== note.trim()) await data.rate(venue, raw, { note: n });
+        if (m !== mine) await data.setMine(orderId, index, qty, m);
         if (g.trim() !== group.trim()) await data.regroup({ venue, raw }, g);
         onDone();
       }}
     >
+      <label>
+        <span className="muted small">How many of the {qty} were yours? (0 = all for someone else)</span>
+        <input type="number" inputMode="numeric" min={0} max={qty} step={1} value={m} onChange={(e) => setM(Math.min(qty, Math.max(0, Math.floor(Number(e.target.value)) || 0)))} />
+      </label>
       <label>
         <span className="muted small">Your note</span>
         <input type="text" value={n} onChange={(e) => setN(e.target.value)} placeholder="e.g. less sauce next time" maxLength={500} />

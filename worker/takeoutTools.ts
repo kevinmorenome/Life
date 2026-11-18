@@ -3,9 +3,9 @@
 // details are one fresh `takeoutdetails` record per order (adding again changes nothing) and each like / note is a fresh
 // `dishfeedback` record, the newest one for a dish winning. Item lines are in the order's currency.
 
-import { dishLines, filterLines, groupByDish, latestFeedback, mergeFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
+import { dishLines, filterLines, groupByDish, latestFeedback, latestShares, mergeFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
 import { itemsSubtotal } from '../src/modules/wolt/receiptPdf';
-import type { DishFeedback, TakeoutDetail, TakeoutItem, TakeoutService } from '../src/modules/wolt/types';
+import type { DishFeedback, OrderShare, TakeoutDetail, TakeoutItem, TakeoutService } from '../src/modules/wolt/types';
 import { round2 } from '../src/modules/wolt/wolt';
 import type { ToolContext, ToolResult } from './mcpTools';
 import type { Row } from './records';
@@ -112,7 +112,7 @@ export const TAKEOUT_TOOLS = [
   {
     name: 'attach_takeout_items',
     description:
-      'Attach the item lines to takeout orders that are ALREADY in the takeout log (added earlier with add_wolt_orders / add_takeout_orders). Per order give sourceId (the same id used to add it: for Wolt the "ID narudžbe" from the PDF), service ("wolt" default, "bolt", "uber") and the fields read from the Wolt PDFs: items, paymentMethod, orderType and, from the second PDF ("Račun …", Wolt\'s fee invoice), feesTotal and invoiceNo. Idempotent: an order that already has items is skipped and reported under alreadyAttached, so calling it twice never duplicates lines. An order that is not in the log is reported under missingOrders and nothing is created: add it with add_wolt_orders first (or pass items there). The item subtotal is recomputed from the lines; the difference to the order total is "fees and other" (delivery, service fee, tip) and is not an error, but unreconciled lists orders where items + feesTotal do not add up to the total. Details are never edited afterwards from here.',
+      'Attach the item lines to takeout orders that are ALREADY in the takeout log (added earlier with add_wolt_orders / add_takeout_orders). Per order give sourceId (the same id used to add it: for Wolt the "ID narudžbe" from the PDF), service ("wolt" default, "bolt", "uber") and the fields read from the Wolt PDFs: items, paymentMethod, orderType and, from the second PDF ("Račun …", Wolt\'s fee invoice), feesTotal and invoiceNo. Idempotent: an order that already has items is skipped and reported under alreadyAttached, so calling it twice never duplicates lines. An order that is not in the log is reported under missingOrders and nothing is created: add it with add_wolt_orders first (or pass items there). The item subtotal is recomputed from the lines; the difference to the order total is "fees and other" (delivery, service fee, tip) and is not an error, but unreconciled lists orders where items + feesTotal do not add up to the total. Details are never edited afterwards from here. Afterwards ask the user whether all the items were for them (set_item_owner).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -128,6 +128,21 @@ export const TAKEOUT_TOOLS = [
         },
       },
       required: ['orders'],
+    },
+  },
+  {
+    name: 'set_item_owner',
+    description:
+      'Say which items of a takeout order were NOT for the user (they sometimes order for someone else). What I eat, top dishes and the dishes in the digests count only what is the user\'s. Give the order (sourceId, service default "wolt") and, per line, `item` (words of its name) or `index` (0-based position in the order\'s items) and `mine` = how many of that line\'s pieces were the user\'s (0 = all for someone else). Lines you do not list keep their earlier setting (default: all the user\'s); `allMine: true` clears every exception. ASK the user after adding items to an order with several dishes or a quantity above 1 whether everything was for them; do not guess. Needs the items attached first. Read the order with search_takeout_items. A newer call replaces the order\'s earlier setting as a whole, so repeat lines that should stay.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourceId: { type: 'string' },
+        service: { type: 'string', enum: ['wolt', 'bolt', 'uber'] },
+        allMine: { type: 'boolean' },
+        items: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, index: { type: 'integer', minimum: 0 }, mine: { type: 'integer', minimum: 0 } }, required: ['mine'] } },
+      },
+      required: ['sourceId'],
     },
   },
   {
@@ -174,13 +189,14 @@ export const TAKEOUT_TOOLS = [
 const SERVICES = new Set<string>(['wolt', 'bolt', 'uber']);
 
 async function load(ctx: ToolContext) {
-  const [orders, details, groups, feedback] = await Promise.all([ctx.store.list('woltorders'), ctx.store.list('takeoutdetails'), ctx.store.list('dishgroups'), ctx.store.list('dishfeedback')]);
+  const [orders, details, groups, feedback, shareRows] = await Promise.all([ctx.store.list('woltorders'), ctx.store.list('takeoutdetails'), ctx.store.list('dishgroups'), ctx.store.list('dishfeedback'), ctx.store.list('ordershares')]);
   const lines = dishLines(
     orders.map((o) => ({ ...o, restaurant: String(o.restaurant ?? ''), date: String(o.date ?? ''), currency: String(o.currency ?? 'EUR'), total: Number(o.total) || 0 }) as never),
     details as unknown as TakeoutDetail[],
     groups as unknown as { key: string; group: string }[],
+    latestShares(shareRows as unknown as OrderShare[]),
   );
-  return { orders, details, lines, feedback: latestFeedback(feedback as unknown as DishFeedback[]), feedbackRows: feedback };
+  return { orders, details, shareRows, lines, feedback: latestFeedback(feedback as unknown as DishFeedback[]), feedbackRows: feedback };
 }
 
 async function attach(args: Args, ctx: ToolContext): Promise<ToolResult> {
@@ -224,6 +240,38 @@ async function attach(args: Args, ctx: ToolContext): Promise<ToolResult> {
     ...(res.unreconciled.length ? { unreconciled: res.unreconciled } : {}),
     ...(warnings.length ? { warnings } : {}),
   });
+}
+
+async function setOwner(args: Args, ctx: ToolContext): Promise<ToolResult> {
+  const sourceId = text(args.sourceId, 100)?.replace(/[^A-Za-z0-9_-]/g, '');
+  const service = typeof args.service === 'string' && SERVICES.has(args.service) ? args.service : 'wolt';
+  if (!sourceId) return fail('sourceId is required');
+  const orderId = `${service}-${sourceId}`;
+  const { details, shareRows } = await load(ctx);
+  const detail = details.find((d) => d.orderId === orderId);
+  if (!detail) return fail(`${orderId} has no item lines yet: attach them with attach_takeout_items first.`);
+  const lines = (Array.isArray(detail.items) ? detail.items : []) as { name: string; qty: number }[];
+  let mine: Record<string, number> = args.allMine === true ? {} : { ...(latestShares(shareRows as unknown as OrderShare[]).get(orderId) ?? {}) };
+  const changes = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
+  if (changes.length === 0 && args.allMine !== true) return fail('give items with `mine`, or allMine: true');
+  for (const c of changes) {
+    const n = Number(c.mine);
+    if (!Number.isInteger(n) || n < 0) return fail('mine must be a whole number, 0 or more');
+    let index = typeof c.index === 'number' ? c.index : -1;
+    if (index < 0) {
+      const words = String(c.item ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+      const hits = words.length ? lines.flatMap((l, i) => (words.every((w) => l.name.toLowerCase().includes(w)) ? [i] : [])) : [];
+      if (hits.length !== 1) return fail(hits.length ? `"${c.item}" matches several lines (${hits.map((i) => `#${i} ${lines[i].name}`).join('; ')}): use index.` : `No line of ${orderId} matches "${c.item}". Lines: ${lines.map((l, i) => `#${i} ${l.name}`).join('; ')}`);
+      index = hits[0];
+    }
+    if (!lines[index]) return fail(`${orderId} has no line #${index}`);
+    if (n >= lines[index].qty) delete mine[String(index)];
+    else mine[String(index)] = n;
+  }
+  const id = `os-${ctx.newId()}`;
+  const stamp = ctx.now.toISOString();
+  await ctx.store.put('ordershares', id, { id, orderId, mine, at: stamp, createdAt: stamp, updatedAt: stamp });
+  return ok({ saved: true, orderId, notAllMine: Object.entries(mine).map(([i, n]) => ({ line: lines[Number(i)]?.name, mine: n, of: lines[Number(i)]?.qty })) });
 }
 
 async function rate(args: Args, ctx: ToolContext): Promise<ToolResult> {
@@ -311,6 +359,8 @@ export async function callTakeoutTool(name: string, args: Args, ctx: ToolContext
   switch (name) {
     case 'attach_takeout_items':
       return ctx.readOnly ? fail(READ_ONLY) : attach(args, ctx);
+    case 'set_item_owner':
+      return ctx.readOnly ? fail(READ_ONLY) : setOwner(args, ctx);
     case 'rate_dish':
       return ctx.readOnly ? fail(READ_ONLY) : rate(args, ctx);
     case 'list_unrated_dishes':

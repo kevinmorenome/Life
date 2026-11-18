@@ -31,7 +31,7 @@ import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './rec
 import type { RecordStore, Row } from './records';
 import { READ_TOOLS, callReadTool } from './readTools';
 import { RECIPE_TOOLS, callRecipeTool } from './recipeTools';
-import { dishKey } from '../src/modules/wolt/dishes';
+import { dishLines, latestShares } from '../src/modules/wolt/dishes';
 import { DETAIL_PROPS, TAKEOUT_TOOLS, callTakeoutTool, parseDetail, writeDetails } from './takeoutTools';
 import { addDays, dateRange, fail, isRealDate, lastWorn, ok, placeCheckins, strings, text, timesWorn, utcToday, wornByDay, type Args } from './toolUtil';
 
@@ -862,7 +862,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
   const length = Math.min(Math.max(Math.floor(Number(args.days)) || 7, 1), 31);
   const end = (args.end as string | undefined) ?? addDays(utcToday(now), -1);
   const start = addDays(end, -(length - 1));
-  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles, takeoutDetails, dishGroups] = await Promise.all([
+  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles, takeoutDetails, dishGroups, orderShares] = await Promise.all([
     placeCheckins(store),
     store.list('clothes'),
     store.list('outfits'),
@@ -877,9 +877,11 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     store.list('gametitles'),
     store.list('takeoutdetails'),
     store.list('dishgroups'),
+    store.list('ordershares'),
   ]);
-  const dishNames = new Map(dishGroups.map((g) => [String(g.key), String(g.group)]));
-  const itemsOf = new Map(takeoutDetails.map((d) => [String(d.orderId), (Array.isArray(d.items) ? d.items : []) as { name: string; qty: number }[]]));
+  // Only what is the user's (an order may be partly for someone else), under their own dish names.
+  const itemsOf = new Map<string, { name: string; qty: number }[]>(takeoutDetails.map((d) => [String(d.orderId), []]));
+  for (const l of dishLines(takeout as never, takeoutDetails as never, dishGroups as never, latestShares(orderShares as never))) itemsOf.get(l.orderId)?.push({ name: l.dish, qty: l.qty });
   const titleName = new Map(titles.map((t) => [t.id, String(t.name ?? 'a game')]));
   const days = buildDays(
     workdays.map((r) => ({ id: r.id, status: r.status, arrive: r.arrive, leave: r.leave, reason: r.reason }) as unknown as WorkDay),
@@ -892,7 +894,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     days,
     start,
     end,
-    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR'), ...(itemsOf.has(r.id) ? { items: itemsOf.get(r.id)!.map((i) => ({ name: dishNames.get(dishKey(String(r.restaurant ?? ''), i.name)) ?? i.name, qty: num(i.qty) })) } : {}) })),
+    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR'), ...(itemsOf.has(r.id) ? { items: itemsOf.get(r.id)! } : {}) })),
     rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
     groceries: receipts
       .filter((r) => isRealDate(r.date) && !r.carriedOver)

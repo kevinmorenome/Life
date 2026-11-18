@@ -80,3 +80,18 @@ export interface DishGroup {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Which part of an order is yours (you may order for someone else). Append-only: the newest record for an order wins whole.
+ * `mine` lists only the exceptions, by line number in the order's items: how many of that line were yours (0 = none).
+ * A line not listed is all yours. What I eat counts only what is yours; the order's own total is unchanged.
+ */
+export interface OrderShare {
+  id: string;
+  orderId: string;
+  mine: Record<string, number>;
+  /** ISO timestamp. */
+  at: string;
+  createdAt: string;
+  updatedAt: string;
+}

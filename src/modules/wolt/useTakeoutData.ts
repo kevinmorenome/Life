@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useCollection } from '../../lib/useCollection';
-import { dishKey, dishLines, latestFeedback, mergeFeedback, type DishLine } from './dishes';
-import type { DishFeedback, DishGroup, TakeoutDetail, WoltOrder } from './types';
+import { dishKey, dishLines, latestFeedback, latestShares, mergeFeedback, type DishLine } from './dishes';
+import type { DishFeedback, DishGroup, OrderShare, TakeoutDetail, WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
 
 /** Orders, their item lines, your dish groups and likes, and the writes for the last two. */
@@ -10,7 +10,9 @@ export function useTakeoutData() {
   const details = useCollection<TakeoutDetail>('takeoutdetails');
   const groups = useCollection<DishGroup>('dishgroups');
   const feedback = useCollection<DishFeedback>('dishfeedback');
-  const lines = useMemo(() => dishLines(orders, details.items, groups.items), [orders, details.items, groups.items]);
+  const shareRows = useCollection<OrderShare>('ordershares');
+  const shares = useMemo(() => latestShares(shareRows.items), [shareRows.items]);
+  const lines = useMemo(() => dishLines(orders, details.items, groups.items, shares), [orders, details.items, groups.items, shares]);
   const dishOf = useMemo(() => new Map(lines.map((l) => [l.key, l.dish])), [lines]);
   const verdicts = useMemo(() => latestFeedback(feedback.items), [feedback.items]);
   const detailOf = useMemo(() => new Map(details.items.map((d) => [d.orderId, d])), [details.items]);
@@ -28,6 +30,19 @@ export function useTakeoutData() {
     [feedback.items, saveFeedback],
   );
 
+  /** How many of one line were yours (a new share record for the order, keeping its other lines). */
+  const { save: saveShare } = shareRows;
+  const setMine = useCallback(
+    async (orderId: string, index: number, qty: number, mine: number) => {
+      const mineMap = { ...(shares.get(orderId) ?? {}) };
+      if (mine >= qty) delete mineMap[String(index)];
+      else mineMap[String(index)] = Math.max(0, mine);
+      const now = new Date().toISOString();
+      await saveShare({ id: `os-${crypto.randomUUID()}`, orderId, mine: mineMap, at: now, createdAt: now, updatedAt: now });
+    },
+    [shares, saveShare],
+  );
+
   /** Gives a dish your own name (empty = back to the printed one). The printed name is never changed. */
   const { save: saveGroup, remove: removeGroup } = groups;
   const regroup = useCallback(
@@ -42,5 +57,5 @@ export function useTakeoutData() {
     [groups.items, saveGroup, removeGroup],
   );
 
-  return { orders: orders as WoltOrder[], details: details.items, detailOf, dishOf, lines, verdicts, rate, regroup, loading: l1 || details.loading || groups.loading || feedback.loading };
+  return { orders: orders as WoltOrder[], details: details.items, detailOf, dishOf, shares, setMine, lines, verdicts, rate, regroup, loading: l1 || details.loading || groups.loading || feedback.loading || shareRows.loading };
 }

@@ -65,3 +65,22 @@ describe('mergeFeedback', () => {
     expect(mergeFeedback({ verdict: 'liked', note: 'x' }, { note: '' })).toEqual({ verdict: 'liked' });
   });
 });
+
+describe('shares: items that were for someone else', () => {
+  const orders = [order('wolt-1', 'Tian Tan', '2026-09-01', 30)];
+  const details = [detail('wolt-1', [['Pohana piletina', 2, 10], ['Juha', 1, 3]])];
+  it('counts only your part and drops lines that are all someone else’s', async () => {
+    const { latestShares } = await import('./dishes');
+    const shares = latestShares([{ orderId: 'wolt-1', mine: { '0': 1, '1': 0 }, at: '2026-09-02T00:00:00Z' }]);
+    const l = dishLines(orders, details, [], shares);
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ raw: 'Pohana piletina', qty: 1, linePrice: 10 });
+    expect(topDishes(l)[0]).toMatchObject({ count: 1, spent: 10 });
+  });
+  it('the newest share wins whole, and no share means all yours', async () => {
+    const { latestShares } = await import('./dishes');
+    const s = latestShares([{ orderId: 'wolt-1', mine: { '1': 0 }, at: '2026-09-02T00:00:00Z' }, { orderId: 'wolt-1', mine: {}, at: '2026-09-03T00:00:00Z' }]);
+    expect(dishLines(orders, details, [], s)).toHaveLength(2);
+    expect(dishLines(orders, details)).toHaveLength(2);
+  });
+});

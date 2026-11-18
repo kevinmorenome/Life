@@ -1,6 +1,6 @@
 // What was ordered: pure helpers over takeout orders, their item lines, your dish groups and your likes / notes.
 // Shared by the app and the MCP tools (type-only imports).
-import type { DishFeedback, DishGroup, TakeoutDetail, WoltOrder } from './types';
+import type { DishFeedback, DishGroup, OrderShare, TakeoutDetail, WoltOrder } from './types';
 import { isEuro, placeName, round2 } from './wolt';
 
 /** Key of a dish at a venue: branches combined, case and spacing ignored. The raw name is never changed. */
@@ -23,17 +23,35 @@ export interface DishLine {
   linePrice: number;
 }
 
-/** Every item line of every order that has details, newest first. `groups` rename lines by their key. */
-export function dishLines(orders: WoltOrder[], details: TakeoutDetail[], groups: Pick<DishGroup, 'key' | 'group'>[] = []): DishLine[] {
+/** The newest share of each order: line number → how many of it were yours. */
+export function latestShares(events: Pick<OrderShare, 'orderId' | 'mine' | 'at'>[]): Map<string, Record<string, number>> {
+  const newest = new Map<string, Pick<OrderShare, 'mine' | 'at'>>();
+  for (const e of events) if (!newest.get(e.orderId) || e.at >= newest.get(e.orderId)!.at) newest.set(e.orderId, e);
+  return new Map([...newest].map(([id, e]) => [id, e.mine]));
+}
+
+/** Pieces of a line that are yours (all, unless the order's share says otherwise), within 0..qty. */
+export const mineOf = (qty: number, share?: Record<string, number>, index = 0) => {
+  const m = share?.[String(index)];
+  return m === undefined ? qty : Math.min(Math.max(m, 0), qty);
+};
+
+/**
+ * Every item line of every order that has details, newest first. `groups` rename lines by their key; `shares` keep only what is yours
+ * (a line that is all someone else's is left out, a part is scaled by its unit price).
+ */
+export function dishLines(orders: WoltOrder[], details: TakeoutDetail[], groups: Pick<DishGroup, 'key' | 'group'>[] = [], shares: Map<string, Record<string, number>> = new Map()): DishLine[] {
   const byOrder = new Map(orders.map((o) => [o.id, o]));
   const names = new Map(groups.map((g) => [g.key, g.group.trim()]));
   const out: DishLine[] = [];
   for (const d of details) {
     const o = byOrder.get(d.orderId);
     if (!o) continue;
-    for (const i of d.items) {
+    for (const [n, i] of d.items.entries()) {
+      const qty = mineOf(i.qty, shares.get(o.id), n);
+      if (qty <= 0) continue;
       const key = dishKey(o.restaurant, i.name);
-      out.push({ orderId: o.id, date: o.date, time: o.time, venue: placeName(o.restaurant), currency: o.currency, raw: i.name, dish: names.get(key) || i.name.replace(/\s+/g, ' ').trim(), key, qty: i.qty, unitPrice: i.unitPrice, linePrice: i.linePrice });
+      out.push({ orderId: o.id, date: o.date, time: o.time, venue: placeName(o.restaurant), currency: o.currency, raw: i.name, dish: names.get(key) || i.name.replace(/\s+/g, ' ').trim(), key, qty, unitPrice: i.unitPrice, linePrice: qty === i.qty ? i.linePrice : round2(i.unitPrice * qty) });
     }
   }
   return out.sort((a, b) => `${b.date} ${b.time ?? ''}`.localeCompare(`${a.date} ${a.time ?? ''}`));

@@ -37,7 +37,7 @@ export type ReadStore = keyof typeof FIELDS;
 /** Narrow view of the records the MCP tools need; faked in tests. */
 export interface RecordStore {
   list(store: ReadStore): Promise<Row[]>;
-  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'recipes' | 'utilitybills' | 'takeoutdetails' | 'dishfeedback', id: string, record: object): Promise<void>;
+  put(store: 'clothes' | 'outfits' | 'inbox' | 'workevents' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'recipes' | 'utilitybills' | 'takeoutdetails' | 'dishfeedback' | 'ordershares', id: string, record: object): Promise<void>;
   /** Photo data URLs of the given items (only those that have one). */
   photos(ids: string[]): Promise<Map<string, string>>;
 }
@@ -54,6 +54,7 @@ const FIELDS = {
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
   takeoutdetails: ['orderId', 'items', 'itemsSubtotal', 'feesTotal', 'invoiceNo', 'paymentMethod', 'orderType'],
   dishfeedback: ['key', 'venue', 'dish', 'verdict', 'note', 'at'],
+  ordershares: ['orderId', 'mine', 'at'],
   dishgroups: ['key', 'venue', 'raw', 'group'],
   utilitybills: ['utility', 'number', 'month', 'amount', 'paidOn', 'paidBy', 'consumption'],
   rides: ['provider', 'date', 'time', 'from', 'to', 'fare', 'currency'],
@@ -72,7 +73,7 @@ const FIELDS = {
   settings: ['pantryStaples'],
 } as const;
 
-const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'topTracks', 'matches', 'playerIds', 'ingredients', 'steps', 'cooked', 'pantryStaples', 'items']);
+const JSON_FIELDS = new Set(['tags', 'wears', 'itemIds', 'outfitIds', 'lines', 'topArtists', 'topTracks', 'matches', 'playerIds', 'ingredients', 'steps', 'cooked', 'pantryStaples', 'items', 'mine']);
 
 export function d1Store(db: D1Database): RecordStore {
   return {

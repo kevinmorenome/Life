@@ -149,3 +149,27 @@ describe('review fixes', () => {
     expect((await call(s.ctx, 'food_stats', {})).json().takeout.topDishes[0].dish).toContain('Pohana');
   });
 });
+
+describe('set_item_owner', () => {
+  async function ready() {
+    const s = setup({ woltorders: [ORDER] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS, feesTotal: 1.97 }] });
+    return s;
+  }
+  it('leaves out what was for someone else everywhere', async () => {
+    const { ctx } = await ready();
+    const r = (await call(ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'pohana', mine: 1 }, { item: 'povrća', mine: 0 }] })).json();
+    expect(r.notAllMine).toHaveLength(2);
+    const t = (await call(ctx, 'takeout_top', {})).json();
+    expect(t.topDishes.find((d: { dish: string }) => d.dish.includes('povrća'))).toBeUndefined();
+    expect(t.topDishes.find((d: { dish: string }) => d.dish.includes('Pohana')).count).toBe(1);
+    expect((await call(ctx, 'day_summary', { date: '2026-11-15' })).json().takeout[0].items).toEqual(['1× Pohana piletina u slatko - kiselom umaku', '1× Kiselo - ljuta juha s piletinom']);
+  });
+  it('asks which line when the words match several, and allMine clears it', async () => {
+    const { ctx } = await ready();
+    expect((await call(ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'juha', mine: 0 }] })).error).toBe(true);
+    await call(ctx, 'set_item_owner', { sourceId: 'abc', items: [{ index: 0, mine: 0 }] });
+    await call(ctx, 'set_item_owner', { sourceId: 'abc', allMine: true });
+    expect((await call(ctx, 'takeout_top', {})).json().topDishes).toHaveLength(3);
+  });
+});
