@@ -23,6 +23,7 @@ import { OWNED_STORE, parseOwnedItems } from './ownedStock';
 import { parseRides } from './rides';
 import { PLACES, parseWorkLog } from './workLog';
 import { parseWoltOrders } from './wolt';
+import { parseUtilityBills } from './utilityBills';
 import type { TakeoutService } from '../src/modules/wolt/types';
 import type { PhotoSearchInput } from './foodPhotos';
 import type { PhotoSearchResult } from './openfoodfacts';
@@ -264,6 +265,51 @@ export const TOOLS = [
         },
       },
       required: ['orders'],
+    },
+  },
+  {
+    name: 'add_utility_bills',
+    description:
+      'Save the user\'s home WATER and GAS bills in the Home module, with the consumption and cost details. Use it when the user sends a photo or PDF of a bill (or points to bills in Drive / Gmail / the old payments spreadsheet): read every figure from it and pass one entry per bill, as many as you like per call. Per bill give utility = "water" or "gas"; sourceId = a unique id for the bill (the invoice or internal number printed on it; for a bill with no number, something stable like "2023-04-a") so the same bill is never added twice: adding again is safe and skips ones already saved; month = the month it is for (YYYY-MM, or give periodEnd and it is taken from that); amount = the total to pay in euro. Add everything the bill shows: number, periodStart / periodEnd (YYYY-MM-DD), due (due date), consumption (m3 for water, Sm3 for gas, for that period), readingStart / readingEnd (the meter readings at the two ends of the period; for gas just the latest reading as readingEnd), estimated = true when the supplier estimated the reading instead of reading the meter, and lines = the breakdown (label as printed, amount, and quantity / unit / unitPrice when the line has them: supply, drainage, treatment, fixed fees, fees, VAT). paidOn = the day it was paid (YYYY-MM-DD) and paidBy = "kevin", "felipe" or "other" (the other person who paid it for a while) only when you know it; leave both out for an unpaid bill (the user marks it paid in the app). Bills are never edited afterwards from here, so put everything you can read in the first time. Never include the customer\'s name, address, OIB or IBAN.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bills: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              utility: { type: 'string', enum: ['water', 'gas'] },
+              sourceId: { type: 'string', description: 'Invoice / internal number, or another stable unique id' },
+              number: { type: 'string', description: 'Invoice number as printed' },
+              month: { type: 'string', description: 'YYYY-MM the bill is for' },
+              periodStart: { type: 'string', description: 'YYYY-MM-DD' },
+              periodEnd: { type: 'string', description: 'YYYY-MM-DD' },
+              due: { type: 'string', description: 'Due date, YYYY-MM-DD' },
+              amount: { type: 'number', minimum: 0, description: 'Total to pay, euro' },
+              paidOn: { type: 'string', description: 'YYYY-MM-DD, only when known' },
+              paidBy: { type: 'string', enum: ['kevin', 'felipe', 'other'] },
+              consumption: { type: 'number', minimum: 0, description: 'm3 (water) or Sm3 (gas) for the period' },
+              readingStart: { type: 'number', minimum: 0 },
+              readingEnd: { type: 'number', minimum: 0 },
+              estimated: { type: 'boolean', description: 'True when the reading was estimated by the supplier' },
+              lines: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: { label: { type: 'string' }, amount: { type: 'number' }, quantity: { type: 'number' }, unit: { type: 'string' }, unitPrice: { type: 'number' } },
+                  required: ['label', 'amount'],
+                },
+              },
+              note: { type: 'string' },
+            },
+            required: ['utility', 'sourceId', 'amount'],
+          },
+        },
+      },
+      required: ['bills'],
     },
   },
   {
@@ -624,6 +670,8 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
       return ctx.readOnly ? fail(READ_ONLY) : addReceiptItems(args, ctx);
     case 'add_grocery_receipt':
       return ctx.readOnly ? fail(READ_ONLY) : addGroceryReceipt(args, ctx);
+    case 'add_utility_bills':
+      return ctx.readOnly ? fail(READ_ONLY) : addUtilityBills(args, ctx);
     case 'add_wolt_orders':
       return ctx.readOnly ? fail(READ_ONLY) : addWoltOrders(args, ctx, 'wolt');
     case 'add_takeout_orders':
@@ -1168,6 +1216,25 @@ async function addGroceryReceipt(args: Args, { store, now }: ToolContext): Promi
           warning: `The printed total (${mismatch.printed}) does not match the lines (${mismatch.summed}). A line was probably misread or missing: check the receipt again and tell the user.`,
         }
       : {}),
+  });
+}
+
+// ---- home bills ----
+
+async function addUtilityBills(args: Args, { store, now }: ToolContext): Promise<ToolResult> {
+  const { bills, rejected } = parseUtilityBills(args.bills);
+  const known = new Set((await store.list('utilitybills')).map((r) => r.id));
+  const stamp = now.toISOString();
+  let added = 0;
+  for (const b of bills) {
+    if (known.has(b.id)) continue; // already saved: bills are never overwritten (the app marks them paid and fixes them)
+    await store.put('utilitybills', b.id, { ...b, createdAt: stamp, updatedAt: stamp });
+    added++;
+  }
+  return ok({
+    added,
+    alreadyAdded: bills.length - added,
+    ...(rejected.length ? { rejected, warning: 'Some bills were left out: fix them from the bills and add them again.' } : {}),
   });
 }
 
