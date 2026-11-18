@@ -10354,3 +10354,204 @@ h2,
   line-height: 1.05;
   letter-spacing: -0.02em;
 }
+
+/* Day screen, Worn: an outfit is one square, each loose piece another. The squares are the one place on this screen where
+   content gets a hairlined plate, because the user asked for it. */
+.worn-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.2rem 0 0.3rem;
+}
+.worn-sq {
+  position: relative;
+  min-width: 0;
+}
+.worn-plate {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--glass-line, var(--border));
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.worn-plate .thumb {
+  width: 72%;
+  height: 72%;
+  border-radius: 14px;
+  background: none;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px rgb(31 38 54 / 0.18));
+}
+.worn-plate .thumb-empty {
+  font-size: 2rem;
+  filter: none;
+}
+.worn-plate .board {
+  width: 100%;
+  height: 100%;
+  padding: 8%;
+}
+.worn-name {
+  display: block;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  font: 600 0.75rem/1.2 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--muted);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.worn-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.worn-remove svg {
+  width: 15px;
+  height: 15px;
+}
+.worn-remove::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+
+/* Work row: round icon buttons, the chosen one opens up with its name; the times sit at the right of the same row. */
+.work-quick {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.2rem 0.5rem;
+}
+.work-quick-row {
+  flex: 0 1 auto;
+}
+.work-quick-btn {
+  flex: none;
+  width: 44px;
+  padding: 0;
+}
+.work-quick-btn[aria-pressed='true'] {
+  flex: none;
+  width: auto;
+  padding: 0 0.9rem 0 0.75rem;
+  font-weight: 600;
+}
+.work-quick-times {
+  flex: 0 1 auto;
+  margin-left: auto;
+  gap: 0;
+}
+.work-time {
+  display: inline-flex;
+  align-items: center;
+}
+.work-time-dash {
+  padding: 0 0.15rem;
+  color: var(--muted);
+}
+.work-quick-times input[type='time'] {
+  flex: none;
+  width: 4.7em;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font: 600 0.9375rem/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Listened: tracks with their counts, three rows until you ask for more. */
+.widget-music {
+  --w: var(--c-music);
+}
+.widget-list li.listen-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.listen-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.listen-count {
+  flex: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.widget-more {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: 600 0.9375rem system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+}
+
+/* Day screen order, as in the design: the work row, what you wore, then everything else. */
+.day-grid > .work-quick {
+  order: -2;
+}
+.day-grid > .widget-clothes {
+  order: -1;
+}
+.work-quick-times input[type='time'] {
+  width: 3.4em;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.work-quick-row {
+  gap: 0.3rem;
+}
+.work-quick-times input[type='time']::-webkit-calendar-picker-indicator {
+  display: none;
+}
+.work-quick-times {
+  display: contents;
+}
+.work-time-pair {
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.work-quick-btn[aria-pressed='true'] {
+  padding: 0 0.7rem 0 0.6rem;
+}
+.work-quick-times input[type='time'] {
+  width: 3.15em;
+}
+.work-time-dash {
+  padding: 0;
+}
+.work-quick {
+  column-gap: 0.25rem;
+}
+.work-quick-times .icon-btn {
+  margin-left: auto;
+}
+.work-quick-times .work-time-pair + .icon-btn {
+  margin-left: 0;
+}

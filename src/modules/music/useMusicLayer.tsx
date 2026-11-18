@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { DayWidget } from '../../DayWidget';
 import { MusicIcon } from '../../icons';
 import { useCollection } from '../../lib/useCollection';
 import type { CalendarLayer } from '../types';
@@ -21,22 +22,49 @@ export function useMusicCalendarLayer(): CalendarLayer {
       const d = days.get(date);
       if (!d || d.plays === 0) return null;
       return (
-        <section className="checkins-day">
-          <h2>Listened</h2>
-          <p className="small">
-            <strong>{duration(d.ms)}</strong> · {d.plays} {d.plays === 1 ? 'play' : 'plays'} · {d.artists} {d.artists === 1 ? 'artist' : 'artists'}
-          </p>
-          <ul>
-            {d.topTracks.map((t) => (
-              <li key={t.id}>
-                <strong>{t.name}</strong>
-                {t.artist && <span className="muted small"> {t.artist}</span>}
-                {t.plays > 1 && <span className="muted small"> · {t.plays}×</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <DayWidget
+          id="listened"
+          title="Listened"
+          icon={<MusicIcon />}
+          tone="music"
+          size="full"
+          badge={duration(d.ms)}
+          summary={`${d.plays} ${d.plays === 1 ? 'play' : 'plays'} · ${d.artists} ${d.artists === 1 ? 'artist' : 'artists'}`}
+        >
+          <ListenedTracks day={d} />
+        </DayWidget>
       );
     },
   };
+}
+
+const SHOWN = 3;
+
+/** The day's top tracks, three rows until you ask for the rest. */
+function ListenedTracks({ day: d }: { day: MusicDay }) {
+  const [all, setAll] = useState(false);
+  const rows = all ? d.topTracks : d.topTracks.slice(0, SHOWN);
+  return (
+    <>
+      <p className="muted small widget-line">
+        {d.plays} {d.plays === 1 ? 'play' : 'plays'} · {d.artists} {d.artists === 1 ? 'artist' : 'artists'}
+      </p>
+      <ul className="widget-list">
+        {rows.map((t) => (
+          <li key={t.id} className="listen-row">
+            <span className="listen-name">
+              {t.name}
+              {t.artist && <span className="muted small"> · {t.artist}</span>}
+            </span>
+            {t.plays > 1 && <span className="listen-count">{t.plays}×</span>}
+          </li>
+        ))}
+      </ul>
+      {d.topTracks.length > SHOWN && (
+        <button type="button" className="widget-more" aria-expanded={all} onClick={() => setAll((v) => !v)}>
+          {all ? 'Show less' : `Show all ${d.topTracks.length}`}
+        </button>
+      )}
+    </>
+  );
 }
