@@ -18,6 +18,7 @@ export function HomeRoot({ subroute }: { subroute: string[] }) {
     return (
       <BillDetail
         bill={bill}
+        all={items}
         onSave={save}
         onRemove={async () => {
           await remove(bill.id);

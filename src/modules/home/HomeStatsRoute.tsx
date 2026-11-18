@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
-import { money, today } from '../../lib/format';
+import { today } from '../../lib/format';
 import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
-import { UNITS, UTILITY_NAMES, billYears, consumptionSeries, monthlySpend, paidByOther, yearSummary } from './bills';
+import { UNITS, UTILITY_NAMES, billYears, consumptionSeries, eur as money, monthlySpend, paidByOther, yearSummary } from './bills';
 import type { Utility, UtilityBill } from './types';
 
 const eur0 = (n: number) => `€${Math.round(n).toLocaleString()}`;
-const label = (ym: string, long = false) => new Date(`${ym}-01T00:00:00Z`).toLocaleDateString(undefined, { month: long ? 'long' : 'short', year: '2-digit', timeZone: 'UTC' });
+const label = (ym: string, long = false) => new Date(`${ym}-01T00:00:00Z`).toLocaleDateString(undefined, { month: long ? 'long' : 'short', year: long ? 'numeric' : undefined, timeZone: 'UTC' });
+/** Short tick: the month, with the year on January so the axis stays on one line. */
+const tick = (ym: string) => (ym.endsWith('-01') ? `${label(ym)} ${ym.slice(2, 4)}` : label(ym));
 
 /** Stats → Home: spend per month and year, water and gas consumption, and what the other person paid. */
 export function HomeStatsRoute() {
@@ -26,9 +28,14 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
   const years = useMemo(() => billYears(bills), [bills]);
   const [year, setYear] = useState(years.includes(today().slice(0, 4)) ? today().slice(0, 4) : years[0]);
   const s = useMemo(() => yearSummary(bills, year), [bills, year]);
-  const months = useMemo(() => monthlySpend(bills, `${year}-12`, 12), [bills, year]);
+  // Up to the latest month that has a bill, so a year in progress doesn't end on empty months.
+  const endMonth = useMemo(() => {
+    const inYear = bills.filter((b) => b.month.startsWith(year)).map((b) => b.month).sort();
+    return inYear[inYear.length - 1] ?? `${year}-12`;
+  }, [bills, year]);
+  const months = useMemo(() => monthlySpend(bills, endMonth, 12), [bills, endMonth]);
   const other = useMemo(() => paidByOther(bills), [bills]);
-  const bars: Bar[] = months.map((m, i) => ({ key: m.month, tick: i % 3 === 0 ? label(m.month) : '', value: m.total }));
+  const bars: Bar[] = months.map((m, i) => ({ key: m.month, tick: i % 3 === 0 ? tick(m.month) : '', value: m.total }));
 
   return (
     <>
@@ -41,7 +48,6 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
         <div className="tiles">
           <Tile value={eur0(s.water)} label="water" tone={1} />
           <Tile value={eur0(s.gas)} label="gas" tone={3} />
-          <Tile value={eur0(s.kevin)} label="Kevin’s part" tone={0} />
         </div>
       </Section>
       <Section title="Cost per month" note="By the month each bill is for, water and gas together." value={eur0(months[months.length - 1].total)} sentence={`in ${label(months[months.length - 1].month, true)}.`} tone={1}>
@@ -52,7 +58,7 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
       ))}
       {other.bills > 0 && (
         <Section title="Paid by the other person" value={money(other.total)} sentence={`on ${other.bills} bills. Kevin’s part of it, what may have to be paid back, is ${money(other.kevinOwes)}.`} tone={2}>
-          <HBars rows={[{ key: 'w', label: 'Water', value: other.water, shown: money(other.water) }, { key: 'g', label: 'Gas', value: other.gas, shown: money(other.gas) }]} />
+          <HBars rows={[{ key: 'w', label: 'Water', value: other.water, shown: money(other.water), color: 'var(--tone-blue)' }, { key: 'g', label: 'Gas', value: other.gas, shown: money(other.gas), color: 'var(--tone-orange)' }]} />
         </Section>
       )}
     </>
@@ -65,7 +71,7 @@ function Consumption({ utility, bills }: { utility: Utility; bills: UtilityBill[
   if (points.length === 0) return null;
   const last = points.slice(-12);
   const latest = points[points.length - 1];
-  const bars: Bar[] = last.map((p, i) => ({ key: `${p.month}-${i}`, tick: i % 3 === 0 ? label(p.month) : '', value: p.consumption }));
+  const bars: Bar[] = last.map((p, i) => ({ key: `${p.month}-${i}`, tick: i % 3 === 0 ? tick(p.month) : '', value: p.consumption }));
   const priced = points.filter((p) => p.perUnit !== undefined && p.consumption >= 5);
   const avg = priced.length ? priced.reduce((a, p) => a + p.amount, 0) / priced.reduce((a, p) => a + p.consumption, 0) : undefined;
   return (

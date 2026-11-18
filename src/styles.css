@@ -375,8 +375,13 @@ a:focus-visible {
 }
 .field-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
+}
+.field-grid .field,
+.field-grid .field input {
+  min-width: 0;
+  max-width: 100%;
 }
 .photo-field {
   display: flex;
@@ -10589,12 +10594,6 @@ h2,
 .widget-home {
   --w: var(--tone-blue);
 }
-.bill-banner {
-  margin: 0 0 8px;
-}
-.bill-other {
-  margin: 0 0 12px;
-}
 .bill-list,
 .bill-facts {
   list-style: none;
@@ -10647,4 +10646,100 @@ h2,
   gap: 8px;
   justify-content: flex-end;
   margin-top: 12px;
+}
+
+.home-status {
+  margin: 0 0 16px;
+}
+.home-owe {
+  font-family: var(--voice);
+  font-size: 2.6rem;
+  line-height: 1.05;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.home-allpaid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.home-latest {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.home-tile {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 2px solid var(--tile, var(--border));
+  color: inherit;
+  text-decoration: none;
+}
+.home-tile-water {
+  --tile: var(--tone-blue);
+}
+.home-tile-gas {
+  --tile: var(--tone-orange);
+}
+.home-tile-amount {
+  font-family: var(--voice);
+  font-size: 1.8rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.home-other {
+  margin: 0 0 12px;
+}
+.bill-end {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.bill-pill {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone-orange) 18%, var(--bg));
+}
+.bill-month {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+.bill-month-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.bill-month-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.bill-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+  background: color-mix(in srgb, var(--chip-tone) 14%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--chip-tone) 35%, transparent);
+}
+.bill-chip-water {
+  --chip-tone: var(--tone-blue);
+}
+.bill-chip-gas {
+  --chip-tone: var(--tone-orange);
+}
+.bill-actions {
+  margin-bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }

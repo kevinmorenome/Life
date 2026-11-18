@@ -10,7 +10,7 @@ export const homeModule: LifeModule = {
   id: 'home',
   title: 'Home bills',
   icon: <HomeIcon />,
-  description: 'Water and gas bills: what they cost, how much you used and who paid.',
+  description: 'Water and gas: what to pay and how much you use.',
   render: (subroute) => <HomeRoot subroute={subroute} />,
   actions: [{ label: 'Add a bill', icon: <HomeIcon />, path: () => '/home/new' }],
   calendarLayer: useHomeCalendarLayer,

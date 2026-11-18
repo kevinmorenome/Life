@@ -73,3 +73,56 @@ describe('consumption', () => {
     expect(fixedPart(bill({ id: 'a', lines: [{ label: 'Vodoopskrba', amount: 7.92 }, { label: 'Fiksni dio cijene - odvodnja', amount: 4.03 }, { label: 'Fiksni dio cijene - vodoopskrba', amount: 20.48 }] }))).toBe(24.51);
   });
 });
+
+import { eur, isOverdue, latestBill, monthRows, usualComparison, usualText } from './bills';
+
+describe('eur', () => {
+  it('always shows euros with two decimals', () => {
+    expect(eur(48.9)).toMatch(/^€48[.,]90$/);
+  });
+});
+
+describe('overdue', () => {
+  it('is pending and past its due date only', () => {
+    expect(isOverdue(bill({ id: 'a', due: '2026-10-01' }), '2026-11-18')).toBe(true);
+    expect(isOverdue(bill({ id: 'a', due: '2026-12-01' }), '2026-11-18')).toBe(false);
+    expect(isOverdue(bill({ id: 'a', due: '2026-10-01', paidOn: '2026-10-02' }), '2026-11-18')).toBe(false);
+    expect(isOverdue(bill({ id: 'a' }), '2026-11-18')).toBe(false);
+  });
+});
+
+describe('monthRows', () => {
+  it('puts water and gas of a month in one row, newest first', () => {
+    const rows = monthRows([
+      bill({ id: 'w1', month: '2026-01', amount: 10 }),
+      bill({ id: 'g1', month: '2026-01', utility: 'gas', amount: 5.5, paidOn: '2026-02-01' }),
+      bill({ id: 'w2', month: '2026-02', amount: 7 }),
+    ]);
+    expect(rows.map((r) => r.month)).toEqual(['2026-02', '2026-01']);
+    expect(rows[1]).toMatchObject({ total: 15.5, pending: 1 });
+    expect(rows[1].water?.id).toBe('w1');
+    expect(rows[1].gas?.id).toBe('g1');
+    expect(rows[0].gas).toBeUndefined();
+    expect(latestBill([bill({ id: 'a', month: '2026-01' }), bill({ id: 'b', month: '2026-03' })], 'water')?.id).toBe('b');
+  });
+});
+
+describe('usualComparison', () => {
+  const gas = (id: string, month: string, consumption?: number) => bill({ id, utility: 'gas', month, consumption });
+  it('prefers the same month a year earlier', () => {
+    const all = [gas('a', '2025-01', 100), gas('b', '2025-12', 10), gas('c', '2026-01', 120)];
+    const u = usualComparison(all, all[2]);
+    expect(u).toEqual({ pct: 20, basis: 'same month last year' });
+    expect(usualText(u!)).toBe('20% above the same month last year');
+  });
+  it('falls back to the average of earlier bills, needing three', () => {
+    const all = [gas('a', '2026-01', 10), gas('b', '2026-02', 10), gas('c', '2026-03', 10), gas('d', '2026-04', 5)];
+    expect(usualComparison(all, all[3])).toEqual({ pct: -50, basis: 'your average' });
+    expect(usualText({ pct: -50, basis: 'your average' })).toBe('50% below your average');
+    expect(usualComparison(all.slice(0, 3), all[2])).toBeUndefined();
+  });
+  it('says nothing without consumption and calls small differences the same', () => {
+    expect(usualComparison([gas('a', '2026-01')], gas('a', '2026-01'))).toBeUndefined();
+    expect(usualText({ pct: 3, basis: 'your average' })).toBe('About the same as your average');
+  });
+});

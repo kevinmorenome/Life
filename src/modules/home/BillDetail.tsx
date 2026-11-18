@@ -1,34 +1,35 @@
 import { useState } from 'react';
 import { EditIcon, TrashIcon } from '../../icons';
-import { money, shortDate, today } from '../../lib/format';
-import { href } from '../../lib/router';
-import { PAYER_NAMES, UNITS, billTitle, fixedPart, isPaid, kevinShare } from './bills';
+import { shortDate, today } from '../../lib/format';
+import { navigate } from '../../lib/router';
+import { PAYER_NAMES, UNITS, billTitle, eur, fixedPart, isOverdue, isPaid, kevinShare, usualComparison, usualText } from './bills';
 import type { Payer, UtilityBill } from './types';
 
 const PAYERS: Payer[] = ['kevin', 'felipe', 'other'];
 
 /** One bill: the amount, whether it is paid (and a way to say it is), the consumption and the breakdown the bill printed. */
-export function BillDetail({ bill: b, onSave, onRemove }: { bill: UtilityBill; onSave: (b: UtilityBill) => Promise<void>; onRemove: () => Promise<void> }) {
+export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBill; all: UtilityBill[]; onSave: (b: UtilityBill) => Promise<void>; onRemove: () => Promise<void> }) {
   const [paying, setPaying] = useState(false);
   const [day, setDay] = useState(today());
   const [by, setBy] = useState<Payer>('kevin');
   const unit = UNITS[b.utility];
   const fixed = fixedPart(b);
+  const usual = usualComparison(all, b);
 
   const rows: [string, string | undefined][] = [
     ['Invoice', b.number],
     ['Period', b.periodStart && b.periodEnd ? `${shortDate(b.periodStart)} – ${shortDate(b.periodEnd)}` : b.periodEnd ? `to ${shortDate(b.periodEnd)}` : undefined],
-    ['Due', b.due ? shortDate(b.due) : undefined],
+    ['Due', isPaid(b) && b.due ? shortDate(b.due) : undefined],
     ['Meter', b.readingEnd !== undefined ? (b.readingStart !== undefined ? `${b.readingStart} → ${b.readingEnd} ${unit}` : `${b.readingEnd} ${unit}`) : undefined],
-    ['Kevin’s share', b.paidBy === 'other' || isPaid(b) ? money(kevinShare(b)) : undefined],
+    ['Kevin’s share', b.paidBy === 'other' || isPaid(b) ? eur(kevinShare(b)) : undefined],
   ];
 
   return (
     <>
       <div className="bill-head">
         <h2>{billTitle(b)}</h2>
-        <p className="bill-total">{money(b.amount)}</p>
-        <p className="muted">{isPaid(b) ? `Paid ${shortDate(b.paidOn!)}${b.paidBy ? ` by ${PAYER_NAMES[b.paidBy]}` : ''}` : `Pending${b.due ? ` · due ${shortDate(b.due)}` : ''}`}</p>
+        <p className="bill-total">{eur(b.amount)}</p>
+        <p className="muted">{isPaid(b) ? `Paid ${shortDate(b.paidOn!)}${b.paidBy ? ` by ${PAYER_NAMES[b.paidBy]}` : ''}` : isOverdue(b, today()) ? `Overdue since ${shortDate(b.due!)}` : `Pending${b.due ? ` · due ${shortDate(b.due)}` : ''}`}</p>
       </div>
 
       {!isPaid(b) && !paying && <button type="button" className="btn btn-primary" onClick={() => setPaying(true)}>Mark as paid</button>}
@@ -61,7 +62,8 @@ export function BillDetail({ bill: b, onSave, onRemove }: { bill: UtilityBill; o
         <section className="card">
           <h2>Consumption</h2>
           <p className="bill-total">{b.consumption} {unit}{b.estimated && <span className="muted small"> estimated</span>}</p>
-          {b.consumption > 0 && <p className="muted small">{money(b.amount / b.consumption)} per {unit} all in{fixed > 0 && b.consumption > 0 ? `; ${money((b.amount - fixed) / b.consumption)} without the fixed fees` : ''}.</p>}
+          {usual && <p className="small">{usualText(usual)}</p>}
+          {b.consumption > 0 && <p className="muted small">{eur(b.amount / b.consumption)} per {unit} all in{fixed > 0 ? `; ${eur((b.amount - fixed) / b.consumption)} without the fixed fees` : ''}.</p>}
         </section>
       )}
 
@@ -78,7 +80,7 @@ export function BillDetail({ bill: b, onSave, onRemove }: { bill: UtilityBill; o
             {b.lines.map((l, i) => (
               <li key={i}>
                 <span>{l.label}{l.quantity !== undefined && l.unitPrice !== undefined && <span className="muted small"> {l.quantity} {l.unit ?? ''} × {l.unitPrice}</span>}</span>
-                <span>{money(l.amount)}</span>
+                <span>{eur(l.amount)}</span>
               </li>
             ))}
           </ul>
@@ -87,7 +89,7 @@ export function BillDetail({ bill: b, onSave, onRemove }: { bill: UtilityBill; o
       {b.note && <p className="muted small">{b.note}</p>}
 
       <div className="bill-actions">
-        <a className="icon-btn" href={href(`/home/${b.id}/edit`)} aria-label="Edit the bill"><EditIcon /></a>
+        <button type="button" className="icon-btn" aria-label="Edit the bill" onClick={() => navigate(`/home/${b.id}/edit`)}><EditIcon /></button>
         <button type="button" className="icon-btn" aria-label="Delete the bill" onClick={() => window.confirm('Delete this bill?') && void onRemove()}><TrashIcon /></button>
       </div>
     </>
