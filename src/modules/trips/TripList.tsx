@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { Section } from '../clothes/charts';
 import { Flag } from '../countries/Flag';
 import { tripCountry } from '../countries/countries';
 import { outfitName } from '../clothes/outfits';
@@ -86,6 +87,7 @@ export function TripList({ trips, items, outfits, plans, suggestions = [], onAdd
   return (
     <>
       <h1 className="page-title">Trips</h1>
+      {upcoming[0] && <NextTrip trip={upcoming[0]} now={now} packed={packingList(upcoming[0], items, outfits, outfitName, plans)} />}
       {trips.length === 0 && suggestions.length === 0 && (
         <div className="empty">
           <p className="muted">No trips yet. Plan one, pick outfits for each day, and get a packing checklist.</p>
@@ -155,5 +157,25 @@ export function TripList({ trips, items, outfits, plans, suggestions = [], onAdd
         </div>
       )}
     </>
+  );
+}
+
+const dayDiff = (a: string, b: string) => Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86_400_000);
+
+/** The next trip as one number: how many days until it, and how far the packing is. */
+function NextTrip({ trip, now, packed }: { trip: Trip; now: string; packed: { total: number; packedCount: number } }) {
+  const until = dayDiff(now, trip.startDate);
+  const length = tripDays(trip).length;
+  const going = until <= 0;
+  return (
+    <Section
+      hero
+      className="page-hero"
+      title={going ? 'On the road' : 'Next trip'}
+      value={going ? 'Now' : String(until)}
+      sentence={`${going ? '' : until === 1 ? 'day until ' : 'days until '}${trip.name}, ${shortDate(trip.startDate)} – ${shortDate(trip.endDate)} (${length} ${length === 1 ? 'day' : 'days'}). ${packed.total === 0 ? 'Nothing to pack yet.' : `${packed.packedCount} of ${packed.total} packed.`}`}
+    >
+      {packed.total > 0 && <progress className="hero-progress" max={packed.total} value={packed.packedCount} />}
+    </Section>
   );
 }

@@ -10584,3 +10584,29 @@ h2,
 .worn-plate .board-placeholder {
   font-size: 1.3rem;
 }
+
+/* Pages open with their headline: the page's title in the voice, then a hero number (prototype). */
+main.container h1,
+.page-title {
+  font-family: var(--voice);
+  font-size: clamp(1.7rem, 8.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.card.stat-block.page-hero {
+  border-top: 0;
+  padding-top: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+.page-hero-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.hero-progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}

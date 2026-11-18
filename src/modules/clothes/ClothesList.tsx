@@ -8,7 +8,8 @@ import { FilterSheet } from './FilterSheet';
 import { withStatusFor } from './bulk';
 import { CheckIcon, CloseIcon, HeartIcon, SlidersIcon, SparkleIcon } from './icons';
 import { ItemThumb } from './ItemThumb';
-import { wearCount } from './stats';
+import { Section } from './charts';
+import { computeStats, wearCount } from './stats';
 import { CATEGORIES, label, type Category, type ClothingItem } from './types';
 
 // Kept at module level so filters survive opening an item and coming back (the list unmounts).
@@ -54,6 +55,7 @@ export function ClothesList({ items, onSave }: { items: ClothingItem[]; onSave: 
   return (
     <>
       <ClosetTabs active="closet" />
+      {items.length > 0 && <ClosetHero items={items} />}
       {toReview > 0 && (
         <a className="card today-prompt" href={href('/clothes/review')}>
           <span>{toReview === 1 ? '1 new item to review' : `${toReview} new items to review`}</span>
@@ -205,4 +207,18 @@ function tileMeta(item: ClothingItem): string {
   const parts = [item.brand, worn ? `Worn ${worn}×` : undefined];
   if (item.status !== 'active') parts.push(label(item.status));
   return parts.filter(Boolean).join(' · ') || 'Not worn yet';
+}
+
+/** The closet in one number, above the grid. */
+function ClosetHero({ items }: { items: ClothingItem[] }) {
+  const s = computeStats(items, today());
+  return (
+    <Section
+      hero
+      className="page-hero"
+      title="Your closet"
+      value={String(s.activeCount)}
+      sentence={`${s.activeCount === 1 ? 'piece' : 'pieces'} in your closet. ${s.wearsLast30} worn in the last 30 days${s.neverWorn.length ? `, ${s.neverWorn.length} never worn` : ''}.`}
+    />
+  );
 }

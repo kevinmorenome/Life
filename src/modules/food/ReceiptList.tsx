@@ -1,6 +1,7 @@
 import { PlusIcon } from '../../icons';
 import { money, shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
+import { Section } from '../clothes/charts';
 import { FoodTabs } from './FoodTabs';
 import { monthlySpend, receiptTotal, sortReceipts } from './food';
 import { KIND_LABELS, type FoodReceipt } from './types';
@@ -24,18 +25,19 @@ export function ReceiptList({ receipts }: { receipts: FoodReceipt[] }) {
   }
   const months = monthlySpend(receipts);
   const latest = months[0];
+  const thisMonth = receipts.filter((r) => r.date.startsWith(latest.month));
   return (
     <>
       <FoodTabs active="receipts" />
-      <section className="food-month">
-        <p className="muted small">{monthName(latest.month)}</p>
-        <p className="food-total">{money(latest.total)}</p>
-        <p className="muted small">
-          {Object.entries(latest.byKind)
-            .map(([kind, amount]) => `${KIND_LABELS[kind as keyof typeof KIND_LABELS]} ${money(amount)}`)
-            .join(' · ')}
-        </p>
-      </section>
+      <Section
+        hero
+        className="page-hero"
+        title={monthName(latest.month)}
+        value={money(latest.total)}
+        sentence={`spent on groceries in ${thisMonth.length} ${thisMonth.length === 1 ? 'trip' : 'trips'}${thisMonth.length ? `, ${money(latest.total / thisMonth.length)} a trip` : ''}. ${Object.entries(latest.byKind)
+          .map(([kind, amount]) => `${KIND_LABELS[kind as keyof typeof KIND_LABELS]} ${money(amount)}`)
+          .join(' · ')}`}
+      />
       <ul className="game-list">
         {sortReceipts(receipts).map((r) => (
           <li key={r.id}>
