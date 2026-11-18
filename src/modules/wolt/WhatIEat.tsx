@@ -59,7 +59,7 @@ export function WhatIEat() {
           <ul className="digest-list">
             {toRate.map((u) => (
               <li key={u.key}>
-                <span>{u.dish}</span> <span className="muted small">· {u.venue} · {shortDate(u.lastOrdered)}</span>
+                <span>{u.dish}</span><br /><span className="muted small">{u.venue} · {shortDate(u.lastOrdered)}</span>
                 <span className="item-actions">
                   <button type="button" className="icon-btn" aria-label={`Liked ${u.raw}`} onClick={() => data.rate(u.venue, u.raw, { verdict: 'liked' })}>
                     <ThumbUpIcon />

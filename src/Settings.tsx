@@ -10,7 +10,7 @@ import { href } from './lib/router';
 import { syncPlanCheckins } from './modules/trips/planCheckinsRunner';
 import { sampleTrip } from './modules/trips/sampleTrip';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
-import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
+import { sampleTakeoutExtras, sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
 import { sampleBills } from './modules/home/sampleBills';
 import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
@@ -47,7 +47,14 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
     const orders = sampleTakeoutOrders(new Date(), today());
     for (const o of orders) await put('woltorders', o);
     notify('woltorders');
-    setMessage(`Added ${orders.length} sample takeout orders. See the calendar and Stats → Takeout.`);
+    const extra = sampleTakeoutExtras(orders, new Date());
+    for (const d of extra.details) await put('takeoutdetails', d);
+    for (const f of extra.feedback) await put('dishfeedback', f);
+    for (const x of extra.shares) await put('ordershares', x);
+    notify('takeoutdetails');
+    notify('dishfeedback');
+    notify('ordershares');
+    setMessage(`Added ${orders.length} sample takeout orders with items, likes and one shared order. See More → What I eat, the calendar and Stats → Takeout.`);
   }
 
   async function addSampleBills() {
