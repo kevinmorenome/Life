@@ -4,6 +4,7 @@
 // history count on their UTC day, because the Worker has no time zone.
 
 import { buildDays } from '../src/modules/work/work';
+import { dishLines, filterLines, topDishes, topVenues } from '../src/modules/wolt/dishes';
 import type { WorkDay, WorkEvent } from '../src/modules/work/types';
 import { filterCheckins, newestFirst } from '../src/modules/checkins/placesQuery';
 import { headToHead, playerRecords, playsPerMonth, titleStats } from '../src/modules/games/games';
@@ -412,7 +413,7 @@ async function daySummary(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const { store, now } = ctx;
   if (args.date !== undefined && !isRealDate(args.date)) return fail('date must be a real calendar date in YYYY-MM-DD form.');
   const date = (args.date as string | undefined) ?? utcToday(now);
-  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, trips, plans, games] = await Promise.all([
+  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, trips, plans, games, takeoutDetails] = await Promise.all([
     placeCheckins(store),
     store.list('clothes'),
     store.list('outfits'),
@@ -426,6 +427,7 @@ async function daySummary(args: Args, ctx: ToolContext): Promise<ToolResult> {
     tripsOf(ctx),
     plansOf(ctx),
     gamesData(ctx),
+    store.list('takeoutdetails'),
   ]);
   const out: Record<string, unknown> = { date };
   const worn = wornByDay(items, outfits, date).get(date);
@@ -451,7 +453,10 @@ async function daySummary(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const places = newestFirst(filterCheckins(checkins, { from: date, to: date })).reverse();
   if (places.length) out.places = places.map((c) => ({ ...(c.time ? { time: c.time } : {}), venue: c.venue, ...(c.category ? { category: c.category } : {}), ...(c.city ? { city: c.city } : {}) }));
   const orders = takeout.filter((r) => r.date === date);
-  if (orders.length) out.takeout = orders.map((r) => ({ ...(r.time ? { time: r.time } : {}), restaurant: r.restaurant, total: num(r.total), currency: r.currency ?? 'EUR' }));
+  if (orders.length) out.takeout = orders.map((r) => {
+    const lines = (takeoutDetails.find((d) => d.orderId === r.id)?.items ?? []) as { name: string; qty: number; linePrice?: number }[];
+    return { ...(r.time ? { time: r.time } : {}), restaurant: r.restaurant, total: num(r.total), currency: r.currency ?? 'EUR', ...(lines.length ? { items: lines.map((i) => `${i.qty}× ${i.name}`) } : {}) };
+  });
   const rideList = rides.filter((r) => r.date === date);
   if (rideList.length) out.rides = rideList.map((r) => ({ ...(r.time ? { time: r.time } : {}), provider: r.provider, ...(r.from ? { from: r.from } : {}), ...(r.to ? { to: r.to } : {}), fare: num(r.fare), currency: r.currency ?? 'EUR' }));
   const shops = receipts.filter((r) => r.date === date && !r.carriedOver);
@@ -536,7 +541,7 @@ async function foodStats(args: Args, { store, now }: ToolContext): Promise<ToolR
   const months = limitOf(args.months, 6, 24);
   const today = utcToday(now);
   const nowMonth = today.slice(0, 7);
-  const [receiptRows, productRows, eventRows] = await Promise.all([store.list('foodreceipts'), store.list('foodproducts'), store.list('foodstock')]);
+  const [receiptRows, productRows, eventRows, takeoutOrders, takeoutDetails, dishGroups] = await Promise.all([store.list('foodreceipts'), store.list('foodproducts'), store.list('foodstock'), store.list('woltorders'), store.list('takeoutdetails'), store.list('dishgroups')]);
   const everyReceipt = receiptRows
     .filter((r) => isRealDate(r.date) && Array.isArray(r.lines))
     .map((r) => ({ ...r, store: String(r.store ?? ''), lines: (r.lines as object[]).map((l) => ({ discount: 0, ...l })) }) as unknown as FoodReceipt);
@@ -562,6 +567,23 @@ async function foodStats(args: Args, { store, now }: ToolContext): Promise<ToolR
     depositsPaid: depositSummary(period),
     foodThrownAway: { value: waste.value, times: waste.times, ...(waste.share !== undefined ? { shareOfSpendPercent: round2(waste.share * 100) } : {}), mostWasted: waste.top.slice(0, 5).map((w) => ({ product: w.name, times: w.times, value: w.value })) },
     boughtMostOften: rebuyStats(productSummaries(period, records), 5).map((r) => ({ product: r.name, purchases: r.purchases, ...(r.everyDays ? { everyDays: r.everyDays } : {}), spent: r.spent })),
-    note: 'Household & care, deposits and bags are not food spend. Amounts are as printed on the receipts.',
+    ...takeoutSection(takeoutOrders, takeoutDetails, dishGroups, since),
+    note: 'Household & care, deposits and bags are not food spend. Amounts are as printed on the receipts. The takeout section (when there is one) is apart from the grocery figures.',
   });
+}
+
+/** Takeout dishes and venues since `since`, from the item lines; nothing when no order has them. Kept apart from the grocery figures. */
+function takeoutSection(orders: Row[], details: Row[], groups: Row[], since: string) {
+  const lines = filterLines(
+    dishLines(orders as never, details as never, groups as never),
+    { from: since },
+  );
+  if (lines.length === 0) return {};
+  return {
+    takeout: {
+      note: 'From the item lines of takeout orders (Wolt, Bolt, Uber), separate from groceries. Spend is euro orders, on items without fees.',
+      topDishes: topDishes(lines).slice(0, 5).map((d) => ({ dish: d.dish, pieces: d.count, orders: d.orders, spent: d.spent })),
+      topVenues: topVenues(lines).slice(0, 5),
+    },
+  };
 }

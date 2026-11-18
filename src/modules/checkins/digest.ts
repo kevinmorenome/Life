@@ -14,7 +14,7 @@ export interface WornNames {
 
 /** What the other modules add, already reduced to what the digest needs. Anything left out is simply not summarised. */
 export interface DigestExtras {
-  takeout?: { date: string; place: string; total: number; currency: string }[];
+  takeout?: { date: string; place: string; total: number; currency: string; /** Item lines, when the order has them. */ items?: { name: string; qty: number }[] }[];
   rides?: { date: string; fare: number; currency: string }[];
   groceries?: { date: string; store: string; total: number }[];
   watched?: { date: string; title: string; kind: 'movie' | 'episode' }[];
@@ -87,7 +87,7 @@ export interface Digest {
   };
   /** Only the parts that have something in the period. */
   other: {
-    takeout?: { orders: number; spentEur: number; otherCurrencyOrders: number; places: NamedCount[] };
+    takeout?: { orders: number; spentEur: number; otherCurrencyOrders: number; places: NamedCount[]; /** Most ordered dishes (pieces), only when the orders have item lines. */ dishes?: NamedCount[] };
     rides?: { rides: number; spentEur: number; otherCurrencyRides: number };
     groceries?: { receipts: number; spent: number; stores: NamedCount[] };
     watching?: { plays: number; movies: number; episodes: number; top: NamedCount[] };
@@ -206,6 +206,9 @@ function otherSections(x: DigestExtras, start: string, end: string): Digest['oth
   if (orders.length) {
     const euro = orders.filter((o) => o.currency === EUR);
     out.takeout = { orders: orders.length, spentEur: round2(euro.reduce((a, o) => a + o.total, 0)), otherCurrencyOrders: orders.length - euro.length, places: tally(orders.map((o) => placeName(o.place))).slice(0, 3) };
+    const pieces = new Map<string, number>();
+    for (const o of orders) for (const i of o.items ?? []) pieces.set(i.name, (pieces.get(i.name) ?? 0) + i.qty);
+    if (pieces.size) out.takeout.dishes = [...pieces].map(([name, n]) => ({ name, times: n })).sort((a, b) => b.times - a.times || a.name.localeCompare(b.name)).slice(0, 3);
   }
 
   const rides = inRange(x.rides ?? [], start, end);

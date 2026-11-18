@@ -93,3 +93,30 @@ describe('ratings and reads', () => {
     expect((await call(ctx, 'takeout_top', {})).error).toBeFalsy();
   });
 });
+
+describe('stats with dishes', () => {
+  async function ready() {
+    const s = setup({
+      woltorders: [ORDER],
+      foodreceipts: [{ id: 'r1', store: 'Konzum', date: '2026-11-10', total: 5, lines: [{ name: 'Milk', kind: 'food', paid: 5, quantity: 1, unit: 'pc', unitPrice: 5 }] }],
+    });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS, feesTotal: 1.97 }] });
+    return s;
+  }
+  it('adds the items to day_summary', async () => {
+    const { ctx } = await ready();
+    const d = (await call(ctx, 'day_summary', { date: '2026-11-15' })).json();
+    expect(d.takeout[0].items).toContain('2× Pohana piletina u slatko - kiselom umaku');
+  });
+  it('adds the top dishes to weekly_digest', async () => {
+    const { ctx } = await ready();
+    const d = (await call(ctx, 'weekly_digest', { end: '2026-11-17' })).json();
+    expect(JSON.stringify(d)).toContain('Pohana piletina');
+  });
+  it('keeps takeout apart from grocery figures in food_stats', async () => {
+    const { ctx } = await ready();
+    const f = (await call(ctx, 'food_stats', {})).json();
+    expect(f.takeout.topDishes[0].dish).toContain('Pohana');
+    expect(f.totalFoodSpend).toBe(5);
+  });
+});
