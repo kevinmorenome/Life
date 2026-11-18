@@ -44,7 +44,7 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
                 {shown}
                 {shown !== i.name && <span className="muted small"> · printed: {i.name}</span>}
                 {choices.length > 0 && <span className="muted small item-note">{choices.join(', ')}</span>}
-                {mine < i.qty && <span className="muted small item-note">{mine === 0 ? 'For someone else, not counted in What I eat' : `${mine} of ${i.qty} yours, the rest for someone else`}</span>}
+                {mine < i.qty && <span className="muted small item-note">{mine === 0 ? 'For someone else, not counted in What I eat' : mine * 2 === i.qty ? 'Shared with someone: counts as half' : `${mine} of ${i.qty} yours, the rest for someone else`}</span>}
                 {fb?.note && <span className="muted small item-note">“{fb.note}”</span>}
               </span>
               <span className="item-price">{price(i.linePrice + g.options.reduce((s, x) => s + x.linePrice, 0), order.currency)}</span>
@@ -91,8 +91,8 @@ function ItemEditor({ venue, raw, orderId, index, qty, mine, group, note, data, 
       }}
     >
       <label>
-        <span className="muted small">How many of the {qty} were yours? (0 = all for someone else)</span>
-        <input type="number" inputMode="numeric" min={0} max={qty} step={1} value={m} onChange={(e) => setM(Math.min(qty, Math.max(0, Math.floor(Number(e.target.value)) || 0)))} />
+        <span className="muted small">How many of the {qty} were yours? (0 = all for someone else, a shared one is half)</span>
+        <input type="number" inputMode="numeric" min={0} max={qty} step={0.5} value={m} onChange={(e) => setM(Math.min(qty, Math.max(0, Math.round((Number(e.target.value) || 0) * 2) / 2)))} />
       </label>
       <label>
         <span className="muted small">Your note</span>

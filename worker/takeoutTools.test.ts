@@ -183,3 +183,21 @@ describe('group orders', () => {
     expect(s.m('takeoutdetails').get('td-wolt-abc')).toMatchObject({ othersTotal: 12.64 });
   });
 });
+
+describe('set_item_owner: shared items', () => {
+  it('counts a shared item as half', async () => {
+    const s = setup({ woltorders: [ORDER] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS, feesTotal: 1.97 }] });
+    const r = (await call(s.ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'pohana', shared: true }] })).json();
+    expect(r.notAllMine).toEqual([{ line: 'Pohana piletina u slatko - kiselom umaku', mine: 1, of: 2 }]);
+    const t = (await call(s.ctx, 'takeout_top', {})).json();
+    expect(t.topDishes.find((d: { dish: string }) => d.dish.includes('Pohana'))).toMatchObject({ count: 1, spent: 11 });
+    const half = (await call(s.ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'povrća', shared: true }] })).json();
+    expect(half.notAllMine.find((x: { line: string }) => x.line.includes('povrća'))).toMatchObject({ mine: 0.5, of: 1 });
+  });
+  it('still refuses a missing answer', async () => {
+    const s = setup({ woltorders: [ORDER] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS }] });
+    expect((await call(s.ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'pohana' }] })).error).toBe(true);
+  });
+});

@@ -136,14 +136,14 @@ export const TAKEOUT_TOOLS = [
   {
     name: 'set_item_owner',
     description:
-      'Say which items of a takeout order were NOT for the user (they sometimes order for someone else). What I eat, top dishes and the dishes in the digests count only what is the user\'s. Give the order (sourceId, service default "wolt") and, per line, `item` (words of its name) or `index` (0-based position in the order\'s items) and `mine` = how many of that line\'s pieces were the user\'s (0 = all for someone else). Lines you do not list keep their earlier setting (default: all the user\'s); `allMine: true` clears every exception. ASK the user after adding items to an order with several dishes or a quantity above 1 whether everything was for them; do not guess. Needs the items attached first. Read the order with search_takeout_items. A newer call replaces the order\'s earlier setting as a whole, so repeat lines that should stay.',
+      'Say which items of a takeout order were NOT for the user (they sometimes order for someone else). What I eat, top dishes and the dishes in the digests count only what is the user\'s. Give the order (sourceId, service default "wolt") and, per line, `item` (words of its name) or `index` (0-based position in the order\'s items) and `mine` = how many of that line\'s pieces were the user\'s (0 = all for someone else; halves are fine), or `shared: true` when the user shared that item with someone, which counts as half of it (qty / 2). Lines you do not list keep their earlier setting (default: all the user\'s); `allMine: true` clears every exception. ASK the user after adding items to an order with several dishes or a quantity above 1 whether everything was for them; do not guess. Needs the items attached first. Read the order with search_takeout_items. A newer call replaces the order\'s earlier setting as a whole, so repeat lines that should stay.',
     inputSchema: {
       type: 'object',
       properties: {
         sourceId: { type: 'string' },
         service: { type: 'string', enum: ['wolt', 'bolt', 'uber'] },
         allMine: { type: 'boolean' },
-        items: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, index: { type: 'integer', minimum: 0 }, mine: { type: 'integer', minimum: 0 } }, required: ['mine'] } },
+        items: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, index: { type: 'integer', minimum: 0 }, mine: { type: 'number', minimum: 0 }, shared: { type: 'boolean', description: 'Shared with someone: counts as half.' } } } },
       },
       required: ['sourceId'],
     },
@@ -258,8 +258,8 @@ async function setOwner(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const changes = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
   if (changes.length === 0 && args.allMine !== true) return fail('give items with `mine`, or allMine: true');
   for (const c of changes) {
-    const n = Number(c.mine);
-    if (!Number.isInteger(n) || n < 0) return fail('mine must be a whole number, 0 or more');
+    let n = Number(c.mine);
+    if (c.shared !== true && (!Number.isFinite(n) || n < 0 || n * 2 !== Math.round(n * 2))) return fail('give `mine` (0 or more, halves allowed) or `shared: true` for each item');
     let index = typeof c.index === 'number' ? c.index : -1;
     if (index < 0) {
       const words = String(c.item ?? '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -268,6 +268,7 @@ async function setOwner(args: Args, ctx: ToolContext): Promise<ToolResult> {
       index = hits[0];
     }
     if (!lines[index]) return fail(`${orderId} has no line #${index}`);
+    if (c.shared === true) n = lines[index].qty / 2;
     if (n >= lines[index].qty) delete mine[String(index)];
     else mine[String(index)] = n;
   }
