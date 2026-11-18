@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
+import { href } from '../../lib/router';
+import { OrderItems } from './OrderItems';
+import { useTakeoutData } from './useTakeoutData';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
-import { SERVICE_NAMES, byService, hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, serviceOf, summarize, topPlaces } from './wolt';
+import { SERVICE_NAMES, count, eur, byService, hourCounts, monthlySpend, newestFirst, otherCurrencies, searchOrders, serviceOf, summarize, topPlaces } from './wolt';
 
-const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 const eur0 = (n: number) => `€${Math.round(n).toLocaleString()}`;
-const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const monthLabel = (ym: string, style: 'short' | 'long' = 'short') => new Date(ym + '-01T00:00:00Z').toLocaleDateString(undefined, { month: style, year: '2-digit', timeZone: 'UTC' });
 
 export function WoltStatsRoute() {
@@ -64,18 +65,21 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
       <Section title="When you order" value={`${String(hours.indexOf(Math.max(...hours))).padStart(2, '0')}:00`} sentence="is the hour you order most often." tone={2} note="Orders by hour of day.">
         <ReadoutColumns key="hours" bars={hourBars} color="var(--tone-orange)" big={(b) => count(b.value, 'order')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(hours.indexOf(Math.max(...hours)))} />
       </Section>
+      <p className="small"><a href={href('/wolt')}>What I eat →</a> <span className="muted">top dishes, venues and what you liked, from the item lines.</span></p>
       <AllOrders orders={orders} />
       {foreign.map((f) => (
         <p key={f.currency} className="muted small">
           {count(f.orders, 'order')} paid in {f.currency} ({f.currency} {f.total.toLocaleString(undefined, { minimumFractionDigits: 2 })} in total) {f.orders === 1 ? 'is' : 'are'} listed but left out of the euro totals.
         </p>
       ))}
-      <p className="muted small">Data comes from Wolt, Bolt Food and Uber Eats receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines are only in the PDF attachments, so they are not tracked.</p>
+      <p className="muted small">Data comes from Wolt, Bolt Food and Uber Eats receipt emails in Gmail. Grocery orders are in the food log, not here. Item lines come from the PDF attached to each Wolt email (open an order to see them).</p>
     </>
   );
 }
 
 function AllOrders({ orders }: { orders: WoltOrder[] }) {
+  const data = useTakeoutData();
+  const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(20);
   const found = useMemo(() => searchOrders(newestFirst(orders), query), [orders, query]);
@@ -87,13 +91,17 @@ function AllOrders({ orders }: { orders: WoltOrder[] }) {
       ) : (
         <ul className="wolt-orders">
           {found.slice(0, limit).map((o) => (
-            <li key={o.id}>
+            <li key={o.id} className="wolt-order">
               <span className="wolt-when">
                 {shortDate(o.date)}
                 {o.time && <span className="muted small"> {o.time}</span>}
               </span>
-              <span className="wolt-name">{o.restaurant}{serviceOf(o) !== 'wolt' && <span className="muted small"> · {SERVICE_NAMES[serviceOf(o)]}</span>}</span>
+              <button type="button" className="wolt-name wolt-toggle" aria-expanded={openId === o.id} onClick={() => setOpenId(openId === o.id ? null : o.id)}>
+                {o.restaurant}{serviceOf(o) !== 'wolt' && <span className="muted small"> · {SERVICE_NAMES[serviceOf(o)]}</span>}
+                {data.detailOf.has(o.id) && <span className="muted small"> · {data.detailOf.get(o.id)!.items.length} items</span>}
+              </button>
               <span className="wolt-total">{o.total.toFixed(2)} <span className="muted small">{o.currency}</span></span>
+              {openId === o.id && <div className="wolt-items"><OrderItems order={o} detail={data.detailOf.get(o.id)} data={data} /></div>}
             </li>
           ))}
         </ul>

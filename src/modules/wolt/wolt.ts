@@ -1,5 +1,9 @@
 import type { TakeoutService, WoltOrder } from './types';
 
+/** €12.5 / €12 for euro amounts in the takeout screens. */
+export const eur = (n: number) => `€${n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+export const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** "McDonald's - Rotor" → "McDonald's": branches of one place are combined. */

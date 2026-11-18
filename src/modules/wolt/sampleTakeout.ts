@@ -1,4 +1,6 @@
-import type { WoltOrder } from './types';
+import { dishKey } from './dishes';
+import type { DishFeedback, OrderShare, TakeoutDetail, TakeoutItem, WoltOrder } from './types';
+import { placeName, round2 } from './wolt';
 
 const addDays = (date: string, n: number) => {
   const d = new Date(date + 'T12:00:00Z');
@@ -40,4 +42,45 @@ export function sampleTakeoutOrders(now: Date, today: string): WoltOrder[] {
     createdAt: stamp,
     updatedAt: stamp,
   }));
+}
+
+// Menus for the sample venues: [printed name, price now]. Older orders cost a little less, so repeat dishes show a price change.
+const MENUS: Record<string, [string, number][]> = {
+  "McDonald's": [['Big Mac Menu', 8.4], ['McChicken', 4.2], ['Pomfrit veliki', 3.1]],
+  'Pizzeria Karlo': [['Pizza Margherita', 9.5], ['Pizza Capricciosa', 11.2], ['Coca-Cola 0,33l', 2.6]],
+  'Burger Bar': [['Classic Burger', 8.9], ['Pomfrit', 3.2]],
+  'Sushi Time': [['California roll 8 kom', 9.9], ['Losos nigiri 6 kom', 12.5], ['Miso juha', 3.4]],
+  'Warsaw Pierogi': [['Pierogi ruskie', 28]],
+};
+
+/** Item lines, likes and notes, and one "for someone else" line for the sample orders, so What I eat has something to show. */
+export function sampleTakeoutExtras(orders: WoltOrder[], now: Date): { details: TakeoutDetail[]; feedback: DishFeedback[]; shares: OrderShare[] } {
+  const stamp = now.toISOString();
+  const seen = new Map<string, number>();
+  const details: TakeoutDetail[] = [];
+  const byDate = [...orders].sort((a, b) => a.date.localeCompare(b.date));
+  for (const o of byDate) {
+    const menu = MENUS[placeName(o.restaurant)];
+    if (!menu) continue;
+    const nth = seen.get(placeName(o.restaurant)) ?? 0;
+    seen.set(placeName(o.restaurant), nth + 1);
+    // Prices rise by 20 cents per earlier order of the same venue, newest order at the menu price.
+    const total = byDate.filter((x) => placeName(x.restaurant) === placeName(o.restaurant)).length;
+    const lift = (total - 1 - nth) * 0.2;
+    const picks = menu.slice(0, nth % 2 === 0 ? menu.length : 2);
+    const items: TakeoutItem[] = picks.map(([name, price], i) => {
+      const unitPrice = round2(Math.max(0.5, price - lift));
+      const qty = i === 0 && o.restaurant.includes('Sushi') ? 2 : 1;
+      return { name, qty, unitPrice, linePrice: round2(unitPrice * qty), vat: 13 };
+    });
+    const itemsSubtotal = round2(items.reduce((s, i) => s + i.linePrice, 0));
+    const fees = round2(o.total - itemsSubtotal);
+    details.push({ id: `td-${o.id}`, orderId: o.id, items, itemsSubtotal, ...(fees > 0 ? { feesTotal: fees } : {}), paymentMethod: 'Card', orderType: 'Dostava', createdAt: stamp, updatedAt: stamp });
+  }
+  const fb = (venue: string, dish: string, verdict: DishFeedback['verdict'], note?: string): DishFeedback => ({ id: `dfb-sample-${dishKey(venue, dish)}`, key: dishKey(venue, dish), venue, dish, verdict, ...(note ? { note } : {}), at: stamp, createdAt: stamp, updatedAt: stamp });
+  const feedback = [fb('Pizzeria Karlo', 'Pizza Margherita', 'liked', 'Thin crust, ask for extra basil'), fb('Sushi Time', 'Miso juha', 'disliked', 'Too salty'), fb("McDonald's", 'McChicken', 'meh')];
+  // The first Sushi Time order: 2 rolls, one for a friend, and the miso soup was entirely theirs.
+  const sushi = byDate.find((o) => o.restaurant.includes('Sushi'));
+  const shares: OrderShare[] = sushi ? [{ id: 'os-sample-1', orderId: sushi.id, mine: { '0': 1, '2': 0 }, at: stamp, createdAt: stamp, updatedAt: stamp }] : [];
+  return { details, feedback, shares };
 }

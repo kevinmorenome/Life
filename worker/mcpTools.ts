@@ -31,6 +31,8 @@ import { fetchPhoto, findDuplicate, parseReceiptLines, receiptItem } from './rec
 import type { RecordStore, Row } from './records';
 import { READ_TOOLS, callReadTool } from './readTools';
 import { RECIPE_TOOLS, callRecipeTool } from './recipeTools';
+import { dishLines, latestShares } from '../src/modules/wolt/dishes';
+import { DETAIL_PROPS, TAKEOUT_TOOLS, callTakeoutTool, parseDetail, writeDetails } from './takeoutTools';
 import { addDays, dateRange, fail, isRealDate, lastWorn, ok, placeCheckins, strings, text, timesWorn, utcToday, wornByDay, type Args } from './toolUtil';
 
 export interface ToolContext {
@@ -241,7 +243,7 @@ export const TOOLS = [
   {
     name: 'add_wolt_orders',
     description:
-      'Save Wolt TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log. Wolt also delivers groceries (Wolt Market and other shops, supermarkets, pharmacies): those are NOT takeout. Never put them here; add them with add_grocery_receipt instead (store = the shop, sourceId = the Wolt order id prefixed "wolt-", lines from the receipt PDF if you can read it), so they feed products and stock. If a Wolt email is unclear, ask the user which it is. Find the emails by searching Gmail for Wolt order/receipt emails (sender wolt.com), read each one and pass every order here, as many as you like per call. Per order give sourceId = a unique id for it (the Wolt order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as Wolt writes it, including the branch ("McDonald\'s - Rotor"), date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR, or PLN for orders placed in Poland; do not convert). Item lines are only in the PDF attachment and are not tracked. Orders are never edited afterwards from here.',
+      'Save Wolt TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log. Wolt also delivers groceries (Wolt Market and other shops, supermarkets, pharmacies): those are NOT takeout. Never put them here; add them with add_grocery_receipt instead (store = the shop, sourceId = the Wolt order id prefixed "wolt-", lines from the receipt PDF if you can read it), so they feed products and stock. If a Wolt email is unclear, ask the user which it is. Find the emails by searching Gmail for Wolt order/receipt emails (sender wolt.com), read each one and pass every order here, as many as you like per call. Per order give sourceId = a unique id for it (the Wolt order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as Wolt writes it, including the branch ("McDonald\'s - Rotor"), date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR, or PLN for orders placed in Poland; do not convert). Item lines: read the PDFs attached to the email ("Potvrda narudžbe" has the items; "Račun …" is Wolt\'s fee invoice) and pass them as items (with paymentMethod, orderType, feesTotal, invoiceNo) so the order is saved with what was ordered; for orders already saved use attach_takeout_items. Afterwards call list_unrated_dishes and ask the user whether they liked the dishes. Orders are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -259,6 +261,7 @@ export const TOOLS = [
               total: { type: 'number', minimum: 0 },
               currency: { type: 'string', description: 'ISO code, default EUR' },
               city: { type: 'string' },
+              ...DETAIL_PROPS,
             },
             required: ['sourceId', 'restaurant', 'date', 'total'],
           },
@@ -315,7 +318,7 @@ export const TOOLS = [
   {
     name: 'add_takeout_orders',
     description:
-      'Save Bolt Food or Uber Eats TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log, the same log Wolt orders go to (use add_wolt_orders for Wolt). Bolt and Uber also deliver groceries (shops, supermarkets): those are NOT takeout, add them with add_grocery_receipt instead. Bolt rides and Uber rides are not orders: skip them. Find the emails by searching Gmail (Bolt Food: sender bolt.eu; Uber Eats: sender uber.com, "Your order with ..."), read each one and pass every order here with `service` = "bolt" or "uber", as many as you like per call. Per order give sourceId = a unique id for it (the order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as the app writes it, date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR by default; do not convert). Item lines are not tracked. Orders are never edited afterwards from here.',
+      'Save Bolt Food or Uber Eats TAKEOUT orders (restaurants, fast food, cafés: ready-made food) in the takeout log, the same log Wolt orders go to (use add_wolt_orders for Wolt). Bolt and Uber also deliver groceries (shops, supermarkets): those are NOT takeout, add them with add_grocery_receipt instead. Bolt rides and Uber rides are not orders: skip them. Find the emails by searching Gmail (Bolt Food: sender bolt.eu; Uber Eats: sender uber.com, "Your order with ..."), read each one and pass every order here with `service` = "bolt" or "uber", as many as you like per call. Per order give sourceId = a unique id for it (the order id or receipt number in the email, otherwise the email message id) so the same order is never added twice: adding again is safe and skips ones already saved. restaurant = the venue name as the app writes it, date = the day it was delivered (YYYY-MM-DD, local), time = HH:MM 24 hour, total = what was paid including delivery and tip as the email states it, currency = ISO code (EUR by default; do not convert). If the email shows the items, pass them as items (see attach_takeout_items for the shape). Orders are never edited afterwards from here.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -334,6 +337,7 @@ export const TOOLS = [
               total: { type: 'number', minimum: 0 },
               currency: { type: 'string', description: 'ISO code, default EUR' },
               city: { type: 'string' },
+              ...DETAIL_PROPS,
             },
             required: ['sourceId', 'restaurant', 'date', 'total'],
           },
@@ -648,6 +652,7 @@ export const TOOLS = [
   },
   ...READ_TOOLS,
   ...RECIPE_TOOLS,
+  ...TAKEOUT_TOOLS,
 ] as const;
 
 export async function callTool(name: string, args: Args, ctx: ToolContext): Promise<ToolResult> {
@@ -713,7 +718,7 @@ export async function callTool(name: string, args: Args, ctx: ToolContext): Prom
     case 'edit_item':
       return ctx.readOnly ? fail(READ_ONLY) : editItem(args, ctx);
     default:
-      return (await callReadTool(name, args, ctx)) ?? (await callRecipeTool(name, args, ctx)) ?? fail(`Unknown tool: ${name}`);
+      return (await callReadTool(name, args, ctx)) ?? (await callRecipeTool(name, args, ctx)) ?? (await callTakeoutTool(name, args, ctx)) ?? fail(`Unknown tool: ${name}`);
   }
 }
 
@@ -857,7 +862,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
   const length = Math.min(Math.max(Math.floor(Number(args.days)) || 7, 1), 31);
   const end = (args.end as string | undefined) ?? addDays(utcToday(now), -1);
   const start = addDays(end, -(length - 1));
-  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles] = await Promise.all([
+  const [checkins, items, outfits, workdays, workevents, takeout, rides, receipts, watched, music, nights, titles, takeoutDetails, dishGroups, orderShares] = await Promise.all([
     placeCheckins(store),
     store.list('clothes'),
     store.list('outfits'),
@@ -870,7 +875,13 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     store.list('musicdays'),
     store.list('gamenights'),
     store.list('gametitles'),
+    store.list('takeoutdetails'),
+    store.list('dishgroups'),
+    store.list('ordershares'),
   ]);
+  // Only what is the user's (an order may be partly for someone else), under their own dish names.
+  const itemsOf = new Map<string, { name: string; qty: number }[]>(takeoutDetails.map((d) => [String(d.orderId), []]));
+  for (const l of dishLines(takeout as never, takeoutDetails as never, dishGroups as never, latestShares(orderShares as never))) itemsOf.get(l.orderId)?.push({ name: l.dish, qty: l.qty });
   const titleName = new Map(titles.map((t) => [t.id, String(t.name ?? 'a game')]));
   const days = buildDays(
     workdays.map((r) => ({ id: r.id, status: r.status, arrive: r.arrive, leave: r.leave, reason: r.reason }) as unknown as WorkDay),
@@ -883,7 +894,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     days,
     start,
     end,
-    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR') })),
+    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR'), ...(itemsOf.has(r.id) ? { items: itemsOf.get(r.id)! } : {}) })),
     rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
     groceries: receipts
       .filter((r) => isRealDate(r.date) && !r.carriedOver)
@@ -1240,7 +1251,8 @@ async function addUtilityBills(args: Args, { store, now }: ToolContext): Promise
 
 // ---- Wolt ----
 
-async function addWoltOrders(args: Args, { store, now }: ToolContext, service: TakeoutService): Promise<ToolResult> {
+async function addWoltOrders(args: Args, ctx: ToolContext, service: TakeoutService): Promise<ToolResult> {
+  const { store, now } = ctx;
   const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now), service);
   const known = new Set((await store.list('woltorders')).map((r) => r.id));
   const stamp = now.toISOString();
@@ -1250,9 +1262,24 @@ async function addWoltOrders(args: Args, { store, now }: ToolContext, service: T
     await store.put('woltorders', o.id, { ...o, createdAt: stamp, updatedAt: stamp });
     added++;
   }
+  // Item lines given with the orders (a saved order may also get them here: details are written once per order).
+  const raw = Array.isArray(args.orders) ? (args.orders as Record<string, unknown>[]) : [];
+  const entries: Parameters<typeof writeDetails>[1] = [];
+  const itemNotes: string[] = [];
+  for (const o of orders) {
+    const r = raw.find((x) => typeof x?.sourceId === 'string' && `${service}-${x.sourceId.replace(/[^A-Za-z0-9_-]/g, '')}` === o.id);
+    if (!r || r.items === undefined) continue;
+    const p = parseDetail(r);
+    itemNotes.push(...p.warnings.map((w) => `${o.id}: ${w}`));
+    if (p.detail) entries.push({ orderId: o.id, total: o.total, detail: p.detail });
+    else itemNotes.push(`${o.id}: items not saved (${p.error})`);
+  }
+  const details = entries.length ? await writeDetails(ctx, entries) : undefined;
   return ok({
     added,
     alreadyAdded: orders.length - added,
+    ...(details ? { itemsAttached: details.attached, itemsAlreadyAttached: details.alreadyAttached, ...(details.unreconciled.length ? { unreconciled: details.unreconciled } : {}) } : {}),
+    ...(itemNotes.length ? { itemWarnings: itemNotes } : {}),
     ...(rejected.length ? { rejected, warning: 'Some orders were left out: fix them from the emails and add them again.' } : {}),
   });
 }

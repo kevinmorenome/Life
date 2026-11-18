@@ -10762,3 +10762,98 @@ main.container h1,
   width: 20px;
   height: 20px;
 }
+
+/* Takeout items: lines under an order, likes and notes, What I eat */
+.order-items {
+  margin: 0.25rem 0 0.75rem;
+}
+.order-block {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.item-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item-lines li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+  gap: 0.25rem 0.5rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+}
+.item-qty,
+.item-price {
+  font-variant-numeric: tabular-nums;
+}
+.item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.item-note {
+  display: block;
+}
+.item-actions {
+  display: inline-flex;
+  align-items: center;
+}
+.item-actions .icon-btn {
+  margin-right: 0;
+  width: 44px;
+  height: 44px;
+  opacity: 0.55;
+}
+.item-actions .icon-btn[aria-pressed='true'] {
+  opacity: 1;
+  color: var(--accent);
+}
+.item-actions .icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.item-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+}
+.item-editor input,
+.item-filters input,
+.item-filters select {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+}
+.item-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.item-filters .search,
+.item-filters select {
+  grid-column: 1 / -1;
+}
+.venue-links li {
+  padding: 0.35rem 0;
+}
+.wolt-orders li.wolt-order {
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+}
+.wolt-toggle {
+  min-height: 44px;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.wolt-items {
+  grid-column: 1 / -1;
+}
+.digest-line {
+  display: block;
+  white-space: normal;
+}
