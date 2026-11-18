@@ -3,7 +3,7 @@
 // details are one fresh `takeoutdetails` record per order (adding again changes nothing) and each like / note is a fresh
 // `dishfeedback` record, the newest one for a dish winning. Item lines are in the order's currency.
 
-import { dishLines, filterLines, latestFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
+import { dishLines, filterLines, latestFeedback, mergeFeedback, priceTrend, topDishes, topVenues, unratedDishes } from '../src/modules/wolt/dishes';
 import { itemsSubtotal } from '../src/modules/wolt/receiptPdf';
 import type { DishFeedback, TakeoutDetail, TakeoutItem, TakeoutService } from '../src/modules/wolt/types';
 import { round2 } from '../src/modules/wolt/wolt';
@@ -12,7 +12,7 @@ import type { Row } from './records';
 import { addDays, fail, isRealDate, ok, text, utcToday, type Args } from './toolUtil';
 
 const READ_ONLY = 'This deployment is read-only.';
-const MAX_ITEMS = 60;
+const MAX_ITEMS = 100;
 
 const money = (v: unknown, min = 0, max = 10_000): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? round2(v) : undefined);
 const clip = (v: unknown, max: number) => text(v, max);
@@ -54,8 +54,9 @@ export interface ParsedDetail {
 export function parseDetail(r: Record<string, unknown>): ParsedDetail {
   const warnings: string[] = [];
   if (!Array.isArray(r.items) || r.items.length === 0) return { warnings, error: 'items must be a non-empty list' };
+  if (r.items.length > MAX_ITEMS) return { warnings, error: `more than ${MAX_ITEMS} item lines: nothing saved, check the PDF` };
   const items: TakeoutItem[] = [];
-  for (const [i, raw] of r.items.slice(0, MAX_ITEMS).entries()) {
+  for (const [i, raw] of r.items.entries()) {
     const x = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
     const name = clip(x.name, 200)?.replace(/[​-‏‪-‮⁦-⁩﻿]/g, '');
     const qty = money(x.qty, 0.001, 999);
@@ -97,9 +98,9 @@ export async function writeDetails(ctx: ToolContext, entries: { orderId: string;
   const unreconciled: string[] = [];
   for (const e of entries) {
     const id = `td-${e.orderId}`;
+    if (known.has(id)) continue;
     const gap = reconcile(e.total, e.detail);
     if (gap) unreconciled.push(`${e.orderId}: items ${e.detail.itemsSubtotal.toFixed(2)} + fees ${(e.detail.feesTotal ?? 0).toFixed(2)} vs order ${e.total.toFixed(2)}, ${gap}`);
-    if (known.has(id)) continue;
     await ctx.store.put('takeoutdetails', id, { id, orderId: e.orderId, ...e.detail, createdAt: stamp, updatedAt: stamp });
     known.add(id);
     attached++;
@@ -233,7 +234,7 @@ async function rate(args: Args, ctx: ToolContext): Promise<ToolResult> {
   if (!venue || !dish) return fail('venue and dish are required');
   if (verdict !== undefined && verdict !== 'liked' && verdict !== 'disliked' && verdict !== 'meh') return fail('verdict must be liked, disliked or meh');
   if (verdict === undefined && !note) return fail('give a verdict, a note or both');
-  const { lines } = await load(ctx);
+  const { lines, feedback } = await load(ctx);
   const found = filterLines(lines, { venue, query: dish });
   const dishes = new Map(found.map((l) => [l.key, l]));
   if (dishes.size === 0) return fail(`No ordered dish matches "${dish}" at "${venue}". Use search_takeout_items to see what was ordered.`);
@@ -246,8 +247,10 @@ async function rate(args: Args, ctx: ToolContext): Promise<ToolResult> {
   const l = [...dishes.values()][0];
   const id = `dfb-${ctx.newId()}`;
   const stamp = ctx.now.toISOString();
-  await ctx.store.put('dishfeedback', id, { id, key: l.key, venue: l.venue, dish: l.raw, ...(verdict ? { verdict } : {}), ...(note ? { note } : {}), at: stamp, createdAt: stamp, updatedAt: stamp });
-  return ok({ saved: true, venue: l.venue, dish: l.raw, ...(verdict ? { verdict } : {}), ...(note ? { note } : {}) });
+  // The newest record wins as a whole, so carry over what this call doesn't change (a note keeps the verdict and the other way round).
+  const merged = mergeFeedback(feedback.get(l.key), { verdict: verdict as DishFeedback['verdict'] | undefined, note });
+  await ctx.store.put('dishfeedback', id, { id, key: l.key, venue: l.venue, dish: l.raw, ...merged, at: stamp, createdAt: stamp, updatedAt: stamp });
+  return ok({ saved: true, venue: l.venue, dish: l.raw, ...merged });
 }
 
 async function unrated(args: Args, ctx: ToolContext): Promise<ToolResult> {

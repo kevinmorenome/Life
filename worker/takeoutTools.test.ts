@@ -120,3 +120,32 @@ describe('stats with dishes', () => {
     expect(f.totalFoodSpend).toBe(5);
   });
 });
+
+describe('review fixes', () => {
+  it('rate_dish keeps the verdict when a note is added later', async () => {
+    const s = setup({ woltorders: [ORDER] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS }] });
+    await call(s.ctx, 'rate_dish', { venue: 'Tian Tan', dish: 'Pohana', verdict: 'liked' });
+    s.ctx.now = new Date('2026-11-18T13:00:00Z');
+    await call(s.ctx, 'rate_dish', { venue: 'Tian Tan', dish: 'Pohana', note: 'less sauce' });
+    expect((await call(s.ctx, 'list_unrated_dishes', {})).json().total).toBe(2);
+  });
+  it('refuses more than 100 lines instead of dropping some', async () => {
+    const s = setup({ woltorders: [ORDER] });
+    const many = Array.from({ length: 101 }, (_, i) => ({ name: `Dish ${i}`, qty: 1, unitPrice: 1 }));
+    const r = (await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: many }] })).json();
+    expect(r.attached).toBe(0);
+    expect(r.rejected[0]).toContain('more than 100');
+  });
+  it('does not repeat unreconciled warnings for orders already attached', async () => {
+    const s = setup({ woltorders: [{ ...ORDER, total: 35 }] });
+    const args = { orders: [{ sourceId: 'abc', items: ITEMS }] };
+    expect((await call(s.ctx, 'attach_takeout_items', args)).json().unreconciled).toHaveLength(1);
+    expect((await call(s.ctx, 'attach_takeout_items', args)).json().unreconciled).toBeUndefined();
+  });
+  it('food_stats still shows takeout dishes with no grocery receipts', async () => {
+    const s = setup({ woltorders: [ORDER] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS }] });
+    expect((await call(s.ctx, 'food_stats', {})).json().takeout.topDishes[0].dish).toContain('Pohana');
+  });
+});

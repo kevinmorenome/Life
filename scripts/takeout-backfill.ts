@@ -58,12 +58,16 @@ if (cmd === 'parse') {
       problems.push(`${file}: no "ID narudžbe" found`);
       continue;
     }
+    if (r.kind === 'confirmation' && r.items.length === 0) {
+      // Not cached, so it is read again after the parser is fixed.
+      problems.push(`${file}: confirmation with no item lines parsed`);
+      continue;
+    }
     const e = (cache.orders[r.orderId] ??= { orderId: r.orderId, files: [] });
     e.files.push(file);
     if (r.kind === 'confirmation') {
       Object.assign(e, { venue: r.venue, date: r.date, time: r.time, orderType: r.orderType, paymentMethod: r.paymentMethod, items: r.items, confirmationTotal: r.total });
-      if (r.items.length === 0) problems.push(`${file}: confirmation with no item lines parsed`);
-      else if (r.total !== undefined && Math.abs(itemsSubtotal(r.items) - r.total) > 0.02) problems.push(`${file}: item lines add up to ${itemsSubtotal(r.items)} but the PDF total is ${r.total}`);
+      if (r.total !== undefined && Math.abs(itemsSubtotal(r.items) - r.total) > 0.02) problems.push(`${file}: item lines add up to ${itemsSubtotal(r.items)} but the PDF total is ${r.total}`);
     } else {
       e.feesTotal = r.total;
       e.invoiceNo = r.invoiceNo;

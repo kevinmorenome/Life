@@ -55,3 +55,13 @@ describe('dishes', () => {
     expect(un.map((u) => u.raw)).toEqual(['Pierogi', 'Margherita', 'Pohana  piletina']);
   });
 });
+
+describe('mergeFeedback', () => {
+  it('keeps the verdict when only a note is given, and the note when only a verdict is', async () => {
+    const { mergeFeedback } = await import('./dishes');
+    expect(mergeFeedback({ verdict: 'liked' }, { note: ' less sauce ' })).toEqual({ verdict: 'liked', note: 'less sauce' });
+    expect(mergeFeedback({ verdict: 'liked', note: 'x' }, { verdict: 'disliked' })).toEqual({ verdict: 'disliked', note: 'x' });
+    expect(mergeFeedback({ verdict: 'liked', note: 'x' }, { verdict: null })).toEqual({ note: 'x' });
+    expect(mergeFeedback({ verdict: 'liked', note: 'x' }, { note: '' })).toEqual({ verdict: 'liked' });
+  });
+});

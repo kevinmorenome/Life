@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useCollection } from '../../lib/useCollection';
-import { dishKey, dishLines, latestFeedback, type DishLine } from './dishes';
+import { dishKey, dishLines, latestFeedback, mergeFeedback, type DishLine } from './dishes';
 import type { DishFeedback, DishGroup, TakeoutDetail, WoltOrder } from './types';
 import { useTakeoutOrders } from './useTakeoutOrders';
 
@@ -21,9 +21,8 @@ export function useTakeoutData() {
       const key = dishKey(venue, raw);
       const cur = latestFeedback(feedback.items).get(key);
       const now = new Date().toISOString();
-      const verdict = change.verdict === undefined ? cur?.verdict : change.verdict ?? undefined;
-      const note = change.note === undefined ? cur?.note : change.note.trim() || undefined;
-      await saveFeedback({ id: `dfb-${crypto.randomUUID()}`, key, venue, dish: raw, ...(verdict ? { verdict } : {}), ...(note ? { note } : {}), at: now, createdAt: now, updatedAt: now });
+      const merged = mergeFeedback(cur, change);
+      await saveFeedback({ id: `dfb-${crypto.randomUUID()}`, key, venue, dish: raw, ...merged, at: now, createdAt: now, updatedAt: now });
     },
     [feedback.items, saveFeedback],
   );

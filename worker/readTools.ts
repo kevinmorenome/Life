@@ -547,7 +547,10 @@ async function foodStats(args: Args, { store, now }: ToolContext): Promise<ToolR
     .map((r) => ({ ...r, store: String(r.store ?? ''), lines: (r.lines as object[]).map((l) => ({ discount: 0, ...l })) }) as unknown as FoodReceipt);
   // Stock you already owned (`carriedOver`) is not a purchase: it is left out of every figure here, and of what was thrown away.
   const receipts = everyReceipt.filter((r) => !r.carriedOver);
-  if (receipts.length === 0) return ok('No grocery receipts yet.');
+  if (receipts.length === 0) {
+    const t = takeoutSection(takeoutOrders, takeoutDetails, dishGroups, '');
+    return ok(Object.keys(t).length ? { note: 'No grocery receipts yet.', ...t } : 'No grocery receipts yet.');
+  }
   const spend = monthlyFoodSpend(receipts, nowMonth, months);
   const since = `${spend[0].key}-01`;
   const period = receipts.filter((r) => r.date >= since);

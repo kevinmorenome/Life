@@ -170,6 +170,16 @@ export function latestFeedback(events: Pick<DishFeedback, 'key' | 'verdict' | 'n
   return out;
 }
 
+/** A change to a dish's feedback on top of the current one: a note keeps the verdict, a verdict keeps the note, `verdict: null` clears it. */
+export function mergeFeedback(
+  cur: { verdict?: DishFeedback['verdict']; note?: string } | undefined,
+  change: { verdict?: DishFeedback['verdict'] | null; note?: string },
+): { verdict?: DishFeedback['verdict']; note?: string } {
+  const verdict = change.verdict === undefined ? cur?.verdict : (change.verdict ?? undefined);
+  const note = change.note === undefined ? cur?.note : change.note.trim() || undefined;
+  return { ...(verdict ? { verdict } : {}), ...(note ? { note } : {}) };
+}
+
 export interface Unrated {
   venue: string;
   raw: string;
