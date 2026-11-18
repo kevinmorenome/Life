@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { useCollection } from '../../lib/useCollection';
-import { Empty, HBars, ReadoutColumns, Section, Tile, Toggle, type Bar } from '../clothes/charts';
+import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import { UNITS, UTILITIES, UTILITY_NAMES, billYears, consumptionSeries, eur as money, kevinShare, latestBill, monthlySpend, paidByOther, usualComparison, usualText, yearSummary } from './bills';
 import type { Utility, UtilityBill } from './types';
 
@@ -57,7 +57,12 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
         <button type="button" role="tab" aria-selected={!mine} onClick={() => setMode('total')}>Total bills</button>
         <button type="button" role="tab" aria-selected={mine} onClick={() => setMode('mine')}>My part</button>
       </div>
-      <Toggle label="Period" options={[...years.map((y) => ({ value: y, label: y })), { value: 'all', label: 'All time' }]} value={year} onChange={setYear} />
+      <div className="chips" role="group" aria-label="Year">
+        {years.map((y) => (
+          <button key={y} type="button" className="chip" aria-pressed={y === year} onClick={() => setYear(y)}>{y}</button>
+        ))}
+        <button type="button" className="chip" aria-pressed={all} onClick={() => setYear('all')}>All time</button>
+      </div>
       <Section
         hero
         className="no-rule"
