@@ -17,6 +17,7 @@ export function Section({
   sentence,
   hero,
   tone = 0,
+  className = '',
 }: {
   title: string;
   children?: ReactNode;
@@ -25,10 +26,11 @@ export function Section({
   sentence?: ReactNode;
   hero?: boolean;
   tone?: number;
+  className?: string;
 }) {
   const stat = value != null && value !== '';
   return (
-    <section className={`card stat-block${stat ? ' has-stat' : ''}${hero ? ' is-hero' : ''}`} style={stat ? { ['--stat' as string]: TONES[tone % TONES.length] } : undefined}>
+    <section className={`card stat-block${stat ? ' has-stat' : ''}${hero ? ' is-hero' : ''}${className ? ` ${className}` : ''}`} style={stat ? { ['--stat' as string]: TONES[tone % TONES.length] } : undefined}>
       {stat ? (
         <>
           <h2 className="stat-kicker">{title}</h2>

@@ -1,8 +1,10 @@
 import { shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
 import { PlusIcon } from '../../icons';
+import { ChevronRightIcon } from '../clothes/icons';
 import { GamesTabs } from './GamesTabs';
-import { nightChampion } from './games';
+import { Section } from '../clothes/charts';
+import { nightChampion, playerRecords } from './games';
 import type { GameNight, GameTitle, Player } from './types';
 
 export function NightList({ nights, players, titles }: { nights: GameNight[]; players: Player[]; titles: GameTitle[] }) {
@@ -11,6 +13,7 @@ export function NightList({ nights, players, titles }: { nights: GameNight[]; pl
   return (
     <>
       <GamesTabs active="nights" />
+      {sorted.length > 0 && <NightsHero nights={nights} name={name} />}
       {sorted.length === 0 && (
         <div className="empty">
           <p className="muted">No game nights yet. Start one, pick who’s playing, then log each game as you finish it.</p>
@@ -44,5 +47,27 @@ export function NightList({ nights, players, titles }: { nights: GameNight[]; pl
         <PlusIcon /> New game night
       </a>
     </>
+  );
+}
+
+/** The year of game nights in one number. */
+function NightsHero({ nights, name }: { nights: GameNight[]; name: (id: string) => string }) {
+  const year = new Date().getFullYear().toString();
+  const thisYear = nights.filter((n) => n.date.startsWith(year));
+  const games = thisYear.reduce((n, x) => n + x.matches.length, 0);
+  const lead = playerRecords(thisYear)[0];
+  return (
+    <a className="page-hero-link" href={href('/stats/games')} aria-label="Game nights: open the games stats">
+    <Section
+      hero
+      className="page-hero"
+      title={`Game nights, ${year}`}
+      value={String(thisYear.length)}
+      sentence={`${thisYear.length === 1 ? 'night' : 'nights'} and ${games} ${games === 1 ? 'game' : 'games'} played.${lead ? ` ${name(lead.id)} leads with ${lead.wins} ${lead.wins === 1 ? 'win' : 'wins'}.` : ''}`}
+    />
+    <span className="hero-chevron" aria-hidden>
+      <ChevronRightIcon />
+    </span>
+    </a>
   );
 }
