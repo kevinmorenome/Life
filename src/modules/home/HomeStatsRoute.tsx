@@ -36,7 +36,12 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
   }, [bills, year]);
   const months = useMemo(() => monthlySpend(bills, endMonth, 12), [bills, endMonth]);
   const other = useMemo(() => paidByOther(bills), [bills]);
-  const bars: Bar[] = months.map((m, i) => ({ key: m.month, tick: i % 3 === 0 ? tick(m.month) : '', value: m.total }));
+  const bars: Bar[] = months.map((m, i) => ({
+    key: m.month,
+    tick: i % 3 === 0 ? tick(m.month) : '',
+    value: m.total,
+    parts: [{ value: m.water, color: 'var(--tone-blue)' }, { value: m.gas, color: 'var(--tone-orange)' }],
+  }));
 
   return (
     <>
@@ -45,21 +50,25 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
           <button key={y} type="button" className="chip" aria-pressed={y === year} onClick={() => setYear(y)}>{y}</button>
         ))}
       </div>
-      <Section hero title={`Home bills in ${year}`} value={eur0(s.total)} sentence={`on ${s.bills} bills; water ${eur0(s.water)}, gas ${eur0(s.gas)}. Kevin’s part is ${eur0(s.kevin)}.`}>
+      <Section hero className="no-rule" title={`Home bills in ${year}`} value={eur0(s.total)} sentence={`on ${s.bills} bills; water ${eur0(s.water)}, gas ${eur0(s.gas)}. Kevin’s part is ${eur0(s.kevin)}.`}>
         <div className="tiles">
           <Tile value={eur0(s.water)} label="water" tone={1} />
           <Tile value={eur0(s.gas)} label="gas" tone={3} />
         </div>
       </Section>
-      <Section title="Latest bills">
+      <Section title="Latest bills" className="no-rule">
         <div className="tiles">
           {UTILITIES.map((u) => (
             <Latest key={u} utility={u} bills={bills} />
           ))}
         </div>
       </Section>
-      <Section title="Cost per month" note="By the month each bill is for, water and gas together." value={eur0(months[months.length - 1].total)} sentence={`in ${label(months[months.length - 1].month, true)}.`} tone={1}>
+      <Section title="Cost per month" className="no-rule" note="By the month each bill is for, water and gas together." value={eur0(months[months.length - 1].total)} sentence={`in ${label(months[months.length - 1].month, true)}.`} tone={1}>
         <ReadoutColumns bars={bars} big={(b) => money(b.value)} small={(b) => label(b.key, true)} initial={months[months.length - 1].month} />
+        <p className="chart-legend">
+          <span><i style={{ background: 'var(--tone-blue)' }} />Water</span>
+          <span><i style={{ background: 'var(--tone-orange)' }} />Gas</span>
+        </p>
       </Section>
       {(['water', 'gas'] as Utility[]).map((u) => (
         <Consumption key={u} utility={u} bills={bills} />
