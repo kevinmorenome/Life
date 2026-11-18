@@ -7,6 +7,7 @@ import { tripCountry } from '../countries/countries';
 import { outfitName } from '../clothes/outfits';
 import type { ClothingItem, Outfit, Plan } from '../clothes/types';
 import { CheckIcon, EyeOffIcon, UndoIcon } from '../../icons';
+import { ChevronRightIcon } from '../clothes/icons';
 import { packingList, tripDays } from './packing';
 import type { Trip } from './types';
 
@@ -34,6 +35,8 @@ export function TripList({ trips, items, outfits, plans, suggestions = [], onAdd
   }, [toast]);
   const now = today();
   const upcoming = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  // The next trip is the hero, so the list starts after it.
+  const later = upcoming.slice(1);
   const past = trips.filter((t) => t.endDate < now).sort((a, b) => b.startDate.localeCompare(a.startDate));
 
   const suggestionRow = (t: Trip, buttons: React.ReactNode) => {
@@ -125,7 +128,7 @@ export function TripList({ trips, items, outfits, plans, suggestions = [], onAdd
           </ul>
         </section>
       )}
-      {section('Upcoming', upcoming)}
+      {section('Upcoming', later)}
       {section('Past', past)}
       {hidden.length > 0 && (
         <details className="suggest-hidden">
@@ -168,6 +171,7 @@ function NextTrip({ trip, now, packed }: { trip: Trip; now: string; packed: { to
   const length = tripDays(trip).length;
   const going = until <= 0;
   return (
+    <a className="page-hero-link" href={href('/stats/checkins/countries')} aria-label="Next trip: open the travel stats">
     <Section
       hero
       className="page-hero"
@@ -177,5 +181,9 @@ function NextTrip({ trip, now, packed }: { trip: Trip; now: string; packed: { to
     >
       {packed.total > 0 && <progress className="hero-progress" max={packed.total} value={packed.packedCount} />}
     </Section>
+    <span className="hero-chevron" aria-hidden>
+      <ChevronRightIcon />
+    </span>
+    </a>
   );
 }

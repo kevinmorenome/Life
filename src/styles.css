@@ -10610,3 +10610,30 @@ main.container h1,
   height: 8px;
   accent-color: var(--accent);
 }
+
+/* Page heroes are quieter than the stats ones: a smaller number, and the whole block opens the stats. */
+.card.stat-block.page-hero .stat-num {
+  font-size: clamp(2.4rem, 11vw, 3rem);
+  margin-bottom: 0.25rem;
+}
+.card.stat-block.page-hero .stat-sentence {
+  font-size: 1.0625rem;
+  margin-bottom: 0.7rem;
+}
+.page-hero-link {
+  position: relative;
+}
+.hero-chevron {
+  position: absolute;
+  top: 0.3rem;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--muted);
+}
+.hero-chevron svg {
+  width: 20px;
+  height: 20px;
+}

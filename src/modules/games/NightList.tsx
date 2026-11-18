@@ -1,6 +1,7 @@
 import { shortDate } from '../../lib/format';
 import { href } from '../../lib/router';
 import { PlusIcon } from '../../icons';
+import { ChevronRightIcon } from '../clothes/icons';
 import { GamesTabs } from './GamesTabs';
 import { Section } from '../clothes/charts';
 import { nightChampion, playerRecords } from './games';
@@ -56,6 +57,7 @@ function NightsHero({ nights, name }: { nights: GameNight[]; name: (id: string) 
   const games = thisYear.reduce((n, x) => n + x.matches.length, 0);
   const lead = playerRecords(thisYear)[0];
   return (
+    <a className="page-hero-link" href={href('/stats/games')} aria-label="Game nights: open the games stats">
     <Section
       hero
       className="page-hero"
@@ -63,5 +65,9 @@ function NightsHero({ nights, name }: { nights: GameNight[]; name: (id: string) 
       value={String(thisYear.length)}
       sentence={`${thisYear.length === 1 ? 'night' : 'nights'} and ${games} ${games === 1 ? 'game' : 'games'} played.${lead ? ` ${name(lead.id)} leads with ${lead.wins} ${lead.wins === 1 ? 'win' : 'wins'}.` : ''}`}
     />
+    <span className="hero-chevron" aria-hidden>
+      <ChevronRightIcon />
+    </span>
+    </a>
   );
 }

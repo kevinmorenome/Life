@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react';
 import { CheckIcon, ListIcon, PlusIcon, SearchIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { Section } from '../clothes/charts';
 import { IconMenu, type MenuEntry } from '../clothes/IconMenu';
-import { SlidersIcon } from '../clothes/icons';
+import { ChevronRightIcon, SlidersIcon } from '../clothes/icons';
 import { authorLine, inShelf, onShelf, searchBooks, shelfFilters, SORTS, sortBooks, splitTitle, summarize, type SortKey } from './books';
 import { BookCover } from './BookCover';
 import { needsCover } from './cover';
@@ -96,14 +95,12 @@ export function BookList({ books }: { books: Book[] }) {
         </a>
       </div>
       {thisYear.books > 0 && (
-        <a className="page-hero-link" href={href('/stats/entertainment/books')} aria-label={`Your ${year} so far: open the book stats`}>
-          <Section
-            hero
-            className="page-hero"
-            title={`Your ${year} so far`}
-            value={String(thisYear.books)}
-            sentence={`${thisYear.books === 1 ? 'book' : 'books'} read${thisYear.pages > 0 ? `, ${thisYear.pages.toLocaleString()} pages in all` : ''}.`}
-          />
+        <a className="books-year" href={href('/stats/entertainment/books')}>
+          <span>
+            <strong>{year}</strong> · {count(thisYear.books, 'book')}
+            {thisYear.pages > 0 && ` · ${count(thisYear.pages, 'page')}`}
+          </span>
+          <ChevronRightIcon />
         </a>
       )}
 
