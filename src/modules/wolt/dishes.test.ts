@@ -112,3 +112,14 @@ describe('group orders', () => {
     expect(feesOf(o, d)).toEqual({ items: 28.16, fees: 1.99, others: 12.64 });
   });
 });
+
+describe('itemSpendSplit', () => {
+  const orders = [order('wolt-1', 'Tian Tan', '2026-09-01', 30), order('wolt-2', 'Pizza', '2026-09-02', 12), order('wolt-3', 'Warsaw', '2026-09-03', 50, 'PLN')];
+  const details = [detail('wolt-1', [['A', 2, 10], ['B', 1, 3]]), detail('wolt-3', [['C', 1, 20]])];
+  it('splits euro item spend into yours and what was for others, leaving other currencies and orders without items out', async () => {
+    const { itemSpendSplit, latestShares } = await import('./dishes');
+    expect(itemSpendSplit(orders, details)).toEqual({ all: 23, mine: 23, others: 0, orders: 1 });
+    const shares = latestShares([{ orderId: 'wolt-1', mine: { '0': 1, '1': 0 }, at: '2026-09-02T00:00:00Z' }]);
+    expect(itemSpendSplit(orders, details, shares)).toEqual({ all: 23, mine: 10, others: 13, orders: 1 });
+  });
+});

@@ -241,3 +241,16 @@ export function unratedDishes(lines: DishLine[], feedback: ReturnType<typeof lat
 }
 
 export const isEuroOrder = isEuro;
+
+/**
+ * Euro spend on item lines, in all and the part that was yours: what an order cost in items against what you ate. The difference is
+ * what you ordered for someone else. Orders without item lines, and other currencies, are not in either figure.
+ */
+export function itemSpendSplit(orders: WoltOrder[], details: TakeoutDetail[], shares: Map<string, Record<string, number>> = new Map()): { all: number; mine: number; others: number; orders: number } {
+  const euro = orders.filter(isEuro);
+  const sum = (lines: DishLine[]) => round2(lines.reduce((s, l) => s + l.linePrice, 0));
+  const all = sum(dishLines(euro, details));
+  const mine = sum(dishLines(euro, details, [], shares));
+  const withItems = new Set(details.map((d) => d.orderId));
+  return { all, mine, others: round2(all - mine), orders: euro.filter((o) => withItems.has(o.id)).length };
+}

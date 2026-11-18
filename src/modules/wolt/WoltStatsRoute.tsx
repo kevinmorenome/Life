@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
 import { OrderItems } from './OrderItems';
+import { itemSpendSplit, topDishes } from './dishes';
 import { useTakeoutData } from './useTakeoutData';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
 import type { WoltOrder } from './types';
@@ -65,7 +66,7 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
       <Section title="When you order" value={`${String(hours.indexOf(Math.max(...hours))).padStart(2, '0')}:00`} sentence="is the hour you order most often." tone={2} note="Orders by hour of day.">
         <ReadoutColumns key="hours" bars={hourBars} color="var(--tone-orange)" big={(b) => count(b.value, 'order')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(hours.indexOf(Math.max(...hours)))} />
       </Section>
-      <p className="small"><a href={href('/wolt')}>What I eat →</a> <span className="muted">top dishes, venues and what you liked, from the item lines.</span></p>
+      <WhatYouEat orders={orders} />
       <AllOrders orders={orders} />
       {foreign.map((f) => (
         <p key={f.currency} className="muted small">
@@ -110,6 +111,38 @@ function AllOrders({ orders }: { orders: WoltOrder[] }) {
         <button type="button" className="btn" onClick={() => setLimit((l) => l + 30)}>
           Show more ({found.length - limit})
         </button>
+      )}
+    </Section>
+  );
+}
+
+/** What you actually ate, from the item lines: your top dishes and how much of the item spend was for someone else. Needs items to be attached. */
+function WhatYouEat({ orders }: { orders: WoltOrder[] }) {
+  const data = useTakeoutData();
+  const dishes = useMemo(() => topDishes(data.lines).slice(0, 5), [data.lines]);
+  const split = useMemo(() => itemSpendSplit(orders, data.details, data.shares), [orders, data.details, data.shares]);
+  if (data.loading) return null;
+  if (data.details.length === 0) {
+    return (
+      <p className="small">
+        <a href={href('/wolt')}>What I eat →</a> <span className="muted">your dishes will show here once Claude attaches the items of your Wolt orders.</span>
+      </p>
+    );
+  }
+  const covered = new Set(data.lines.map((l) => l.orderId)).size;
+  return (
+    <Section
+      title="What you eat"
+      value={dishes[0]?.dish}
+      sentence={dishes[0] ? `is the dish you ordered most, ${count(Math.round(dishes[0].count * 2) / 2, 'piece')} across ${count(dishes[0].orders, 'order')}.` : undefined}
+      tone={3}
+      note={`Only what was yours, from ${count(data.details.length, 'order')} with item lines${split.others > 0 ? `. ${eur(split.others)} of the ${eur(split.all)} spent on items in those orders was for someone else` : ''}.`}
+    >
+      <HBars rows={dishes.map((d) => ({ key: d.dish, label: d.dish, value: d.count, shown: `${Math.round(d.count * 2) / 2}×`, sub: d.venues.join(', ') }))} />
+      {covered > 0 && (
+        <p className="small">
+          <a href={href('/wolt')}>All dishes, venues and what you liked →</a>
+        </p>
       )}
     </Section>
   );
