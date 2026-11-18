@@ -33,13 +33,15 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
   const mine = mode === 'mine';
   const shown = useMemo(() => (mine ? bills.map((b) => ({ ...b, amount: kevinShare(b) })) : bills), [bills, mine]);
   const whose = mine ? 'your part' : 'total';
-  const full = useMemo(() => yearSummary(bills, year), [bills, year]);
-  const s = useMemo(() => yearSummary(shown, year), [shown, year]);
+  const all = year === 'all';
+  const scope = all ? '' : year; // '' matches every month
+  const full = useMemo(() => yearSummary(bills, scope), [bills, scope]);
+  const s = useMemo(() => yearSummary(shown, scope), [shown, scope]);
   // Up to the latest month that has a bill, so a year in progress doesn't end on empty months.
   const endMonth = useMemo(() => {
-    const inYear = bills.filter((b) => b.month.startsWith(year)).map((b) => b.month).sort();
+    const inYear = bills.filter((b) => b.month.startsWith(scope)).map((b) => b.month).sort();
     return inYear[inYear.length - 1] ?? `${year}-12`;
-  }, [bills, year]);
+  }, [bills, scope, year]);
   const months = useMemo(() => monthlySpend(shown, endMonth, 12), [shown, endMonth]);
   const other = useMemo(() => paidByOther(bills), [bills]);
   const bars: Bar[] = months.map((m, i) => ({
@@ -51,19 +53,20 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
 
   return (
     <>
+      <div className="seg seg-sub" role="tablist" aria-label="Show costs as" style={{ ['--tabs' as string]: 2 }}>
+        <button type="button" role="tab" aria-selected={!mine} onClick={() => setMode('total')}>Total bills</button>
+        <button type="button" role="tab" aria-selected={mine} onClick={() => setMode('mine')}>My part</button>
+      </div>
       <div className="chips" role="group" aria-label="Year">
         {years.map((y) => (
           <button key={y} type="button" className="chip" aria-pressed={y === year} onClick={() => setYear(y)}>{y}</button>
         ))}
-      </div>
-      <div className="chips" role="group" aria-label="Show costs as">
-        <button type="button" className="chip" aria-pressed={!mine} onClick={() => setMode('total')}>Total bills</button>
-        <button type="button" className="chip" aria-pressed={mine} onClick={() => setMode('mine')}>My part</button>
+        <button type="button" className="chip" aria-pressed={all} onClick={() => setYear('all')}>All time</button>
       </div>
       <Section
         hero
         className="no-rule"
-        title={`${mine ? 'My part of the bills' : 'Total of the bills'} in ${year}`}
+        title={`${mine ? 'My part of the bills' : 'Total of the bills'}${all ? ', all time' : ` in ${year}`}`}
         value={eur0(s.total)}
         sentence={`on ${s.bills} bills; water ${eur0(s.water)}, gas ${eur0(s.gas)}. ${mine ? `The full bills add up to ${eur0(full.total)}` : `My part of it is ${eur0(full.kevin)}`}.`}
       >
