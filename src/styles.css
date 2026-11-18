@@ -2651,6 +2651,37 @@ progress {
   opacity: 0.35;
   transition: height 0.4s ease, opacity 0.2s;
 }
+.column-fill.column-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  background: none;
+}
+.column-part {
+  min-height: 2px;
+}
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chart-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+/* A stats block with no hairline around it (the line between filters and the first block, and above the monthly chart). */
+.card.card.stat-block.no-rule {
+  border-top: 0;
+  border-bottom: 0;
+}
 .column[aria-pressed='true'] .column-fill {
   opacity: 1;
 }

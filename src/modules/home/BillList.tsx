@@ -2,16 +2,16 @@ import { useMemo, useState } from 'react';
 import { PlusIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
-import { Section, Tile } from '../clothes/charts';
-import { UNITS, UTILITIES, UTILITY_NAMES, eur, isOverdue, isPaid, latestBill, monthRows, paidByOther, pendingBills, usualComparison, usualText } from './bills';
-import type { Utility, UtilityBill } from './types';
+import { Section } from '../clothes/charts';
+import { UTILITY_NAMES, eur, isOverdue, isPaid, monthRows, paidByOther, pendingBills } from './bills';
+import type { UtilityBill } from './types';
 
 const monthName = (ym: string, style: 'long' | 'short' = 'long') => new Date(`${ym}-01T00:00:00Z`).toLocaleDateString(undefined, { month: style, timeZone: 'UTC' });
 const monthTitle = (b: UtilityBill) => `${UTILITY_NAMES[b.utility]} · ${monthName(b.month)} ${b.month.slice(0, 4)}`;
 
 /**
- * Home: what needs doing now (what is still to pay), how the latest water and gas bills compare with what is usual, and the bills by
- * month. The history and trends live in Stats → Home.
+ * Home: what needs doing now (what is still to pay) and the bills by month. The history, the latest bills
+ * against what is usual, and the trends live in Stats → Home.
  */
 export function BillList({ bills }: { bills: UtilityBill[] }) {
   const now = today();
@@ -55,14 +55,6 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
         </Section>
       )}
 
-      <Section title="Latest bills">
-        <div className="tiles">
-          {UTILITIES.map((u) => (
-            <Latest key={u} utility={u} bills={bills} />
-          ))}
-        </div>
-      </Section>
-
       {other.bills > 0 && (
         <p className="muted small home-other">
           The other person paid {eur(other.total)} on {other.bills} bills. <a href={href('/stats/home')}>See Stats</a>
@@ -103,18 +95,5 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
       </ul>
       </Section>
     </>
-  );
-}
-
-/** The newest bill of one utility: amount, usage and how that compares with what is usual. */
-function Latest({ utility, bills }: { utility: Utility; bills: UtilityBill[] }) {
-  const b = latestBill(bills, utility);
-  if (!b) return null;
-  const usual = usualComparison(bills, b);
-  const label = [`${UTILITY_NAMES[utility]}, ${monthName(b.month, 'short')}`, b.consumption !== undefined ? `${b.consumption} ${UNITS[utility]}${b.estimated ? ' (est.)' : ''}` : '', usual ? usualText(usual) : ''].filter(Boolean).join(' · ');
-  return (
-    <a className="home-link" href={href(`/home/${b.id}`)}>
-      <Tile value={eur(b.amount)} label={label} tone={utility === 'water' ? 1 : 3} />
-    </a>
   );
 }

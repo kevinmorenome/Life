@@ -190,6 +190,8 @@ export interface Bar {
   /** Short axis label. */
   tick: string;
   value: number;
+  /** Splits the column into stacked colours (first at the bottom); they should add up to `value`. */
+  parts?: { value: number; color: string }[];
 }
 
 /** Column chart; tap a column to read it out above the chart. */
@@ -219,7 +221,12 @@ export function Columns({
           onClick={() => onSelect(b.key)}
         >
           <span className="column-plot">
-            <span className={`column-fill${b.value ? '' : ' is-zero'}`} style={b.value ? { height: `${Math.max(4, (b.value / max) * 100)}%` } : undefined} />
+            <span
+              className={`column-fill${b.value ? '' : ' is-zero'}${b.parts ? ' column-stack' : ''}`}
+              style={b.value ? { height: `${Math.max(4, (b.value / max) * 100)}%` } : undefined}
+            >
+              {b.value > 0 && b.parts?.map((p, i) => (p.value > 0 ? <span key={i} className="column-part" style={{ flex: p.value, background: p.color }} /> : null))}
+            </span>
           </span>
           <span className="column-tick">{b.tick}</span>
         </button>
