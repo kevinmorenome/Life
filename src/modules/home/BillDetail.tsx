@@ -21,8 +21,10 @@ export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBi
     ['Invoice', b.number],
     ['Period', b.periodStart && b.periodEnd ? `${shortDate(b.periodStart)} – ${shortDate(b.periodEnd)}` : b.periodEnd ? `to ${shortDate(b.periodEnd)}` : undefined],
     ['Due', isPaid(b) && b.due ? shortDate(b.due) : undefined],
+    ['Paid on', isPaid(b) ? shortDate(b.paidOn!) : undefined],
+    ['Paid by', isPaid(b) ? (b.paidBy ? PAYER_NAMES[b.paidBy] : 'Not recorded') : undefined],
     ['Meter', b.readingEnd !== undefined ? (b.readingStart !== undefined ? `${b.readingStart} → ${b.readingEnd} ${unit}` : `${b.readingEnd} ${unit}`) : undefined],
-    ['Kevin’s share', b.paidBy === 'other' || isPaid(b) ? eur(kevinShare(b)) : undefined],
+    ['Kevin’s share', eur(kevinShare(b))],
   ];
 
   return (
