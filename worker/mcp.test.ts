@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles' | 'players' | 'trips' | 'tripitplans' | 'recipes' | 'settings';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'utilitybills' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles' | 'players' | 'trips' | 'tripitplans' | 'recipes' | 'settings';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map(), players: new Map(), trips: new Map(), tripitplans: new Map(), recipes: new Map(), settings: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), utilitybills: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map(), players: new Map(), trips: new Map(), tripitplans: new Map(), recipes: new Map(), settings: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -92,6 +92,7 @@ describe('protocol', () => {
       'add_receipt_items',
       'add_grocery_receipt',
       'add_wolt_orders',
+      'add_utility_bills',
       'add_takeout_orders',
       'add_rides',
       'log_work',
@@ -1127,6 +1128,21 @@ describe('add_wolt_orders', () => {
     data.woltorders.set('wolt-w1', { ...data.woltorders.get('wolt-w1')!, restaurant: 'My edit' });
     expect(await call(ctx, [order, { sourceId: 'bad' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
     expect(data.woltorders.get('wolt-w1')).toMatchObject({ restaurant: 'My edit', currency: 'EUR' });
+  });
+});
+
+describe('add_utility_bills', () => {
+  const call = async (ctx: ToolContext, bills: unknown[]) => {
+    const r = (await rpc(ctx, 'tools/call', { name: 'add_utility_bills', arguments: { bills } })).result;
+    return JSON.parse(r.content[0].text);
+  };
+  it('saves new bills once and never overwrites', async () => {
+    const { data, ctx } = setup();
+    const bill = { utility: 'water', sourceId: '57196739', month: '2026-08', amount: 62.19, consumption: 11 };
+    expect(await call(ctx, [bill])).toMatchObject({ added: 1, alreadyAdded: 0 });
+    data.utilitybills.set('bill-water-57196739', { ...data.utilitybills.get('bill-water-57196739')!, paidOn: '2026-09-20' });
+    expect(await call(ctx, [bill, { utility: 'gas' }])).toMatchObject({ added: 0, alreadyAdded: 1, rejected: [expect.any(String)] });
+    expect(data.utilitybills.get('bill-water-57196739')).toMatchObject({ paidOn: '2026-09-20', consumption: 11 });
   });
 });
 
