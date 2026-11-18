@@ -84,3 +84,23 @@ describe('shares: items that were for someone else', () => {
     expect(dishLines(orders, details)).toHaveLength(2);
   });
 });
+
+describe('options and fees', () => {
+  const orders = [order('wolt-9', 'Purple Monkey - Trešnjevka', '2026-11-07', 22.26)];
+  const d: TakeoutDetail = {
+    id: 'td-wolt-9', orderId: 'wolt-9', createdAt: '', updatedAt: '', itemsSubtotal: 20.8,
+    items: [
+      { name: 'Moj Wok', qty: 1, unitPrice: 8, linePrice: 8, vat: 13 },
+      { name: 'Odaberi umak: Teriyaki', qty: 1, unitPrice: 0, linePrice: 0, vat: 13 },
+      { name: 'Odaberi protein: Piletina', qty: 1, unitPrice: 2, linePrice: 2, vat: 13 },
+      { name: 'Želite li pribor za jelo?: Ne, hvala!', qty: 1, unitPrice: 0, linePrice: 0, vat: 13 },
+      { name: 'Naknada za pakiranje', qty: 1, unitPrice: 0.5, linePrice: 0.5, vat: 25 },
+    ],
+  };
+  it('counts one dish with its choices and leaves fees out', () => {
+    const l = dishLines(orders, [d]);
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ raw: 'Moj Wok', qty: 1, linePrice: 10, options: ['Teriyaki', 'Piletina'] });
+  });
+  it('puts the packaging fee into fees and other', () => expect(feesOf(orders[0], d)).toEqual({ items: 10, fees: 12.26 }));
+});

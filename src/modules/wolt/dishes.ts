@@ -1,6 +1,7 @@
 // What was ordered: pure helpers over takeout orders, their item lines, your dish groups and your likes / notes.
 // Shared by the app and the MCP tools (type-only imports).
 import type { DishFeedback, DishGroup, OrderShare, TakeoutDetail, WoltOrder } from './types';
+import { groupItems, optionChoice } from './receiptPdf';
 import { isEuro, placeName, round2 } from './wolt';
 
 /** Key of a dish at a venue: branches combined, case and spacing ignored. The raw name is never changed. */
@@ -20,7 +21,10 @@ export interface DishLine {
   key: string;
   qty: number;
   unitPrice: number;
+  /** The dish with its paid options (a €2 protein on a wok). */
   linePrice: number;
+  /** What was chosen with it: sauce, base, size… */
+  options: string[];
 }
 
 /** The newest share of each order: line number → how many of it were yours. */
@@ -47,19 +51,25 @@ export function dishLines(orders: WoltOrder[], details: TakeoutDetail[], groups:
   for (const d of details) {
     const o = byOrder.get(d.orderId);
     if (!o) continue;
-    for (const [n, i] of d.items.entries()) {
-      const qty = mineOf(i.qty, shares.get(o.id), n);
+    for (const g of groupItems(d.items)) {
+      if (g.kind === 'fee') continue;
+      const i = g.item;
+      const qty = mineOf(i.qty, shares.get(o.id), g.index);
       if (qty <= 0) continue;
       const key = dishKey(o.restaurant, i.name);
-      out.push({ orderId: o.id, date: o.date, time: o.time, venue: placeName(o.restaurant), currency: o.currency, raw: i.name, dish: names.get(key) || i.name.replace(/\s+/g, ' ').trim(), key, qty, unitPrice: i.unitPrice, linePrice: qty === i.qty ? i.linePrice : round2(i.unitPrice * qty) });
+      const whole = i.linePrice + g.options.reduce((s, x) => s + x.linePrice, 0);
+      out.push({ orderId: o.id, date: o.date, time: o.time, venue: placeName(o.restaurant), currency: o.currency, raw: i.name, dish: names.get(key) || i.name.replace(/\s+/g, ' ').trim(), key, qty, unitPrice: i.unitPrice, linePrice: qty === i.qty ? round2(whole) : round2((whole / i.qty) * qty), options: g.options.map((x) => optionChoice(x.name)).filter((x): x is string => !!x) });
     }
   }
   return out.sort((a, b) => `${b.date} ${b.time ?? ''}`.localeCompare(`${a.date} ${a.time ?? ''}`));
 }
 
 /** Items subtotal and the rest of the order total (delivery, service fee, tip…), which is never an error. */
-export function feesOf(order: WoltOrder, detail?: Pick<TakeoutDetail, 'itemsSubtotal'>): { items: number; fees: number } | undefined {
-  return detail ? { items: detail.itemsSubtotal, fees: round2(order.total - detail.itemsSubtotal) } : undefined;
+export function feesOf(order: WoltOrder, detail?: Pick<TakeoutDetail, 'items'>): { items: number; fees: number } | undefined {
+  if (!detail) return undefined;
+  // Packaging and similar fee rows are part of the fees, not of what was ordered.
+  const items = round2(groupItems(detail.items).filter((g) => g.kind === 'dish').reduce((s, g) => s + g.item.linePrice + g.options.reduce((a, x) => a + x.linePrice, 0), 0));
+  return { items, fees: round2(order.total - items) };
 }
 
 export interface DishRow {

@@ -100,3 +100,43 @@ describe('pairReceipts', () => {
     expect((p.confirmation!.total ?? 0) + (p.invoice!.total ?? 0)).toBeCloseTo(30.17, 2);
   });
 });
+
+describe('groupItems', () => {
+  const row = (name: string, linePrice = 0) => ({ name, linePrice });
+  it('reads options as part of the dish before them and fees apart', async () => {
+    const { groupItems, optionChoice } = await import('./receiptPdf');
+    const g = groupItems([
+      row('Želiš li pribor za jelo?: Ne, hvala!'),
+      row('Moj Wok', 8),
+      row('Odaberi bazu: Široki rezanci'),
+      row('Odaberi protein: Piletina', 2),
+      row('Naknada za pakiranje', 0.5),
+      row('Juha'),
+    ]);
+    expect(g.map((x) => [x.index, x.kind, x.options.length])).toEqual([[0, 'dish', 0], [1, 'dish', 2], [4, 'fee', 0], [5, 'dish', 0]]);
+    expect(optionChoice('Odaberi bazu: Široki rezanci')).toBe('Široki rezanci');
+    expect(optionChoice('Želite li pribor za jelo?: Ne, hvala!')).toBeUndefined();
+  });
+  it('never turns the first row into an option', async () => {
+    const { groupItems } = await import('./receiptPdf');
+    expect(groupItems([{ name: 'Menu: Burger' }]).map((x) => x.kind)).toEqual(['dish']);
+  });
+});
+
+describe('page breaks inside the item table', () => {
+  it('keeps the rows on both sides of a form feed apart', () => {
+    const text = `Potvrda narudžbe #1
+
+Objekt                       Moj Wok bar
+
+Stavka                       % PDV-a   Količina   Bruto jedinična cijena   Cijena
+
+   Odaberi protein: Piletina                 13%          1                     2,00      2,00
+\f   Odaberi posip: Indijski oraščići                 13%             1                      0,00     0,00
+
+Ukupno u EUR (uklj. PDV)                                                                            2,00
+`;
+    const r = parseReceiptText(text);
+    expect(r.items.map((i) => [i.name, i.linePrice])).toEqual([['Odaberi protein: Piletina', 2], ['Odaberi posip: Indijski oraščići', 0]]);
+  });
+});

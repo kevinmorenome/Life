@@ -13,7 +13,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { itemsSubtotal, parseReceiptText, type PdfItem } from '../src/modules/wolt/receiptPdf.ts';
+import { groupItems, itemsSubtotal, optionChoice, parseReceiptText, type PdfItem } from '../src/modules/wolt/receiptPdf.ts';
 
 interface Entry {
   orderId: string;
@@ -89,7 +89,16 @@ if (cmd === 'parse') {
     const sub = itemsSubtotal(e.items!);
     const sum = Math.round((sub + (e.feesTotal ?? 0)) * 100) / 100;
     console.log(`\n${e.date} ${e.time ?? ''}  ${e.venue}  [${e.orderId}]  ${e.orderType ?? ''} · ${e.paymentMethod ?? ''}`);
-    for (const i of e.items!) console.log(`   ${String(i.qty).padStart(2)}×  ${i.name.padEnd(46).slice(0, 46)} ${eur(i.unitPrice).padStart(7)} ${eur(i.linePrice).padStart(8)}  (${i.vat}%)`);
+    for (const g of groupItems(e.items!)) {
+      const i = g.item;
+      const extra = g.options.reduce((s, x) => s + x.linePrice, 0);
+      if (g.kind === 'fee') console.log(`   fee  ${i.name.padEnd(46).slice(0, 46)} ${eur(i.linePrice).padStart(16)}`);
+      else {
+        console.log(`   ${String(i.qty).padStart(2)}×  ${i.name.padEnd(46).slice(0, 46)} ${eur(i.unitPrice).padStart(7)} ${eur(i.linePrice + extra).padStart(8)}  (${i.vat}%)`);
+        const choices = g.options.map((x) => optionChoice(x.name)).filter(Boolean);
+        if (choices.length) console.log(`        ↳ ${choices.join(', ')}${extra ? `  (+${eur(extra)} options)` : ''}`);
+      }
+    }
     const check = e.emailTotal === undefined ? 'no email total to compare' : Math.abs(e.emailTotal - sum) <= 0.02 ? 'matches the email total' : `DIFFERENT from email total ${eur(e.emailTotal)} (tip or other extra?)`;
     console.log(`   items ${eur(sub)} + fees ${eur(e.feesTotal)} = ${eur(sum)}  → ${check}`);
   }

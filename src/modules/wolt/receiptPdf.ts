@@ -56,7 +56,8 @@ function field(lines: string[], label: string, below = false): string | undefine
 }
 
 export function parseReceiptText(text: string): PdfReceipt {
-  const lines = clean(text).split(/\r?\n/).map((l) => l.replace(/\s+$/, ''));
+  // A page break (form feed) can sit between two rows with no blank line, so it separates rows like one.
+  const lines = clean(text).replace(/\f/g, '\n\n').split(/\r?\n/).map((l) => l.replace(/\s+$/, ''));
   const head = lines.find((l) => l.trim())?.trim() ?? '';
   const kind: PdfReceipt['kind'] = /^Potvrda narudžbe/i.test(head) ? 'confirmation' : 'invoice';
   const out: PdfReceipt = { kind, items: [] };
@@ -121,3 +122,41 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Sum of the item lines. */
 export const itemsSubtotal = (items: PdfItem[]) => round2(items.reduce((s, i) => s + i.linePrice, 0));
+
+export interface ItemGroup<T> {
+  /** Position of the line in the order's items (what shares and notes refer to). */
+  index: number;
+  item: T;
+  kind: 'dish' | 'fee';
+  /** "Group: choice" lines that follow a dish (sauce, base, size…): choices of that dish, not dishes of their own. */
+  options: T[];
+}
+
+const FEE = /^(naknada|dostava|napojnica|servisna)\b/i;
+const OPTION = /^[^:]{2,}:\s*\S/;
+
+/**
+ * Wolt prints a dish, then each choice made for it as its own row ("Odaberi umak: Teriyaki", often at 0,00), and fees such as
+ * "Naknada za pakiranje" as ordinary rows. Rows starting with "Naknada" / "Dostava" / "Napojnica" are fees; a row with a
+ * "Group: choice" shape after a dish is that dish's option; everything else is a dish. The raw rows are never changed, this is
+ * only how they are read.
+ */
+export function groupItems<T extends { name: string }>(items: T[]): ItemGroup<T>[] {
+  const out: ItemGroup<T>[] = [];
+  items.forEach((item, index) => {
+    if (FEE.test(item.name.trim())) {
+      out.push({ index, item, kind: 'fee', options: [] });
+      return;
+    }
+    const dish = [...out].reverse().find((g) => g.kind === 'dish');
+    if (dish && OPTION.test(item.name)) dish.options.push(item);
+    else out.push({ index, item, kind: 'dish', options: [] });
+  });
+  return out;
+}
+
+/** What was chosen: the text after the colon. The cutlery question ("Želiš li pribor…?") is not a choice worth showing. */
+export function optionChoice(name: string): string | undefined {
+  const [group, ...rest] = name.split(':');
+  return /pribor|cutlery/i.test(group) ? undefined : rest.join(':').trim() || undefined;
+}

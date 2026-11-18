@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EditIcon, ThumbDownIcon, ThumbUpIcon } from '../../icons';
 import { dishKey, feesOf, mineOf } from './dishes';
+import { groupItems, optionChoice } from './receiptPdf';
 import type { TakeoutDetail, WoltOrder } from './types';
 import type { useTakeoutData } from './useTakeoutData';
 import { placeName } from './wolt';
@@ -18,7 +19,19 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
   return (
     <div className="order-items">
       <ul className="item-lines">
-        {detail.items.map((i, n) => {
+        {groupItems(detail.items).map((g) => {
+          const i = g.item;
+          const n = g.index;
+          if (g.kind === 'fee') {
+            return (
+              <li key={n} className="item-fee">
+                <span className="item-qty" />
+                <span className="item-name muted small">{i.name} <span className="small">· fee</span></span>
+                <span className="item-price muted small">{price(i.linePrice, order.currency)}</span>
+              </li>
+            );
+          }
+          const choices = g.options.map((x) => optionChoice(x.name)).filter(Boolean);
           const key = dishKey(order.restaurant, i.name);
           const fb = data.verdicts.get(key);
           const mine = mineOf(i.qty, data.shares.get(order.id), n);
@@ -30,10 +43,11 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
               <span className="item-name">
                 {shown}
                 {shown !== i.name && <span className="muted small"> · printed: {i.name}</span>}
+                {choices.length > 0 && <span className="muted small item-note">{choices.join(', ')}</span>}
                 {mine < i.qty && <span className="muted small item-note">{mine === 0 ? 'For someone else, not counted in What I eat' : `${mine} of ${i.qty} yours, the rest for someone else`}</span>}
                 {fb?.note && <span className="muted small item-note">“{fb.note}”</span>}
               </span>
-              <span className="item-price">{price(i.linePrice, order.currency)}</span>
+              <span className="item-price">{price(i.linePrice + g.options.reduce((s, x) => s + x.linePrice, 0), order.currency)}</span>
               <span className="item-actions">
                 <button type="button" className="icon-btn" aria-label={`Liked ${i.name}`} aria-pressed={fb?.verdict === 'liked'} onClick={() => data.rate(venue, i.name, { verdict: fb?.verdict === 'liked' ? null : 'liked' })}>
                   <ThumbUpIcon />
