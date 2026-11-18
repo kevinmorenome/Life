@@ -1,3 +1,4 @@
+import { GlobeIcon } from '../../icons';
 import type { LifeModule } from '../types';
 
 // Countries have no pages of their own: Stats → Places → Countries shows the map and list. The visits come from Swarm
@@ -5,7 +6,7 @@ import type { LifeModule } from '../types';
 export const countriesModule: LifeModule = {
   id: 'countries',
   title: 'Countries',
-  icon: '🌍',
+  icon: <GlobeIcon />,
   description: 'Countries you have been to.',
   listed: false,
   render: () => null,

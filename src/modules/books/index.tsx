@@ -9,7 +9,7 @@ import { useBooksCalendarLayer } from './useBooksLayer';
 export const booksModule: LifeModule = {
   id: 'books',
   title: 'Books',
-  icon: '📚',
+  icon: <BookIcon />,
   description: 'What you read: shelves, ratings and a year in books. Import from Goodreads or add books yourself.',
   render: (subroute) => <BooksRoot subroute={subroute} />,
   actions: [{ label: 'Add a book', icon: <BookIcon />, path: () => '/books/add' }],

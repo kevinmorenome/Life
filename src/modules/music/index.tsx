@@ -1,3 +1,4 @@
+import { MusicIcon } from '../../icons';
 import { ENTERTAINMENT, type LifeModule } from '../types';
 import { MusicStatsRoute } from './MusicStatsRoute';
 import { useMusicCalendarLayer } from './useMusicLayer';
@@ -7,7 +8,7 @@ import { useMusicCalendarLayer } from './useMusicLayer';
 export const musicModule: LifeModule = {
   id: 'music',
   title: 'Music',
-  icon: '🎧',
+  icon: <MusicIcon />,
   description: 'What you listened to, from stats.fm.',
   listed: false,
   render: () => null,

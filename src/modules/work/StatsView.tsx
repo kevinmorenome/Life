@@ -77,12 +77,17 @@ function Overview({ infos, target, now }: { infos: Map<string, DayInfo>; target:
         </Section>
       ) : (
         <>
-          <div className="tiles">
-            <Tile value={String(c.office)} label={`office days in ${year}`} tone={0} />
-            <Tile value={String(c.home)} label={`home days in ${year}`} tone={1} />
-            <Tile value={share === undefined ? '–' : `${share}%`} label="of your days in the office" tone={2} />
-            <Tile value={arrival === undefined ? '–' : formatMinutes(arrival)} label="usual arrival at the office" tone={3} />
-          </div>
+          <Section
+            hero
+            title={`Office days in ${year}`}
+            value={String(c.office)}
+            sentence={`${c.office === 1 ? 'day' : 'days'} in the office against ${c.home} at home${share === undefined ? '' : `: ${share}% of your days in the office`}.`}
+          >
+            <div className="tiles">
+              <Tile value={String(c.home)} label={`home days in ${year}`} tone={1} />
+              <Tile value={arrival === undefined ? '–' : formatMinutes(arrival)} label="usual arrival at the office" tone={3} />
+            </div>
+          </Section>
           <SplitCard infos={infos} now={now} />
           <StreakCard infos={infos} now={now} />
           <CalendarCard infos={infos} now={now} />
@@ -105,7 +110,13 @@ function SplitCard({ infos, now }: { infos: Map<string, DayInfo>; now: string })
   const slices = (['office', 'home', 'trip', 'off'] as WorkStatus[]).filter((s) => counts[s] > 0).map((s) => ({ name: NAMES[s], value: counts[s] }));
   const byName = (name: string) => COLORS[(Object.keys(NAMES) as WorkStatus[]).find((s) => NAMES[s] === name) ?? 'off'];
   return (
-    <Section title="Where you work" note="Office, home, work trips and days off.">
+    <Section
+      title="Where you work"
+      value={slices.length ? String(slices.reduce((n, x) => n + x.value, 0)) : undefined}
+      sentence={slices.length ? `days logged. Most were ${slices.slice().sort((a, b) => b.value - a.value)[0].name.toLowerCase()}.` : undefined}
+      tone={0}
+      note="Office, home, work trips and days off."
+    >
       <Toggle label="Period" options={PERIODS} value={period} onChange={setPeriod} />
       {slices.length === 0 ? (
         <Empty>No days logged in this period.</Empty>
@@ -120,9 +131,8 @@ function StreakCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   const st = attendanceStreaks(infos, now);
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
   return (
-    <Section title="Streaks" note="Workdays in a row. Weekends, days off and work trips don’t break a streak; a workday with nothing logged does.">
+    <Section title="Streaks" value={days(st.office.current)} sentence={`in the office now. Longest office run ${days(st.office.longest)}; at home now ${days(st.home.current)}, longest ${days(st.home.longest)}.`} tone={0} note="Workdays in a row. Weekends, days off and work trips don’t break a streak; a workday with nothing logged does.">
       <div className="tiles">
-        <Tile value={days(st.office.current)} label="in the office now" tone={0} />
         <Tile value={days(st.office.longest)} label="longest office run" tone={0} />
         <Tile value={days(st.home.current)} label="at home now" tone={1} />
         <Tile value={days(st.home.longest)} label="longest home run" tone={1} />
@@ -136,7 +146,7 @@ function CalendarCard({ infos, now }: { infos: Map<string, DayInfo>; now: string
     col.map((cell) => ({ date: cell.date, future: cell.future, on: !!cell.status, color: cell.status ? COLORS[cell.status] : undefined })),
   );
   return (
-    <Section title="Last 20 weeks" note="Each column is a week, Monday at the top.">
+    <Section title="Last 20 weeks" value={String(weeks.flat().filter((c) => c.on).length)} sentence="days logged in the last 20 weeks." tone={2} note="Each column is a week, Monday at the top.">
       <div className="pair-legend">
         {(['office', 'home', 'trip', 'off'] as WorkStatus[]).map((s) => (
           <span key={s}>
@@ -183,7 +193,7 @@ function MonthlyCard({ infos, now }: { infos: Map<string, DayInfo>; now: string 
   const bars: Bar[] = rows.map((r) => ({ key: r.month, tick: monthName(r.month, 'narrow'), value: value(r) }));
   const fmt = (v: number) => (metric === 'share' ? `${v}%` : `${v} ${v === 1 ? 'day' : 'days'}`);
   return (
-    <Section title="Month by month" note="The last 12 months.">
+    <Section title="Month by month" value={fmt(value(rows[rows.length - 1]))} sentence={`${metric === 'share' ? 'in the office' : metric === 'office' ? 'office' : 'home'} this month.`} tone={metric === 'home' ? 1 : 0} note="The last 12 months.">
       <Toggle label="Show" options={METRICS} value={metric} onChange={setMetric} />
       <ReadoutColumns
         key={metric}
@@ -201,7 +211,7 @@ function WeeklyCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   const rows = weeklyCounts(infos, now, 12);
   const bars: Bar[] = rows.map((r) => ({ key: r.start, tick: String(Number(r.start.slice(8))), value: r.office }));
   return (
-    <Section title="Office days per week" note="Week by week, labelled with the Monday’s date.">
+    <Section title="Office days per week" value={String(rows.at(-1)?.office ?? 0)} sentence="office days this week." tone={0} note="Week by week, labelled with the Monday’s date.">
       <ReadoutColumns
         bars={bars}
         big={(b) => `${b.value} office ${b.value === 1 ? 'day' : 'days'}`}
@@ -224,7 +234,7 @@ function WeekdayCard({ infos }: { infos: Map<string, DayInfo> }) {
     sub: `${w.office} office · ${w.home} home`,
   }));
   return (
-    <Section title="Which days you go in" note="Share of office days among office and home days, all time.">
+    <Section title="Which days you go in" value={names[rows.reduce((b, r, i) => (r.value > rows[b].value ? i : b), 0)]} sentence="is the weekday you most often go in." tone={0} note="Share of office days among office and home days, all time.">
       <HBars rows={rows} color={COLORS.office} />
     </Section>
   );
@@ -246,7 +256,7 @@ function TargetHistoryCard({ infos, target, now }: { infos: Map<string, DayInfo>
     };
   });
   return (
-    <Section title="Against your target" note="Each month’s count against the number set in Settings.">
+    <Section title="Against your target" value={`${rows.filter((r) => r.sub === 'On target').length} of ${rows.length}`} sentence="of the last months were on target." tone={0} note="Each month’s count against the number set in Settings.">
       <HBars rows={rows} />
     </Section>
   );
@@ -347,7 +357,7 @@ function ArrivalCard({ infos, rangeLabel }: { infos: Map<string, DayInfo>; range
   const total = bins.reduce((a, b) => a + b.count, 0);
   const top = bins.reduce((a, b) => (b.count > a.count ? b : a));
   return (
-    <Section title="When you arrive" note={`Office arrivals by half hour, ${rangeLabel}. Most often ${top.start}–${end(top.start)}.`}>
+    <Section title="When you arrive" value={top.start} sentence={`is when you most often get to the office, ${top.start}–${end(top.start)}, in ${rangeLabel.toLowerCase()}.`} tone={0} note={`Office arrivals by half hour, ${rangeLabel}.`}>
       <ReadoutColumns
         key={rangeLabel}
         bars={bars}
@@ -366,7 +376,7 @@ function OnSiteCard({ infos, now }: { infos: Map<string, DayInfo>; now: string }
   const bars: Bar[] = months.map((m, i) => ({ key: m, tick: monthName(m, 'narrow'), value: Math.round(stats[i].duration ?? 0) }));
   const any = bars.some((b) => b.value > 0);
   return (
-    <Section title="Length of the day" note="Average time between start and end, for each of the last 12 months.">
+    <Section title="Length of the day" value={any ? formatDuration(bars[bars.length - 1].value || [...bars].reverse().find((b) => b.value)!.value) : undefined} sentence={`average ${kind === 'home' ? 'working from home' : 'at the office'}, latest month with data.`} tone={kind === 'home' ? 1 : 0} note="Average time between start and end, for each of the last 12 months.">
       <Toggle label="Where" options={DURATION_KINDS} value={kind} onChange={(v) => setKind(v as 'office' | 'home')} />
       {!any ? (
         <Empty>{kind === 'home' ? 'Enter start and end times on your home days to see this.' : 'No office days with both times yet.'}</Empty>
@@ -420,7 +430,12 @@ function AveragesCard({
   const office = table('At the office', rows('office'));
   const home = table('Working from home', rows('home'));
   return (
-    <Section title="Averages">
+    <Section
+      title="Averages"
+      value={rows('office').range.arrive !== undefined ? formatMinutes(rows('office').range.arrive!) : rows('home').range.arrive !== undefined ? formatMinutes(rows('home').range.arrive!) : undefined}
+      sentence={`is your average start in ${rangeLabel.toLowerCase()}.`}
+      tone={3}
+    >
       {office}
       {home}
       {!office && !home && <Empty>No times in {rangeLabel}.</Empty>}
@@ -432,7 +447,7 @@ function ExtremesCard({ infos, rangeLabel }: { infos: Map<string, DayInfo>; rang
   const x = timeExtremes(infos);
   if (!x.earliest && !x.latest && !x.longest) return null;
   return (
-    <Section title="Records" note={rangeLabel}>
+    <Section title="Records" value={x.longest ? formatDuration(x.longest.minutes) : x.earliest?.time} sentence={x.longest ? `is your longest day, on ${shortDate(x.longest.date)}.` : 'is your earliest start.'} tone={2} note={rangeLabel}>
       <ul className="work-records">
         {x.earliest && <Record label="Earliest start" value={x.earliest.time} date={x.earliest.date} />}
         {x.latest && <Record label="Latest finish" value={x.latest.time} date={x.latest.date} />}

@@ -7,6 +7,7 @@ export function Home() {
   return (
     <>
       <WeekDigest />
+      <h2 className="stat-kicker more-kicker">Everything else</h2>
       <ul className="module-grid">
         {MODULES.filter((m) => m.listed !== false).map((m) => (
           <li key={m.id}>

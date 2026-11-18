@@ -335,3 +335,10 @@ export const PhoneIcon = () => (
     <path d="M11 18.5h2" />
   </Icon>
 );
+
+export const GlobeIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.600 2.500 3.800 5.500 3.800 9s-1.200 6.500-3.800 9c-2.600-2.500-3.800-5.500-3.800-9S9.400 5.500 12 3Z" />
+  </Icon>
+);

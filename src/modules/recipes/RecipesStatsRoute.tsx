@@ -41,13 +41,14 @@ export function RecipesStatsRoute() {
 
   return (
     <>
+      <Section hero title="Cooking" value={String(stream.length)} sentence={`${stream.length === 1 ? 'time' : 'times'} cooked across ${top.length} ${top.length === 1 ? 'recipe' : 'different recipes'}. Current streak ${streak.current} ${streak.current === 1 ? 'day' : 'days'}, best ${streak.longest}.`}>
       <div className="tiles">
-        <Tile value={String(stream.length)} label={stream.length === 1 ? 'Time cooked' : 'Times cooked'} tone={0} />
         <Tile value={String(top.length)} label={top.length === 1 ? 'Recipe' : 'Different recipes'} tone={1} />
         <Tile value={`${streak.current} ${streak.current === 1 ? 'day' : 'days'}`} label={`Streak · best ${streak.longest}`} tone={2} />
       </div>
+      </Section>
 
-      <Section title="Stream of cooking" note="Every time you cooked, newest first.">
+      <Section title="Stream of cooking" value={agoText(stream[0].date, now)} sentence={`you last cooked ${stream[0].recipe.name}.`} tone={1} note="Every time you cooked, newest first.">
         <ol className="cook-stream">
           {stream.slice(0, shown).map((c, i) => {
             const n = nth.get(`${c.recipe.id}|${c.date}`) ?? 1;
@@ -73,7 +74,7 @@ export function RecipesStatsRoute() {
         )}
       </Section>
 
-      <Section title="Most cooked">
+      <Section title="Most cooked" value={top[0].recipe.name} sentence={`is your most cooked recipe, ${top[0].times} times.`} tone={0}>
         <HBars
           rows={top.slice(0, 8).map((r, i) => ({
             key: r.recipe.id,
@@ -86,7 +87,7 @@ export function RecipesStatsRoute() {
         />
       </Section>
 
-      <Section title="Per month" note={selected ? `${monthName(selected.month)}: cooked ${selected.times} ${selected.times === 1 ? 'time' : 'times'}.` : undefined}>
+      <Section title="Per month" value={selected ? String(selected.times) : undefined} sentence={selected ? `${selected.times === 1 ? 'time' : 'times'} cooked in ${monthName(selected.month)}.` : undefined} tone={2}>
         <Columns
           bars={months.map((m) => ({ key: m.month, tick: monthTick(m.month), value: m.times }))}
           selected={selected?.month ?? ''}
@@ -96,12 +97,12 @@ export function RecipesStatsRoute() {
         />
       </Section>
 
-      <Section title="By weekday">
+      <Section title="By weekday" value={WEEKDAYS[weekdays.indexOf(Math.max(...weekdays))]} sentence="is the day you cook most." tone={3}>
         <HBars rows={WEEKDAYS.map((d, i) => ({ key: d, label: d, value: weekdays[i], shown: String(weekdays[i]) }))} color="var(--c-cook)" />
       </Section>
 
       {(notLately.length > 0 || never.length > 0) && (
-        <Section title="Cook again?" note="Recipes you haven’t made in over a month, and ones you never have.">
+        <Section title="Cook again?" value={String(notLately.length + never.length)} sentence={`${notLately.length + never.length === 1 ? 'recipe' : 'recipes'} waiting for you: not cooked lately or never.`} tone={4} note="Recipes you haven’t made in over a month, and ones you never have.">
           <ul className="digest-list cook-again">
             {notLately.slice(0, 6).map((r) => (
               <li key={r.recipe.id}>

@@ -39,13 +39,14 @@ export function GamesStatsRoute() {
 
   return (
     <>
-      <div className="tiles">
-        <Tile value={String(nights.items.length)} label="Game nights" tone={0} />
-        <Tile value={String(total)} label="Games played" tone={1} />
-        <Tile value={records[0] ? name(records[0].id) : '–'} label="Most wins" tone={2} />
-      </div>
+      <Section hero title="Games played" value={String(total)} sentence={`${total === 1 ? 'game' : 'games'} over ${nights.items.length} ${nights.items.length === 1 ? 'night' : 'nights'}.${records[0] ? ` ${name(records[0].id)} has the most wins.` : ''}`}>
+        <div className="tiles">
+          <Tile value={String(nights.items.length)} label="Game nights" tone={0} />
+          <Tile value={records[0] ? name(records[0].id) : '–'} label="Most wins" tone={2} />
+        </div>
+      </Section>
 
-      <Section title="Leaderboard" note="Wins over games each person played in.">
+      <Section title="Leaderboard" value={records[0] ? String(records[0].wins) : undefined} sentence={records[0] ? `wins for ${name(records[0].id)}, out of ${records[0].played} games played.` : undefined} tone={0} note="Wins over games each person played in.">
         <HBars
           rows={records.map((r, i) => {
             const gap = i > 0 ? records[i - 1].wins - r.wins : 0;
@@ -56,12 +57,12 @@ export function GamesStatsRoute() {
       </Section>
 
       {ties.length > 0 && (
-        <Section title="Win rate" note="Players with at least 3 games.">
+        <Section title="Win rate" value={pct(ties[0].winRate)} sentence={`is ${name(ties[0].id)}'s win rate, the best of anyone with 3 or more games.`} tone={1} note="Players with at least 3 games.">
           <HBars rows={ties.map((r, i) => ({ key: r.id, label: name(r.id), value: r.winRate, shown: pct(r.winRate), color: TONES[i % TONES.length] }))} />
         </Section>
       )}
 
-      <Section title="Streaks" note="Wins in a row across the games each person played.">
+      <Section title="Streaks" value={withStreak[0] ? String(withStreak[0].bestStreak) : undefined} sentence={withStreak[0] ? `wins in a row, the best streak: ${name(withStreak[0].id)}.` : undefined} tone={3} note="Wins in a row across the games each person played.">
         <ul className="game-list">
           {withStreak.map((r) => (
             <li key={r.id} className="game-line">
@@ -75,7 +76,7 @@ export function GamesStatsRoute() {
       </Section>
 
       {players.items.length >= 2 && (
-        <Section title="Head to head">
+        <Section title="Head to head" value={h2h?.games ? `${h2h.aWins}–${h2h.bWins}` : undefined} sentence={h2h?.games ? `${name(pa)} against ${name(pb)} in ${h2h.games} games together.` : undefined} tone={2}>
           <div className="game-add">
             <select value={pa} onChange={(e) => setA(e.target.value)} aria-label="First player">
               {players.items.map((p) => (
@@ -110,7 +111,7 @@ export function GamesStatsRoute() {
       )}
 
       {bonus.length > 0 && (
-        <Section title="Catan: road and army" note="Who held Longest Road and Largest Army, and how often they won with it.">
+        <Section title="Catan: road and army" value={String(bonus.reduce((n, b) => n + b.games, 0))} sentence="Catan games with road and army recorded." tone={3} note="Who held Longest Road and Largest Army, and how often they won with it.">
           <ul className="game-list">
             {bonus.map((b) => (
               <li key={b.id} className="game-line">
@@ -125,7 +126,7 @@ export function GamesStatsRoute() {
       )}
 
       {lords.length > 0 && (
-        <Section title="Lords of Waterdeep: Lords" note="How often each Lord was drawn and won, and the average points its bonus added (needs the points before the Lord).">
+        <Section title="Lords of Waterdeep: Lords" value={String(lords.length)} sentence={`${lords.length === 1 ? 'Lord' : 'Lords'} drawn so far.`} tone={2} note="How often each Lord was drawn and won, and the average points its bonus added (needs the points before the Lord).">
           <ul className="game-list">
             {lords.map((l) => (
               <li key={l.lord} className="game-line">
@@ -142,7 +143,7 @@ export function GamesStatsRoute() {
       )}
 
       {corruption.length > 0 && (
-        <Section title="Lords of Waterdeep: corruption" note="Games played with the Skullport expansion: corruptions per game and points they cost.">
+        <Section title="Lords of Waterdeep: corruption" value={String(corruption.reduce((n, c) => n + c.count, 0))} sentence="corruptions taken in Skullport games." tone={3} note="Games played with the Skullport expansion: corruptions per game and points they cost.">
           <ul className="game-list">
             {corruption.map((c) => (
               <li key={c.id} className="game-line">
@@ -156,7 +157,7 @@ export function GamesStatsRoute() {
         </Section>
       )}
 
-      <Section title="Games">
+      <Section title="Games" value={String(tStats.length)} sentence={`${tStats.length === 1 ? 'game' : 'different games'} played. Most played: ${titles.items.find((x) => x.id === [...tStats].sort((p, q) => q.plays - p.plays)[0]?.id)?.name ?? 'a game'}.`} tone={1}>
         <ul className="game-list">
           {tStats.map((s) => {
             const t = titles.items.find((x) => x.id === s.id);
@@ -182,7 +183,7 @@ export function GamesStatsRoute() {
         </ul>
       </Section>
 
-      <Section title="Games per month" note={`${months.find((m) => m.month === selMonth)?.plays ?? 0} games in ${monthTick(selMonth)}`}>
+      <Section title="Games per month" value={String(months.find((m) => m.month === selMonth)?.plays ?? 0)} sentence={`games in ${monthTick(selMonth)}.`} tone={0}>
         <Columns
           bars={months.map((m) => ({ key: m.month, tick: monthTick(m.month), value: m.plays }))}
           selected={selMonth}

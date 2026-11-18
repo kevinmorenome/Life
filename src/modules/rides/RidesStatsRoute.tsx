@@ -40,37 +40,38 @@ function Loaded({ rides, now }: { rides: Ride[]; now: string }) {
 
   return (
     <>
-      <p className="muted">
-        You have taken <strong>{s.rides}</strong> {s.rides === 1 ? 'ride' : 'rides'}
-        {s.since ? <> since <strong>{new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</strong></> : null}, spending <strong>{eur0(s.spent)}</strong>
-        {s.km > 0 ? <> over <strong>{Math.round(s.km).toLocaleString()} km</strong></> : null}.
-      </p>
-      <div className="tiles">
-        <Tile value={String(s.rides)} label="rides, all time" tone={0} />
-        <Tile value={eur0(s.spent)} label="spent (EUR)" tone={1} />
-        <Tile value={eur(s.average)} label="average ride" tone={2} />
-        <Tile value={eur0(s.yearSpent)} label={`spent in ${year} (${count(s.yearRides, 'ride')})`} tone={3} />
-      </div>
-      <Section title="Bolt vs Uber" note="Rides and euro spend per app.">
+      <Section
+        hero
+        title="Rides, all time"
+        value={String(s.rides)}
+        sentence={`${s.rides === 1 ? 'ride' : 'rides'}${s.since ? ` since ${new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}, ${eur0(s.spent)} spent${s.km > 0 ? ` over ${Math.round(s.km).toLocaleString()} km` : ''}.`}
+      >
+        <div className="tiles">
+          <Tile value={eur0(s.spent)} label="spent (EUR)" tone={1} />
+          <Tile value={eur(s.average)} label="average ride" tone={2} />
+          <Tile value={eur0(s.yearSpent)} label={`spent in ${year} (${count(s.yearRides, 'ride')})`} tone={3} />
+        </div>
+      </Section>
+      <Section title="Bolt vs Uber" value={s.byProvider.length ? PROVIDER_NAME[s.byProvider[0].provider] : undefined} sentence={s.byProvider.length ? `is the app you ride with most, ${count(s.byProvider[0].rides, 'ride')}.` : undefined} tone={1} note="Rides and euro spend per app.">
         <HBars rows={s.byProvider.map((p) => ({ key: p.provider, label: PROVIDER_NAME[p.provider], value: p.rides, shown: `${count(p.rides, 'ride')} · ${eur0(p.spent)}` }))} />
       </Section>
-      <Section title="Spend per month" note="Euro rides, by the month they started. Months without rides show as empty.">
+      <Section title="Spend per month" value={eur0(months[months.length - 1]?.spent ?? 0)} sentence={`spent in ${monthLabel(months[months.length - 1]?.month ?? now.slice(0, 7), 'long')}, the latest month.`} tone={1} note="Euro rides, by the month they started. Months without rides show as empty.">
         <ReadoutColumns bars={monthBars} big={(b) => eur(b.value)} small={(b) => `${monthLabel(b.key, 'long')} · ${count(months.find((m) => m.month === b.key)?.rides ?? 0, 'ride')}`} initial={months[months.length - 1]?.month} />
       </Section>
       {drops.length > 0 && (
-        <Section title="Where you go" note="Top drop-offs, by street address.">
+        <Section title="Where you go" value={drops[0].name} sentence={`is where you are dropped off most, ${count(drops[0].rides, 'ride')}.`} tone={2} note="Top drop-offs, by street address.">
           <HBars rows={drops.map((p) => ({ key: p.name, label: p.name, value: p.rides, shown: count(p.rides, 'ride') }))} />
         </Section>
       )}
       {picks.length > 0 && (
-        <Section title="Where you start" note="Top pick-ups, by street address.">
+        <Section title="Where you start" value={picks[0].name} sentence={`is where you are picked up most, ${count(picks[0].rides, 'ride')}.`} tone={3} note="Top pick-ups, by street address.">
           <HBars rows={picks.map((p) => ({ key: p.name, label: p.name, value: p.rides, shown: count(p.rides, 'ride') }))} />
         </Section>
       )}
-      <Section title="When you ride" note="Rides by hour of day.">
+      <Section title="When you ride" value={`${String(hours.indexOf(Math.max(...hours))).padStart(2, '0')}:00`} sentence="is the hour you ride most often." tone={1} note="Rides by hour of day.">
         <ReadoutColumns key="hours" bars={hourBars} color="var(--tone-blue)" big={(b) => count(b.value, 'ride')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(hours.indexOf(Math.max(...hours)))} />
       </Section>
-      <Section title="Which days" note="Rides by weekday.">
+      <Section title="Which days" value={DAYS[weekdays.indexOf(Math.max(...weekdays))]} sentence="is the day you ride most often." tone={2} note="Rides by weekday.">
         <ReadoutColumns key="days" bars={dayBars} color="var(--tone-purple)" big={(b) => count(b.value, 'ride')} small={(b) => DAYS[Number(b.key)]} initial={String(weekdays.indexOf(Math.max(...weekdays)))} />
       </Section>
       <AllRides rides={rides} />

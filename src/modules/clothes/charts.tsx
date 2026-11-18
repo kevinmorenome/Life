@@ -4,11 +4,40 @@ import { swatchCss } from './colors';
 /** Series colours: the app's accent and tones, so charts follow light/dark mode. */
 export const TONES = ['var(--accent)', 'var(--tone-blue)', 'var(--tone-purple)', 'var(--tone-orange)', 'var(--tone-lime)'];
 
-/** A stats card with a heading and an optional footnote. */
-export function Section({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
+/**
+ * One block of a stats page. With a `value` it is the page's pattern: a small caption, one big number, a short
+ * sentence that says what it means, then the chart as `children`. Without one it is a plain headed section.
+ * `hero` is the page's first block (the largest numeral); `tone` picks the chart tone the number is tinted with.
+ */
+export function Section({
+  title,
+  children,
+  note,
+  value,
+  sentence,
+  hero,
+  tone = 0,
+}: {
+  title: string;
+  children?: ReactNode;
+  note?: ReactNode;
+  value?: ReactNode;
+  sentence?: ReactNode;
+  hero?: boolean;
+  tone?: number;
+}) {
+  const stat = value != null && value !== '';
   return (
-    <section className="card">
-      <h2>{title}</h2>
+    <section className={`card stat-block${stat ? ' has-stat' : ''}${hero ? ' is-hero' : ''}`} style={stat ? { ['--stat' as string]: TONES[tone % TONES.length] } : undefined}>
+      {stat ? (
+        <>
+          <h2 className="stat-kicker">{title}</h2>
+          <p className={`stat-num${typeof value === 'string' && value.length > 7 ? ' is-text' : ''}`}>{value}</p>
+          {sentence && <p className="stat-sentence">{sentence}</p>}
+        </>
+      ) : (
+        <h2>{title}</h2>
+      )}
       {children}
       {note && <p className="muted small chart-note">{note}</p>}
     </section>
@@ -52,7 +81,7 @@ export function Toggle<T extends string | number>({
 }
 
 /** A percentage as a ring with the number in the middle. */
-export function Ring({ pct, caption, color = 'var(--accent)' }: { pct: number; caption: ReactNode; color?: string }) {
+export function Ring({ pct, caption, color = 'var(--accent)', quiet }: { pct: number; caption: ReactNode; color?: string; quiet?: boolean }) {
   const r = 46;
   const c = 2 * Math.PI * r;
   return (
@@ -68,8 +97,8 @@ export function Ring({ pct, caption, color = 'var(--accent)' }: { pct: number; c
           transform="rotate(-90 60 60)"
         />
       </svg>
-      <span className="ring-pct">{pct}%</span>
-      <span className="ring-caption">{caption}</span>
+      {!quiet && <span className="ring-pct">{pct}%</span>}
+      {!quiet && <span className="ring-caption">{caption}</span>}
     </div>
   );
 }
@@ -188,7 +217,7 @@ export function Columns({
           onClick={() => onSelect(b.key)}
         >
           <span className="column-plot">
-            <span className="column-fill" style={{ height: b.value ? `${Math.max(4, (b.value / max) * 100)}%` : '0' }} />
+            <span className={`column-fill${b.value ? '' : ' is-zero'}`} style={b.value ? { height: `${Math.max(4, (b.value / max) * 100)}%` } : undefined} />
           </span>
           <span className="column-tick">{b.tick}</span>
         </button>

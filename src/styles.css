@@ -10127,3 +10127,230 @@ button.book-status svg:last-child {
   margin: 0 0 8px;
   text-decoration: none;
 }
+
+/* Type: a soft grotesque for the app's voice (big numbers, titles, headings, widget names), the system font for
+   body text and controls. Scale: numeral 56–92/800, title 32/700, heading 22/700, widget 15/700, body 15, caption 12/600. */
+:root {
+  --voice: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --t-numeral: clamp(56px, 22vw, 92px);
+  --t-numeral-s: clamp(40px, 12vw, 52px);
+}
+h2,
+.stat-value,
+.widget-title,
+.module-card strong {
+  font-family: var(--voice);
+}
+
+/* Stats blocks: a caption, one big number, a sentence that says what it means, then the chart. Flat, hairline above. */
+.card.stat-block.has-stat {
+  padding: 1.1rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--glass-line, var(--border));
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  margin-bottom: 1.6rem;
+}
+.stat-kicker {
+  margin: 0;
+  font: 600 12px/1.3 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat-num {
+  margin: 0.15rem 0 0.35rem;
+  font-family: var(--voice);
+  font-size: var(--t-numeral-s);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  font-variant-numeric: lining-nums;
+  color: var(--stat, var(--accent));
+  overflow-wrap: anywhere;
+}
+.stat-block.is-hero .stat-num {
+  font-size: var(--t-numeral);
+  margin-top: 0.3rem;
+}
+.stat-sentence {
+  margin: 0 0 1rem;
+  max-width: 24em;
+  font-family: var(--voice);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.stat-block.is-hero .stat-sentence {
+  font-size: 1.3rem;
+}
+.stat-block h2:not(.stat-kicker) {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.tile .stat-value {
+  font-size: clamp(24px, 7.5vw, 32px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.week-tile .stat-value {
+  font-size: var(--t-numeral-s);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.stat-label {
+  font-size: 0.875rem;
+}
+/* A month with nothing in it keeps a thin baseline mark instead of a missing bar. */
+.column-fill.is-zero {
+  height: 3px;
+  opacity: 0.3;
+  background: var(--muted);
+}
+.widget-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.readout strong {
+  font-family: var(--voice);
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+/* More tab: the week as a headline, then the modules as labelled tiles. */
+.week-digest {
+  margin-bottom: 1.6rem;
+}
+.week-headline {
+  margin: 0.3rem 0 0.9rem;
+  font-family: var(--voice);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.week-day.is-today {
+  border-radius: 14px;
+  background: var(--accent-soft);
+}
+.week-day.is-today .week-num {
+  background: none;
+  color: var(--text);
+}
+.week-tiles {
+  border-top: 0;
+  padding-top: 0.2rem;
+}
+.week-delta {
+  font-weight: 600;
+}
+.more-kicker {
+  margin: 0 0 0.6rem;
+}
+.module-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 0;
+}
+.module-grid a.module-card.card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas: 'icon title' 'icon desc';
+  column-gap: 0.7rem;
+  align-items: center;
+  min-height: 64px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 20px;
+  background: var(--glass-bg);
+  box-shadow: 0 1px 6px rgb(31 38 54 / 0.06), inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.module-grid a.module-card .module-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.module-grid .module-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.module-grid .module-card strong {
+  grid-area: title;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.module-grid .module-card .muted {
+  grid-area: desc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+/* Day screen: the date is the title. */
+.day-head h1 {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--voice);
+  font-size: clamp(1.6rem, 8.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-align: left;
+  text-transform: none;
+  text-wrap: balance;
+}
+.widget-title {
+  letter-spacing: -0.005em;
+}
+
+/* Dock: the selected tab opens up to show its name, the others stay icons. */
+.tabs-track {
+  --tabw: calc(100cqw / 5);
+  --tabw-active: calc(var(--tabw) * 1.9);
+}
+.tabs-track .tab {
+  flex: 0 0 var(--tabw);
+  width: var(--tabw);
+}
+.tabs-track .tab[aria-current='page'] {
+  flex-basis: var(--tabw-active);
+  width: var(--tabw-active);
+  flex-direction: row;
+  gap: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tab-label {
+  font: 600 0.9375rem/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.tabs-track .tab-lens {
+  width: calc(var(--tabw-active) - 8px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tabs-track .tab {
+    transition: flex-basis 0.42s cubic-bezier(0.3, 1.25, 0.4, 1), width 0.42s cubic-bezier(0.3, 1.25, 0.4, 1), background 0.25s ease, color 0.25s ease;
+  }
+}
+/* A name instead of a number (a place, a show) is set smaller so it doesn't run over several lines. */
+.stat-block .stat-num.is-text,
+.stat-block.is-hero .stat-num.is-text {
+  font-size: clamp(1.9rem, 8.5vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}

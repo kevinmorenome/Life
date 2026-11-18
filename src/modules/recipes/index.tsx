@@ -1,4 +1,4 @@
-import { PlusIcon } from '../../icons';
+import { PlusIcon, PotIcon } from '../../icons';
 import type { LifeModule } from '../types';
 import { RecipesRoot } from './RecipesRoot';
 import { RecipesStatsRoute } from './RecipesStatsRoute';
@@ -9,7 +9,7 @@ import { useRecipesCalendarLayer } from './useRecipesLayer';
 export const recipesModule: LifeModule = {
   id: 'recipes',
   title: 'Recipes',
-  icon: '🍳',
+  icon: <PotIcon />,
   description: 'Your own dishes, and what you can cook from what you have.',
   listed: false,
   render: (subroute) => <RecipesRoot subroute={subroute} />,

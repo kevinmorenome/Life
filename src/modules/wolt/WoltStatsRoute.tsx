@@ -38,29 +38,30 @@ function Loaded({ orders, now }: { orders: WoltOrder[]; now: string }) {
 
   return (
     <>
-      <p className="muted">
-        You have ordered takeout <strong>{s.orders}</strong> {s.orders === 1 ? 'time' : 'times'}{services.length === 1 ? <> through {SERVICE_NAMES[services[0].service]}</> : null}
-        {s.since ? <> since <strong>{new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</strong></> : null}, spending <strong>{eur0(s.spent)}</strong>
-        {s.topPlace ? <>. Your top place is <strong>{s.topPlace}</strong></> : null}.
-      </p>
-      <div className="tiles">
-        <Tile value={String(s.orders)} label="orders, all time" tone={0} />
-        <Tile value={eur0(s.spent)} label="spent (EUR)" tone={1} />
-        <Tile value={eur(s.average)} label="average order" tone={2} />
-        <Tile value={eur0(s.yearSpent)} label={`spent in ${year} (${count(s.yearOrders, 'order')})`} tone={3} />
-      </div>
+      <Section
+        hero
+        title="Takeout, all time"
+        value={eur0(s.spent)}
+        sentence={`spent on ${count(s.orders, 'order')}${services.length === 1 ? ` through ${SERVICE_NAMES[services[0].service]}` : ''}${s.since ? ` since ${new Date(s.since + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}${s.topPlace ? `. Your top place is ${s.topPlace}` : ''}.`}
+      >
+        <div className="tiles">
+          <Tile value={String(s.orders)} label="orders, all time" tone={0} />
+          <Tile value={eur(s.average)} label="average order" tone={2} />
+          <Tile value={eur0(s.yearSpent)} label={`spent in ${year} (${count(s.yearOrders, 'order')})`} tone={3} />
+        </div>
+      </Section>
       {services.length > 1 && (
-        <Section title="By app" note="Orders and euro spend per delivery app.">
+        <Section title="By app" value={SERVICE_NAMES[services[0].service]} sentence={`is the app you use most, ${count(services[0].orders, 'order')} and ${eur0(services[0].spent)}.`} tone={1} note="Orders and euro spend per delivery app.">
           <HBars rows={services.map((r) => ({ key: r.service, label: SERVICE_NAMES[r.service], value: r.spent, shown: `${count(r.orders, 'order')} · ${eur0(r.spent)}` }))} />
         </Section>
       )}
-      <Section title="Spend per month" note="Euro orders, by the month they were delivered. Months without orders show as empty.">
+      <Section title="Spend per month" value={eur0(months[months.length - 1]?.spent ?? 0)} sentence={`spent in ${monthLabel(months[months.length - 1]?.month ?? now.slice(0, 7), 'long')}, the latest month.`} tone={1} note="Euro orders, by the month they were delivered. Months without orders show as empty.">
         <ReadoutColumns bars={monthBars} big={(b) => eur(b.value)} small={(b) => `${monthLabel(b.key, 'long')} · ${count(months.find((m) => m.month === b.key)?.orders ?? 0, 'order')}`} initial={months[months.length - 1]?.month} />
       </Section>
-      <Section title="Where you order most" note="Top 10 places by total spend, branches combined.">
+      <Section title="Where you order most" value={places[0]?.name} sentence={places[0] ? `${count(places[0].orders, 'order')}, ${eur0(places[0].spent)} in all.` : undefined} tone={3} note="Top 10 places by total spend, branches combined.">
         <HBars rows={places.map((p) => ({ key: p.name, label: p.name, value: p.spent, shown: `${count(p.orders, 'order')} · ${eur0(p.spent)}` }))} />
       </Section>
-      <Section title="When you order" note="Orders by hour of day.">
+      <Section title="When you order" value={`${String(hours.indexOf(Math.max(...hours))).padStart(2, '0')}:00`} sentence="is the hour you order most often." tone={2} note="Orders by hour of day.">
         <ReadoutColumns key="hours" bars={hourBars} color="var(--tone-orange)" big={(b) => count(b.value, 'order')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(hours.indexOf(Math.max(...hours)))} />
       </Section>
       <AllOrders orders={orders} />
