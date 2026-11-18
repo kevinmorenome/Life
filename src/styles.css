@@ -10658,31 +10658,27 @@ h2,
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
-.bill-month > .bill-sub {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
 .bill-month-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
+  margin-bottom: 8px;
 }
 .bill-month-head .stat-kicker {
   margin: 0;
 }
-.bill-sub li {
-  border-top: 0;
+.bill-month {
+  padding-bottom: 12px;
 }
-.bill-sub a {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+.chip.bill-chip {
+  display: inline-flex;
   align-items: center;
-  min-height: 52px;
-  color: inherit;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
   text-decoration: none;
+  white-space: nowrap;
 }
 .bill-dot {
   width: 10px;
@@ -10690,10 +10686,17 @@ h2,
   border-radius: 50%;
 }
 .bill-dot-water {
-  background: var(--tone-blue);
+  --dot: var(--tone-blue);
 }
 .bill-dot-gas {
-  background: var(--tone-orange);
+  --dot: var(--tone-orange);
+}
+.bill-dot {
+  background: var(--dot);
+}
+.bill-dot.is-open {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--dot);
 }
 .bill-actions {
   margin-bottom: calc(5.5rem + env(safe-area-inset-bottom));

@@ -83,26 +83,21 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
           <li key={r.month} className="bill-month">
             <span className="bill-month-head">
               <span className="stat-kicker">{monthName(r.month)}</span>
-              <span className="muted small">{eur(r.total)}</span>
+              <span className="bill-amount">
+                {r.pending > 0 && <span className="muted small">{r.pending} to pay · </span>}
+                {eur(r.total)}
+              </span>
             </span>
-            <ul className="bill-sub">
+            <div className="chips bill-chips">
               {[r.water, r.gas].map((b) =>
                 b ? (
-                  <li key={b.id}>
-                    <a href={href(`/home/${b.id}`)}>
-                      <span className={`bill-dot bill-dot-${b.utility}`} aria-hidden />
-                      <span className="bill-name">
-                        <strong>{UTILITY_NAMES[b.utility]}</strong>
-                        <span className="muted small">
-                          {[b.consumption !== undefined ? `${b.consumption} ${UNITS[b.utility]}${b.estimated ? ' (est.)' : ''}` : '', isPaid(b) ? '' : 'To pay'].filter(Boolean).join(' · ') || ' '}
-                        </span>
-                      </span>
-                      <span className="bill-amount">{eur(b.amount)}</span>
-                    </a>
-                  </li>
+                  <a key={b.id} className="chip bill-chip" href={href(`/home/${b.id}`)}>
+                    <span className={`bill-dot bill-dot-${b.utility}${isPaid(b) ? '' : ' is-open'}`} aria-hidden />
+                    <span>{UTILITY_NAMES[b.utility]} {eur(b.amount)}</span>
+                  </a>
                 ) : null,
               )}
-            </ul>
+            </div>
           </li>
         ))}
       </ul>
