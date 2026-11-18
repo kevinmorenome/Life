@@ -1,7 +1,7 @@
 import { usePhoto } from '../../lib/usePhoto';
 import type { ClothingItem } from './types';
 
-const ICONS: Record<string, string> = {
+export const ICONS: Record<string, string> = {
   tops: '👕',
   bottoms: '👖',
   dresses: '👗',

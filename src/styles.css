@@ -10562,3 +10562,25 @@ h2,
   white-space: nowrap;
   text-wrap: nowrap;
 }
+/* A piece without a photo is drawn as its category's emoji, not its name. */
+.board-placeholder {
+  display: grid;
+  place-items: center;
+  max-width: none;
+  padding: 0;
+  font-size: clamp(1.6rem, 9vw, 2.6rem);
+  line-height: 1;
+}
+.board-row .board-placeholder,
+.board-extra .board-placeholder {
+  min-width: 0;
+}
+.worn-plate .board-placeholder {
+  font-size: 1.6rem;
+}
+.worn-plate {
+  text-decoration: none;
+}
+.worn-plate .board-placeholder {
+  font-size: 1.3rem;
+}

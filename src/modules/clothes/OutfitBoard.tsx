@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePhoto } from '../../lib/usePhoto';
 import { boardLayout } from './board';
+import { ICONS } from './ItemThumb';
 import type { ClothingItem } from './types';
 
 /**
@@ -72,7 +73,9 @@ function Piece({ item, onRemove }: { item: ClothingItem; onRemove?: (id: string)
   const body = photo ? (
     <img ref={img} src={photo} alt={onRemove ? item.name : ''} loading="lazy" />
   ) : (
-    <span className="board-placeholder">{item.name}</span>
+    <span className="board-placeholder" role="img" aria-label={item.name}>
+      {ICONS[item.category] ?? ICONS.other}
+    </span>
   );
   if (!onRemove) return body;
   return (
