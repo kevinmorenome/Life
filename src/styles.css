@@ -10555,3 +10555,10 @@ h2,
 .work-quick-times .work-time-pair + .icon-btn {
   margin-left: 0;
 }
+
+/* The day's name stays on one line: it scales with the screen instead of wrapping. */
+.day-head h1 {
+  font-size: clamp(1rem, 4.8vw, 1.75rem);
+  white-space: nowrap;
+  text-wrap: nowrap;
+}
