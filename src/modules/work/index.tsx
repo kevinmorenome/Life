@@ -8,7 +8,7 @@ import { WorkStatsRoute } from './WorkStatsRoute';
 export const workModule: LifeModule = {
   id: 'work',
   title: 'Work',
-  icon: '🏢',
+  icon: <BuildingIcon />,
   description: 'Office and home days, how often you’re in, and when you arrive and leave.',
   listed: false,
   render: () => null,

@@ -11,6 +11,7 @@ import { startTraktAutoSync } from './modules/watching/traktClient';
 import { processInbox } from './modules/clothes/inboxRunner';
 import { migrateTripPlans } from './modules/trips/migratePlans';
 import { syncPlanCheckins } from './modules/trips/planCheckinsRunner';
+import '@fontsource-variable/bricolage-grotesque/wght.css';
 import './styles.css';
 
 startLongTaskLog();

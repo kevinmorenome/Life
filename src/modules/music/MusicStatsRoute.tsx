@@ -49,23 +49,24 @@ function Loaded({ days, now }: { days: MusicDay[]; now: string }) {
   return (
     <>
       <Toggle label="Period" options={PERIODS} value={period} onChange={setPeriod} />
+      <Section hero title="Listening" value={hoursOf(s.ms).toLocaleString()} sentence={`${hoursOf(s.ms) === 1 ? 'hour' : 'hours'} of music across ${count(s.plays, 'play')}.`}>
       <div className="tiles">
-        <Tile value={String(hoursOf(s.ms))} label="hours listened" tone={0} />
         <Tile value={s.plays.toLocaleString()} label="plays" tone={1} />
         <Tile value={String(s.activeDays)} label="days with music" tone={2} />
         <Tile value={String(streak.current)} label={`days in a row now (longest ${streak.longest})`} tone={3} />
       </div>
-      <Section title="Top artists" note="By plays in each day's top 5, so an artist you only ever hear a little of a day can be missing.">
+      </Section>
+      <Section title="Top artists" value={artists[0] ? artists[0].name || `Artist ${artists[0].id}` : undefined} sentence={artists[0] ? `is your most played artist, ${count(artists[0].plays, 'play')} over ${count(artists[0].days, 'day')}.` : undefined} tone={0} note="By plays in each day's top 5, so an artist you only ever hear a little of a day can be missing.">
         {artists.length === 0 ? <Empty>No listening in this period.</Empty> : <HBars rows={artists.map((r) => ({ key: String(r.id), label: r.name || `Artist ${r.id}`, value: r.plays, shown: `${count(r.plays, 'play')} · ${count(r.days, 'day')}` }))} />}
       </Section>
-      <Section title="Top tracks" note="Same count: plays in each day's top 5.">
+      <Section title="Top tracks" value={tracks[0] ? `${tracks[0].plays}×` : undefined} sentence={tracks[0] ? `${tracks[0].name}${tracks[0].artist ? ` by ${tracks[0].artist}` : ''}, your most played track.` : undefined} tone={3} note="Same count: plays in each day's top 5.">
         {tracks.length === 0 ? (
           <Empty>No listening in this period.</Empty>
         ) : (
           <HBars color="var(--tone-orange)" rows={tracks.map((r) => ({ key: String(r.id), label: r.artist ? `${r.name} · ${r.artist}` : r.name, value: r.plays, shown: `${r.plays}×` }))} />
         )}
       </Section>
-      <Section title="Hours per month" note="The last 12 months.">
+      <Section title="Hours per month" value={String(monthBars[monthBars.length - 1]?.value ?? 0)} sentence={`hours in ${monthLabel(months[months.length - 1]?.month ?? now.slice(0, 7), 'long')}, the latest month.`} tone={1} note="The last 12 months.">
         <ReadoutColumns
           bars={monthBars}
           big={(b) => `${b.value} ${b.value === 1 ? 'hour' : 'hours'}`}
@@ -76,10 +77,10 @@ function Loaded({ days, now }: { days: MusicDay[]; now: string }) {
           initial={months[months.length - 1]?.month}
         />
       </Section>
-      <Section title="Weekdays" note={s.plays ? `Most on ${WEEKDAYS[busiest]}.` : undefined}>
+      <Section title="Weekdays" value={s.plays ? WEEKDAYS[busiest] : undefined} sentence="is the day you listen most." tone={3}>
         <ReadoutColumns key={`wd-${period}`} bars={weekdayBars} color="var(--tone-orange)" big={(b) => count(b.value, 'play')} small={(b) => WEEKDAYS[Number(b.key)]} initial={String(busiest)} />
       </Section>
-      <Section title="When you listen" note={s.plays ? `Most around ${String(peakHour).padStart(2, '0')}:00.` : undefined}>
+      <Section title="When you listen" value={s.plays ? `${String(peakHour).padStart(2, '0')}:00` : undefined} sentence="is the hour you listen most." tone={3}>
         <ReadoutColumns key={`h-${period}`} bars={hourBars} color="var(--tone-orange)" big={(b) => count(b.value, 'play')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(peakHour)} />
       </Section>
       <p className="muted small">Data comes from stats.fm, one summary per day in your stats.fm time zone. Plays count the way stats.fm counts them (30 seconds or more).</p>

@@ -7,7 +7,7 @@ import { useFoodCalendarLayer } from './useFoodLayer';
 export const foodModule: LifeModule = {
   id: 'food',
   title: 'Food',
-  icon: '🛒',
+  icon: <CartIcon />,
   // Has its own tab in the bottom bar, so it isn't repeated in More.
   listed: false,
   description: 'Grocery receipts, stock, shopping list and food stats: what you bought, where, and what it cost.',

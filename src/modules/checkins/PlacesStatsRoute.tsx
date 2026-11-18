@@ -104,13 +104,14 @@ function Overview({ checkins, wears, now }: { checkins: Checkin[]; wears: Map<st
   return (
     <>
       <Toggle label="Period" options={PERIODS} value={period} onChange={setPeriod} />
+      <Section hero title="Places" value={String(fresh.total)} sentence={`${fresh.total === 1 ? 'check-in' : 'check-ins'} at ${venues.length} ${venues.length === 1 ? 'place' : 'places'}, ${fresh.newPlaces} of them new.`}>
       <div className="tiles">
-        <Tile value={String(fresh.total)} label="check-ins" tone={0} />
         <Tile value={String(venues.length)} label="places" tone={1} />
         <Tile value={String(fresh.newPlaces)} label="new places" tone={2} />
         <Tile value={String(streak.current)} label={`days in a row now (longest ${streak.longest})`} tone={3} />
       </div>
-      <Section title="Top places" note="Tap a place to see what you wore on the days you went.">
+      </Section>
+      <Section title="Top places" value={venues[0]?.name} sentence={venues[0] ? `is where you go most, ${times(venues[0].count)}.` : undefined} tone={0} note="Tap a place to see what you wore on the days you went.">
         {venues.length === 0 ? (
           <Empty>No check-ins in this period.</Empty>
         ) : (
@@ -122,12 +123,12 @@ function Overview({ checkins, wears, now }: { checkins: Checkin[]; wears: Map<st
         )}
       </Section>
       {categories.length > 0 && (
-        <Section title="Kinds of places">
+        <Section title="Kinds of places" value={categories[0].name} sentence={`is the kind of place you check in at most, ${times(categories[0].count)}.`} tone={2}>
           <HBars rows={categories.map((c) => ({ key: c.name, label: c.name, value: c.count, shown: String(c.count) }))} />
         </Section>
       )}
       {cities.length > 0 && (
-        <Section title="Cities" note={countries > 0 ? `${countries} ${countries === 1 ? 'country' : 'countries'}.` : undefined}>
+        <Section title="Cities" value={String(cities.length)} sentence={`${cities.length === 1 ? 'city' : 'cities'}${countries > 0 ? ` in ${countries} ${countries === 1 ? 'country' : 'countries'}` : ''}. ${cities[0].name} leads with ${cities[0].count}.`} tone={1}>
           <HBars rows={cities.map((c) => ({ key: c.name, label: c.name, value: c.count, shown: String(c.count) }))} color="var(--tone-blue)" />
         </Section>
       )}
@@ -201,7 +202,7 @@ function Trends({ checkins, now }: { checkins: Checkin[]; now: string }) {
   const hourBars: Bar[] = hours.map((value, h) => ({ key: String(h), tick: h % 6 === 0 ? String(h) : '', value }));
   return (
     <>
-      <Section title="Month by month" note="Check-ins in the last 12 months.">
+      <Section title="Month by month" value={String(bars[bars.length - 1]?.value ?? 0)} sentence="check-ins this month." tone={0} note="Check-ins in the last 12 months.">
         <ReadoutColumns
           bars={bars}
           big={(b) => times(b.value)}
@@ -218,10 +219,10 @@ function Trends({ checkins, now }: { checkins: Checkin[]; now: string }) {
         value={period}
         onChange={setPeriod}
       />
-      <Section title="Which days you go out">
+      <Section title="Which days you go out" value={names[weekdays.indexOf(Math.max(...weekdays))]} sentence="is the day you check in most." tone={3}>
         <HBars rows={weekdays.map((v, i) => ({ key: names[i], label: names[i], value: v, shown: String(v) }))} color="var(--tone-purple)" />
       </Section>
-      <Section title="What time of day" note="Hour of the check-in, local to where you were.">
+      <Section title="What time of day" value={`${String(hours.indexOf(Math.max(...hours))).padStart(2, '0')}:00`} sentence="is the hour you check in most." tone={3} note="Hour of the check-in, local to where you were.">
         <ReadoutColumns
           key={period}
           bars={hourBars}

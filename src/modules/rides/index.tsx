@@ -1,3 +1,4 @@
+import { CarIcon } from '../../icons';
 import type { LifeModule } from '../types';
 import { RidesStatsRoute } from './RidesStatsRoute';
 import { useRidesCalendarLayer } from './useRidesLayer';
@@ -7,7 +8,7 @@ import { useRidesCalendarLayer } from './useRidesLayer';
 export const ridesModule: LifeModule = {
   id: 'rides',
   title: 'Rides',
-  icon: '🚕',
+  icon: <CarIcon />,
   description: 'Bolt and Uber rides.',
   listed: false,
   render: () => null,

@@ -1,3 +1,4 @@
+import { FilmIcon } from '../../icons';
 import { ENTERTAINMENT, type LifeModule } from '../types';
 import { useWatchedCalendarLayer } from './useWatchedLayer';
 import { WatchingStatsRoute } from './WatchingStatsRoute';
@@ -7,7 +8,7 @@ import { WatchingStatsRoute } from './WatchingStatsRoute';
 export const watchingModule: LifeModule = {
   id: 'watching',
   title: 'Watching',
-  icon: '🎬',
+  icon: <FilmIcon />,
   description: 'Movies and episodes you watched, from Trakt.',
   listed: false,
   render: () => null,

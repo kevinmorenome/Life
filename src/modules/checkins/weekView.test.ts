@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDigest } from './digest';
-import { dayDots, deltaText, spentOf, weekHighlights, weekTiles } from './weekView';
+import { dayDots, deltaText, spentOf, weekHeadline, weekHighlights, weekTiles } from './weekView';
 
 const base = { checkins: [], worn: new Map(), days: new Map(), start: '2026-10-19', end: '2026-10-25' };
 const prevBase = { ...base, start: '2026-10-12', end: '2026-10-18' };
@@ -55,5 +55,21 @@ describe('weekHighlights', () => {
   it('has nothing to say about a quiet week beyond what is missing', () => {
     const h = weekHighlights(buildDigest({ ...base, worn: new Map(Array.from({ length: 7 }, (_, i) => [`2026-10-${19 + i}`, { outfits: ['x'], items: [] }])) }), day);
     expect(h).toEqual([]);
+  });
+});
+
+describe('weekHeadline', () => {
+  it('calls an empty week quiet', () => {
+    expect(weekHeadline(buildDigest(base))).toBe('A quiet week.');
+  });
+
+  it('adds where the week was spent when it clearly was one place', () => {
+    const days = new Map(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22'].map((d) => [d, { status: 'office' }])) as never;
+    expect(weekHeadline(buildDigest({ ...base, days }))).toBe('A quiet week, mostly office.');
+  });
+
+  it('calls a week with plenty of check-ins busy', () => {
+    const checkins = Array.from({ length: 22 }, (_, i) => ci(`v${i}`, `2026-10-${19 + (i % 7)}`));
+    expect(weekHeadline(buildDigest({ ...base, checkins }))).toBe('A busy week.');
   });
 });

@@ -1,3 +1,4 @@
+import { BagIcon } from '../../icons';
 import type { LifeModule } from '../types';
 import { useWoltCalendarLayer } from './useWoltLayer';
 import { WoltStatsRoute } from './WoltStatsRoute';
@@ -7,7 +8,7 @@ import { WoltStatsRoute } from './WoltStatsRoute';
 export const woltModule: LifeModule = {
   id: 'wolt',
   title: 'Takeout',
-  icon: '🛵',
+  icon: <BagIcon />,
   description: 'Takeout and restaurant deliveries ordered through Wolt, Bolt Food or Uber Eats.',
   listed: false,
   render: () => null,

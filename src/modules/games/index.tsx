@@ -7,7 +7,7 @@ import { useGamesCalendarLayer } from './useGamesLayer';
 export const gamesModule: LifeModule = {
   id: 'games',
   title: 'Games',
-  icon: '🎲',
+  icon: <DiceIcon />,
   description: 'Game nights: who played, scores, winners, and the leaderboard.',
   // Has its own tab in the bottom bar.
   listed: false,

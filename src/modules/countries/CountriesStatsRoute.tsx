@@ -29,12 +29,13 @@ export function CountriesStatsRoute() {
   return (
     <>
       <p className="muted small">From your Swarm check-ins and trips, plus countries added by hand.</p>
+      <Section hero title="Countries" value={String(summary.visited)} sentence={`${summary.visited === 1 ? 'country' : 'countries'} visited, ${Math.round(summary.share * 100)}% of the world.`}>
       <div className="tiles">
-        <Tile value={String(summary.visited)} label={summary.visited === 1 ? 'country' : 'countries'} tone={0} />
         <Tile value={`${Math.round(summary.share * 100)}%`} label="of the world" tone={1} />
         <Tile value={String(summary.continents.filter((c) => c.visited > 0).length)} label="of 7 continents" tone={2} />
         <Tile value={String(entries.filter((e) => e.last?.startsWith(thisYear)).length)} label={`visited in ${thisYear}`} tone={3} />
       </div>
+      </Section>
       {entries.some((e) => e.last?.startsWith(thisYear)) && (
         <div className="flag-strip" aria-label={`Countries visited in ${thisYear}`}>
           {entries.filter((e) => e.last?.startsWith(thisYear)).map((e) => (
@@ -42,11 +43,11 @@ export function CountriesStatsRoute() {
           ))}
         </div>
       )}
-      <Section title="Map">
+      <Section title="Map" value={String(summary.visited)} sentence="countries coloured in on the map." tone={0}>
         <WorldMap entries={entries} />
       </Section>
       {summary.visited > 0 && (
-        <Section title="Continents">
+        <Section title="Continents" value={`${summary.continents.filter((c) => c.visited > 0).length} of 7`} sentence="continents visited." tone={1}>
           <HBars
             color="var(--tone-blue)"
             rows={summary.continents
@@ -70,7 +71,7 @@ export function CountriesStatsRoute() {
         )}
       </Section>
       {summary.newPerYear.length > 0 && (
-        <Section title="New countries per year">
+        <Section title="New countries per year" value={String(summary.newPerYear[summary.newPerYear.length - 1].count)} sentence={`new ${summary.newPerYear[summary.newPerYear.length - 1].count === 1 ? 'country' : 'countries'} in ${summary.newPerYear[summary.newPerYear.length - 1].year}, the latest year.`} tone={3}>
           <HBars color="var(--tone-purple)" rows={summary.newPerYear.map((y) => ({ key: y.year, label: y.year, value: y.count, shown: String(y.count) }))} />
         </Section>
       )}

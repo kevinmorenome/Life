@@ -80,24 +80,25 @@ function Overview({ receipts, records }: { receipts: FoodReceipt[]; records: Foo
 
   return (
     <>
+      <Section hero title="Food this month" value={money(thisMonth.spent)} sentence={`spent on food in ${count(thisMonth.trips, 'trip')} this month. ${money(saved.saved)} saved by offers.`}>
       <div className="tiles">
-        <Tile value={money(thisMonth.spent)} label={`spent on food this month (${count(thisMonth.trips, 'trip')})`} tone={0} />
         <Tile value={money(habits.basket)} label="average basket" tone={1} />
         <Tile value={String(habits.perWeek)} label="shopping trips a week" tone={2} />
         <Tile value={money(saved.saved)} label={`saved by offers (${count(saved.offerLines, 'line')})`} tone={3} />
       </div>
-      <Section title="Spend" note="Food and drink, without deposits and bags.">
+      </Section>
+      <Section title="Spend" value={money(periods[periods.length - 1]?.spent ?? 0)} sentence={`spent in the latest ${by}, from ${count(periods[periods.length - 1]?.trips ?? 0, 'trip')}.`} tone={1} note="Food and drink, without deposits and bags.">
         <Toggle label="Period" options={[{ value: 'month', label: 'Months' }, { value: 'week', label: 'Weeks' }]} value={by} onChange={setBy} />
         <ReadoutColumns key={by} bars={bars} big={(b) => money(b.value)} small={(b) => `${label(b.key)} · ${count(periods.find((p) => p.key === b.key)?.trips ?? 0, 'trip')}`} initial={periods[periods.length - 1]?.key} />
       </Section>
-      <Section title="Where you shop" note="Total food spend per store, with the average basket.">
+      <Section title="Where you shop" value={stores[0]?.store} sentence={stores[0] ? `is where most of your food money goes, ${money(stores[0].spent)} over ${count(stores[0].trips, 'trip')}.` : undefined} tone={2} note="Total food spend per store, with the average basket.">
         <HBars rows={stores.map((s) => ({ key: s.store, label: s.store, value: s.spent, shown: money(s.spent), sub: `${count(s.trips, 'trip')} · ${money(s.average)} on average` }))} />
       </Section>
-      <Section title="What you spend it on">
+      <Section title="What you spend it on" value={categories[0]?.label} sentence={categories[0] ? `is your biggest category, ${money(categories[0].spent)}.` : undefined} tone={3}>
         <HBars color="var(--tone-blue)" rows={categories.map((c) => ({ key: c.key, label: c.label, value: c.spent, shown: money(c.spent) }))} />
       </Section>
       {rebuys.length > 0 && (
-        <Section title="What you rebuy most" note="Tap a product for its prices and history.">
+        <Section title="What you rebuy most" value={rebuys[0].name} sentence={`bought ${rebuys[0].purchases} times${rebuys[0].everyDays ? `, ${days(rebuys[0].everyDays)}` : ''}.`} tone={4} note="Tap a product for its prices and history.">
           <ul className="hbars">
             {rebuys.map((r) => (
               <li key={r.productId}>
@@ -123,15 +124,15 @@ function Prices({ receipts, records }: { receipts: FoodReceipt[]; records: FoodP
     <>
       <Section
         title="Cheaper elsewhere"
+        value={list.length ? money(yearly) : undefined}
+        sentence="a year you could save by buying where each product was cheapest."
+        tone={0}
         note="Compares the shelf price (without offers) at the store you bought it at last with the other stores you have bought it at in the last six months. It needs the same product from two stores, so it fills in as you shop around."
       >
         {list.length === 0 ? (
           <Empty>Nothing cheaper elsewhere yet. When the same product has been bought at two stores, the cheaper one shows here.</Empty>
         ) : (
           <>
-            <p className="muted">
-              Buying these where they were cheapest would have saved about <strong>{money(yearly)}</strong> over the last year.
-            </p>
             <ul className="game-list">
               {list.map(({ product, comparison, perUnit, yearly: y }) => (
                 <li key={product.id}>
@@ -160,22 +161,23 @@ function Waste({ receipts, records, events }: { receipts: FoodReceipt[]; records
   const bars: Bar[] = waste.perMonth.map((m, i) => ({ key: m.key, tick: i % 2 === 0 ? monthLabel(m.key) : '', value: m.value }));
   return (
     <>
+      <Section hero title="Food waste" value={money(waste.value)} sentence={`thrown away at average prices, ${count(waste.times, 'time')}${waste.share === undefined ? '' : ` — ${pct(waste.share)} of what you spent on food`}.`}>
       <div className="tiles">
-        <Tile value={money(waste.value)} label="thrown away, at average prices" tone={0} />
         <Tile value={String(waste.times)} label="times thrown away" tone={1} />
         <Tile value={waste.share === undefined ? '–' : pct(waste.share)} label="of what you spent on food" tone={2} />
         <Tile value={money(deposits.paid)} label={`deposits paid (${count(deposits.lines, 'line')})`} tone={3} />
       </div>
+      </Section>
       {waste.times === 0 ? (
         <Section title="Food waste">
           <Empty>Nothing thrown away yet. Tap “Threw out” on a product in Stock (or tell Claude) and it is counted here, valued at what that product usually costs.</Empty>
         </Section>
       ) : (
         <>
-          <Section title="Thrown away per month" note="Valued at the product’s average price per unit. Mistakes can be fixed by a newer count; thrown-away history stays.">
+          <Section title="Thrown away per month" value={money(Math.max(...waste.perMonth.map((m) => m.value)))} sentence="in your worst month." tone={3} note="Valued at the product’s average price per unit. Mistakes can be fixed by a newer count; thrown-away history stays.">
             <ReadoutColumns bars={bars} color="var(--tone-orange)" big={(b) => money(b.value)} small={(b) => monthLabel(b.key, 'long')} initial={[...waste.perMonth].reverse().find((m) => m.value > 0)?.key ?? waste.perMonth[waste.perMonth.length - 1]?.key} />
           </Section>
-          <Section title="What goes in the bin most">
+          <Section title="What goes in the bin most" value={waste.top[0]?.name} sentence={waste.top[0] ? `is thrown away most, ${money(waste.top[0].value)} over ${count(waste.top[0].times, 'time')}.` : undefined} tone={3}>
             <HBars color="var(--tone-orange)" rows={waste.top.map((w) => ({ key: w.productId, label: w.name, value: w.value, shown: money(w.value), sub: count(w.times, 'time') }))} />
           </Section>
         </>

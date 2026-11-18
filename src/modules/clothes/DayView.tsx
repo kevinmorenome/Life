@@ -7,6 +7,7 @@ import type { Trip } from '../trips/types';
 import { addDays, wearsByDay } from './calendar';
 import { ItemThumb } from './ItemThumb';
 import { CheckIcon, HangerIcon, ShirtIcon, SuitcaseIcon, TrashIcon } from '../../icons';
+import { OutfitBoard } from './OutfitBoard';
 import { OutfitCard } from './OutfitCard';
 import { outfitFromItems, outfitName, outfitPieces, unwearOutfit, wearOutfit } from './outfits';
 import { pendingPlans } from './plans';
@@ -30,7 +31,7 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
   const wear = wearsByDay(items, outfits).get(date) ?? { outfits: [], items: [] };
   const isFuture = date > today();
   const title = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
-    weekday: 'short',
+    weekday: 'long',
     day: 'numeric',
     month: 'long',
     ...(date.slice(0, 4) !== today().slice(0, 4) ? { year: 'numeric' as const } : {}),
@@ -40,6 +41,8 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
   const dayTrips = tripsOnDate(trips, date);
 
   const scheduled = pendingPlans(plans, outfits, date);
+  // Pieces worn that day: every piece of a worn outfit, plus the ones worn on their own.
+  const wornCount = new Set([...wear.outfits.flatMap((o) => outfitPieces(o, items).map((p) => p.id)), ...wear.items.map((i) => i.id)]).size;
 
   async function wearPlanned(o: Outfit, planId?: string) {
     const { outfit, pieces } = wearOutfit(o, outfitPieces(o, items), date);
@@ -115,40 +118,15 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
           </DayWidget>
         )}
 
-        {wear.outfits.length + scheduled.length > 0 && (
-          <DayWidget
-            id="outfits"
-            title="Outfits"
-            icon={<HangerIcon />}
-            tone="clothes"
-            size="full"
-            badge={wear.outfits.length + scheduled.length}
-            summary={[...wear.outfits, ...scheduled.map(({ outfit }) => outfit)].map(outfitName).join(', ')}
-          >
-            <ul className="outfit-cards">
-              {wear.outfits.map((o) => (
-                <li key={o.id}>
-                  <OutfitCard outfit={o} items={items} to={`/clothes/outfits/${o.id}`}>
-                    <button className="card-fab" aria-label={`Remove ${outfitName(o)} from this day`} onClick={() => removeOutfit(o)}>
-                      <TrashIcon />
-                    </button>
-                  </OutfitCard>
-                </li>
-              ))}
-              {plannedItems}
-            </ul>
-          </DayWidget>
-        )}
-
-        {wear.items.length > 0 && (
+        {wear.outfits.length + wear.items.length > 0 && (
           <DayWidget
             id="worn"
-            title={wear.outfits.length ? 'Also worn' : 'Worn'}
+            title="Worn"
             icon={<ShirtIcon />}
             tone="clothes"
             size="full"
-            badge={wear.items.length}
-            summary={wear.items.map((i) => i.name).join(', ')}
+            badge={wornCount === 1 ? '1 piece' : `${wornCount} pieces`}
+            summary={[...wear.outfits.map(outfitName), ...wear.items.map((i) => i.name)].join(', ')}
             action={
               wear.items.length > 1 ? (
                 <button className="icon-btn" aria-label="Save these items as an outfit" onClick={saveAsOutfit}>
@@ -157,19 +135,44 @@ export function DayView({ date, items, outfits, trips = [], plans = [], onRemove
               ) : undefined
             }
           >
-            <ul className="closet-grid day-items">
-              {wear.items.map((i) => (
-                <li key={i.id}>
-                  <a href={href(`/clothes/${i.id}`)} className="closet-tile">
-                    <ItemThumb item={i} />
-                    <span className="tile-name">{i.name}</span>
+            <ul className="worn-grid">
+              {wear.outfits.map((o) => (
+                <li key={o.id} className="worn-sq worn-outfit">
+                  <a href={href(`/clothes/outfits/${o.id}`)} className="worn-plate" aria-label={`${outfitName(o)}, outfit`}>
+                    <OutfitBoard pieces={outfitPieces(o, items)} />
                   </a>
-                  <button className="tile-remove" aria-label={`Remove ${i.name} from this day`} onClick={() => onSaveItem(withoutWearOn(i, date))}>
-                    ✕
+                  <span className="worn-name">{outfitName(o)}</span>
+                  <button className="worn-remove" aria-label={`Remove ${outfitName(o)} from this day`} onClick={() => removeOutfit(o)}>
+                    <TrashIcon />
+                  </button>
+                </li>
+              ))}
+              {wear.items.map((i) => (
+                <li key={i.id} className="worn-sq">
+                  <a href={href(`/clothes/${i.id}`)} className="worn-plate" aria-label={i.name}>
+                    <ItemThumb item={i} />
+                  </a>
+                  <span className="worn-name">{i.name}</span>
+                  <button className="worn-remove" aria-label={`Remove ${i.name} from this day`} onClick={() => onSaveItem(withoutWearOn(i, date))}>
+                    <TrashIcon />
                   </button>
                 </li>
               ))}
             </ul>
+          </DayWidget>
+        )}
+
+        {scheduled.length > 0 && (
+          <DayWidget
+            id="planned"
+            title="Planned"
+            icon={<HangerIcon />}
+            tone="clothes"
+            size="full"
+            badge={scheduled.length}
+            summary={scheduled.map(({ outfit }) => outfitName(outfit)).join(', ')}
+          >
+            <ul className="outfit-cards">{plannedItems}</ul>
           </DayWidget>
         )}
       </div>

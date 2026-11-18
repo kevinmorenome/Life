@@ -103,3 +103,12 @@ export function weekHighlights(d: Digest, weekday: (date: string) => string): Hi
 
   return out;
 }
+
+/** One line that sums the week up, e.g. "A quiet week, mostly office." */
+export function weekHeadline(d: Digest): string {
+  const activity = d.daily.reduce((n, day) => n + entries(day), 0);
+  const mood = activity <= 5 ? 'A quiet week' : activity >= 20 ? 'A busy week' : 'A steady week';
+  const { officeDays, homeDays, tripDays } = d.work;
+  const where = tripDays >= 2 ? 'on the road' : officeDays >= 3 && officeDays > homeDays ? 'office' : homeDays >= 3 && homeDays > officeDays ? 'home' : '';
+  return `${mood}${where ? `, mostly ${where}` : ''}.`;
+}

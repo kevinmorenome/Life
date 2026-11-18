@@ -60,8 +60,8 @@ export interface ModuleStats {
 export interface LifeModule {
   id: string;
   title: string;
-  /** Emoji shown on the home screen. */
-  icon: string;
+  /** Line icon shown on the More tab. */
+  icon: ReactNode;
   description: string;
   render(subroute: string[]): ReactNode;
   /** Entries this module adds to the ＋ menu. */

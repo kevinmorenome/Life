@@ -52,13 +52,15 @@ function Loaded({ plays, now }: { plays: Play[]; now: string }) {
   return (
     <>
       <Toggle label="Period" options={PERIODS} value={period} onChange={setPeriod} />
+      <Section hero title="Watching" value={String(s.plays)} sentence={`${s.plays === 1 ? 'play' : 'plays'}: ${count(s.movies, 'movie')} and ${count(s.episodes, 'episode')} across ${count(s.shows, 'show')}.`}>
       <div className="tiles">
         <Tile value={String(s.movies)} label="movies" tone={0} />
         <Tile value={String(s.episodes)} label="episodes" tone={1} />
         <Tile value={String(s.shows)} label="different shows" tone={2} />
         <Tile value={String(streak.current)} label={`days in a row now (longest ${streak.longest})`} tone={3} />
       </div>
-      <Section title="Top shows" note="By episodes watched in the period.">
+      </Section>
+      <Section title="Top shows" value={shows[0]?.title} sentence={shows[0] ? `is the show you watched most, ${count(shows[0].count, 'episode')} over ${count(shows[0].days, 'day')}.` : undefined} tone={0} note="By episodes watched in the period.">
         {shows.length === 0 ? (
           <Empty>No episodes in this period.</Empty>
         ) : (
@@ -66,11 +68,11 @@ function Loaded({ plays, now }: { plays: Play[]; now: string }) {
         )}
       </Section>
       {movies.length > 0 && (
-        <Section title="Movies you watched again" note="More than one play in the period.">
+        <Section title="Movies you watched again" value={movies[0].title} sentence={`watched ${movies[0].count} times.`} tone={3} note="More than one play in the period.">
           <HBars color="var(--tone-orange)" rows={movies.map((r) => ({ key: r.key, label: r.title, value: r.count, shown: `${r.count}×` }))} />
         </Section>
       )}
-      <Section title="Plays per month" note="Movies and episodes together, the last 12 months.">
+      <Section title="Plays per month" value={String(monthBars[monthBars.length - 1]?.value ?? 0)} sentence={`plays in ${monthLabel(months[months.length - 1]?.month ?? now.slice(0, 7), 'long')}, the latest month.`} tone={1} note="Movies and episodes together, the last 12 months.">
         <ReadoutColumns
           bars={monthBars}
           big={(b) => count(b.value, 'play')}
@@ -81,10 +83,10 @@ function Loaded({ plays, now }: { plays: Play[]; now: string }) {
           initial={months[months.length - 1]?.month}
         />
       </Section>
-      <Section title="Weekdays" note={s.plays ? `Most on ${WEEKDAYS[busiest]}.` : undefined}>
+      <Section title="Weekdays" value={s.plays ? WEEKDAYS[busiest] : undefined} sentence="is the day you watch most." tone={3}>
         <ReadoutColumns key={`wd-${period}`} bars={weekdayBars} color="var(--tone-orange)" big={(b) => count(b.value, 'play')} small={(b) => WEEKDAYS[Number(b.key)]} initial={String(busiest)} />
       </Section>
-      <Section title="When you watch" note={s.plays ? `Most around ${String(peakHour).padStart(2, '0')}:00.` : undefined}>
+      <Section title="When you watch" value={s.plays ? `${String(peakHour).padStart(2, '0')}:00` : undefined} sentence="is the hour you watch most." tone={3}>
         <ReadoutColumns key={`h-${period}`} bars={hourBars} color="var(--tone-orange)" big={(b) => count(b.value, 'play')} small={(b) => `${b.key.padStart(2, '0')}:00–${b.key.padStart(2, '0')}:59`} initial={String(peakHour)} />
       </Section>
       <AllPlays plays={plays} />

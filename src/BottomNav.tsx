@@ -28,12 +28,20 @@ export function BottomNav({ route }: { route: string[] }) {
     const tabEl = el?.children[0]?.children[activeIndex + 1] as HTMLElement | undefined;
     if (!el || !tabEl) return;
     const left = tabEl.offsetLeft - (el.clientWidth - tabEl.offsetWidth) / 2;
-    el.scrollTo({ left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
+    // The active tab grows to show its name; centre it again once it has.
+    const later = window.setTimeout(() => {
+      const t = el.children[0]?.children[activeIndex + 1] as HTMLElement | undefined;
+      if (t) el.scrollTo({ left: t.offsetLeft - (el.clientWidth - t.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+    }, 320);
+    return () => window.clearTimeout(later);
   }, [activeIndex]);
 
   const tab = (t: AppTab) => (
     <a key={t.id} href={href(t.path)} className="tab" aria-label={t.label} aria-current={active === t.id ? 'page' : undefined}>
       {t.icon}
+      {active === t.id && <span className="tab-label">{t.label}</span>}
     </a>
   );
 

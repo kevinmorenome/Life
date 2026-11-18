@@ -86,9 +86,14 @@ export function WorkDaySection({ date, info, day, onSave, onClear }: Props) {
       </div>
       {showTimes && (
         <div className="work-quick-times">
-          {times.map(({ field, label, value }) => (
-            <input key={field} type="time" aria-label={label} value={value ?? ''} onChange={(e) => setTime(field, e.target.value)} />
-          ))}
+          <span className="work-time-pair">
+            {times.map(({ field, label, value }, i) => (
+              <span key={field} className="work-time">
+                {i > 0 && <span className="work-time-dash" aria-hidden>–</span>}
+                <input type="time" aria-label={label} value={value ?? ''} onChange={(e) => setTime(field, e.target.value)} />
+              </span>
+            ))}
+          </span>
           {isToday && (
             <button className="icon-btn" onClick={() => setTime(nowField, nowTime())} aria-label={`Set ${nowField === 'arrive' ? 'start' : 'end'} to now`}>
               <ClockIcon />

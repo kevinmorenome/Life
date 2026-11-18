@@ -31,14 +31,15 @@ export function YearReviewTab({ checkins, now }: { checkins: Checkin[]; now: str
         </Section>
       ) : (
         <>
+          <Section hero title={`Your ${year}${partial ? ' so far' : ''}`} value={String(r.checkins)} sentence={`${r.checkins === 1 ? 'check-in' : 'check-ins'} at ${r.places} ${r.places === 1 ? 'place' : 'places'}, ${r.newPlaces} new, over ${r.daysOut} days out.`}>
           <div className="tiles">
-            <Tile value={String(r.checkins)} label="check-ins" tone={0} />
             <Tile value={String(r.places)} label="places" tone={1} />
             <Tile value={String(r.newPlaces)} label="new places" tone={2} />
             <Tile value={String(r.daysOut)} label="days out" tone={3} />
           </div>
+          </Section>
           {r.checkins > 0 && (
-            <Section title="Highlights" note={partial ? 'The year so far.' : undefined}>
+            <Section title="Highlights" value={r.busiestMonth ? monthName(r.busiestMonth.month) : undefined} sentence={r.busiestMonth ? `was your busiest month, ${times(r.busiestMonth.count)} checked in.` : undefined} tone={2} note={partial ? 'The year so far.' : undefined}>
               <ul className="digest-list">
                 {r.busiestMonth && (
                   <li>
@@ -71,29 +72,29 @@ export function YearReviewTab({ checkins, now }: { checkins: Checkin[]; now: str
             </Section>
           )}
           {r.topVenues.length > 0 && (
-            <Section title="Top places">
+            <Section title="Top places" value={r.topVenues[0].name} sentence={`is where you went most, ${r.topVenues[0].count} check-ins.`} tone={0}>
               <HBars rows={r.topVenues.map((v) => ({ key: v.key, label: v.name, value: v.count, shown: String(v.count) }))} />
             </Section>
           )}
           {r.categories.length > 0 && (
-            <Section title="Kinds of places">
+            <Section title="Kinds of places" value={r.categories[0].name} sentence={`is the kind of place you checked in at most, ${r.categories[0].count}.`} tone={2}>
               <HBars rows={r.categories.map((c) => ({ key: c.name, label: c.name, value: c.count, shown: String(c.count) }))} color="var(--tone-purple)" />
             </Section>
           )}
           {r.cities.length > 0 && (
-            <Section title="Cities">
+            <Section title="Cities" value={String(r.cities.length)} sentence={`${r.cities.length === 1 ? 'city' : 'cities'}. ${r.cities[0].name} leads with ${r.cities[0].count}.`} tone={1}>
               <HBars rows={r.cities.map((c) => ({ key: c.name, label: c.name, value: c.count, shown: String(c.count) }))} color="var(--tone-blue)" />
             </Section>
           )}
         </>
       )}
       {r.mostWornPieces.length > 0 && (
-        <Section title="Most worn pieces" note="Days each piece was worn this year.">
+        <Section title="Most worn pieces" value={`${r.mostWornPieces[0].count}×`} sentence={`${r.mostWornPieces[0].name}, your most worn piece this year.`} tone={3} note="Days each piece was worn this year.">
           <HBars rows={r.mostWornPieces.map((p) => ({ key: p.id, label: p.name, value: p.count, shown: String(p.count) }))} color="var(--tone-orange)" />
         </Section>
       )}
       {r.mostWornOutfits.length > 0 && (
-        <Section title="Most worn outfits">
+        <Section title="Most worn outfits" value={`${r.mostWornOutfits[0].count}×`} sentence={`${r.mostWornOutfits[0].name || 'An outfit'}, your most worn outfit this year.`} tone={4}>
           <HBars rows={r.mostWornOutfits.map((o) => ({ key: o.id, label: o.name, value: o.count, shown: String(o.count) }))} color="var(--tone-lime)" />
         </Section>
       )}

@@ -1,3 +1,4 @@
+import { PinIcon } from '../../icons';
 import type { LifeModule } from '../types';
 import { PlacesStatsRoute } from './PlacesStatsRoute';
 import { useCheckinsCalendarLayer } from './useCheckinsLayer';
@@ -6,7 +7,7 @@ import { useCheckinsCalendarLayer } from './useCheckinsLayer';
 export const checkinsModule: LifeModule = {
   id: 'checkins',
   title: 'Places',
-  icon: '📍',
+  icon: <PinIcon />,
   description: 'Where you checked in on Swarm.',
   listed: false,
   render: () => null,

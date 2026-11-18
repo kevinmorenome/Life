@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { addDays, wearsByDay } from './modules/clothes/calendar';
-import { Section } from './modules/clothes/charts';
+import { TONES } from './modules/clothes/charts';
 import type { ClothingItem, Outfit } from './modules/clothes/types';
 import { buildDigest, type DigestExtras, type WornNames } from './modules/checkins/digest';
-import { DOT_NAMES, dayDots, dotColor, weekHighlights, weekTiles } from './modules/checkins/weekView';
+import { DOT_NAMES, dayDots, dotColor, weekHeadline, weekHighlights, weekTiles } from './modules/checkins/weekView';
 import type { Checkin } from './modules/checkins/types';
 import type { GameNight, GameTitle, Match } from './modules/games/types';
 import type { MusicDay } from './modules/music/types';
@@ -15,11 +15,15 @@ import type { Play } from './modules/watching/types';
 import { when } from './modules/watching/watched';
 import { buildDays } from './modules/work/work';
 import type { WorkDay, WorkEvent } from './modules/work/types';
-import { money, shortDate, today } from './lib/format';
+import { money, today } from './lib/format';
 import { href } from './lib/router';
 import { useCollection } from './lib/useCollection';
 
 const local = (date: string) => new Date(`${date}T12:00:00`);
+const monthShort = (date: string) => local(date).toLocaleDateString(undefined, { month: 'short' });
+/** "10–16 Nov", or "28 Oct – 3 Nov" across a month. */
+const range = (start: string, end: string) =>
+  monthShort(start) === monthShort(end) ? `${Number(start.slice(8))}–${Number(end.slice(8))} ${monthShort(end)}` : `${Number(start.slice(8))} ${monthShort(start)} – ${Number(end.slice(8))} ${monthShort(end)}`;
 const weekday = (date: string) => local(date).toLocaleDateString(undefined, { weekday: 'short' });
 
 /**
@@ -61,15 +65,17 @@ export function WeekDigest() {
     const prev = digestFor(addDays(start, -7), addDays(start, -1));
     const kinds = new Map<string, { tone: string }>();
     for (const d of cur.daily) for (const dot of dayDots(d)) kinds.set(dot.key, { tone: dot.tone });
-    return { cur, tiles: weekTiles(cur, prev, money), highlights: weekHighlights(cur, weekday), kinds: [...kinds] };
+    return { cur, headline: weekHeadline(cur), tiles: weekTiles(cur, prev, money), highlights: weekHighlights(cur, weekday), kinds: [...kinds] };
   }, [checkins, clothes, outfits, workdays, workevents, takeout, rides, receipts, plays, music, nights, titles, end]);
 
-  const { cur, tiles, highlights, kinds } = view;
+  const { cur, headline, tiles, highlights, kinds } = view;
   // A week with nothing in it has nothing to show.
   if (kinds.length === 0) return null;
 
   return (
-    <Section title="This week" note={`${shortDate(cur.period.start)} – ${shortDate(cur.period.end)}. Tap a day to open it.`}>
+    <section className="week-digest">
+      <h2 className="stat-kicker">This week · {range(cur.period.start, cur.period.end)}</h2>
+      <p className="week-headline">{headline}</p>
       <ol className="week-strip">
         {cur.daily.map((d) => {
           const dots = dayDots(d);
@@ -101,7 +107,7 @@ export function WeekDigest() {
         <div className="week-tiles">
           {tiles.map((t) => (
             <div key={t.key} className="week-tile">
-              <span className="stat-value">{t.value}</span>
+              <span className="stat-value" style={{ color: TONES[t.tone % TONES.length] }}>{t.value}</span>
               <span className="stat-label">{t.label}</span>
               {t.delta && <span className="week-delta">{t.delta}</span>}
             </div>
@@ -116,6 +122,6 @@ export function WeekDigest() {
           ))}
         </ul>
       )}
-    </Section>
+    </section>
   );
 }
