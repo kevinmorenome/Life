@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CheckIcon, PlusIcon } from '../../icons';
+import { PlusIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { href } from '../../lib/router';
+import { Section, Tile } from '../clothes/charts';
 import { UNITS, UTILITIES, UTILITY_NAMES, eur, isOverdue, isPaid, latestBill, monthRows, paidByOther, pendingBills, usualComparison, usualText } from './bills';
 import type { Utility, UtilityBill } from './types';
 
@@ -33,44 +34,42 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
   }
   return (
     <>
-      <section className="home-status" aria-label="To pay">
-        {pending.length === 0 ? (
-          <p className="home-allpaid"><CheckIcon /> <strong>All paid up</strong></p>
-        ) : (
-          <>
-            <h2 className="stat-kicker">To pay</h2>
-            <p className="home-owe">{eur(toPay)}</p>
-            <p className="muted">{pending.length} {pending.length === 1 ? 'bill' : 'bills'}{overdue > 0 ? ` · ${overdue} overdue` : ''}</p>
-            <ul className="bill-list">
-              {pending.slice(0, 4).map((b) => (
-                <li key={b.id}>
-                  <a href={href(`/home/${b.id}`)}>
-                    <span className="bill-name">
-                      <strong>{monthTitle(b)}</strong>
-                      <span className="muted small">{isOverdue(b, now) ? `Overdue since ${shortDate(b.due!)}` : b.due ? `Due ${shortDate(b.due)}` : 'Not paid yet'}</span>
-                    </span>
-                    <span className="bill-amount">{eur(b.amount)}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-            {pending.length > 4 && <p className="muted small">and {pending.length - 4} more in the list below.</p>}
-          </>
-        )}
-      </section>
+      {pending.length === 0 ? (
+        <Section hero title="To pay" value="All paid up" sentence="Nothing to pay right now." />
+      ) : (
+        <Section hero title="To pay" value={eur(toPay)} sentence={`on ${pending.length} ${pending.length === 1 ? 'bill' : 'bills'}${overdue > 0 ? `, ${overdue} overdue` : ''}.`} tone={overdue > 0 ? 3 : 0}>
+          <ul className="bill-list">
+            {pending.slice(0, 4).map((b) => (
+              <li key={b.id}>
+                <a href={href(`/home/${b.id}`)}>
+                  <span className="bill-name">
+                    <strong>{monthTitle(b)}</strong>
+                    <span className="muted small">{isOverdue(b, now) ? `Overdue since ${shortDate(b.due!)}` : b.due ? `Due ${shortDate(b.due)}` : 'Not paid yet'}</span>
+                  </span>
+                  <span className="bill-amount">{eur(b.amount)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          {pending.length > 4 && <p className="muted small">and {pending.length - 4} more in the list below.</p>}
+        </Section>
+      )}
 
-      <div className="home-latest">
-        {UTILITIES.map((u) => (
-          <Latest key={u} utility={u} bills={bills} />
-        ))}
-      </div>
+      <Section title="Latest bills">
+        <div className="tiles">
+          {UTILITIES.map((u) => (
+            <Latest key={u} utility={u} bills={bills} />
+          ))}
+        </div>
+      </Section>
 
       {other.bills > 0 && (
-        <p className="small home-other">
+        <p className="muted small home-other">
           The other person paid {eur(other.total)} on {other.bills} bills. <a href={href('/stats/home')}>See Stats</a>
         </p>
       )}
 
+      <Section title="By month">
       <div className="books-bar">
         <div className="books-chips" role="group" aria-label="Year">
           {years.map((y) => (
@@ -83,24 +82,31 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
         {rows.filter((r) => r.month.startsWith(year)).map((r) => (
           <li key={r.month} className="bill-month">
             <span className="bill-month-head">
-              <strong>{monthName(r.month)}</strong>
-              <span className="bill-end">
-                <span className="bill-amount">{eur(r.total)}</span>
-                {r.pending > 0 && <span className="bill-pill">{r.pending} to pay</span>}
-              </span>
+              <span className="stat-kicker">{monthName(r.month)}</span>
+              <span className="muted small">{eur(r.total)}</span>
             </span>
-            <span className="bill-month-links">
+            <ul className="bill-sub">
               {[r.water, r.gas].map((b) =>
                 b ? (
-                  <a key={b.id} className={`bill-chip bill-chip-${b.utility}`} href={href(`/home/${b.id}`)}>
-                    {UTILITY_NAMES[b.utility]} {eur(b.amount)}{!isPaid(b) ? ' · to pay' : ''}
-                  </a>
+                  <li key={b.id}>
+                    <a href={href(`/home/${b.id}`)}>
+                      <span className={`bill-dot bill-dot-${b.utility}`} aria-hidden />
+                      <span className="bill-name">
+                        <strong>{UTILITY_NAMES[b.utility]}</strong>
+                        <span className="muted small">
+                          {[b.consumption !== undefined ? `${b.consumption} ${UNITS[b.utility]}${b.estimated ? ' (est.)' : ''}` : '', isPaid(b) ? '' : 'To pay'].filter(Boolean).join(' · ') || ' '}
+                        </span>
+                      </span>
+                      <span className="bill-amount">{eur(b.amount)}</span>
+                    </a>
+                  </li>
                 ) : null,
               )}
-            </span>
+            </ul>
           </li>
         ))}
       </ul>
+      </Section>
     </>
   );
 }
@@ -108,14 +114,12 @@ export function BillList({ bills }: { bills: UtilityBill[] }) {
 /** The newest bill of one utility: amount, usage and how that compares with what is usual. */
 function Latest({ utility, bills }: { utility: Utility; bills: UtilityBill[] }) {
   const b = latestBill(bills, utility);
-  if (!b) return <div />;
+  if (!b) return null;
   const usual = usualComparison(bills, b);
+  const label = [`${UTILITY_NAMES[utility]}, ${monthName(b.month, 'short')}`, b.consumption !== undefined ? `${b.consumption} ${UNITS[utility]}${b.estimated ? ' (est.)' : ''}` : '', usual ? usualText(usual) : ''].filter(Boolean).join(' · ');
   return (
-    <a className={`home-tile home-tile-${utility}`} href={href(`/home/${b.id}`)}>
-      <span className="stat-kicker">{UTILITY_NAMES[utility]} · {monthName(b.month, 'short')}</span>
-      <span className="home-tile-amount">{eur(b.amount)}</span>
-      {b.consumption !== undefined && <span className="small">{b.consumption} {UNITS[utility]}{b.estimated ? ' (est.)' : ''}</span>}
-      {usual && <span className="muted small">{usualText(usual)}</span>}
+    <a className="home-link" href={href(`/home/${b.id}`)}>
+      <Tile value={eur(b.amount)} label={label} tone={utility === 'water' ? 1 : 3} />
     </a>
   );
 }

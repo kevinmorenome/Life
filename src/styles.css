@@ -10632,9 +10632,6 @@ h2,
   font-size: 2rem;
   margin: 0;
 }
-.bill-head h2 {
-  margin: 0;
-}
 .bill-facts li {
   display: flex;
   justify-content: space-between;
@@ -10643,103 +10640,69 @@ h2,
 }
 .bill-actions {
   display: flex;
-  gap: 8px;
+  gap: 16px;
   justify-content: flex-end;
   margin-top: 12px;
 }
 
-.home-status {
-  margin: 0 0 16px;
-}
-.home-owe {
-  font-family: var(--voice);
-  font-size: 2.6rem;
-  line-height: 1.05;
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-.home-allpaid {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0;
-}
-.home-latest {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.home-tile {
-  display: grid;
-  gap: 2px;
-  align-content: start;
-  min-width: 0;
-  padding-top: 10px;
-  border-top: 2px solid var(--tile, var(--border));
+.home-link {
+  display: block;
   color: inherit;
   text-decoration: none;
-}
-.home-tile-water {
-  --tile: var(--tone-blue);
-}
-.home-tile-gas {
-  --tile: var(--tone-orange);
-}
-.home-tile-amount {
-  font-family: var(--voice);
-  font-size: 1.8rem;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
+  min-width: 0;
 }
 .home-other {
   margin: 0 0 12px;
 }
-.bill-end {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-}
-.bill-pill {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tone-orange) 18%, var(--bg));
-}
 .bill-month {
   border-top: 1px solid var(--border);
-  padding: 10px 0;
+  padding-top: 12px;
+}
+.bill-month > .bill-sub {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .bill-month-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
 }
-.bill-month-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
+.bill-month-head .stat-kicker {
+  margin: 0;
 }
-.bill-chip {
-  display: inline-flex;
+.bill-sub li {
+  border-top: 0;
+}
+.bill-sub a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
+  min-height: 52px;
   color: inherit;
   text-decoration: none;
-  font-size: 0.9rem;
-  background: color-mix(in srgb, var(--chip-tone) 14%, var(--bg));
-  border: 1px solid color-mix(in srgb, var(--chip-tone) 35%, transparent);
 }
-.bill-chip-water {
-  --chip-tone: var(--tone-blue);
+.bill-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
-.bill-chip-gas {
-  --chip-tone: var(--tone-orange);
+.bill-dot-water {
+  background: var(--tone-blue);
+}
+.bill-dot-gas {
+  background: var(--tone-orange);
 }
 .bill-actions {
   margin-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+.bill-actions + *,
+.stat-block + .btn {
+  margin-top: 0;
+}
+.stat-block ~ .btn.btn-primary {
+  margin-bottom: 16px;
 }

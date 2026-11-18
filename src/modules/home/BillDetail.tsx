@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EditIcon, TrashIcon } from '../../icons';
 import { shortDate, today } from '../../lib/format';
 import { navigate } from '../../lib/router';
+import { Section } from '../clothes/charts';
 import { PAYER_NAMES, UNITS, billTitle, eur, fixedPart, isOverdue, isPaid, kevinShare, usualComparison, usualText } from './bills';
 import type { Payer, UtilityBill } from './types';
 
@@ -26,11 +27,7 @@ export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBi
 
   return (
     <>
-      <div className="bill-head">
-        <h2>{billTitle(b)}</h2>
-        <p className="bill-total">{eur(b.amount)}</p>
-        <p className="muted">{isPaid(b) ? `Paid ${shortDate(b.paidOn!)}${b.paidBy ? ` by ${PAYER_NAMES[b.paidBy]}` : ''}` : isOverdue(b, today()) ? `Overdue since ${shortDate(b.due!)}` : `Pending${b.due ? ` · due ${shortDate(b.due)}` : ''}`}</p>
-      </div>
+      <Section hero title={billTitle(b)} value={eur(b.amount)} tone={b.utility === 'water' ? 1 : 3} sentence={isPaid(b) ? `Paid ${shortDate(b.paidOn!)}${b.paidBy ? ` by ${PAYER_NAMES[b.paidBy]}` : ''}.` : isOverdue(b, today()) ? `Overdue since ${shortDate(b.due!)}.` : `Not paid yet${b.due ? `, due ${shortDate(b.due)}` : ''}.`} />
 
       {!isPaid(b) && !paying && <button type="button" className="btn btn-primary" onClick={() => setPaying(true)}>Mark as paid</button>}
       {paying && (
@@ -59,12 +56,13 @@ export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBi
       )}
 
       {b.consumption !== undefined && (
-        <section className="card">
-          <h2>Consumption</h2>
-          <p className="bill-total">{b.consumption} {unit}{b.estimated && <span className="muted small"> estimated</span>}</p>
-          {usual && <p className="small">{usualText(usual)}</p>}
-          {b.consumption > 0 && <p className="muted small">{eur(b.amount / b.consumption)} per {unit} all in{fixed > 0 ? `; ${eur((b.amount - fixed) / b.consumption)} without the fixed fees` : ''}.</p>}
-        </section>
+        <Section
+          title="Consumption"
+          value={`${b.consumption} ${unit}`}
+          tone={b.utility === 'water' ? 1 : 3}
+          sentence={[usual ? `${usualText(usual)}.` : '', b.estimated ? 'The supplier estimated this reading.' : ''].filter(Boolean).join(' ') || undefined}
+          note={b.consumption > 0 ? `${eur(b.amount / b.consumption)} per ${unit} all in${fixed > 0 ? `; ${eur((b.amount - fixed) / b.consumption)} without the fixed fees` : ''}.` : undefined}
+        />
       )}
 
       <ul className="bill-facts">
@@ -74,8 +72,7 @@ export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBi
       </ul>
 
       {b.lines && b.lines.length > 0 && (
-        <section className="card">
-          <h2>What it is made of</h2>
+        <Section title="What it is made of">
           <ul className="bill-facts">
             {b.lines.map((l, i) => (
               <li key={i}>
@@ -84,7 +81,7 @@ export function BillDetail({ bill: b, all, onSave, onRemove }: { bill: UtilityBi
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
       {b.note && <p className="muted small">{b.note}</p>}
 
