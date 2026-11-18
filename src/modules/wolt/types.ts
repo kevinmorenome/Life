@@ -47,6 +47,8 @@ export interface TakeoutDetail {
   itemsSubtotal: number;
   /** Wolt's own fee invoice ("Račun …"), when there was one. */
   feesTotal?: number;
+  /** Group orders: what other people paid in the same order (their "Potvrda plaćanja"). The order total from the email includes it, it is not your fees. */
+  othersTotal?: number;
   invoiceNo?: string;
   paymentMethod?: string;
   /** "Dostava" = delivery. */

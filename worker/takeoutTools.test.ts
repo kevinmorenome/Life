@@ -173,3 +173,13 @@ describe('set_item_owner', () => {
     expect((await call(ctx, 'takeout_top', {})).json().topDishes).toHaveLength(3);
   });
 });
+
+describe('group orders', () => {
+  it('counts what others paid so the order still adds up', async () => {
+    const s = setup({ woltorders: [{ ...ORDER, total: 42.79 }] });
+    const r = (await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS, feesTotal: 1.97, othersTotal: 12.64 }] })).json();
+    expect(r.attached).toBe(1);
+    expect(r.unreconciled).toBeUndefined();
+    expect(s.m('takeoutdetails').get('td-wolt-abc')).toMatchObject({ othersTotal: 12.64 });
+  });
+});

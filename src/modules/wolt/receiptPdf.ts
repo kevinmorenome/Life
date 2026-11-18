@@ -14,7 +14,8 @@ export interface PdfItem {
 }
 
 export interface PdfReceipt {
-  kind: 'confirmation' | 'invoice';
+  /** "Potvrda narudžbe" (the items), "Račun …" (Wolt's fee invoice) or "Potvrda plaćanja" (another person's payment in a group order). */
+  kind: 'confirmation' | 'invoice' | 'payment';
   /** "ID narudžbe": the sourceId of the order in the app. */
   orderId?: string;
   /** Invoice number of a fee invoice ("60298/1/23"). */
@@ -26,6 +27,8 @@ export interface PdfReceipt {
   date?: string;
   time?: string;
   paymentMethod?: string;
+  /** "Moj komentar", e.g. "Group Order". */
+  comment?: string;
   items: PdfItem[];
   /** "Ukupno u EUR (uklj. PDV)". */
   total?: number;
@@ -44,6 +47,7 @@ export function parseNumber(s: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+const PAY_ROW = /^(.*?)\s*(\d+(?:[.,]\d+)?)\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s*$/;
 const ROW = /^(.*?)\s*(\d+(?:,\d+)?)\s*%\s+(\d+(?:[.,]\d+)?)\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s*$/;
 
 /** The value on the line of a label, or on the first non-blank line below it ("Način plaćanja" has it below). */
@@ -59,13 +63,14 @@ export function parseReceiptText(text: string): PdfReceipt {
   // A page break (form feed) can sit between two rows with no blank line, so it separates rows like one.
   const lines = clean(text).replace(/\f/g, '\n\n').split(/\r?\n/).map((l) => l.replace(/\s+$/, ''));
   const head = lines.find((l) => l.trim())?.trim() ?? '';
-  const kind: PdfReceipt['kind'] = /^Potvrda narudžbe/i.test(head) ? 'confirmation' : 'invoice';
+  const kind: PdfReceipt['kind'] = /^Potvrda narudžbe/i.test(head) ? 'confirmation' : /^Potvrda plaćanja/i.test(head) ? 'payment' : 'invoice';
   const out: PdfReceipt = { kind, items: [] };
   if (kind === 'invoice') out.invoiceNo = head.match(/^Račun\s+(\S+)/i)?.[1];
 
   out.orderId = field(lines, 'ID narudžbe')?.replace(/\s+/g, '');
   out.venue = field(lines, 'Objekt');
   out.orderType = field(lines, 'Vrsta narudžbe');
+  out.comment = field(lines, 'Moj komentar');
   const when = field(lines, 'Vrijeme dostave')?.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})/);
   if (when) {
     out.date = `${when[3]}-${when[2].padStart(2, '0')}-${when[1].padStart(2, '0')}`;
@@ -74,7 +79,7 @@ export function parseReceiptText(text: string): PdfReceipt {
   // "Revolut Pay      28,20" → the method without the amount.
   out.paymentMethod = field(lines, 'Način plaćanja', true)?.replace(/\s{2,}-?[\d.,]+$/, '').trim() || undefined;
 
-  const start = lines.findIndex((l) => /^\s*Stavka\s+%\s*PDV/i.test(l));
+  const start = lines.findIndex((l) => /^\s*Stavka\s+(%\s*PDV|Količina)/i.test(l));
   const end = lines.findIndex((l, i) => i > start && /^\s*Ukupno u EUR/i.test(l));
   if (end >= 0) out.total = parseNumber(lines[end].trim().split(/\s{2,}/).pop() ?? '');
   if (start < 0 || end < 0) return out;
@@ -88,9 +93,11 @@ export function parseReceiptText(text: string): PdfReceipt {
   }
   if (cur.length) blocks.push(cur);
   for (const block of blocks) {
-    const at = block.findIndex((l) => ROW.test(l));
+    // A payment confirmation has no VAT column: rows are name, quantity, unit price, price.
+    const rowOf = (l: string) => (kind === 'payment' ? l.match(PAY_ROW) && [l, l.match(PAY_ROW)![1], '0', ...l.match(PAY_ROW)!.slice(2)] : l.match(ROW));
+    const at = block.findIndex((l) => rowOf(l));
     if (at < 0) continue;
-    const m = block[at].match(ROW)!;
+    const m = rowOf(block[at])!;
     const name = [...block.slice(0, at).map((l) => l.trim()), m[1].trim(), ...block.slice(at + 1).map((l) => l.trim())].filter(Boolean).join(' ');
     const vat = parseNumber(m[2]);
     const qty = parseNumber(m[3]);
@@ -105,14 +112,17 @@ export function parseReceiptText(text: string): PdfReceipt {
 export interface MatchedReceipt {
   confirmation?: PdfReceipt;
   invoice?: PdfReceipt;
+  /** Other people's payments in a group order. */
+  payments: PdfReceipt[];
 }
 
 /** Both PDFs of one email, whichever order they came in. */
 export function pairReceipts(texts: string[]): MatchedReceipt {
-  const out: MatchedReceipt = {};
+  const out: MatchedReceipt = { payments: [] };
   for (const t of texts) {
     const r = parseReceiptText(t);
     if (r.kind === 'confirmation') out.confirmation ??= r;
+    else if (r.kind === 'payment') out.payments.push(r);
     else out.invoice ??= r;
   }
   return out;
@@ -155,8 +165,13 @@ export function groupItems<T extends { name: string }>(items: T[]): ItemGroup<T>
   return out;
 }
 
-/** What was chosen: the text after the colon. The cutlery question ("Želiš li pribor…?") is not a choice worth showing. */
+/**
+ * What was chosen: the text after the colon. Yes/no questions ("Želiš li pribor?: Ne, hvala", "Trebate li pribor za jelo?: DA") and
+ * "no thanks" / "without" answers are not choices worth showing.
+ */
 export function optionChoice(name: string): string | undefined {
   const [group, ...rest] = name.split(':');
-  return /pribor|cutlery/i.test(group) ? undefined : rest.join(':').trim() || undefined;
+  const choice = rest.join(':').trim();
+  if (!choice || /\?|pribor|cutlery/i.test(group) || /^(ne,?\s*hvala!?|bez dodatka|bez)$/i.test(choice)) return undefined;
+  return choice;
 }

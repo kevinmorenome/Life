@@ -2,8 +2,10 @@
 // goes into one cache file, so a rerun never parses (or downloads) a PDF twice.
 //
 //   node --experimental-strip-types scripts/takeout-backfill.ts parse   <pdf-dir> [cache.json]
-//   node --experimental-strip-types scripts/takeout-backfill.ts dry-run [cache.json] [n=5]
-//   node --experimental-strip-types scripts/takeout-backfill.ts payload [cache.json] [out-dir] [per-file=25]
+//   node --experimental-strip-types scripts/takeout-backfill.ts dry-run [cache.json] [n=5] [--since=YYYY-MM-DD]
+//   node --experimental-strip-types scripts/takeout-backfill.ts payload [cache.json] [out-dir] [per-file=25] [--since=YYYY-MM-DD]
+//
+// --since leaves out older orders (you won't remember them well enough to rate or mark them): dry-run and payload only look at orders on or after that date.
 //   node --experimental-strip-types scripts/takeout-backfill.ts mark    <cache.json> <orderId>...   (after attach_takeout_items said attached / alreadyAttached)
 //
 // The Gmail connector can only be called from a Claude chat, so Claude downloads the PDFs into <pdf-dir> (see docs/takeout-backfill.md);
@@ -26,6 +28,10 @@ interface Entry {
   confirmationTotal?: number;
   feesTotal?: number;
   invoiceNo?: string;
+  /** "Moj komentar" of the order, e.g. "Group Order". */
+  comment?: string;
+  /** Other people's payments in a group order ("Potvrda plaćanja"): what they paid and for what. Never attached. */
+  others?: { paymentMethod?: string; total?: number; items: PdfItem[] }[];
   /** Email total from the manifest, when given. */
   emailTotal?: number;
   files: string[];
@@ -34,10 +40,13 @@ interface Entry {
 }
 type Cache = { parsedFiles: Record<string, string>; orders: Record<string, Entry> };
 
-const [cmd, ...rest] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const since = argv.find((a) => a.startsWith('--since='))?.slice(8) ?? '';
+if (since && !/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new Error('--since must be YYYY-MM-DD');
+const [cmd, ...rest] = argv.filter((a) => !a.startsWith('--since='));
 const load = (path: string): Cache => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : { parsedFiles: {}, orders: {} });
 const save = (path: string, c: Cache) => writeFileSync(path, JSON.stringify(c, null, 1));
-const newest = (c: Cache) => Object.values(c.orders).filter((e) => e.items?.length).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+const newest = (c: Cache) => Object.values(c.orders).filter((e) => e.items?.length && (e.date ?? '') >= since).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 const eur = (n?: number) => (n === undefined ? '—' : n.toFixed(2));
 
 if (cmd === 'parse') {
@@ -66,8 +75,11 @@ if (cmd === 'parse') {
     const e = (cache.orders[r.orderId] ??= { orderId: r.orderId, files: [] });
     e.files.push(file);
     if (r.kind === 'confirmation') {
-      Object.assign(e, { venue: r.venue, date: r.date, time: r.time, orderType: r.orderType, paymentMethod: r.paymentMethod, items: r.items, confirmationTotal: r.total });
+      Object.assign(e, { venue: r.venue, date: r.date, time: r.time, orderType: r.orderType, paymentMethod: r.paymentMethod, items: r.items, confirmationTotal: r.total, comment: r.comment });
       if (r.total !== undefined && Math.abs(itemsSubtotal(r.items) - r.total) > 0.02) problems.push(`${file}: item lines add up to ${itemsSubtotal(r.items)} but the PDF total is ${r.total}`);
+    } else if (r.kind === 'payment') {
+      (e.others ??= []).push({ paymentMethod: r.paymentMethod, total: r.total, items: r.items });
+      e.comment ??= r.comment;
     } else {
       e.feesTotal = r.total;
       e.invoiceNo = r.invoiceNo;
@@ -87,7 +99,8 @@ if (cmd === 'parse') {
   const cache = load(cachePath);
   for (const e of newest(cache).slice(0, Number(n))) {
     const sub = itemsSubtotal(e.items!);
-    const sum = Math.round((sub + (e.feesTotal ?? 0)) * 100) / 100;
+    const others = Math.round((e.others ?? []).reduce((s, o) => s + (o.total ?? 0), 0) * 100) / 100;
+    const sum = Math.round((sub + (e.feesTotal ?? 0) + others) * 100) / 100;
     console.log(`\n${e.date} ${e.time ?? ''}  ${e.venue}  [${e.orderId}]  ${e.orderType ?? ''} · ${e.paymentMethod ?? ''}`);
     for (const g of groupItems(e.items!)) {
       const i = g.item;
@@ -100,17 +113,21 @@ if (cmd === 'parse') {
       }
     }
     const check = e.emailTotal === undefined ? 'no email total to compare' : Math.abs(e.emailTotal - sum) <= 0.02 ? 'matches the email total' : `DIFFERENT from email total ${eur(e.emailTotal)} (tip or other extra?)`;
-    console.log(`   items ${eur(sub)} + fees ${eur(e.feesTotal)} = ${eur(sum)}  → ${check}`);
+    if (e.others?.length) {
+      console.log(`   GROUP ORDER (${e.comment ?? ''}): ${e.others.length} other payment(s) — decide which items were not yours (set_item_owner):`);
+      for (const o of e.others) console.log(`      ${o.paymentMethod ?? '?'} ${eur(o.total)}: ${o.items.map((i) => `${i.qty}× ${i.name}`).join('; ')}`);
+    } else if (e.comment) console.log(`   comment: ${e.comment}`);
+    console.log(`   items ${eur(sub)} + fees ${eur(e.feesTotal)}${others ? ` + others ${eur(others)}` : ''} = ${eur(sum)}  → ${check}`);
   }
   console.log('\nNothing was written. Next: payload, then attach_takeout_items.');
 } else if (cmd === 'payload') {
   const [cachePath = 'takeout-items.cache.json', outDir = 'takeout-payloads', per = '25'] = rest;
   const cache = load(cachePath);
-  const todo = Object.values(cache.orders).filter((e) => e.items?.length && !e.attached).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  const todo = Object.values(cache.orders).filter((e) => e.items?.length && !e.attached && (e.date ?? '') >= since).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   mkdirSync(outDir, { recursive: true });
   const size = Math.max(1, Number(per));
   for (let i = 0; i * size < todo.length; i++) {
-    const orders = todo.slice(i * size, (i + 1) * size).map((e) => ({ sourceId: e.orderId, items: e.items, paymentMethod: e.paymentMethod, orderType: e.orderType, feesTotal: e.feesTotal, invoiceNo: e.invoiceNo }));
+    const orders = todo.slice(i * size, (i + 1) * size).map((e) => ({ sourceId: e.orderId, items: e.items, paymentMethod: e.paymentMethod, orderType: e.orderType, feesTotal: e.feesTotal, invoiceNo: e.invoiceNo, othersTotal: e.others?.length ? Math.round(e.others.reduce((s, o) => s + (o.total ?? 0), 0) * 100) / 100 : undefined }));
     writeFileSync(join(outDir, `attach-${String(i + 1).padStart(3, '0')}.json`), JSON.stringify({ orders }));
   }
   console.log(`${todo.length} orders to attach in ${Math.ceil(todo.length / size)} files in ${outDir}/ (each file is the arguments of one attach_takeout_items call).`);

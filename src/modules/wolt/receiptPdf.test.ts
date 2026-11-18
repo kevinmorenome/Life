@@ -116,6 +116,9 @@ describe('groupItems', () => {
     expect(g.map((x) => [x.index, x.kind, x.options.length])).toEqual([[0, 'dish', 0], [1, 'dish', 2], [4, 'fee', 0], [5, 'dish', 0]]);
     expect(optionChoice('Odaberi bazu: Široki rezanci')).toBe('Široki rezanci');
     expect(optionChoice('Želite li pribor za jelo?: Ne, hvala!')).toBeUndefined();
+    expect(optionChoice('Želiš li salvetu?: Da')).toBeUndefined();
+    expect(optionChoice('Odaberi umak: Ne, hvala!')).toBeUndefined();
+    expect(optionChoice('Odaberi dodatak: Bez dodatka')).toBeUndefined();
   });
   it('never turns the first row into an option', async () => {
     const { groupItems } = await import('./receiptPdf');
@@ -138,5 +141,38 @@ Ukupno u EUR (uklj. PDV)                                                        
 `;
     const r = parseReceiptText(text);
     expect(r.items.map((i) => [i.name, i.linePrice])).toEqual([['Odaberi protein: Piletina', 2], ['Odaberi posip: Indijski oraščići', 0]]);
+  });
+});
+
+describe('group orders', () => {
+  const PAYMENT = `Potvrda plaćanja #2
+
+Objekt                       Thai Thai street food
+
+ID narudžbe                  6a9959c85fb437180bdd06c8
+
+Moj komentar                 Group Order
+
+Način plaćanja
+
+Apple Pay                    12,06
+
+Stavka                       Količina      Bruto jedinična cijena    Cijena
+
+Hot thai pržena piletina                                       11,00
+
+   Hot thai pržena piletina        1                      11,00     11,00
+
+Naknada za pakiranje                     1               0,50      0,50
+
+Ukupno u EUR                                                    12,64
+`;
+  it('reads another person’s payment as a payment, not as Wolt’s fees', () => {
+    const r = parseReceiptText(PAYMENT);
+    expect(r).toMatchObject({ kind: 'payment', comment: 'Group Order', paymentMethod: 'Apple Pay', total: 12.64 });
+    expect(r.items.map((i) => [i.name, i.qty, i.linePrice])).toEqual([['Hot thai pržena piletina', 1, 11], ['Naknada za pakiranje', 1, 0.5]]);
+    const p = pairReceipts([PAYMENT, CONFIRMATION, INVOICE]);
+    expect(p.payments).toHaveLength(1);
+    expect(p.invoice?.total).toBe(1.97);
   });
 });

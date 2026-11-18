@@ -44,7 +44,7 @@ describe('dishes', () => {
     expect(repeatPrices(lines, 2)).toEqual([{ dish: 'Pohana piletina', times: 2, first: 10, latest: 11, change: 1 }]);
   });
   it('sums item spend per month with empty months', () => expect(itemSpendPerMonth(lines, '2026-11')).toEqual([{ month: '2026-09', spent: 23 }, { month: '2026-10', spent: 23 }, { month: '2026-11', spent: 0 }]));
-  it('shows fees and other as the difference', () => expect(feesOf(orders[0], details[0])).toEqual({ items: 23, fees: 7 }));
+  it('shows fees and other as the difference', () => expect(feesOf(orders[0], details[0])).toEqual({ items: 23, fees: 7, others: 0 }));
   it('finds dishes without a like, newest verdict wins', () => {
     const fb = latestFeedback([
       { key: dishKey('Tian Tan', 'Juha'), verdict: 'disliked', at: '2026-10-02T10:00:00Z' },
@@ -102,5 +102,13 @@ describe('options and fees', () => {
     expect(l).toHaveLength(1);
     expect(l[0]).toMatchObject({ raw: 'Moj Wok', qty: 1, linePrice: 10, options: ['Teriyaki', 'Piletina'] });
   });
-  it('puts the packaging fee into fees and other', () => expect(feesOf(orders[0], d)).toEqual({ items: 10, fees: 12.26 }));
+  it('puts the packaging fee into fees and other', () => expect(feesOf(orders[0], d)).toEqual({ items: 10, fees: 12.26, others: 0 }));
+});
+
+describe('group orders', () => {
+  it('keeps what other people paid out of fees and other', () => {
+    const o = order('wolt-g', 'Thai Thai', '2026-09-03', 42.79);
+    const d = { ...detail('wolt-g', [['Hot thai', 2, 11], ['Gyoza', 1, 6.16]]), othersTotal: 12.64 };
+    expect(feesOf(o, d)).toEqual({ items: 28.16, fees: 1.99, others: 12.64 });
+  });
 });

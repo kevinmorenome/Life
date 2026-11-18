@@ -67,6 +67,7 @@ export function OrderItems({ order, detail, data }: { order: WoltOrder; detail?:
       {split && (
         <p className="muted small">
           Items {price(split.items, order.currency)} · fees and other {price(split.fees, order.currency)}
+          {split.others > 0 ? ` · paid by others ${price(split.others, order.currency)}` : ''}
           {detail.paymentMethod ? ` · ${detail.paymentMethod}` : ''}
         </p>
       )}

@@ -16,6 +16,6 @@ Needs `pdftotext` (poppler). The cache and PDFs hold personal data: keep them ou
 3. **Dry run**: shows the 5 most recent orders with their items beside the totals, writes nothing:
    `node --experimental-strip-types scripts/takeout-backfill.ts dry-run takeout-items.cache.json 5`
    Check it before going on. A line that says DIFFERENT is not necessarily wrong (a tip is not on the PDFs).
-4. **Payloads**: `... payload takeout-items.cache.json takeout-payloads 25` makes one JSON file per call of `attach_takeout_items`.
+4. **Payloads**: `... payload takeout-items.cache.json takeout-payloads 25 --since=YYYY-MM-DD` (the date is how far back you still remember what you ate; older orders are left out, and you can limit the Gmail search the same way with `after:YYYY/MM/DD`) makes one JSON file per call of `attach_takeout_items`.
 5. **Attach**: Claude calls `attach_takeout_items` with each file's content. Safe to repeat: orders that already have items are `alreadyAttached`.
 6. **Mark done**: `... mark takeout-items.cache.json <orderId>...` for the ones the tool accepted, so `payload` skips them next time.

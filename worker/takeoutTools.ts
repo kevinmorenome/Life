@@ -41,6 +41,7 @@ export const DETAIL_PROPS = {
   orderType: { type: 'string', description: 'Vrsta narudžbe, e.g. "Dostava" (delivery).' },
   feesTotal: { type: 'number', description: 'Total of Wolt\'s own fee invoice ("Račun …": delivery, service fee), if the email had one.' },
   invoiceNo: { type: 'string', description: 'Number of that fee invoice, e.g. "60298/1/23".' },
+  othersTotal: { type: 'number', description: 'Group orders: the total of the other people\'s payments ("Potvrda plaćanja" PDFs) in the same order. The email\'s total includes them; they are not the user\'s items or fees.' },
 } as const;
 
 export interface ParsedDetail {
@@ -72,12 +73,14 @@ export function parseDetail(r: Record<string, unknown>): ParsedDetail {
   }
   if (items.length === 0) return { warnings, error: 'no usable item lines' };
   const feesTotal = money(r.feesTotal);
+  const othersTotal = money(r.othersTotal);
   return {
     warnings,
     detail: {
       items,
       itemsSubtotal: itemsSubtotal(items),
       ...(feesTotal !== undefined ? { feesTotal } : {}),
+      ...(othersTotal !== undefined ? { othersTotal } : {}),
       ...(clip(r.invoiceNo, 40) ? { invoiceNo: clip(r.invoiceNo, 40) } : {}),
       ...(clip(r.paymentMethod, 60) ? { paymentMethod: clip(r.paymentMethod, 60) } : {}),
       ...(clip(r.orderType, 40) ? { orderType: clip(r.orderType, 40) } : {}),
@@ -87,7 +90,7 @@ export function parseDetail(r: Record<string, unknown>): ParsedDetail {
 
 /** True when items + Wolt's fee invoice reach the order's total (a tip or other extra makes up the rest otherwise). */
 function reconcile(total: number, d: NonNullable<ParsedDetail['detail']>): string | undefined {
-  const rest = round2(total - d.itemsSubtotal - (d.feesTotal ?? 0));
+  const rest = round2(total - d.itemsSubtotal - (d.feesTotal ?? 0) - (d.othersTotal ?? 0));
   return Math.abs(rest) > 0.02 ? `${rest > 0 ? 'other charges (tip?)' : 'less than the items'} ${rest.toFixed(2)}` : undefined;
 }
 
@@ -100,7 +103,7 @@ export async function writeDetails(ctx: ToolContext, entries: { orderId: string;
     const id = `td-${e.orderId}`;
     if (known.has(id)) continue;
     const gap = reconcile(e.total, e.detail);
-    if (gap) unreconciled.push(`${e.orderId}: items ${e.detail.itemsSubtotal.toFixed(2)} + fees ${(e.detail.feesTotal ?? 0).toFixed(2)} vs order ${e.total.toFixed(2)}, ${gap}`);
+    if (gap) unreconciled.push(`${e.orderId}: items ${e.detail.itemsSubtotal.toFixed(2)} + fees ${(e.detail.feesTotal ?? 0).toFixed(2)} + others ${(e.detail.othersTotal ?? 0).toFixed(2)} vs order ${e.total.toFixed(2)}, ${gap}`);
     await ctx.store.put('takeoutdetails', id, { id, orderId: e.orderId, ...e.detail, createdAt: stamp, updatedAt: stamp });
     known.add(id);
     attached++;

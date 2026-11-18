@@ -65,11 +65,12 @@ export function dishLines(orders: WoltOrder[], details: TakeoutDetail[], groups:
 }
 
 /** Items subtotal and the rest of the order total (delivery, service fee, tip…), which is never an error. */
-export function feesOf(order: WoltOrder, detail?: Pick<TakeoutDetail, 'items'>): { items: number; fees: number } | undefined {
+export function feesOf(order: WoltOrder, detail?: Pick<TakeoutDetail, 'items' | 'othersTotal'>): { items: number; fees: number; others: number } | undefined {
   if (!detail) return undefined;
   // Packaging and similar fee rows are part of the fees, not of what was ordered.
   const items = round2(groupItems(detail.items).filter((g) => g.kind === 'dish').reduce((s, g) => s + g.item.linePrice + g.options.reduce((a, x) => a + x.linePrice, 0), 0));
-  return { items, fees: round2(order.total - items) };
+  const others = detail.othersTotal ?? 0;
+  return { items, fees: round2(order.total - items - others), others };
 }
 
 export interface DishRow {

@@ -52,7 +52,7 @@ const FIELDS = {
   foodproducts: ['name', 'type', 'storage', 'shelfLifeDays', 'hasPhoto'],
   foodstock: ['productId', 'type', 'quantity', 'date', 'createdAt', 'batch', 'source', 'useBy', 'untracked', 'undated', 'target', 'newDate', 'removed'],
   woltorders: ['restaurant', 'date', 'time', 'total', 'currency'],
-  takeoutdetails: ['orderId', 'items', 'itemsSubtotal', 'feesTotal', 'invoiceNo', 'paymentMethod', 'orderType'],
+  takeoutdetails: ['orderId', 'items', 'itemsSubtotal', 'feesTotal', 'othersTotal', 'invoiceNo', 'paymentMethod', 'orderType'],
   dishfeedback: ['key', 'venue', 'dish', 'verdict', 'note', 'at'],
   ordershares: ['orderId', 'mine', 'at'],
   dishgroups: ['key', 'venue', 'raw', 'group'],
