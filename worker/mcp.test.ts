@@ -3,10 +3,10 @@ import { handleMcp, mcpAuthorized } from './mcp';
 import type { ToolContext } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
-type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'utilitybills' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles' | 'players' | 'trips' | 'tripitplans' | 'recipes' | 'settings';
+type StoreName = 'clothes' | 'outfits' | 'inbox' | 'foodreceipts' | 'foodproducts' | 'foodstock' | 'woltorders' | 'utilitybills' | 'rides' | 'workevents' | 'workdays' | 'checkins' | 'watched' | 'musicdays' | 'gamenights' | 'gametitles' | 'players' | 'trips' | 'tripitplans' | 'recipes' | 'settings' | 'takeoutdetails' | 'dishfeedback' | 'dishgroups';
 
 function fakeStore(seed: Partial<Record<StoreName, Row[]>> = {}) {
-  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), utilitybills: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map(), players: new Map(), trips: new Map(), tripitplans: new Map(), recipes: new Map(), settings: new Map() };
+  const data: Record<StoreName, Map<string, Row>> = { clothes: new Map(), outfits: new Map(), inbox: new Map(), foodreceipts: new Map(), foodproducts: new Map(), foodstock: new Map(), woltorders: new Map(), utilitybills: new Map(), rides: new Map(), workevents: new Map(), workdays: new Map(), checkins: new Map(), watched: new Map(), musicdays: new Map(), gamenights: new Map(), gametitles: new Map(), players: new Map(), trips: new Map(), tripitplans: new Map(), recipes: new Map(), settings: new Map(), takeoutdetails: new Map(), dishfeedback: new Map(), dishgroups: new Map() };
   for (const [name, rows] of Object.entries(seed)) for (const r of rows) data[name as StoreName].set(r.id, r);
   const store: RecordStore = {
     list: async (s) => [...data[s].values()],
@@ -125,6 +125,11 @@ describe('protocol', () => {
       'list_recipes',
       'get_recipe',
       'log_cooked',
+      'attach_takeout_items',
+      'rate_dish',
+      'list_unrated_dishes',
+      'search_takeout_items',
+      'takeout_top',
     ]);
     expect(await rpc(ctx, 'notifications/initialized', undefined, true)).toBeNull();
     expect((await rpc(ctx, 'nope')).error.code).toBe(-32601);

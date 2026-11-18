@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest';
+import { itemsSubtotal, pairReceipts, parseNumber, parseReceiptText } from './receiptPdf';
+
+// Made-up copy of the layout `pdftotext -layout` gives for a Wolt "Potvrda narudžbe" (U+200E marks included).
+const CONFIRMATION = `Potvrda narudžbe #1794748881484
+
+Podaci o narudžbi
+
+Kupac                                                                                      Ime Prezime
+
+ID narudžbe                                                               6af9a9b420634dcbcf416c41
+
+Objekt                                                                                             Tian Tan
+
+Vrsta narudžbe                                                                                     Dostava
+
+Vrijeme dostave                                                                        15.11.2026 14:21
+
+Način plaćanja
+
+Revolut Pay                                                                                          ‎28,20
+
+
+
+
+Stavka                                       % PDV-a       Količina     Bruto jedinična cijena       Cijena
+
+Kiselo - ljuta juha s piletinom                   13%             1                        ‎3,30      ‎3,30
+
+Juha od povrća                                    13%             1                        2,90      2,90
+
+Pohana piletina u slatko - kiselom
+                                                  13%             2                       11,00     22,00
+umaku
+
+Ukupno u EUR (uklj. PDV)                                                                             ‎28,20
+
+Detalji prodavača: Songjiang D.o.o.
+`;
+
+const INVOICE = `Račun 60298/1/23
+
+Podaci o narudžbi
+
+ID narudžbe                                                            6af9a9b420634dcbcf416c41
+
+Vrsta narudžbe                                                                                 Dostava
+
+Vrijeme dostave                                                                    15.11.2026 14:21
+
+Način plaćanja
+
+Revolut Pay                                                                                       1,97
+
+Stavka                                      % PDV-a        Količina   Bruto jedinična cijena    Cijena
+
+Dostava                                            25%           1                     0,00      0,00
+
+Naknada za uslugu                                                                                 1,97
+
+   Naknada za uslugu                               25%           1                     2,82      2,82
+
+   Popust na naknadu za uslugu Wolt+               25%           1                    -0,85     -0,85
+
+Ukupno u EUR (uklj. PDV)                                                                          1,97
+`;
+
+describe('parseNumber', () => {
+  it('reads decimal commas, thousands dots, negatives and invisible marks', () => {
+    expect(parseNumber('‎11,00')).toBe(11);
+    expect(parseNumber('-0,85')).toBe(-0.85);
+    expect(parseNumber('1.234,50')).toBe(1234.5);
+    expect(parseNumber('abc')).toBeUndefined();
+  });
+});
+
+describe('parseReceiptText', () => {
+  it('reads the order fields and every item, joining a wrapped name', () => {
+    const r = parseReceiptText(CONFIRMATION);
+    expect(r).toMatchObject({ kind: 'confirmation', orderId: '6af9a9b420634dcbcf416c41', venue: 'Tian Tan', orderType: 'Dostava', date: '2026-11-15', time: '14:21', paymentMethod: 'Revolut Pay', total: 28.2 });
+    expect(r.items).toEqual([
+      { name: 'Kiselo - ljuta juha s piletinom', vat: 13, qty: 1, unitPrice: 3.3, linePrice: 3.3 },
+      { name: 'Juha od povrća', vat: 13, qty: 1, unitPrice: 2.9, linePrice: 2.9 },
+      { name: 'Pohana piletina u slatko - kiselom umaku', vat: 13, qty: 2, unitPrice: 11, linePrice: 22 },
+    ]);
+    expect(itemsSubtotal(r.items)).toBe(28.2);
+  });
+  it('recognises the fee invoice and its number', () => {
+    const r = parseReceiptText(INVOICE);
+    expect(r).toMatchObject({ kind: 'invoice', invoiceNo: '60298/1/23', orderId: '6af9a9b420634dcbcf416c41', total: 1.97 });
+  });
+});
+
+describe('pairReceipts', () => {
+  it('finds each PDF by title, in any order', () => {
+    const p = pairReceipts([INVOICE, CONFIRMATION]);
+    expect(p.confirmation?.items).toHaveLength(3);
+    expect(p.invoice?.total).toBe(1.97);
+    // items + fees = the order total the app stores
+    expect((p.confirmation!.total ?? 0) + (p.invoice!.total ?? 0)).toBeCloseTo(30.17, 2);
+  });
+});
