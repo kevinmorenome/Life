@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { today } from '../../lib/format';
+import { href } from '../../lib/router';
 import { useCollection } from '../../lib/useCollection';
 import { Empty, HBars, ReadoutColumns, Section, Tile, type Bar } from '../clothes/charts';
-import { UNITS, UTILITY_NAMES, billYears, consumptionSeries, eur as money, monthlySpend, paidByOther, yearSummary } from './bills';
+import { UNITS, UTILITIES, UTILITY_NAMES, billYears, consumptionSeries, eur as money, latestBill, monthlySpend, paidByOther, usualComparison, usualText, yearSummary } from './bills';
 import type { Utility, UtilityBill } from './types';
 
 const eur0 = (n: number) => `€${Math.round(n).toLocaleString()}`;
@@ -50,6 +51,13 @@ function Loaded({ bills }: { bills: UtilityBill[] }) {
           <Tile value={eur0(s.gas)} label="gas" tone={3} />
         </div>
       </Section>
+      <Section title="Latest bills">
+        <div className="tiles">
+          {UTILITIES.map((u) => (
+            <Latest key={u} utility={u} bills={bills} />
+          ))}
+        </div>
+      </Section>
       <Section title="Cost per month" note="By the month each bill is for, water and gas together." value={eur0(months[months.length - 1].total)} sentence={`in ${label(months[months.length - 1].month, true)}.`} tone={1}>
         <ReadoutColumns bars={bars} big={(b) => money(b.value)} small={(b) => label(b.key, true)} initial={months[months.length - 1].month} />
       </Section>
@@ -84,5 +92,18 @@ function Consumption({ utility, bills }: { utility: Utility; bills: UtilityBill[
     >
       <ReadoutColumns bars={bars} color={utility === 'water' ? 'var(--tone-blue)' : 'var(--tone-orange)'} big={(b) => `${b.value} ${unit}`} small={(b) => label(b.key.slice(0, 7), true)} initial={bars[bars.length - 1].key} />
     </Section>
+  );
+}
+
+/** The newest bill of one utility: amount, usage and how that compares with what is usual. */
+function Latest({ utility, bills }: { utility: Utility; bills: UtilityBill[] }) {
+  const b = latestBill(bills, utility);
+  if (!b) return null;
+  const usual = usualComparison(bills, b);
+  const label = [`${UTILITY_NAMES[utility]}, ${new Date(`${b.month}-01T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' })}`, b.consumption !== undefined ? `${b.consumption} ${UNITS[utility]}${b.estimated ? ' (est.)' : ''}` : '', usual ? usualText(usual) : ''].filter(Boolean).join(' · ');
+  return (
+    <a className="home-link" href={href(`/home/${b.id}`)}>
+      <Tile value={money(b.amount)} label={label} tone={utility === 'water' ? 1 : 3} />
+    </a>
   );
 }
