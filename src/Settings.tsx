@@ -11,6 +11,7 @@ import { syncPlanCheckins } from './modules/trips/planCheckinsRunner';
 import { sampleTrip } from './modules/trips/sampleTrip';
 import { sampleReviewItems } from './modules/clothes/sampleReview';
 import { sampleTakeoutOrders } from './modules/wolt/sampleTakeout';
+import { sampleBills } from './modules/home/sampleBills';
 import { sampleRides } from './modules/rides/sampleRides';
 import { OfficeFromSwarm } from './modules/checkins/OfficeFromSwarm';
 import { HomeCountrySection } from './modules/countries/HomeCountrySection';
@@ -47,6 +48,13 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
     for (const o of orders) await put('woltorders', o);
     notify('woltorders');
     setMessage(`Added ${orders.length} sample takeout orders. See the calendar and Stats → Takeout.`);
+  }
+
+  async function addSampleBills() {
+    const bills = sampleBills(new Date(), today());
+    for (const b of bills) await put('utilitybills', b);
+    notify('utilitybills');
+    setMessage(`Added ${bills.length} sample water and gas bills. Open More → Home bills, Stats → Home, or a payment day on the calendar.`);
   }
 
   async function addSampleRides() {
@@ -231,13 +239,16 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       {PREVIEW_LABEL && (
         <section className="card">
           <h2>Preview tools</h2>
-          <p className="muted small">Adds made-up “needs review” items, takeout orders, Bolt/Uber rides and a Mexico trip so you can try them out. They stay on this device only.</p>
+          <p className="muted small">Adds made-up “needs review” items, takeout orders, water and gas bills, Bolt/Uber rides and a Mexico trip so you can try them out. They stay on this device only.</p>
           <div className="form-actions start">
             <button className="btn" onClick={addSamples}>
               Add sample items to review
             </button>
             <button className="btn" onClick={addTakeoutSamples}>
               Add sample takeout orders
+            </button>
+            <button className="btn" onClick={addSampleBills}>
+              Add sample bills
             </button>
             <button className="btn" onClick={addSampleRides}>
               Add sample rides
