@@ -201,3 +201,19 @@ describe('set_item_owner: shared items', () => {
     expect((await call(s.ctx, 'set_item_owner', { sourceId: 'abc', items: [{ item: 'pohana' }] })).error).toBe(true);
   });
 });
+
+describe('the same delivery under another id', () => {
+  it('is not added again and its items go to the existing order', async () => {
+    const s = setup({ woltorders: [{ ...ORDER, id: 'wolt-oldmessageid' }] });
+    const r = (await call(s.ctx, 'add_wolt_orders', { orders: [{ sourceId: 'abc', restaurant: 'Tian Tan', date: '2026-11-15', time: '14:21', total: 30.17, items: ITEMS, feesTotal: 1.97 }] })).json();
+    expect(r).toMatchObject({ added: 0, alreadyAdded: 0, itemsAttached: 1 });
+    expect(r.sameOrderAlreadySaved).toEqual([{ id: 'wolt-abc', existingId: 'wolt-oldmessageid' }]);
+    expect(s.m('woltorders').size).toBe(1);
+    expect(s.m('takeoutdetails').get('td-wolt-oldmessageid')).toBeTruthy();
+  });
+  it('does not count a stored duplicate twice in day_summary', async () => {
+    const s = setup({ woltorders: [ORDER, { ...ORDER, id: 'wolt-copy' }] });
+    await call(s.ctx, 'attach_takeout_items', { orders: [{ sourceId: 'abc', items: ITEMS, feesTotal: 1.97 }] });
+    expect((await call(s.ctx, 'day_summary', { date: '2026-11-15' })).json().takeout).toHaveLength(1);
+  });
+});

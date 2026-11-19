@@ -151,3 +151,31 @@ export function byDate(orders: WoltOrder[]): Map<string, WoltOrder[]> {
   }
   return days;
 }
+
+/** What makes two records the same delivery, whatever id they were saved under: app, day, time, venue (branches combined) and amount. */
+export const orderFingerprint = (o: Pick<WoltOrder, 'service' | 'date' | 'time' | 'restaurant' | 'total' | 'currency'>) =>
+  [o.service ?? 'wolt', o.date, o.time ?? '', placeName(o.restaurant).toLowerCase(), o.total.toFixed(2), o.currency].join('|');
+
+/**
+ * Records that repeat another delivery (the same order saved twice under different ids): per delivery one is kept, the one that has
+ * item lines (`withItems` = ids of orders with details), else the oldest. Returned in the order given.
+ */
+export function duplicateOrders<T extends Pick<WoltOrder, 'id' | 'service' | 'date' | 'time' | 'restaurant' | 'total' | 'currency'> & { createdAt?: string }>(orders: T[], withItems: ReadonlySet<string>): T[] {
+  const groups = new Map<string, T[]>();
+  for (const o of orders) {
+    const k = orderFingerprint(o);
+    groups.set(k, [...(groups.get(k) ?? []), o]);
+  }
+  const extra = new Set<string>();
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const keep = [...g].sort((a, b) => Number(withItems.has(b.id)) - Number(withItems.has(a.id)) || (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.id.localeCompare(b.id))[0];
+    for (const o of g) if (o !== keep) extra.add(o.id);
+  }
+  return orders.filter((o) => extra.has(o.id));
+}
+
+export function withoutDuplicates<T extends Pick<WoltOrder, 'id' | 'service' | 'date' | 'time' | 'restaurant' | 'total' | 'currency'> & { createdAt?: string }>(orders: T[], withItems: ReadonlySet<string>): T[] {
+  const drop = new Set(duplicateOrders(orders, withItems).map((o) => o.id));
+  return drop.size ? orders.filter((o) => !drop.has(o.id)) : orders;
+}

@@ -22,6 +22,7 @@ import { TripitImportSection } from './modules/trips/TripitImportSection';
 import { TripitSection } from './modules/trips/TripitSection';
 import { TraktSection } from './modules/watching/TraktSection';
 import { GoodreadsSection } from './modules/books/GoodreadsSection';
+import { DuplicateTakeoutSection } from './modules/wolt/DuplicateTakeoutSection';
 import { MoveTakeoutSection } from './modules/wolt/MoveTakeoutSection';
 import { IphoneTimerSection } from './modules/recipes/IphoneTimerSection';
 import { parseBadgeReport, planImport } from './modules/work/importers/badgeReport';
@@ -241,6 +242,7 @@ export function Settings({ subroute = [] }: { subroute?: string[] }) {
       <StatsfmSection />
       <GoodreadsSection />
       <MoveTakeoutSection />
+      <DuplicateTakeoutSection />
       <IphoneTimerSection />
       <PerfSection />
       {PREVIEW_LABEL && (

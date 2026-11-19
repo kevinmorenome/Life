@@ -20,7 +20,7 @@ import type { FoodProduct, FoodReceipt, StockEvent } from '../src/modules/food/t
 import { CATEGORIES } from '../src/modules/clothes/types';
 import type { ToolContext, ToolResult } from './mcpTools';
 import type { Row } from './records';
-import { addDays, dateRange, fail, isRealDate, num, ok, placeCheckins, text, timesWorn, lastWorn, utcToday, wornByDay, type Args } from './toolUtil';
+import { addDays, dateRange, fail, isRealDate, num, ok, placeCheckins, text, timesWorn, lastWorn, takeoutOnce, utcToday, wornByDay, type Args } from './toolUtil';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86_400_000);
@@ -453,7 +453,8 @@ async function daySummary(args: Args, ctx: ToolContext): Promise<ToolResult> {
   }
   const places = newestFirst(filterCheckins(checkins, { from: date, to: date })).reverse();
   if (places.length) out.places = places.map((c) => ({ ...(c.time ? { time: c.time } : {}), venue: c.venue, ...(c.category ? { category: c.category } : {}), ...(c.city ? { city: c.city } : {}) }));
-  const orders = takeout.filter((r) => r.date === date);
+  // The same delivery saved twice under different ids counts once.
+  const orders = takeoutOnce(takeout, takeoutDetails).filter((r) => r.date === date);
   if (orders.length) out.takeout = orders.map((r) => {
     const detail = takeoutDetails.find((d) => d.orderId === r.id);
     const lines = detail ? dishLines([r as never], [detail as never], [], latestShares(orderShares as never)) : [];

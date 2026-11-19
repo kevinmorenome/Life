@@ -32,8 +32,9 @@ import type { RecordStore, Row } from './records';
 import { READ_TOOLS, callReadTool } from './readTools';
 import { RECIPE_TOOLS, callRecipeTool } from './recipeTools';
 import { dishLines, latestShares } from '../src/modules/wolt/dishes';
+import { orderFingerprint } from '../src/modules/wolt/wolt';
 import { DETAIL_PROPS, TAKEOUT_TOOLS, callTakeoutTool, parseDetail, writeDetails } from './takeoutTools';
-import { addDays, dateRange, fail, isRealDate, lastWorn, ok, placeCheckins, strings, text, timesWorn, utcToday, wornByDay, type Args } from './toolUtil';
+import { addDays, dateRange, fail, isRealDate, lastWorn, ok, placeCheckins, strings, takeoutOnce, takeoutPrint, text, timesWorn, utcToday, wornByDay, type Args } from './toolUtil';
 
 export interface ToolContext {
   store: RecordStore;
@@ -894,7 +895,7 @@ async function weeklyDigest(args: Args, { store, now }: ToolContext): Promise<To
     days,
     start,
     end,
-    takeout: takeout.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR'), ...(itemsOf.has(r.id) ? { items: itemsOf.get(r.id)! } : {}) })),
+    takeout: takeoutOnce(takeout, takeoutDetails).filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), place: String(r.restaurant ?? ''), total: num(r.total), currency: String(r.currency ?? 'EUR'), ...(itemsOf.has(r.id) ? { items: itemsOf.get(r.id)! } : {}) })),
     rides: rides.filter((r) => isRealDate(r.date)).map((r) => ({ date: String(r.date), fare: num(r.fare), currency: String(r.currency ?? 'EUR') })),
     groceries: receipts
       .filter((r) => isRealDate(r.date) && !r.carriedOver)
@@ -1254,12 +1255,22 @@ async function addUtilityBills(args: Args, { store, now }: ToolContext): Promise
 async function addWoltOrders(args: Args, ctx: ToolContext, service: TakeoutService): Promise<ToolResult> {
   const { store, now } = ctx;
   const { orders, rejected } = parseWoltOrders(args.orders, utcToday(now), service);
-  const known = new Set((await store.list('woltorders')).map((r) => r.id));
+  const existing = await store.list('woltorders');
+  const known = new Set(existing.map((r) => r.id));
+  // The same delivery may already be saved under another id (another sourceId convention): it is not added again, and its items go to that order.
+  const prints = new Map(existing.map((r) => [takeoutPrint(r), r.id]));
+  const alias = new Map<string, string>();
   const stamp = now.toISOString();
   let added = 0;
   for (const o of orders) {
     if (known.has(o.id)) continue; // already saved: orders are never overwritten
+    const same = prints.get(orderFingerprint(o));
+    if (same) {
+      alias.set(o.id, same);
+      continue;
+    }
     await store.put('woltorders', o.id, { ...o, createdAt: stamp, updatedAt: stamp });
+    prints.set(orderFingerprint(o), o.id);
     added++;
   }
   // Item lines given with the orders (a saved order may also get them here: details are written once per order).
@@ -1271,13 +1282,14 @@ async function addWoltOrders(args: Args, ctx: ToolContext, service: TakeoutServi
     if (!r || r.items === undefined) continue;
     const p = parseDetail(r);
     itemNotes.push(...p.warnings.map((w) => `${o.id}: ${w}`));
-    if (p.detail) entries.push({ orderId: o.id, total: o.total, detail: p.detail });
+    if (p.detail) entries.push({ orderId: alias.get(o.id) ?? o.id, total: o.total, detail: p.detail });
     else itemNotes.push(`${o.id}: items not saved (${p.error})`);
   }
   const details = entries.length ? await writeDetails(ctx, entries) : undefined;
   return ok({
     added,
-    alreadyAdded: orders.length - added,
+    alreadyAdded: orders.length - added - alias.size,
+    ...(alias.size ? { sameOrderAlreadySaved: [...alias].map(([id, existingId]) => ({ id, existingId })), note: 'These deliveries were already saved under another id (same app, day, time, place and amount): not added again, and their items went to the existing order.' } : {}),
     ...(details ? { itemsAttached: details.attached, itemsAlreadyAttached: details.alreadyAttached, ...(details.unreconciled.length ? { unreconciled: details.unreconciled } : {}) } : {}),
     ...(itemNotes.length ? { itemWarnings: itemNotes } : {}),
     ...(rejected.length ? { rejected, warning: 'Some orders were left out: fix them from the emails and add them again.' } : {}),
