@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { useCollection } from '../../lib/useCollection';
 import type { FoodReceipt } from '../food/types';
 import { isWoltTakeoutReceipt, takeoutFromReceipt } from './fromReceipts';
-import type { WoltOrder } from './types';
+import type { TakeoutDetail, WoltOrder } from './types';
+import { withoutDuplicates } from './wolt';
 
 /** Saved takeout orders plus Wolt orders still sitting in the food log, so nothing waits on the move. */
 export function mergeTakeout(orders: WoltOrder[], receipts: FoodReceipt[]): WoltOrder[] {
@@ -14,6 +15,8 @@ export function mergeTakeout(orders: WoltOrder[], receipts: FoodReceipt[]): Wolt
 export function useTakeoutOrders(): { items: WoltOrder[]; loading: boolean } {
   const orders = useCollection<WoltOrder>('woltorders');
   const receipts = useCollection<FoodReceipt>('foodreceipts');
-  const items = useMemo(() => mergeTakeout(orders.items, receipts.items), [orders.items, receipts.items]);
-  return { items, loading: orders.loading || receipts.loading };
+  const details = useCollection<TakeoutDetail>('takeoutdetails');
+  // The same delivery saved twice under different ids counts once (the copy with item lines is kept).
+  const items = useMemo(() => withoutDuplicates(mergeTakeout(orders.items, receipts.items), new Set(details.items.map((d) => d.orderId))), [orders.items, receipts.items, details.items]);
+  return { items, loading: orders.loading || receipts.loading || details.loading };
 }

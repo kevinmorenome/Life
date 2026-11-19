@@ -2,6 +2,8 @@
 
 import type { WornNames } from '../src/modules/checkins/digest';
 import type { PlaceCheckin } from '../src/modules/checkins/placesQuery';
+import type { TakeoutService } from '../src/modules/wolt/types';
+import { orderFingerprint, withoutDuplicates } from '../src/modules/wolt/wolt';
 import type { ToolResult } from './mcpTools';
 import type { RecordStore, Row } from './records';
 
@@ -71,4 +73,24 @@ export function dateRange(args: Args): { from?: string; to?: string } | string {
   const to = (args.date ?? args.to) as string | undefined;
   if (from && to && from > to) return 'from must not be after to.';
   return { from, to };
+}
+
+/** A takeout record read from the store, as the pure order helpers want it. */
+const asOrder = (r: Row) => ({
+  id: r.id,
+  service: r.service as TakeoutService | undefined,
+  date: String(r.date ?? ''),
+  time: typeof r.time === 'string' ? r.time : undefined,
+  restaurant: String(r.restaurant ?? ''),
+  total: typeof r.total === 'number' ? r.total : 0,
+  currency: String(r.currency ?? 'EUR'),
+  createdAt: typeof r.createdAt === 'string' ? r.createdAt : undefined,
+});
+
+export const takeoutPrint = (r: Row) => orderFingerprint(asOrder(r));
+
+/** Takeout orders with a delivery saved twice under different ids counted once (the copy with item lines stays). */
+export function takeoutOnce(orders: Row[], details: Row[]): Row[] {
+  const kept = new Set(withoutDuplicates(orders.map(asOrder), new Set(details.map((d) => String(d.orderId)))).map((o) => o.id));
+  return orders.filter((r) => kept.has(r.id));
 }

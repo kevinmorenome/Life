@@ -79,3 +79,19 @@ describe('byService', () => {
     ]);
   });
 });
+
+describe('duplicate deliveries', () => {
+  const base = { service: undefined, date: '2026-10-03', time: '19:42', restaurant: 'Tao Of Ramen', total: 36.39, currency: 'EUR' };
+  const a = { id: 'wolt-6ac1', createdAt: '2026-10-03T20:00:00Z', ...base };
+  const b = { id: 'wolt-1a10', createdAt: '2026-11-18T22:00:00Z', ...base };
+  it('keeps the copy with item lines and drops the other', async () => {
+    const { duplicateOrders, withoutDuplicates } = await import('./wolt');
+    expect(duplicateOrders([a, b], new Set(['wolt-1a10'])).map((o) => o.id)).toEqual(['wolt-6ac1']);
+    expect(withoutDuplicates([a, b], new Set(['wolt-1a10'])).map((o) => o.id)).toEqual(['wolt-1a10']);
+  });
+  it('keeps the oldest when neither has items, and never merges different deliveries', async () => {
+    const { duplicateOrders } = await import('./wolt');
+    expect(duplicateOrders([b, a], new Set()).map((o) => o.id)).toEqual(['wolt-1a10']);
+    expect(duplicateOrders([a, { ...b, total: 12 }, { ...b, id: 'x', restaurant: "Tao Of Ramen - Ilica" }], new Set()).map((o) => o.id)).toEqual(['x']);
+  });
+});
